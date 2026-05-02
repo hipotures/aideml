@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from . import backend
-
 from .agent import Agent
 from .interpreter import Interpreter
 from .journal import Journal, Node
@@ -208,7 +206,6 @@ def run(argv: list[str] | None = None):
     logger.info(f'Starting run "{cfg.exp_name}"')
 
     task_desc = load_task_desc(cfg)
-    task_desc_str = backend.compile_prompt_to_md(task_desc)
 
     if not is_resume:
         with Status("Preparing agent workspace (copying and extracting files) ..."):
@@ -261,18 +258,17 @@ def run(argv: list[str] | None = None):
             f"Agent workspace directory:\n[yellow]▶ {str(cfg.workspace_dir)}",
             f"Experiment log directory:\n[yellow]▶ {str(cfg.log_dir)}",
         ]
-        left = Group(
-            Panel(Text(task_desc_str.strip()), title="Task description"), prog, status
-        )
+        left = Group(prog, status)
         right = tree
         wide = Group(*file_paths)
 
         return Panel(
             Group(
-                Padding(wide, (1, 1, 1, 1)),
+                Padding(wide, (0, 1, 0, 1)),
                 Columns(
-                    [Padding(left, (1, 2, 1, 1)), Padding(right, (1, 1, 1, 2))],
-                    equal=True,
+                    [Padding(left, (0, 1, 0, 1)), Padding(right, (0, 1, 0, 1))],
+                    equal=False,
+                    expand=True,
                 ),
             ),
             title=f'[b]AIDE is working on experiment: [bold green]"{cfg.exp_name}[/b]"',
