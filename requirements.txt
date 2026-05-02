@@ -29,6 +29,7 @@ torchaudio
 torchtext
 
 lightgbm
+xgboost
 matplotlib
 seaborn
 
