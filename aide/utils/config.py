@@ -2,6 +2,7 @@
 
 import datetime as dt
 import shutil
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Hashable, cast
@@ -96,17 +97,27 @@ def _get_next_logindex(dir: Path) -> int:
 
 
 def _load_cfg(
-    path: Path = Path(__file__).parent / "config.yaml", use_cli_args=True
+    path: Path = Path(__file__).parent / "config.yaml",
+    use_cli_args=True,
+    cli_args: Sequence[str] | None = None,
 ) -> Config:
     cfg = OmegaConf.load(path)
     if use_cli_args:
-        cfg = OmegaConf.merge(cfg, OmegaConf.from_cli())
+        cli_cfg = (
+            OmegaConf.from_dotlist(list(cli_args))
+            if cli_args is not None
+            else OmegaConf.from_cli()
+        )
+        cfg = OmegaConf.merge(cfg, cli_cfg)
     return cfg
 
 
-def load_cfg(path: Path = Path(__file__).parent / "config.yaml") -> Config:
+def load_cfg(
+    path: Path = Path(__file__).parent / "config.yaml",
+    cli_args: Sequence[str] | None = None,
+) -> Config:
     """Load config from .yaml file and CLI args, and set up logging directory."""
-    return prep_cfg(_load_cfg(path))
+    return prep_cfg(_load_cfg(path, cli_args=cli_args))
 
 
 def prep_cfg(cfg: Config):

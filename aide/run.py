@@ -1,7 +1,11 @@
 import atexit
+import sys
 import logging
 import shutil
 import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import cast
 
 from . import backend
 
@@ -25,9 +29,112 @@ from rich.progress import (
 from rich.text import Text
 from rich.status import Status
 from rich.tree import Tree
-from .utils.config import load_task_desc, prep_agent_workspace, save_run, load_cfg
+from .utils import serialize
+from .utils.config import (
+    Config,
+    _load_cfg,
+    load_task_desc,
+    prep_agent_workspace,
+    save_run,
+    load_cfg,
+)
 
 logger = logging.getLogger("aide")
+
+
+@dataclass(frozen=True)
+class ResumeRequest:
+    requested: bool = False
+    run_id: str | None = None
+
+    @property
+    def use_latest(self) -> bool:
+        return self.requested and self.run_id is None
+
+
+def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
+    remaining: list[str] = []
+    resume = ResumeRequest()
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--resume":
+            if resume.requested:
+                raise ValueError("`--resume` can only be provided once.")
+            run_id = None
+            next_i = i + 1
+            if (
+                next_i < len(argv)
+                and "=" not in argv[next_i]
+                and not argv[next_i].startswith("-")
+            ):
+                run_id = argv[next_i]
+                i += 1
+            resume = ResumeRequest(requested=True, run_id=run_id)
+        elif arg.startswith("--resume="):
+            if resume.requested:
+                raise ValueError("`--resume` can only be provided once.")
+            run_id = arg.split("=", 1)[1] or None
+            resume = ResumeRequest(requested=True, run_id=run_id)
+        else:
+            remaining.append(arg)
+        i += 1
+    return resume, remaining
+
+
+def find_latest_run_id(top_log_dir: Path) -> str:
+    journals = list(top_log_dir.glob("*/journal.json"))
+    if not journals:
+        raise FileNotFoundError(f"No resumable runs found in {top_log_dir}.")
+    return max(journals, key=lambda path: path.stat().st_mtime).parent.name
+
+
+def load_resume_state(
+    *,
+    run_id: str,
+    top_log_dir: Path,
+    top_workspace_dir: Path,
+    cli_overrides: list[str],
+) -> tuple[Config, Journal]:
+    log_dir = (top_log_dir / run_id).resolve()
+    workspace_dir = (top_workspace_dir / run_id).resolve()
+    config_path = log_dir / "config.yaml"
+    journal_path = log_dir / "journal.json"
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Missing resume config: {config_path}")
+    if not journal_path.exists():
+        raise FileNotFoundError(f"Missing resume journal: {journal_path}")
+    if not workspace_dir.exists():
+        raise FileNotFoundError(f"Missing resume workspace: {workspace_dir}")
+    if (
+        not (workspace_dir / "input").exists()
+        or not (workspace_dir / "working").exists()
+    ):
+        raise FileNotFoundError(
+            f"Resume workspace must contain input/ and working/: {workspace_dir}"
+        )
+
+    cfg = OmegaConf.load(config_path)
+    if cli_overrides:
+        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(cli_overrides))
+    cfg.exp_name = run_id
+    cfg.log_dir = log_dir
+    cfg.workspace_dir = workspace_dir
+    cfg_schema: Config = OmegaConf.structured(Config)
+    cfg = OmegaConf.merge(cfg_schema, cfg)
+    journal = serialize.load_json(journal_path, Journal)
+    return cast(Config, cfg), journal
+
+
+def confirm_resume_latest(run_id: str, completed_steps: int, total_steps: int) -> bool:
+    print(f"Resume latest run: {run_id}")
+    print(f"Completed steps: {completed_steps}/{total_steps}")
+    if not sys.stdin.isatty():
+        print("Continue? [y/N] N")
+        return False
+    answer = input("Continue? [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
 
 
 def journal_to_rich_tree(
@@ -70,23 +177,49 @@ def journal_to_rich_tree(
     return tree
 
 
-def run():
-    cfg = load_cfg()
+def run(argv: list[str] | None = None):
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    resume_request, cli_args = parse_resume_args(raw_argv)
+
+    if resume_request.requested:
+        base_cfg = _load_cfg(cli_args=cli_args)
+        top_log_dir = Path(base_cfg.log_dir).resolve()
+        top_workspace_dir = Path(base_cfg.workspace_dir).resolve()
+        run_id = resume_request.run_id or find_latest_run_id(top_log_dir)
+        cfg, journal = load_resume_state(
+            run_id=run_id,
+            top_log_dir=top_log_dir,
+            top_workspace_dir=top_workspace_dir,
+            cli_overrides=cli_args,
+        )
+        if resume_request.use_latest and not confirm_resume_latest(
+            run_id,
+            completed_steps=len(journal),
+            total_steps=cfg.agent.steps,
+        ):
+            print("Resume cancelled.")
+            return
+        is_resume = True
+    else:
+        cfg = load_cfg(cli_args=cli_args)
+        journal = Journal()
+        is_resume = False
+
     logger.info(f'Starting run "{cfg.exp_name}"')
 
     task_desc = load_task_desc(cfg)
     task_desc_str = backend.compile_prompt_to_md(task_desc)
 
-    with Status("Preparing agent workspace (copying and extracting files) ..."):
-        prep_agent_workspace(cfg)
+    if not is_resume:
+        with Status("Preparing agent workspace (copying and extracting files) ..."):
+            prep_agent_workspace(cfg)
 
     def cleanup():
-        if global_step == 0:
+        if not is_resume and global_step == 0:
             shutil.rmtree(cfg.workspace_dir)
 
     atexit.register(cleanup)
 
-    journal = Journal()
     agent = Agent(
         task_desc=task_desc,
         cfg=cfg,
