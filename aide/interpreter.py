@@ -16,11 +16,16 @@ import traceback
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from pathlib import Path
+from typing import Callable
 
 import humanize
 from dataclasses_json import DataClassJsonMixin
 
 logger = logging.getLogger("aide")
+
+
+class ExecutionInterrupted(Exception):
+    """Raised when the user requests immediate execution stop."""
 
 
 @dataclass
@@ -107,9 +112,9 @@ class Interpreter:
         """
         # this really needs to be a path, otherwise causes issues that don't raise exc
         self.working_dir = Path(working_dir).resolve()
-        assert (
-            self.working_dir.exists()
-        ), f"Working directory {self.working_dir} does not exist"
+        assert self.working_dir.exists(), (
+            f"Working directory {self.working_dir} does not exist"
+        )
         self.timeout = timeout
         self.format_tb_ipython = format_tb_ipython
         self.agent_file_name = agent_file_name
@@ -202,13 +207,19 @@ class Interpreter:
                 self.process.close()
                 self.process = None
 
-    def run(self, code: str, reset_session=True) -> ExecutionResult:
+    def run(
+        self,
+        code: str,
+        reset_session=True,
+        interrupt_callback: Callable[[int], None] | None = None,
+    ) -> ExecutionResult:
         """
         Execute the provided Python command in a separate process and return its output.
 
         Parameters:
             code (str): Python code to execute.
             reset_session (bool, optional): Whether to reset the interpreter session before executing the code. Defaults to True.
+            interrupt_callback (Callable[[int], None] | None, optional): Called with the Ctrl+C count while waiting for code execution.
 
         Returns:
             ExecutionResult: Object containing the output and metadata of the code execution.
@@ -245,6 +256,7 @@ class Interpreter:
         # this flag indicates that the child ahs exceeded the time limit and an interrupt was sent
         # if the child process dies without this flag being set, it's an unexpected termination
         child_in_overtime = False
+        interrupt_count = 0
 
         while True:
             try:
@@ -253,6 +265,14 @@ class Interpreter:
                 assert state[0] == "state:finished", state
                 exec_time = time.time() - start_time
                 break
+            except KeyboardInterrupt:
+                interrupt_count += 1
+                if interrupt_callback is not None:
+                    interrupt_callback(interrupt_count)
+                if interrupt_count == 1:
+                    continue
+                self.cleanup_session()
+                raise ExecutionInterrupted("Execution interrupted by user.") from None
             except queue.Empty:
                 # we haven't heard back from the child -> check if it's still alive (assuming overtime interrupt wasn't sent yet)
                 if not child_in_overtime and not self.process.is_alive():

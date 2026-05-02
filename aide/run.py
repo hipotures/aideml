@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import cast
 
 from .agent import Agent
-from .interpreter import Interpreter
+from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
 from omegaconf import OmegaConf
@@ -162,13 +162,13 @@ def journal_to_rich_tree(
                 s = f"[{style}green]● {node.metric.value:.3f}"
 
         subtree = tree.add(s)
-        for child in node.children:
+        for child in list(node.children):
             append_rec(child, subtree)
         if node is active_parent_node:
             append_active_placeholder(subtree)
 
     tree = Tree("[bold blue]Solution tree")
-    for n in journal.draft_nodes:
+    for n in list(journal.draft_nodes):
         append_rec(n, tree)
     if active_parent_node is None:
         append_active_placeholder(tree)
@@ -238,10 +238,24 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
 
     def exec_callback(*args, **kwargs):
+        def on_interrupt(interrupt_count: int):
+            if interrupt_count == 1:
+                status.update(
+                    "[yellow]Ctrl+C received. Waiting for current code to finish. "
+                    "Press Ctrl+C again to stop now."
+                )
+            else:
+                status.update("[red]Stopping current code execution...")
+
         status.update("[magenta]Executing code...")
-        res = interpreter.run(*args, **kwargs)
-        status.update("[green]Generating code...")
-        return res
+        try:
+            return interpreter.run(
+                *args,
+                interrupt_callback=on_interrupt,
+                **kwargs,
+            )
+        finally:
+            status.update("[green]Generating code...")
 
     def generate_live():
         blink_on = int(time.monotonic() * 2) % 2 == 0
@@ -275,17 +289,40 @@ def run(argv: list[str] | None = None):
             subtitle="Press [b]Ctrl+C[/b] to stop the run",
         )
 
-    with Live(
-        get_renderable=generate_live,
-        refresh_per_second=16,
-        screen=True,
-    ) as live:
-        while global_step < cfg.agent.steps:
-            agent.step(exec_callback=exec_callback)
-            save_run(cfg, journal, current_node=journal[-1])
-            global_step = len(journal)
-            live.update(generate_live())
-    interpreter.cleanup_session()
+    interrupted = False
+    interrupt_message = ""
+    try:
+        with Live(
+            get_renderable=generate_live,
+            refresh_per_second=16,
+            screen=True,
+        ) as live:
+            while global_step < cfg.agent.steps:
+                try:
+                    agent.step(exec_callback=exec_callback)
+                except ExecutionInterrupted:
+                    interrupted = True
+                    interrupt_message = (
+                        "Execution stopped by user. Current node was not saved; "
+                        "previous journal state is preserved."
+                    )
+                    break
+                except KeyboardInterrupt:
+                    interrupted = True
+                    interrupt_message = (
+                        "Run interrupted by user. Current node was not saved; "
+                        "previous journal state is preserved."
+                    )
+                    break
+                save_run(cfg, journal, current_node=journal[-1])
+                global_step = len(journal)
+                live.update(generate_live())
+    finally:
+        interpreter.cleanup_session()
+
+    if interrupted:
+        print(interrupt_message)
+        return
 
     if cfg.generate_report:
         print("Generating final report from journal...")
