@@ -208,7 +208,6 @@ def _relative_display_path(path: Path, base_path: Path) -> str:
 
 def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
     path_entries = [
-        ("Result visualization", log_dir / "tree_plot.html"),
         ("Agent workspace directory", workspace_dir),
         ("Experiment log directory", log_dir),
     ]

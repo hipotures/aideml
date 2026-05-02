@@ -132,10 +132,10 @@ def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):
 
     assert "Base path" in output
     assert f"▶ {tmp_path}/" in output
-    assert "▶ logs/2-example-run/tree_plot.html" in output
+    assert "Result visualization" not in output
+    assert "tree_plot.html" not in output
     assert "▶ workspaces/2-example-run" in output
     assert "▶ logs/2-example-run" in output
-    assert f"{log_dir}/tree_plot.html" not in output
 
 
 def test_stage_status_message_names_review_stage():
