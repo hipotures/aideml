@@ -329,8 +329,8 @@ def run(argv: list[str] | None = None):
 
         layout = Layout()
         layout.split_row(
-            Layout(tree_panel, name="tree", ratio=2),
-            Layout(data_panel, name="data", ratio=1),
+            Layout(tree_panel, name="tree", ratio=3),
+            Layout(data_panel, name="data", ratio=2),
         )
         return layout
 
