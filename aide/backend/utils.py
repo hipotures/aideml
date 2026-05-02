@@ -1,4 +1,9 @@
+import datetime as dt
+import json
+import os
+import threading
 from dataclasses import dataclass
+from pathlib import Path
 
 import jsonschema
 from dataclasses_json import DataClassJsonMixin
@@ -12,6 +17,7 @@ OutputType = str | FunctionCallType
 
 
 logger = logging.getLogger("aide")
+_llm_log_lock = threading.Lock()
 
 
 @backoff.on_predicate(
@@ -52,6 +58,53 @@ def compile_prompt_to_md(prompt: PromptType, _header_depth: int = 1) -> str:
         out.append(f"{header_prefix} {k}\n")
         out.append(compile_prompt_to_md(v, _header_depth=_header_depth + 1))
     return "\n".join(out)
+
+
+def _format_log_value(value) -> str:
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+        return json.dumps(parsed, indent=2, ensure_ascii=False)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, indent=2, ensure_ascii=False, default=str)
+    return str(value)
+
+
+def log_llm_exchange(
+    *,
+    phase: str,
+    provider: str,
+    payload: dict,
+    sequence_id: int | None = None,
+) -> None:
+    log_dir = os.getenv("AIDE_LOG_DIR")
+    run_id = os.getenv("AIDE_RUN_ID")
+    if not log_dir:
+        return
+
+    path = Path(log_dir) / "llm_communication.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = dt.datetime.now().isoformat(timespec="seconds")
+    title_parts = [phase.upper(), timestamp]
+    if run_id:
+        title_parts.append(f"run={run_id}")
+    if sequence_id is not None:
+        title_parts.append(f"llm_call={sequence_id:04d}")
+
+    lines = ["\n---\n", f"## {' | '.join(title_parts)}\n", f"provider: `{provider}`\n"]
+    for key, value in payload.items():
+        lines.append(f"\n### {key}\n")
+        formatted_value = _format_log_value(value)
+        if isinstance(value, (dict, list)) or formatted_value != value:
+            lines.append(f"```json\n{formatted_value}\n```\n")
+        else:
+            lines.append(f"```text\n{formatted_value}\n```\n")
+
+    with _llm_log_lock:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("".join(lines))
 
 
 @dataclass

@@ -87,6 +87,22 @@ def test_journal_tree_replaces_active_placeholder_with_final_bug_result():
     assert "◍ bug" in output
 
 
+def test_journal_tree_renders_children_in_step_order():
+    journal = Journal()
+    parent = _good_node(0.945)
+    later_child = _good_node(0.943, parent=parent)
+    earlier_child = _good_node(0.941, parent=parent)
+    journal.append(parent)
+    journal.append(earlier_child)
+    journal.append(later_child)
+
+    tree = journal_to_rich_tree(journal)
+
+    output = _render_text(tree)
+
+    assert output.index("● 0.941") < output.index("● 0.943")
+
+
 def test_journal_tree_treats_appended_node_without_metric_as_bug():
     journal = Journal()
     node = Node(code="print('pending')", plan="pending")

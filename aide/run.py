@@ -163,6 +163,14 @@ def journal_to_rich_tree(
         indicator = "[*]" if blink_on else "[ ]"
         tree.add(Text(indicator, style=active_placeholder_style()))
 
+    def node_order_key(node: Node):
+        return (
+            node.step is None,
+            node.step if node.step is not None else len(journal.nodes),
+            node.ctime,
+            node.id,
+        )
+
     def append_rec(node: Node, tree):
         if node.is_buggy or node.metric is None or node.metric.value is None:
             s = "[red]◍ bug"
@@ -176,9 +184,11 @@ def journal_to_rich_tree(
                 s = f"[{style}green]● {metric_text}"
 
         subtree = tree.add(s)
-        for child in list(node.children):
-            if child in journal_nodes:
-                append_rec(child, subtree)
+        for child in sorted(
+            (child for child in node.children if child in journal_nodes),
+            key=node_order_key,
+        ):
+            append_rec(child, subtree)
         if node is active_parent_node:
             append_active_placeholder(subtree)
 
@@ -302,6 +312,8 @@ def run(argv: list[str] | None = None):
         is_resume = False
 
     logger.info(f'Starting run "{cfg.exp_name}"')
+    os.environ["AIDE_RUN_ID"] = cfg.exp_name
+    os.environ["AIDE_LOG_DIR"] = str(cfg.log_dir)
 
     task_desc = load_task_desc(cfg)
 

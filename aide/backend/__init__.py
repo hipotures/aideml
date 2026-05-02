@@ -1,10 +1,19 @@
 from . import backend_anthropic, backend_openai, backend_openrouter, backend_gemini
-from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
+from .utils import (
+    FunctionSpec,
+    OutputType,
+    PromptType,
+    compile_prompt_to_md,
+    log_llm_exchange,
+)
 import re
 import logging
 import os
+import threading
 
 logger = logging.getLogger("aide")
+_llm_call_counter = 0
+_llm_call_counter_lock = threading.Lock()
 
 
 def determine_provider(model: str) -> str:
@@ -64,11 +73,63 @@ def query(
 
     provider = determine_provider(model)
     query_func = provider_to_query_func[provider]
-    output, req_time, in_tok_count, out_tok_count, info = query_func(
-        system_message=compile_prompt_to_md(system_message) if system_message else None,
-        user_message=compile_prompt_to_md(user_message) if user_message else None,
-        func_spec=func_spec,
-        **model_kwargs,
+    compiled_system_message = (
+        compile_prompt_to_md(system_message) if system_message else None
+    )
+    compiled_user_message = compile_prompt_to_md(user_message) if user_message else None
+
+    global _llm_call_counter
+    with _llm_call_counter_lock:
+        _llm_call_counter += 1
+        sequence_id = _llm_call_counter
+
+    request_payload = {
+        "model": model,
+        "provider": provider,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "model_kwargs": model_kwargs,
+        "func_spec": func_spec.to_dict() if func_spec is not None else None,
+        "system_message": compiled_system_message,
+        "user_message": compiled_user_message,
+    }
+    log_llm_exchange(
+        phase="request",
+        provider=provider,
+        sequence_id=sequence_id,
+        payload=request_payload,
+    )
+
+    try:
+        output, req_time, in_tok_count, out_tok_count, info = query_func(
+            system_message=compiled_system_message,
+            user_message=compiled_user_message,
+            func_spec=func_spec,
+            **model_kwargs,
+        )
+    except BaseException as exc:
+        log_llm_exchange(
+            phase="error",
+            provider=provider,
+            sequence_id=sequence_id,
+            payload={
+                "type": exc.__class__.__name__,
+                "message": str(exc),
+            },
+        )
+        raise
+
+    log_llm_exchange(
+        phase="response",
+        provider=provider,
+        sequence_id=sequence_id,
+        payload={
+            "output": output,
+            "request_time_seconds": req_time,
+            "input_tokens": in_tok_count,
+            "output_tokens": out_tok_count,
+            "info": info,
+        },
     )
 
     return output
