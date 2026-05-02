@@ -57,6 +57,8 @@ class Agent:
         self.acfg = cfg.agent
         self.journal = journal
         self.data_preview: str | None = None
+        self.active_parent_node: Node | None = None
+        self.active_stage: str | None = None
 
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
@@ -278,20 +280,29 @@ class Agent:
             self.update_data_preview()
 
         parent_node = self.search_policy()
+        self.active_parent_node = parent_node
+        self.active_stage = "generating"
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
 
-        if parent_node is None:
-            result_node = self._draft()
-        elif parent_node.is_buggy:
-            result_node = self._debug(parent_node)
-        else:
-            result_node = self._improve(parent_node)
+        try:
+            if parent_node is None:
+                result_node = self._draft()
+            elif parent_node.is_buggy:
+                result_node = self._debug(parent_node)
+            else:
+                result_node = self._improve(parent_node)
 
-        self.parse_exec_result(
-            node=result_node,
-            exec_result=exec_callback(result_node.code, True),
-        )
-        self.journal.append(result_node)
+            self.active_stage = "executing"
+            exec_result = exec_callback(result_node.code, True)
+            self.active_stage = "reviewing"
+            self.parse_exec_result(
+                node=result_node,
+                exec_result=exec_result,
+            )
+            self.journal.append(result_node)
+        finally:
+            self.active_parent_node = None
+            self.active_stage = None
 
     def parse_exec_result(self, node: Node, exec_result: ExecutionResult):
         logger.info(f"Agent is parsing execution results for node {node.id}")

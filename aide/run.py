@@ -1,6 +1,7 @@
 import atexit
 import logging
 import shutil
+import time
 
 from . import backend
 
@@ -29,8 +30,20 @@ from .utils.config import load_task_desc, prep_agent_workspace, save_run, load_c
 logger = logging.getLogger("aide")
 
 
-def journal_to_rich_tree(journal: Journal):
+def journal_to_rich_tree(
+    journal: Journal,
+    *,
+    active_parent_node: Node | None = None,
+    active_stage: str | None = None,
+    blink_on: bool = True,
+):
     best_node = journal.get_best_node()
+
+    def append_active_placeholder(tree):
+        if active_stage is None:
+            return
+        indicator = "[*]" if blink_on else "[ ]"
+        tree.add(Text(indicator, style="bold yellow"))
 
     def append_rec(node: Node, tree):
         if node.is_buggy:
@@ -46,10 +59,14 @@ def journal_to_rich_tree(journal: Journal):
         subtree = tree.add(s)
         for child in node.children:
             append_rec(child, subtree)
+        if node is active_parent_node:
+            append_active_placeholder(subtree)
 
     tree = Tree("[bold blue]Solution tree")
     for n in journal.draft_nodes:
         append_rec(n, tree)
+    if active_parent_node is None:
+        append_active_placeholder(tree)
     return tree
 
 
@@ -97,7 +114,13 @@ def run():
         return res
 
     def generate_live():
-        tree = journal_to_rich_tree(journal)
+        blink_on = int(time.monotonic() * 2) % 2 == 0
+        tree = journal_to_rich_tree(
+            journal,
+            active_parent_node=agent.active_parent_node,
+            active_stage=agent.active_stage,
+            blink_on=blink_on,
+        )
         prog.update(prog.task_ids[0], completed=global_step)
 
         file_paths = [
@@ -124,7 +147,7 @@ def run():
         )
 
     with Live(
-        generate_live(),
+        get_renderable=generate_live,
         refresh_per_second=16,
         screen=True,
     ) as live:
