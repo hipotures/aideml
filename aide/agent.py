@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from typing import Any, Callable, cast
 
 import humanize
@@ -59,6 +60,11 @@ class Agent:
         self.data_preview: str | None = None
         self.active_parent_node: Node | None = None
         self.active_stage: str | None = None
+        self.active_stage_started_at: float | None = None
+
+    def set_active_stage(self, stage: str | None) -> None:
+        self.active_stage = stage
+        self.active_stage_started_at = time.monotonic() if stage is not None else None
 
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
@@ -275,34 +281,51 @@ class Agent:
     ):
         self.data_preview = data_preview.generate(self.cfg.workspace_dir)
 
-    def step(self, exec_callback: ExecCallbackType):
+    def prepare_step(self) -> Node | None:
         if not self.journal.nodes or self.data_preview is None:
             self.update_data_preview()
 
         parent_node = self.search_policy()
         self.active_parent_node = parent_node
-        self.active_stage = "generating"
+        return parent_node
+
+    def generate_node(self, parent_node: Node | None) -> Node:
+        self.set_active_stage("generating")
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
 
-        try:
-            if parent_node is None:
-                result_node = self._draft()
-            elif parent_node.is_buggy:
-                result_node = self._debug(parent_node)
-            else:
-                result_node = self._improve(parent_node)
+        if parent_node is None:
+            return self._draft()
+        if parent_node.is_buggy:
+            return self._debug(parent_node)
+        return self._improve(parent_node)
 
-            self.active_stage = "executing"
-            exec_result = exec_callback(result_node.code, True)
-            self.active_stage = "reviewing"
-            self.parse_exec_result(
-                node=result_node,
-                exec_result=exec_result,
-            )
+    def execute_node(
+        self, node: Node, exec_callback: ExecCallbackType
+    ) -> ExecutionResult:
+        self.set_active_stage("executing")
+        return exec_callback(node.code, True)
+
+    def review_node(self, node: Node, exec_result: ExecutionResult) -> None:
+        self.set_active_stage("reviewing")
+        self.parse_exec_result(
+            node=node,
+            exec_result=exec_result,
+        )
+
+    def clear_active_step(self) -> None:
+        self.active_parent_node = None
+        self.set_active_stage(None)
+
+    def step(self, exec_callback: ExecCallbackType):
+        parent_node = self.prepare_step()
+
+        try:
+            result_node = self.generate_node(parent_node)
+            exec_result = self.execute_node(result_node, exec_callback)
+            self.review_node(result_node, exec_result)
             self.journal.append(result_node)
         finally:
-            self.active_parent_node = None
-            self.active_stage = None
+            self.clear_active_step()
 
     def parse_exec_result(self, node: Node, exec_result: ExecutionResult):
         logger.info(f"Agent is parsing execution results for node {node.id}")

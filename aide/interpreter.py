@@ -121,6 +121,9 @@ class Interpreter:
         self.process: Process = None  # type: ignore
 
     def child_proc_setup(self, result_outq: Queue) -> None:
+        if hasattr(os, "setpgrp"):
+            os.setpgrp()
+
         # disable all warnings (before importing anything)
         import shutup
 

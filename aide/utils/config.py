@@ -5,7 +5,7 @@ import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Hashable, cast
+from typing import Callable, Hashable, cast
 
 import coolname
 import rich
@@ -214,19 +214,34 @@ def _save_node_artifacts(cfg: Config, node) -> None:
         shutil.copy2(submission_path, artifact_dir / "submission.csv")
 
 
-def save_run(cfg: Config, journal, current_node=None):
+def save_run(
+    cfg: Config,
+    journal,
+    current_node=None,
+    progress_callback: Callable[[str], None] | None = None,
+):
+    def notify(message: str) -> None:
+        if progress_callback is not None:
+            progress_callback(message)
+
+    notify("Preparing log directory")
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
 
     # save journal
+    notify("Saving journal")
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
     # save config
+    notify("Saving config")
     OmegaConf.save(config=cfg, f=cfg.log_dir / "config.yaml")
     # create the tree + code visualization
+    notify("Rendering tree HTML")
     tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
     # save the best found solution
+    notify("Saving best solution")
     best_node = journal.get_best_node(only_good=False)
     with open(cfg.log_dir / "best_solution.py", "w") as f:
         f.write(best_node.code)
 
     if current_node is not None:
+        notify("Saving node artifacts")
         _save_node_artifacts(cfg, current_node)

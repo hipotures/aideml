@@ -1,8 +1,10 @@
 import atexit
 import logging
 import os
+import queue
 import shutil
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -144,27 +146,39 @@ def journal_to_rich_tree(
     blink_on: bool = True,
 ):
     best_node = journal.get_best_node()
+    journal_nodes = set(journal.nodes)
+
+    def active_placeholder_style() -> str:
+        if active_stage == "generating":
+            return "bold white"
+        if active_stage == "executing":
+            return "bold yellow"
+        if active_stage == "reviewing":
+            return "bold blue"
+        return "bold yellow"
 
     def append_active_placeholder(tree):
         if active_stage is None:
             return
         indicator = "[*]" if blink_on else "[ ]"
-        tree.add(Text(indicator, style="bold yellow"))
+        tree.add(Text(indicator, style=active_placeholder_style()))
 
     def append_rec(node: Node, tree):
-        if node.is_buggy:
+        if node.is_buggy or node.metric is None or node.metric.value is None:
             s = "[red]◍ bug"
         else:
             style = "bold " if node is best_node else ""
+            metric_text = f"{node.metric.value:.3f}"
 
             if node is best_node:
-                s = f"[{style}green]● {node.metric.value:.3f} (best)"
+                s = f"[{style}green]● {metric_text} (best)"
             else:
-                s = f"[{style}green]● {node.metric.value:.3f}"
+                s = f"[{style}green]● {metric_text}"
 
         subtree = tree.add(s)
         for child in list(node.children):
-            append_rec(child, subtree)
+            if child in journal_nodes:
+                append_rec(child, subtree)
         if node is active_parent_node:
             append_active_placeholder(subtree)
 
@@ -215,6 +229,49 @@ def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
             ]
         )
     return Group(*lines)
+
+
+def _format_elapsed(seconds: float | None) -> str:
+    if seconds is None:
+        return ""
+    total_seconds = max(0, int(seconds))
+    minutes, seconds = divmod(total_seconds, 60)
+    if minutes:
+        return f" ({minutes}m {seconds:02d}s)"
+    return f" ({seconds}s)"
+
+
+def stage_status_message(active_stage: str | None, elapsed: float | None = None) -> str:
+    elapsed_text = _format_elapsed(elapsed)
+    if active_stage == "generating":
+        return f"[green]Generating code...{elapsed_text}"
+    if active_stage == "executing":
+        return f"[magenta]Executing code...{elapsed_text}"
+    if active_stage == "reviewing":
+        return f"[cyan]Reviewing result...{elapsed_text}"
+    return f"[green]Generating code...{elapsed_text}"
+
+
+def run_with_live_refresh(live: Live, render, func):
+    result_queue = queue.Queue(maxsize=1)
+
+    def worker():
+        try:
+            result_queue.put((True, func()))
+        except BaseException as exc:
+            result_queue.put((False, exc))
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    while thread.is_alive():
+        live.update(render(), refresh=True)
+        thread.join(timeout=0.25)
+    live.update(render(), refresh=True)
+
+    ok, result = result_queue.get()
+    if ok:
+        return result
+    raise result
 
 
 def run(argv: list[str] | None = None):
@@ -278,26 +335,42 @@ def run(argv: list[str] | None = None):
     )
     status = Status("[green]Generating code...")
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
+    status_override: str | None = None
+    stop_after_current_execution = False
 
     def exec_callback(*args, **kwargs):
+        nonlocal status_override, stop_after_current_execution
+
         def on_interrupt(interrupt_count: int):
+            nonlocal status_override, stop_after_current_execution
             if interrupt_count == 1:
-                status.update(
+                stop_after_current_execution = True
+                status_override = (
                     "[yellow]Ctrl+C received. Waiting for current code to finish. "
-                    "Press Ctrl+C again to stop now."
+                    "The run will stop before review. Press Ctrl+C again to stop now."
                 )
             else:
-                status.update("[red]Stopping current code execution...")
+                status_override = "[red]Stopping current code execution..."
 
-        status.update("[magenta]Executing code...")
         try:
-            return interpreter.run(
+            result = interpreter.run(
                 *args,
                 interrupt_callback=on_interrupt,
                 **kwargs,
             )
+            if stop_after_current_execution:
+                raise ExecutionInterrupted(
+                    "Execution finished after interrupt request."
+                )
+            return result
         finally:
-            status.update("[green]Generating code...")
+            if not stop_after_current_execution:
+                status_override = None
+
+    def update_save_status(message: str, live: Live) -> None:
+        nonlocal status_override
+        status_override = f"[blue]Saving run: {message}..."
+        live.update(generate_live(), refresh=True)
 
     def generate_live():
         blink_on = int(time.monotonic() * 2) % 2 == 0
@@ -308,6 +381,14 @@ def run(argv: list[str] | None = None):
             blink_on=blink_on,
         )
         prog.update(prog.task_ids[0], completed=global_step)
+        elapsed = (
+            time.monotonic() - agent.active_stage_started_at
+            if agent.active_stage_started_at is not None
+            else None
+        )
+        status.update(
+            status_override or stage_status_message(agent.active_stage, elapsed)
+        )
 
         tree_panel = Panel(
             Padding(tree, (0, 1, 0, 1)),
@@ -344,7 +425,19 @@ def run(argv: list[str] | None = None):
         ) as live:
             while global_step < cfg.agent.steps:
                 try:
-                    agent.step(exec_callback=exec_callback)
+                    parent_node = agent.prepare_step()
+                    result_node = run_with_live_refresh(
+                        live,
+                        generate_live,
+                        lambda: agent.generate_node(parent_node),
+                    )
+                    exec_result = agent.execute_node(result_node, exec_callback)
+                    run_with_live_refresh(
+                        live,
+                        generate_live,
+                        lambda: agent.review_node(result_node, exec_result),
+                    )
+                    journal.append(result_node)
                 except ExecutionInterrupted:
                     interrupted = True
                     interrupt_message = (
@@ -359,9 +452,17 @@ def run(argv: list[str] | None = None):
                         "previous journal state is preserved."
                     )
                     break
-                save_run(cfg, journal, current_node=journal[-1])
+                finally:
+                    agent.clear_active_step()
+                save_run(
+                    cfg,
+                    journal,
+                    current_node=journal[-1],
+                    progress_callback=lambda message: update_save_status(message, live),
+                )
+                status_override = None
                 global_step = len(journal)
-                live.update(generate_live())
+                live.update(generate_live(), refresh=True)
     finally:
         interpreter.cleanup_session()
 

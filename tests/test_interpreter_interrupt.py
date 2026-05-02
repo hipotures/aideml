@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from aide.interpreter import ExecutionInterrupted, Interpreter
@@ -95,3 +97,15 @@ def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeyp
 
     assert interrupts == [1, 2]
     assert cleaned == [True]
+
+
+def test_child_process_runs_in_separate_process_group(tmp_path):
+    interpreter = Interpreter(tmp_path, timeout=10)
+
+    result = interpreter.run("import os\nprint(os.getpgrp())")
+    interpreter.cleanup_session()
+
+    child_process_group = int(result.term_out[0].strip())
+
+    assert result.exc_type is None
+    assert child_process_group != os.getpgrp()

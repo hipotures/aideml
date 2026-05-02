@@ -107,3 +107,36 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
+
+
+def test_save_run_reports_progress_for_each_save_stage(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(
+        code="print('progress')",
+        plan="progress node plan",
+        ctime=1777750547.0057797,
+    )
+    node.metric = MetricValue(0.5, maximize=True)
+    node.is_buggy = False
+    node._term_out = ["CV ROC AUC: 0.5000\n"]
+    node.exec_time = 1.0
+    node.exc_type = None
+    node.analysis = "ran successfully"
+    journal.append(node)
+    messages = []
+
+    save_run(cfg, journal, current_node=node, progress_callback=messages.append)
+
+    assert messages == [
+        "Preparing log directory",
+        "Saving journal",
+        "Saving config",
+        "Rendering tree HTML",
+        "Saving best solution",
+        "Saving node artifacts",
+    ]
