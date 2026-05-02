@@ -40,16 +40,12 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
 
     save_run(cfg, journal, current_node=node)
 
-    code_snapshots = sorted(log_dir.glob("best_solution_*.py"))
-    submission_snapshots = sorted(log_dir.glob("submission_*.csv"))
+    artifact_dirs = sorted((log_dir / "artifacts").iterdir())
 
-    assert len(code_snapshots) == 1
-    assert len(submission_snapshots) == 1
-    assert code_snapshots[0].stem.removeprefix("best_solution_") == (
-        submission_snapshots[0].stem.removeprefix("submission_")
-    )
-    assert code_snapshots[0].read_text() == "print('current node')"
-    assert submission_snapshots[0].read_text() == "id,PitNextLap\n1,0.7\n"
+    assert len(artifact_dirs) == 1
+    assert artifact_dirs[0].name == "20260502T213547"
+    assert (artifact_dirs[0] / "solution.py").read_text() == "print('current node')"
+    assert (artifact_dirs[0] / "submission.csv").read_text() == "id,PitNextLap\n1,0.7\n"
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
 
 
@@ -75,8 +71,10 @@ def test_save_run_does_not_archive_submission_when_missing(tmp_path):
 
     save_run(cfg, journal, current_node=node)
 
-    assert sorted(log_dir.glob("best_solution_*.py"))
-    assert not sorted(log_dir.glob("submission_*.csv"))
+    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+
+    assert (artifact_dir / "solution.py").exists()
+    assert not (artifact_dir / "submission.csv").exists()
 
 
 def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path):
@@ -105,5 +103,7 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
 
     save_run(cfg, journal, current_node=node)
 
-    assert sorted(log_dir.glob("best_solution_*.py"))
-    assert not sorted(log_dir.glob("submission_*.csv"))
+    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+
+    assert (artifact_dir / "solution.py").exists()
+    assert not (artifact_dir / "submission.csv").exists()

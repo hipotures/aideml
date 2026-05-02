@@ -1,14 +1,15 @@
 ## Goal
 Predict whether a Formula 1 driver will make a pit stop on the next lap.
 
-For each row in `test.csv`, predict the probability that `PitNextLap` is 1. The
-target column in `train.csv` is `PitNextLap`; the identifier column is `id`.
+For each row in `test.csv.gz`, predict the probability that `PitNextLap` is 1.
+The target column in `train.csv.gz` is `PitNextLap`; the identifier column is
+`id`.
 
 ## Evaluation
 Submissions are evaluated using ROC AUC. Higher is better.
 
 The submission file must contain a header and follow the format from
-`sample_submission.csv`:
+`sample_submission.csv.gz`:
 
 ```csv
 id,PitNextLap
@@ -20,6 +21,6 @@ id,PitNextLap
 labels.
 
 ## Data description
-- **train.csv** - training data with the binary target column `PitNextLap`
-- **test.csv** - test data without the target column
-- **sample_submission.csv** - required Kaggle submission format
+- **train.csv.gz** - gzip-compressed training data with the binary target column `PitNextLap`
+- **test.csv.gz** - gzip-compressed test data without the target column
+- **sample_submission.csv.gz** - gzip-compressed required Kaggle submission format

@@ -192,13 +192,15 @@ def _node_artifact_timestamp(node) -> str:
 
 def _save_node_artifacts(cfg: Config, node) -> None:
     timestamp = _node_artifact_timestamp(node)
-    code_path = cfg.log_dir / f"best_solution_{timestamp}.py"
-    with open(code_path, "w") as f:
+    artifact_dir = cfg.log_dir / "artifacts" / timestamp
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(artifact_dir / "solution.py", "w") as f:
         f.write(node.code)
 
     submission_path = cfg.workspace_dir / "working" / "submission.csv"
     if submission_path.exists() and submission_path.stat().st_mtime >= node.ctime:
-        shutil.copy2(submission_path, cfg.log_dir / f"submission_{timestamp}.csv")
+        shutil.copy2(submission_path, artifact_dir / "submission.csv")
 
 
 def save_run(cfg: Config, journal, current_node=None):

@@ -3,6 +3,7 @@ Contains functions to manually generate a textual preview of some common file ty
 """
 
 import json
+import gzip
 from pathlib import Path
 
 import humanize
@@ -16,12 +17,20 @@ code_files = {".py", ".sh", ".yaml", ".yml", ".md", ".html", ".xml", ".log", ".r
 plaintext_files = {".txt", ".csv", ".json", ".tsv"} | code_files
 
 
+def is_csv_file(f: Path) -> bool:
+    return f.suffix == ".csv" or f.name.endswith(".csv.gz")
+
+
 def get_file_len_size(f: Path) -> tuple[int, str]:
     """
     Calculate the size of a file (#lines for plaintext files, otherwise #bytes)
     Also returns a human-readable string representation of the size.
     """
-    if f.suffix in plaintext_files:
+    if is_csv_file(f):
+        opener = gzip.open if f.name.endswith(".csv.gz") else open
+        num_lines = sum(1 for _ in opener(f, "rt"))
+        return num_lines, f"{num_lines} lines"
+    elif f.suffix in plaintext_files:
         num_lines = sum(1 for _ in open(f))
         return num_lines, f"{num_lines} lines"
     else:
@@ -130,7 +139,7 @@ def generate(base_path, include_file_details=True, simple=False):
         for fn in _walk(base_path):
             file_name = str(fn.relative_to(base_path))
 
-            if fn.suffix == ".csv":
+            if is_csv_file(fn):
                 out.append(preview_csv(fn, file_name, simple=simple))
             elif fn.suffix == ".json":
                 out.append(preview_json(fn, file_name))
