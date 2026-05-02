@@ -1,7 +1,8 @@
 import atexit
-import sys
 import logging
+import os
 import shutil
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,8 +13,8 @@ from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
 from omegaconf import OmegaConf
-from rich.columns import Columns
 from rich.console import Group
+from rich.layout import Layout
 from rich.live import Live
 from rich.padding import Padding
 from rich.panel import Panel
@@ -175,6 +176,47 @@ def journal_to_rich_tree(
     return tree
 
 
+def _display_base_path(base_path: Path) -> str:
+    path = str(base_path)
+    if not path.endswith(os.sep):
+        path += os.sep
+    return path
+
+
+def _relative_display_path(path: Path, base_path: Path) -> str:
+    resolved_path = path.resolve()
+    try:
+        relative_path = resolved_path.relative_to(base_path)
+    except ValueError:
+        return str(resolved_path)
+    return str(relative_path)
+
+
+def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
+    path_entries = [
+        ("Result visualization", log_dir / "tree_plot.html"),
+        ("Agent workspace directory", workspace_dir),
+        ("Experiment log directory", log_dir),
+    ]
+    resolved_paths = [path.resolve() for _, path in path_entries]
+    base_path = Path(os.path.commonpath([str(path) for path in resolved_paths]))
+
+    lines = [
+        Text("Base path", style="bold cyan"),
+        Text(f"▶ {_display_base_path(base_path)}", style="yellow"),
+        "",
+    ]
+    for label, path in path_entries:
+        lines.extend(
+            [
+                Text(label, style="bold cyan"),
+                Text(f"▶ {_relative_display_path(path, base_path)}", style="yellow"),
+                "",
+            ]
+        )
+    return Group(*lines)
+
+
 def run(argv: list[str] | None = None):
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     resume_request, cli_args = parse_resume_args(raw_argv)
@@ -267,27 +309,30 @@ def run(argv: list[str] | None = None):
         )
         prog.update(prog.task_ids[0], completed=global_step)
 
-        file_paths = [
-            f"Result visualization:\n[yellow]▶ {str((cfg.log_dir / 'tree_plot.html'))}",
-            f"Agent workspace directory:\n[yellow]▶ {str(cfg.workspace_dir)}",
-            f"Experiment log directory:\n[yellow]▶ {str(cfg.log_dir)}",
-        ]
-        left = Group(prog, status)
-        right = tree
-        wide = Group(*file_paths)
-
-        return Panel(
-            Group(
-                Padding(wide, (0, 1, 0, 1)),
-                Columns(
-                    [Padding(left, (0, 1, 0, 1)), Padding(right, (0, 1, 0, 1))],
-                    equal=False,
-                    expand=True,
-                ),
-            ),
-            title=f'[b]AIDE is working on experiment: [bold green]"{cfg.exp_name}[/b]"',
+        tree_panel = Panel(
+            Padding(tree, (0, 1, 0, 1)),
+            title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
             subtitle="Press [b]Ctrl+C[/b] to stop the run",
         )
+        data_panel = Panel(
+            Padding(
+                Group(
+                    prog,
+                    status,
+                    "",
+                    build_path_summary(cfg.log_dir, cfg.workspace_dir),
+                ),
+                (0, 1, 0, 1),
+            ),
+            title="[b]Run data",
+        )
+
+        layout = Layout()
+        layout.split_row(
+            Layout(tree_panel, name="tree", ratio=2),
+            Layout(data_panel, name="data", ratio=1),
+        )
+        return layout
 
     interrupted = False
     interrupt_message = ""

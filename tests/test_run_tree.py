@@ -1,7 +1,7 @@
 from rich.console import Console
 
 from aide.journal import Journal, Node
-from aide.run import journal_to_rich_tree
+from aide.run import build_path_summary, journal_to_rich_tree
 from aide.utils.metric import MetricValue
 
 
@@ -58,3 +58,17 @@ def test_journal_tree_replaces_active_placeholder_with_final_bug_result():
     assert "[*]" not in output
     assert "[ ]" not in output
     assert "◍ bug" in output
+
+
+def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):
+    log_dir = tmp_path / "logs" / "2-example-run"
+    workspace_dir = tmp_path / "workspaces" / "2-example-run"
+
+    output = _render_text(build_path_summary(log_dir, workspace_dir))
+
+    assert "Base path" in output
+    assert f"▶ {tmp_path}/" in output
+    assert "▶ logs/2-example-run/tree_plot.html" in output
+    assert "▶ workspaces/2-example-run" in output
+    assert "▶ logs/2-example-run" in output
+    assert f"{log_dir}/tree_plot.html" not in output
