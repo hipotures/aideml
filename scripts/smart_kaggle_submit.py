@@ -4,6 +4,8 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -201,8 +203,25 @@ def build_kaggle_message(candidate: Candidate) -> str:
     node = candidate.node_id[:8] if candidate.node_id else "unknown"
     return (
         f"cv={score} | run={candidate.run} | step={candidate.step} | "
-        f"ts={candidate.timestamp} | node={node}"
+        f"aide_ts={candidate.timestamp} | node={node} | sha={(candidate.sha256 or '')[:10]}"
     )
+
+
+def build_upload_filename(candidate: Candidate) -> str:
+    score = "nan" if candidate.local_score is None else f"{candidate.local_score:.5f}"
+    node = candidate.node_id[:8] if candidate.node_id else "unknown"
+    sha = (candidate.sha256 or "nohash")[:10]
+    return (
+        f"sub_{candidate.timestamp}_step-{candidate.step}_node-{node}_"
+        f"sha-{sha}_cv-{score}.csv"
+    )
+
+
+def prepare_upload_file(candidate: Candidate) -> Path:
+    upload_path = candidate.submission_path.with_name(build_upload_filename(candidate))
+    if upload_path != candidate.submission_path:
+        shutil.copy2(candidate.submission_path, upload_path)
+    return upload_path
 
 
 def _response_to_jsonable(response: Any) -> Any:
@@ -227,8 +246,9 @@ def submit_candidates(
     submitted: list[dict[str, Any]] = []
     for candidate in candidates:
         message = build_kaggle_message(candidate)
+        upload_path = prepare_upload_file(candidate)
         response = client.competition_submit(
-            str(candidate.submission_path),
+            str(upload_path),
             message,
             competition,
             quiet=False,
@@ -242,6 +262,8 @@ def submit_candidates(
             "local_score": candidate.local_score,
             "metric_maximize": candidate.metric_maximize,
             "submission_path": str(candidate.submission_path),
+            "upload_path": str(upload_path),
+            "uploaded_filename": upload_path.name,
             "sha256": candidate.sha256,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -261,8 +283,146 @@ def _build_kaggle_client() -> Any:
 
 
 def fetch_remote_submissions(client: Any, competition: str) -> list[Any]:
-    submissions = client.competition_submissions(competition, page_size=20)
+    submissions = client.competition_submissions(competition, page_size=200)
     return list(submissions or [])
+
+
+def _remote_attr(remote: Any, snake_name: str) -> Any:
+    if isinstance(remote, dict):
+        return remote.get(snake_name) or remote.get(_snake_to_camel(snake_name))
+    if hasattr(remote, snake_name):
+        return getattr(remote, snake_name)
+    private_name = f"_{snake_name}"
+    if hasattr(remote, private_name):
+        return getattr(remote, private_name)
+    camel_name = _snake_to_camel(snake_name)
+    if hasattr(remote, camel_name):
+        return getattr(remote, camel_name)
+    return None
+
+
+def _snake_to_camel(value: str) -> str:
+    parts = value.split("_")
+    return parts[0] + "".join(part.title() for part in parts[1:])
+
+
+def _status_to_string(status: Any) -> str | None:
+    if status is None:
+        return None
+    if hasattr(status, "name"):
+        return str(status.name)
+    return str(status)
+
+
+def _date_to_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def parse_submission_description(description: str | None) -> dict[str, str]:
+    if not description:
+        return {}
+    parsed: dict[str, str] = {}
+    for match in re.finditer(r"([A-Za-z_][A-Za-z0-9_]*)=([^|]+)", description):
+        key = match.group(1).strip()
+        value = match.group(2).strip()
+        parsed[key] = value
+    if "aide_ts" in parsed and "timestamp" not in parsed:
+        parsed["timestamp"] = parsed["aide_ts"]
+    if "ts" in parsed and "timestamp" not in parsed:
+        parsed["timestamp"] = parsed["ts"]
+    return parsed
+
+
+def _entry_ref(entry: dict[str, Any]) -> int | None:
+    ref = entry.get("kaggle_ref")
+    if ref is None and isinstance(entry.get("response"), dict):
+        ref = entry["response"].get("ref")
+    return int(ref) if ref is not None else None
+
+
+def _remote_ref(remote: Any) -> int | None:
+    ref = _remote_attr(remote, "ref")
+    return int(ref) if ref is not None else None
+
+
+def _remote_matches_entry(
+    remote: Any,
+    *,
+    entry: dict[str, Any],
+    parsed_description: dict[str, str],
+) -> bool:
+    entry_ref = _entry_ref(entry)
+    remote_ref = _remote_ref(remote)
+    if entry_ref is not None and remote_ref is not None:
+        return entry_ref == remote_ref
+
+    timestamp = parsed_description.get("timestamp")
+    if timestamp is None or timestamp != entry.get("timestamp"):
+        return False
+
+    run = parsed_description.get("run")
+    if run is not None and run != entry.get("run"):
+        return False
+
+    step = parsed_description.get("step")
+    if step is not None and str(step) != str(entry.get("step")):
+        return False
+
+    node = parsed_description.get("node")
+    node_id = entry.get("node_id")
+    if node is not None and node_id is not None:
+        return str(node_id).startswith(node)
+
+    return True
+
+
+def _remote_registry_fields(remote: Any) -> dict[str, Any]:
+    return {
+        "kaggle_ref": _remote_ref(remote),
+        "remote_filename": _remote_attr(remote, "file_name"),
+        "remote_date": _date_to_string(_remote_attr(remote, "date")),
+        "remote_description": _remote_attr(remote, "description"),
+        "remote_status": _status_to_string(_remote_attr(remote, "status")),
+        "public_score": _remote_attr(remote, "public_score"),
+        "private_score": _remote_attr(remote, "private_score"),
+        "remote_url": _remote_attr(remote, "url"),
+        "remote_total_bytes": _remote_attr(remote, "total_bytes"),
+        "synced_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+
+
+def sync_registry_from_remote(
+    *,
+    registry: SubmissionRegistry,
+    competition: str,
+    remote_submissions: Iterable[Any],
+) -> int:
+    changed = 0
+    for remote in remote_submissions:
+        description = _remote_attr(remote, "description")
+        parsed = parse_submission_description(description)
+        for entry in registry.entries:
+            if entry.get("competition") != competition:
+                continue
+            if not _remote_matches_entry(
+                remote,
+                entry=entry,
+                parsed_description=parsed,
+            ):
+                continue
+
+            fields = _remote_registry_fields(remote)
+            if any(entry.get(key) != value for key, value in fields.items()):
+                entry.update(fields)
+                changed += 1
+            break
+    if changed:
+        registry.save()
+    return changed
 
 
 def _format_score(value: float | None) -> str:
@@ -327,16 +487,22 @@ def render_dry_run(
 
     submitted = Table(title="Local submission registry")
     submitted.add_column("cv", justify="right")
+    submitted.add_column("public", justify="right")
+    submitted.add_column("status")
     submitted.add_column("run")
     submitted.add_column("step", justify="right")
     submitted.add_column("timestamp")
+    submitted.add_column("file")
     submitted.add_column("sha256")
     for entry in registry.entries:
         submitted.add_row(
             _format_score(entry.get("local_score")),
+            str(entry.get("public_score") or ""),
+            str(entry.get("remote_status") or ""),
             str(entry.get("run", "")),
             str(entry.get("step", "")),
             str(entry.get("timestamp", "")),
+            str(entry.get("remote_filename") or entry.get("uploaded_filename") or ""),
             str(entry.get("sha256", ""))[:10],
         )
     console.print(submitted)
@@ -377,6 +543,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     console = Console()
     registry = SubmissionRegistry.load(args.registry)
+    remote_submissions = None
+    try:
+        client = _build_kaggle_client()
+        remote_submissions = fetch_remote_submissions(client, args.competition)
+        synced = sync_registry_from_remote(
+            registry=registry,
+            competition=args.competition,
+            remote_submissions=remote_submissions,
+        )
+        if synced:
+            console.print(f"Synchronized {synced} Kaggle submission(s).")
+    except Exception as exc:
+        client = None
+        console.print(f"Remote Kaggle submissions unavailable: {exc}")
+
     candidates = collect_candidates(
         args.logs_dir,
         competition=args.competition,
@@ -389,9 +570,9 @@ def main(argv: list[str] | None = None) -> int:
         limit=args.limit,
     )
 
-    remote_submissions = None
     if args.submit:
-        client = _build_kaggle_client()
+        if client is None:
+            client = _build_kaggle_client()
         submitted = submit_candidates(
             track(selected, description="Submitting to Kaggle"),
             registry=registry,
@@ -400,11 +581,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
-        try:
-            client = _build_kaggle_client()
-            remote_submissions = fetch_remote_submissions(client, args.competition)
-        except Exception as exc:
-            console.print(f"Remote Kaggle submissions unavailable: {exc}")
         render_dry_run(
             console=console,
             candidates=candidates,

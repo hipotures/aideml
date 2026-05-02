@@ -15,6 +15,7 @@ SubmissionRegistry = smart_kaggle_submit.SubmissionRegistry
 collect_candidates = smart_kaggle_submit.collect_candidates
 select_top_unsent_ready = smart_kaggle_submit.select_top_unsent_ready
 submit_candidates = smart_kaggle_submit.submit_candidates
+sync_registry_from_remote = smart_kaggle_submit.sync_registry_from_remote
 
 
 def _ctime(timestamp: str) -> float:
@@ -186,6 +187,96 @@ class FakeKaggleClient:
         return {"ok": True}
 
 
+class FakeRemoteSubmission:
+    def __init__(
+        self,
+        *,
+        ref=52271267,
+        description="cv=0.90000 | run=run-a | step=1 | ts=20260502T101000 | node=fedcba98",
+        file_name="submission.csv",
+        public_score="0.87654",
+        private_score=None,
+        status="COMPLETE",
+        url="/submissions/52271267/52271267.raw",
+        total_bytes=123,
+    ):
+        self.ref = ref
+        self.description = description
+        self.file_name = file_name
+        self.public_score = public_score
+        self.private_score = private_score
+        self.status = status
+        self.url = url
+        self.total_bytes = total_bytes
+        self.date = dt.datetime(2026, 5, 2, 20, 32, 12, 733000)
+
+
+def test_sync_registry_from_remote_updates_public_score_by_ref(tmp_path):
+    registry = SubmissionRegistry(
+        tmp_path / "registry.json",
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "response": {"ref": 52271267},
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260502T101000",
+                "sha256": "abc123",
+            }
+        ],
+    )
+
+    changed = sync_registry_from_remote(
+        registry=registry,
+        competition="playground-series-s6e5",
+        remote_submissions=[FakeRemoteSubmission()],
+    )
+
+    reloaded = SubmissionRegistry.load(tmp_path / "registry.json")
+    assert changed == 1
+    assert reloaded.entries[0]["kaggle_ref"] == 52271267
+    assert reloaded.entries[0]["public_score"] == "0.87654"
+    assert reloaded.entries[0]["remote_filename"] == "submission.csv"
+    assert reloaded.entries[0]["remote_status"] == "COMPLETE"
+    assert reloaded.entries[0]["remote_url"] == "/submissions/52271267/52271267.raw"
+
+
+def test_sync_registry_from_remote_updates_public_score_by_timestamp_description(
+    tmp_path,
+):
+    registry = SubmissionRegistry(
+        tmp_path / "registry.json",
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260502T101000",
+                "node_id": "fedcba9876543210",
+                "sha256": "abc123",
+            }
+        ],
+    )
+
+    changed = sync_registry_from_remote(
+        registry=registry,
+        competition="playground-series-s6e5",
+        remote_submissions=[
+            FakeRemoteSubmission(
+                description=(
+                    "cv=0.90000 | run=run-a | step=1 | "
+                    "aide_ts=20260502T101000 | node=fedcba98"
+                )
+            )
+        ],
+    )
+
+    reloaded = SubmissionRegistry.load(tmp_path / "registry.json")
+    assert changed == 1
+    assert reloaded.entries[0]["public_score"] == "0.87654"
+    assert reloaded.entries[0]["remote_description"].startswith("cv=0.90000")
+
+
 def test_submit_candidates_records_each_successful_submission(tmp_path):
     logs_dir = tmp_path / "logs"
     _write_journal(
@@ -229,9 +320,16 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
 
     assert [entry["step"] for entry in submitted] == [1, 0]
     assert len(client.calls) == 2
+    assert (
+        Path(client.calls[0]["file_name"]).name
+        == "sub_20260502T101000_step-1_node-fedcba98_sha-142e531fbf_cv-0.90000.csv"
+    )
     assert "cv=0.90000" in client.calls[0]["message"]
     assert "run=run-a" in client.calls[0]["message"]
     assert "step=1" in client.calls[0]["message"]
+    assert submitted[0]["uploaded_filename"] == (
+        "sub_20260502T101000_step-1_node-fedcba98_sha-142e531fbf_cv-0.90000.csv"
+    )
     assert SubmissionRegistry.load(tmp_path / "registry.json").is_submitted(
         competition="playground-series-s6e5",
         sha256=selected[0].sha256,
