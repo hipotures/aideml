@@ -3,7 +3,7 @@
 import datetime as dt
 import shutil
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Hashable, cast
 
@@ -63,6 +63,17 @@ class ExecConfig:
 
 
 @dataclass
+class ResearchConfig:
+    enabled: bool = False
+    every_steps: int = 10
+    top_k_best: int = 5
+    top_k_worst: int = 5
+    timeout: int = 900
+    model: str = "gpt-5.5"
+    reasoning_effort: str = "medium"
+
+
+@dataclass
 class Config(Hashable):
     data_dir: Path
     desc_file: Path | None
@@ -82,6 +93,7 @@ class Config(Hashable):
     generate_report: bool
     report: StageConfig
     agent: AgentConfig
+    research: ResearchConfig = field(default_factory=ResearchConfig)
 
 
 def _get_next_logindex(dir: Path) -> int:

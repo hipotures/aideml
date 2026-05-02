@@ -3,6 +3,7 @@ from rich.console import Console
 from aide.journal import Journal, Node
 from aide.run import (
     build_path_summary,
+    build_run_data,
     journal_to_rich_tree,
     run_with_live_refresh,
     stage_status_message,
@@ -152,6 +153,38 @@ def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):
     assert "tree_plot.html" not in output
     assert "▶ workspaces/2-example-run" in output
     assert "▶ logs/2-example-run" in output
+
+
+def test_run_data_shows_research_status_when_enabled(tmp_path):
+    log_dir = tmp_path / "logs" / "2-example-run"
+    workspace_dir = tmp_path / "workspaces" / "2-example-run"
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status="[cyan]Research: ▶ 000010",
+            log_dir=log_dir,
+            workspace_dir=workspace_dir,
+        )
+    )
+
+    assert "Research: ▶ 000010" in output
+    assert "Agent workspace directory" in output
+
+
+def test_run_data_hides_research_status_when_disabled(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "Research:" not in output
 
 
 def test_stage_status_message_names_review_stage():

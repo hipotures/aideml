@@ -30,6 +30,16 @@ report:
   model: gpt-4.1
   temp: 1.0
 
+# optional external Codex research advisor
+research:
+  enabled: False
+  every_steps: 10
+  top_k_best: 5
+  top_k_worst: 5
+  timeout: 900
+  model: gpt-5.5
+  reasoning_effort: medium
+
 # agent hyperparams
 agent:
   # how many improvement iterations to run

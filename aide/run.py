@@ -14,6 +14,7 @@ from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
+from .research import ResearchAdvisor
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -240,6 +241,21 @@ def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
     return Group(*lines)
 
 
+def build_run_data(
+    *,
+    progress,
+    status,
+    research_status: str | None,
+    log_dir: Path,
+    workspace_dir: Path,
+) -> Group:
+    lines = [progress, status]
+    if research_status is not None:
+        lines.append(research_status)
+    lines.extend(["", build_path_summary(log_dir, workspace_dir)])
+    return Group(*lines)
+
+
 def _format_elapsed(seconds: float | None) -> str:
     if seconds is None:
         return ""
@@ -332,6 +348,7 @@ def run(argv: list[str] | None = None):
         cfg=cfg,
         journal=journal,
     )
+    research_advisor = ResearchAdvisor(cfg=cfg, task_desc=task_desc)
     interpreter = Interpreter(
         cfg.workspace_dir,
         **OmegaConf.to_container(cfg.exec),  # type: ignore
@@ -408,11 +425,14 @@ def run(argv: list[str] | None = None):
         )
         data_panel = Panel(
             Padding(
-                Group(
-                    prog,
-                    status,
-                    "",
-                    build_path_summary(cfg.log_dir, cfg.workspace_dir),
+                build_run_data(
+                    progress=prog,
+                    status=status,
+                    research_status=(
+                        research_advisor.status_text() if cfg.research.enabled else None
+                    ),
+                    log_dir=cfg.log_dir,
+                    workspace_dir=cfg.workspace_dir,
                 ),
                 (0, 1, 0, 1),
             ),
@@ -473,6 +493,10 @@ def run(argv: list[str] | None = None):
                 )
                 status_override = None
                 global_step = len(journal)
+                research_advisor.maybe_start(
+                    journal=journal,
+                    completed_steps=global_step,
+                )
                 live.update(generate_live(), refresh=True)
     finally:
         interpreter.cleanup_session()

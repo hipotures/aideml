@@ -110,3 +110,21 @@ def test_load_resume_state_rejects_missing_workspace(tmp_path):
             top_workspace_dir=tmp_path / "workspaces",
             cli_overrides=[],
         )
+
+
+def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    del cfg_data["research"]
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.research.enabled is False
+    assert cfg.research.model == "gpt-5.5"
