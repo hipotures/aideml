@@ -130,7 +130,7 @@ def run():
     ) as live:
         while global_step < cfg.agent.steps:
             agent.step(exec_callback=exec_callback)
-            save_run(cfg, journal)
+            save_run(cfg, journal, current_node=journal[-1])
             global_step = len(journal)
             live.update(generate_live())
     interpreter.cleanup_session()

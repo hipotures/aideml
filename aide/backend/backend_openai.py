@@ -59,8 +59,6 @@ def query(
     _setup_openai_client()
 
     filtered_kwargs: dict = select_values(notnone, model_kwargs)
-    if "max_tokens" in filtered_kwargs:
-        filtered_kwargs["max_output_tokens"] = filtered_kwargs.pop("max_tokens")
 
     if (
         re.match(r"^o\d", filtered_kwargs["model"])
@@ -81,6 +79,8 @@ def query(
             filtered_kwargs["tools"] = [func_spec.as_openai_tool_dict]
             filtered_kwargs["tool_choice"] = func_spec.openai_tool_choice_dict
     else:
+        if "max_tokens" in filtered_kwargs:
+            filtered_kwargs["max_output_tokens"] = filtered_kwargs.pop("max_tokens")
         # OpenAI responses API (for official OpenAI models)
         messages = opt_messages_to_list(system_message, user_message)
         # Convert to the responses API format

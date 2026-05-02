@@ -1,5 +1,7 @@
 """configuration and setup utils"""
 
+import datetime as dt
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Hashable, cast
@@ -184,7 +186,22 @@ def prep_agent_workspace(cfg: Config):
         preproc_data(cfg.workspace_dir / "input")
 
 
-def save_run(cfg: Config, journal):
+def _node_artifact_timestamp(node) -> str:
+    return dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+
+
+def _save_node_artifacts(cfg: Config, node) -> None:
+    timestamp = _node_artifact_timestamp(node)
+    code_path = cfg.log_dir / f"best_solution_{timestamp}.py"
+    with open(code_path, "w") as f:
+        f.write(node.code)
+
+    submission_path = cfg.workspace_dir / "working" / "submission.csv"
+    if submission_path.exists() and submission_path.stat().st_mtime >= node.ctime:
+        shutil.copy2(submission_path, cfg.log_dir / f"submission_{timestamp}.csv")
+
+
+def save_run(cfg: Config, journal, current_node=None):
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
 
     # save journal
@@ -197,3 +214,6 @@ def save_run(cfg: Config, journal):
     best_node = journal.get_best_node(only_good=False)
     with open(cfg.log_dir / "best_solution.py", "w") as f:
         f.write(best_node.code)
+
+    if current_node is not None:
+        _save_node_artifacts(cfg, current_node)
