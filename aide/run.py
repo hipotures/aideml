@@ -176,7 +176,7 @@ def journal_to_rich_tree(
             s = "[red]◍ bug"
         else:
             style = "bold " if node is best_node else ""
-            metric_text = f"{node.metric.value:.3f}"
+            metric_text = f"{node.metric.value:.5f}"
 
             if node is best_node:
                 s = f"[{style}green]● {metric_text} (best)"

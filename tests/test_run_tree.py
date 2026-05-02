@@ -50,7 +50,7 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
 
     output = _render_text(tree)
 
-    assert "● 0.945 (best)" in output
+    assert "● 0.94500 (best)" in output
     assert "[*]" in output
     assert "executing" not in output
 
@@ -100,7 +100,7 @@ def test_journal_tree_renders_children_in_step_order():
 
     output = _render_text(tree)
 
-    assert output.index("● 0.941") < output.index("● 0.943")
+    assert output.index("● 0.94100") < output.index("● 0.94300")
 
 
 def test_journal_tree_treats_appended_node_without_metric_as_bug():
@@ -135,7 +135,7 @@ def test_journal_tree_ignores_unappended_active_child_node():
 
     output = _render_text(tree)
 
-    assert "● 0.945 (best)" in output
+    assert "● 0.94500 (best)" in output
     assert "n/a" not in output
     assert "[*]" in output
 
