@@ -247,7 +247,8 @@ def journal_to_rich_tree(
 
             if synthesis_root:
                 suffix = " (best)" if node is best_node else ""
-                s = f"[{style}blue]◆ {metric_text}{suffix}"
+                metric_style = f"{style}green"
+                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}"
             elif node is best_node:
                 s = f"[{style}green]● {metric_text} (best)"
             else:

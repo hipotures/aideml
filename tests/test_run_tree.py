@@ -190,7 +190,7 @@ def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
     assert "◆ 0.94600" in output
     assert "synthesis)" not in output
     assert "● 0.94700 (best)" in output
-    assert "\x1b[34m◆ 0.94600" in ansi
+    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
 
 
 def test_journal_tree_treats_appended_node_without_metric_as_bug():
