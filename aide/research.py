@@ -103,8 +103,6 @@ def build_data_overview(cfg: Config) -> str | None:
 def _node_payload(node: Node) -> dict[str, Any]:
     return {
         "metric": _metric_value(node),
-        "plan": _compact_prompt_text(node.plan, max_chars=700),
-        "analysis": _compact_prompt_text(node.analysis, max_chars=700),
         "code": node.code,
     }
 
@@ -157,8 +155,8 @@ def collect_research_context(
             if best_node is None or best_node.metric is None
             else ("maximize" if best_node.metric.maximize else "minimize")
         ),
-        "top_best_nodes": [_node_payload(node) for node in top_best],
-        "top_worst_nodes": [_node_payload(node) for node in top_worst],
+        "best_working_solutions": [_node_payload(node) for node in top_best],
+        "worst_working_solutions": [_node_payload(node) for node in top_worst],
     }
 
 
@@ -169,8 +167,8 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "task_desc",
             "data_overview",
             "metric_direction",
-            "top_best_nodes",
-            "top_worst_nodes",
+            "best_working_solutions",
+            "worst_working_solutions",
         ]
         if key in context and context.get(key) is not None
     }
@@ -189,6 +187,12 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "previous node or code block. Use the prior results only to avoid "
         "repeating approaches that have already been tried. Do not debug broken "
         "code.\n\n"
+        "# Context field meanings\n"
+        "best_working_solutions contains the highest-scoring code snippets that "
+        "ran successfully. worst_working_solutions contains the lowest-scoring "
+        "code snippets that still ran successfully. Each solution has a numeric "
+        "validation metric and code. Use these examples only to understand what "
+        "has already been tried and what performed well or poorly.\n\n"
         "# Required JSON output shape\n"
         "Return JSON with: summary; hypotheses[].title; hypotheses[].rationale; "
         "hypotheses[].implementation_hint; hypotheses[].expected_effect; "

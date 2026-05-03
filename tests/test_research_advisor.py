@@ -94,9 +94,12 @@ def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_pa
     )
     context["data_overview"] = {"columns": ["feature"]}
 
-    assert [n["plan"] for n in context["top_best_nodes"][:2]] == ["best", "mid"]
-    assert [n["plan"] for n in context["top_worst_nodes"][:2]] == ["weak"]
-    assert all(n["metric"] is not None for n in context["top_worst_nodes"])
+    assert [n["metric"] for n in context["best_working_solutions"][:2]] == [
+        0.95,
+        0.81,
+    ]
+    assert [n["metric"] for n in context["worst_working_solutions"][:2]] == [0.1]
+    assert all(n["metric"] is not None for n in context["worst_working_solutions"])
     assert context["run_id"] == cfg.exp_name
     assert context["checkpoint_step"] == 10
     assert "created_at" in context
@@ -107,6 +110,8 @@ def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_pa
     serialized = json.dumps(context)
     assert '"step"' not in serialized
     assert "stage" not in serialized
+    assert "plan" not in serialized
+    assert "analysis" not in serialized
     assert journal.nodes[0].id not in serialized
     assert journal.nodes[1].id not in serialized
     assert journal.nodes[2].id not in serialized
@@ -157,8 +162,8 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
         "run_id": cfg.exp_name,
         "checkpoint_step": 10,
         "task_desc": "task",
-        "top_best_nodes": [],
-        "top_worst_nodes": [],
+        "best_working_solutions": [],
+        "worst_working_solutions": [],
     }
     seen = {}
 
