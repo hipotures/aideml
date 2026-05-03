@@ -7,6 +7,7 @@ from aide.journal import Journal, Node
 from aide.research import (
     RESEARCH_PROMPT_INTRO,
     ResearchAdvisor,
+    build_data_overview,
     build_research_prompt,
     collect_research_context,
     format_research_hints_for_prompt,
@@ -42,7 +43,37 @@ def _node(score: float | None, *, code: str, plan: str, buggy: bool = False) -> 
     return node
 
 
-def test_collect_research_context_selects_top_best_and_top_worst_nodes(tmp_path):
+def test_build_data_overview_includes_compact_column_schema(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "train.csv").write_text(
+        "id,Driver,Race,TyreLife,PitNextLap\n"
+        "1,HAM,Bahrain,12,0\n"
+        "2,VER,Bahrain,24,1\n",
+        encoding="utf-8",
+    )
+    (input_dir / "test.csv").write_text(
+        "id,Driver,Race,TyreLife\n"
+        "3,HAM,Bahrain,13\n",
+        encoding="utf-8",
+    )
+    (input_dir / "sample_submission.csv").write_text(
+        "id,PitNextLap\n3,0\n",
+        encoding="utf-8",
+    )
+    cfg = _cfg(tmp_path)
+
+    overview = build_data_overview(cfg)
+
+    assert "train.csv (3 lines)" in overview
+    assert "test.csv (2 lines)" in overview
+    assert "sample_submission.csv (2 lines)" in overview
+    assert "-> input/train.csv has 2 rows and 5 columns." in overview
+    assert "Driver (object) has 2 unique values" in overview
+    assert "TyreLife (int64)" in overview
+
+
+def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.top_k_best = 2
     cfg.research.top_k_worst = 2
@@ -61,16 +92,33 @@ def test_collect_research_context_selects_top_best_and_top_worst_nodes(tmp_path)
         journal=journal,
         completed_steps=10,
     )
+    context["data_overview"] = {"columns": ["feature"]}
 
     assert [n["plan"] for n in context["top_best_nodes"][:2]] == ["best", "mid"]
-    assert context["top_worst_nodes"][0]["is_buggy"] is True
-    assert context["top_worst_nodes"][1]["plan"] == "weak"
-    assert context["selected_node_ids"] == [
-        journal.nodes[1].id,
-        journal.nodes[0].id,
-        journal.nodes[3].id,
-        journal.nodes[2].id,
-    ]
+    assert [n["plan"] for n in context["top_worst_nodes"][:2]] == ["weak"]
+    assert all(n["metric"] is not None for n in context["top_worst_nodes"])
+    assert context["run_id"] == cfg.exp_name
+    assert context["checkpoint_step"] == 10
+    assert "created_at" in context
+    assert "selected_steps" not in context
+    assert "selected_node_ids" not in context
+    assert "recent_nodes" not in context
+
+    serialized = json.dumps(context)
+    assert '"step"' not in serialized
+    assert "stage" not in serialized
+    assert journal.nodes[0].id not in serialized
+    assert journal.nodes[1].id not in serialized
+    assert journal.nodes[2].id not in serialized
+    assert journal.nodes[3].id not in serialized
+    assert "parent_id" not in serialized
+    assert "ctime" not in serialized
+    assert "is_buggy" not in serialized
+    assert "terminal_output" not in serialized
+    assert "exec_time" not in serialized
+    assert "exc_type" not in serialized
+    assert "exc_info" not in serialized
+    assert '"code"' in serialized
 
 
 def test_research_prompt_starts_with_researcher_instruction(tmp_path):
@@ -89,6 +137,18 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert prompt.startswith(RESEARCH_PROMPT_INTRO)
     assert "Return only structured JSON" in prompt
     assert "task" in prompt
+    assert '"data_overview"' in prompt
+    assert '"run_id"' not in prompt
+    assert '"checkpoint_step"' not in prompt
+    assert '"created_at"' not in prompt
+    assert '"step"' not in prompt
+    assert '"stage"' not in prompt
+    assert '"additionalProperties"' not in prompt
+    assert '"parent_node_id"' not in prompt
+    assert '"parent_step"' not in prompt
+    assert "hypotheses[].target" not in prompt
+    assert "Return exactly 5 concise new solution ideas" in prompt
+    assert "Do not target a specific previous node or code block" in prompt
 
 
 def test_run_research_checkpoint_logs_request_and_response(tmp_path):
@@ -96,7 +156,6 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     context = {
         "run_id": cfg.exp_name,
         "checkpoint_step": 10,
-        "selected_node_ids": ["node-a"],
         "task_desc": "task",
         "top_best_nodes": [],
         "top_worst_nodes": [],
@@ -113,8 +172,6 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
                     "summary": "researched",
                     "hypotheses": [
                         {
-                            "target": "root",
-                            "parent_node_id": None,
                             "title": "Try calibrated LightGBM",
                             "rationale": "AUC often benefits from calibration checks.",
                             "implementation_hint": "Add calibrated CV probabilities.",

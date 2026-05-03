@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .journal import Journal, Node
+from .utils import data_preview
 from .utils.config import Config
 
 RESEARCH_PROMPT_INTRO = (
@@ -30,12 +31,10 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
         "summary": {"type": "string"},
         "hypotheses": {
             "type": "array",
-            "items": {
+                "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "properties": {
-                    "target": {"type": "string", "enum": ["root", "node"]},
-                    "parent_node_id": {"type": ["string", "null"]},
                     "title": {"type": "string"},
                     "rationale": {"type": "string"},
                     "implementation_hint": {"type": "string"},
@@ -47,8 +46,6 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                     },
                 },
                 "required": [
-                    "target",
-                    "parent_node_id",
                     "title",
                     "rationale",
                     "implementation_hint",
@@ -86,34 +83,30 @@ def _metric_value(node: Node) -> float | None:
     return None if node.metric is None else node.metric.value
 
 
+def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "…"
+
+
+def build_data_overview(cfg: Config) -> str | None:
+    for base_dir in [Path(cfg.workspace_dir), Path(cfg.data_dir)]:
+        if base_dir.exists():
+            try:
+                return data_preview.generate(base_dir)
+            except Exception:  # noqa: BLE001 - research should not stop the run
+                continue
+    return None
+
+
 def _node_payload(node: Node) -> dict[str, Any]:
     return {
-        "id": node.id,
-        "step": node.step,
-        "ctime": node.ctime,
-        "stage": node.stage_name,
-        "parent_id": node.parent.id if node.parent is not None else None,
-        "is_buggy": node.is_buggy,
         "metric": _metric_value(node),
-        "plan": node.plan,
-        "analysis": node.analysis,
-        "exec_time": node.exec_time,
-        "exc_type": node.exc_type,
-        "exc_info": node.exc_info,
-        "terminal_output": node.term_out if node._term_out is not None else "",
+        "plan": _compact_prompt_text(node.plan, max_chars=700),
+        "analysis": _compact_prompt_text(node.analysis, max_chars=700),
         "code": node.code,
     }
-
-
-def _ordered_unique(nodes: list[Node]) -> list[Node]:
-    seen: set[str] = set()
-    out: list[Node] = []
-    for node in nodes:
-        if node.id in seen:
-            continue
-        seen.add(node.id)
-        out.append(node)
-    return out
 
 
 def _sort_best(nodes: list[Node]) -> list[Node]:
@@ -146,42 +139,44 @@ def collect_research_context(
     good_nodes = [
         node for node in journal.good_nodes if _metric_value(node) is not None
     ]
-    buggy_nodes = list(journal.buggy_nodes)
-
     top_best = _sort_best(good_nodes)[: cfg.research.top_k_best]
-    low_scoring_nodes = _sort_worst(good_nodes)
-    top_worst = _ordered_unique(buggy_nodes + low_scoring_nodes)[
-        : cfg.research.top_k_worst
+    top_best_ids = {node.id for node in top_best}
+    worst_candidates = [
+        node for node in _sort_worst(good_nodes) if node.id not in top_best_ids
     ]
-    top_worst_ids = {node.id for node in top_worst}
-    selected_nodes = _ordered_unique(
-        [node for node in top_best if node.id not in top_worst_ids] + top_worst
-    )
-
+    top_worst = worst_candidates[: cfg.research.top_k_worst]
     best_node = journal.get_best_node()
     return {
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
         "created_at": dt.datetime.now().isoformat(timespec="seconds"),
         "task_desc": task_desc,
+        "data_overview": build_data_overview(cfg),
         "metric_direction": (
             None
             if best_node is None or best_node.metric is None
             else ("maximize" if best_node.metric.maximize else "minimize")
         ),
-        "best_node_id": None if best_node is None else best_node.id,
-        "selected_node_ids": [node.id for node in selected_nodes],
         "top_best_nodes": [_node_payload(node) for node in top_best],
         "top_worst_nodes": [_node_payload(node) for node in top_worst],
-        "recent_nodes": [_node_payload(node) for node in journal.nodes[-10:]],
     }
 
 
 def build_research_prompt(context: dict[str, Any]) -> str:
+    prompt_context = {
+        key: context.get(key)
+        for key in [
+            "task_desc",
+            "data_overview",
+            "metric_direction",
+            "top_best_nodes",
+            "top_worst_nodes",
+        ]
+        if key in context and context.get(key) is not None
+    }
     context_json = json.dumps(
-        context, indent=2, ensure_ascii=False, default=_json_default
+        prompt_context, indent=2, ensure_ascii=False, default=_json_default
     )
-    schema_json = json.dumps(RESEARCH_RESPONSE_SCHEMA, indent=2, ensure_ascii=False)
     return (
         f"{RESEARCH_PROMPT_INTRO}\n\n"
         "# Research task\n"
@@ -190,13 +185,16 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "that are relevant to this competition or closely related machine "
         "learning problems.\n\n"
         "# Output contract\n"
-        "Return concise hypotheses only. Each hypothesis must be actionable by "
-        "the existing AIDE agent in one future node. Use target=root for a fresh "
-        "approach, or target=node with parent_node_id when the idea should extend "
-        "a specific existing node.\n\n"
-        "# JSON schema\n"
-        f"```json\n{schema_json}\n```\n\n"
-        "# AIDE run context\n"
+        "Return exactly 5 concise new solution ideas. Do not target a specific "
+        "previous node or code block. Use the prior results only to avoid "
+        "repeating approaches that have already been tried. Do not debug broken "
+        "code.\n\n"
+        "# Required JSON output shape\n"
+        "Return JSON with: summary; hypotheses[].title; hypotheses[].rationale; "
+        "hypotheses[].implementation_hint; hypotheses[].expected_effect; "
+        "hypotheses[].risk; hypotheses[].sources. The hypotheses array must "
+        "contain exactly 5 items.\n\n"
+        "# Compact AIDE run context\n"
         f"```json\n{context_json}\n```\n"
     )
 
@@ -278,7 +276,6 @@ def run_research_checkpoint(
             "command": command,
             "model": cfg.research.model,
             "reasoning_effort": cfg.research.reasoning_effort,
-            "selected_node_ids": context.get("selected_node_ids", []),
             "prompt": prompt,
         },
     )
@@ -407,13 +404,6 @@ def load_latest_research_hints(log_dir: Path | str) -> dict[str, Any] | None:
     }
 
 
-def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
-    text = " ".join(str(value or "").split())
-    if len(text) <= max_chars:
-        return text
-    return text[: max_chars - 1].rstrip() + "…"
-
-
 def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
     checkpoint = str(hints.get("checkpoint", "")).removeprefix("checkpoint-")
     lines = [
@@ -436,12 +426,7 @@ def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
                 continue
 
             title = _compact_prompt_text(hypothesis.get("title"), max_chars=160)
-            target = (
-                "fresh approach"
-                if hypothesis.get("target") == "root"
-                else "extend an existing solution"
-            )
-            lines.append(f"{idx}. {title} ({target})")
+            lines.append(f"{idx}. {title}")
 
             rationale = _compact_prompt_text(
                 hypothesis.get("rationale"), max_chars=260
