@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from aide.utils.submission_validation import (
+    validate_submission_file as validate_submission_against_sample,
+)
 from rich.console import Console
 from rich.progress import track
 from rich.table import Table
@@ -35,6 +38,7 @@ class Candidate:
     sha256: str | None
     plan: str | None = None
     analysis: str | None = None
+    validation_error: str | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -43,6 +47,7 @@ class Candidate:
             and self.local_score is not None
             and self.submission_path.exists()
             and self.sha256 is not None
+            and self.validation_error is None
         )
 
     @property
@@ -110,6 +115,12 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _replace_candidate(candidate: Candidate, **updates: Any) -> Candidate:
+    values = candidate.__dict__.copy()
+    values.update(updates)
+    return Candidate(**values)
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text())
 
@@ -164,6 +175,58 @@ def collect_candidates(
                 )
             )
     return candidates
+
+
+def _sample_submission_candidates(candidate: Candidate, data_dir: Path | None) -> Iterable[Path]:
+    if data_dir is not None:
+        yield data_dir / "sample_submission.csv.gz"
+        yield data_dir / "sample_submission.csv"
+
+    run_dir = candidate.submission_path.parents[2]
+    repo_root = run_dir.parent.parent
+    input_dir = repo_root / "workspaces" / candidate.run / "input"
+    yield input_dir / "sample_submission.csv.gz"
+    yield input_dir / "sample_submission.csv"
+
+    example_dir = repo_root / "aide" / "example_tasks" / candidate.competition
+    yield example_dir / "sample_submission.csv.gz"
+    yield example_dir / "sample_submission.csv"
+
+
+def _find_sample_submission(candidate: Candidate, data_dir: Path | None) -> Path | None:
+    for path in _sample_submission_candidates(candidate, data_dir):
+        if path.exists():
+            return path
+    return None
+
+
+def validate_submission_file(candidate: Candidate, data_dir: Path | None) -> str | None:
+    sample_path = _find_sample_submission(candidate, data_dir)
+    if sample_path is None:
+        return "missing sample_submission for validation"
+    return validate_submission_against_sample(candidate.submission_path, sample_path)
+
+
+def validate_candidates(
+    candidates: Iterable[Candidate],
+    *,
+    data_dir: Path | None,
+) -> list[Candidate]:
+    validated: list[Candidate] = []
+    for candidate in candidates:
+        if (
+            candidate.is_buggy
+            or candidate.local_score is None
+            or not candidate.submission_path.exists()
+            or candidate.sha256 is None
+        ):
+            validated.append(candidate)
+            continue
+        validation_error = validate_submission_file(candidate, data_dir)
+        validated.append(
+            _replace_candidate(candidate, validation_error=validation_error)
+        )
+    return validated
 
 
 def _sort_key(candidate: Candidate) -> tuple[float, float]:
@@ -245,6 +308,8 @@ def submit_candidates(
 ) -> list[dict[str, Any]]:
     submitted: list[dict[str, Any]] = []
     for candidate in candidates:
+        if candidate.validation_error is not None:
+            continue
         message = build_kaggle_message(candidate)
         upload_path = prepare_upload_file(candidate)
         response = client.competition_submit(
@@ -481,6 +546,28 @@ def render_dry_run(
         )
     console.print(table)
 
+    invalid = [
+        candidate
+        for candidate in candidates
+        if candidate.validation_error is not None
+    ]
+    if invalid:
+        invalid_table = Table(title="Invalid local submissions skipped")
+        invalid_table.add_column("cv", justify="right")
+        invalid_table.add_column("reason")
+        invalid_table.add_column("run")
+        invalid_table.add_column("step", justify="right")
+        invalid_table.add_column("timestamp", no_wrap=True)
+        for candidate in sorted(invalid, key=_sort_key, reverse=True)[:10]:
+            invalid_table.add_row(
+                _format_score(candidate.local_score),
+                candidate.validation_error or "",
+                candidate.run,
+                str(candidate.step),
+                candidate.timestamp,
+            )
+        console.print(invalid_table)
+
     if include_not_ready:
         not_ready = [
             candidate for candidate in candidates if not candidate.is_submit_ready
@@ -499,6 +586,8 @@ def render_dry_run(
                 reasons.append("no-score")
             if not candidate.submission_path.exists():
                 reasons.append("missing-submission")
+            if candidate.validation_error is not None:
+                reasons.append(f"invalid-submission: {candidate.validation_error}")
             details.add_row(
                 _format_score(candidate.local_score),
                 ",".join(reasons) or "unknown",
@@ -543,6 +632,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--competition", default=DEFAULT_COMPETITION)
     parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        help="Directory containing sample_submission.csv(.gz) for submission validation.",
+    )
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument(
         "--since", help="Only consider nodes created on or after YYYY-MM-DD."
@@ -582,6 +676,7 @@ def main(argv: list[str] | None = None) -> int:
         competition=args.competition,
         since=parse_since(args.since),
     )
+    candidates = validate_candidates(candidates, data_dir=args.data_dir)
     selected = select_top_unsent_ready(
         candidates,
         registry=registry,

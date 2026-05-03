@@ -1,4 +1,5 @@
 import atexit
+import datetime as dt
 import logging
 import os
 import queue
@@ -41,6 +42,13 @@ from .utils.config import (
     prep_agent_workspace,
     save_run,
     load_cfg,
+)
+from .utils.metric import WorstMetricValue
+from .utils.submission_validation import (
+    file_signature,
+    find_sample_submission,
+    validate_submission_file,
+    validate_workspace_submission,
 )
 
 logger = logging.getLogger("aide")
@@ -128,6 +136,8 @@ def load_resume_state(
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     journal = serialize.load_json(journal_path, Journal)
+    if enforce_journal_submission_contract(cfg, journal):
+        serialize.dump_json(journal, journal_path)
     return cast(Config, cfg), journal
 
 
@@ -263,23 +273,62 @@ def _clip_error_line(line: str, max_chars: int = 88) -> str:
     return line[: max_chars - 1].rstrip() + "…"
 
 
+def _clean_error_lines(lines: list[str], *, max_lines: int) -> list[str]:
+    return [
+        _clip_error_line(line)
+        for line in lines
+        if line.strip() and not line.strip().startswith("Execution time:")
+    ][-max_lines:]
+
+
+def _terminal_output_has_error(lines: list[str]) -> bool:
+    markers = (
+        "Traceback",
+        "Error:",
+        "Exception:",
+        "KeyboardInterrupt",
+        "MemoryError",
+        "cannot ",
+        "failed",
+    )
+    return any(any(marker in line for marker in markers) for line in lines)
+
+
+def _exception_lines(node: Node) -> list[str]:
+    if not node.exc_type:
+        return []
+    args = []
+    if isinstance(node.exc_info, dict):
+        raw_args = node.exc_info.get("args")
+        if isinstance(raw_args, list):
+            args = [str(arg) for arg in raw_args if str(arg)]
+    if args:
+        return [f"{node.exc_type}: {args[0]}"]
+    return [str(node.exc_type)]
+
+
 def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
     for node in reversed(journal.buggy_nodes):
-        raw_lines = []
+        term_lines = []
         if node._term_out:
-            raw_lines.extend("".join(node._term_out).splitlines())
-        if not raw_lines and node.analysis:
-            raw_lines.extend(str(node.analysis).splitlines())
-        if not raw_lines and node.exc_type:
-            raw_lines.append(str(node.exc_type))
+            term_lines.extend("".join(node._term_out).splitlines())
 
-        lines = [
-            _clip_error_line(line)
-            for line in raw_lines
-            if line.strip() and not line.strip().startswith("Execution time:")
-        ]
+        if term_lines and _terminal_output_has_error(term_lines):
+            lines = _clean_error_lines(term_lines, max_lines=max_lines)
+            if lines:
+                return lines
+
+        lines = _clean_error_lines(_exception_lines(node), max_lines=max_lines)
         if lines:
-            return lines[-max_lines:]
+            return lines
+
+        if node.analysis:
+            lines = _clean_error_lines(
+                str(node.analysis).splitlines(),
+                max_lines=max_lines,
+            )
+            if lines:
+                return lines
     return []
 
 
@@ -314,6 +363,162 @@ def build_run_data(
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     return Group(*lines)
+
+
+def _submission_validation_record(
+    *,
+    status: str,
+    sample_path: Path,
+    submission_path: Path,
+    error: str | None = None,
+) -> dict:
+    record = {
+        "status": status,
+        "sample_signature": file_signature(sample_path),
+        "submission_signature": file_signature(submission_path),
+    }
+    if error is not None:
+        record["error"] = error
+    return record
+
+
+def _submission_validation_cache_matches(
+    node: Node,
+    *,
+    sample_path: Path,
+    submission_path: Path,
+) -> bool:
+    record = node.submission_validation
+    return (
+        isinstance(record, dict)
+        and record.get("status") == "ok"
+        and record.get("sample_signature") == file_signature(sample_path)
+        and record.get("submission_signature") == file_signature(submission_path)
+    )
+
+
+def _mark_node_submission_ok(
+    node: Node,
+    *,
+    sample_path: Path,
+    submission_path: Path,
+) -> bool:
+    record = _submission_validation_record(
+        status="ok",
+        sample_path=sample_path,
+        submission_path=submission_path,
+    )
+    if node.submission_validation == record:
+        return False
+    node.submission_validation = record
+    return True
+
+
+def _mark_node_submission_bug(
+    node: Node,
+    error: str,
+    *,
+    sample_path: Path | None = None,
+    submission_path: Path | None = None,
+) -> bool:
+    if node.is_buggy and node.exc_type == "SubmissionValidationError":
+        return False
+
+    node.is_buggy = True
+    node.metric = WorstMetricValue()
+    node.exc_type = node.exc_type or "SubmissionValidationError"
+    node.exc_info = node.exc_info or {"args": [error]}
+    if sample_path is not None and submission_path is not None:
+        node.submission_validation = _submission_validation_record(
+            status="error",
+            sample_path=sample_path,
+            submission_path=submission_path,
+            error=error,
+        )
+    validation_message = f"SubmissionValidationError: {error}\n"
+    if node._term_out is None:
+        node._term_out = []
+    node._term_out.append(validation_message)
+    previous_analysis = node.analysis or ""
+    node.analysis = (
+        f"Submission validation failed: {error}"
+        if not previous_analysis
+        else f"{previous_analysis}\n\nSubmission validation failed: {error}"
+    )
+    return True
+
+
+def enforce_submission_contract(cfg, node: Node) -> bool:
+    workspace_dir = Path(cfg.workspace_dir)
+    sample_path = find_sample_submission(workspace_dir / "input")
+    if sample_path is None:
+        return False
+
+    submission_path = workspace_dir / "working" / "submission.csv"
+    if not submission_path.exists():
+        return _mark_node_submission_bug(
+            node,
+            "missing working/submission.csv while sample_submission exists",
+        )
+
+    error = validate_workspace_submission(workspace_dir)
+    if error is None:
+        return _mark_node_submission_ok(
+            node,
+            sample_path=sample_path,
+            submission_path=submission_path,
+        )
+    return _mark_node_submission_bug(
+        node,
+        error,
+        sample_path=sample_path,
+        submission_path=submission_path,
+    )
+
+
+def _node_artifact_submission_path(cfg, node: Node) -> Path:
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+    return Path(cfg.log_dir) / "artifacts" / timestamp / "submission.csv"
+
+
+def enforce_journal_submission_contract(cfg, journal: Journal) -> int:
+    sample_path = find_sample_submission(Path(cfg.workspace_dir) / "input")
+    if sample_path is None:
+        return 0
+
+    changed = 0
+    for node in journal.good_nodes:
+        submission_path = _node_artifact_submission_path(cfg, node)
+        if not submission_path.exists():
+            error = "missing artifact submission.csv while sample_submission exists"
+            if _mark_node_submission_bug(node, error):
+                changed += 1
+            continue
+
+        if _submission_validation_cache_matches(
+            node,
+            sample_path=sample_path,
+            submission_path=submission_path,
+        ):
+            continue
+
+        error = validate_submission_file(submission_path, sample_path)
+        if error is None:
+            if _mark_node_submission_ok(
+                node,
+                sample_path=sample_path,
+                submission_path=submission_path,
+            ):
+                changed += 1
+        else:
+            if _mark_node_submission_bug(
+                node,
+                error,
+                sample_path=sample_path,
+                submission_path=submission_path,
+            ):
+                changed += 1
+    return changed
 
 
 def _format_elapsed(seconds: float | None) -> str:
@@ -554,6 +759,7 @@ def run(argv: list[str] | None = None):
                         generate_live,
                         lambda: agent.review_node(result_node, exec_result),
                     )
+                    enforce_submission_contract(cfg, result_node)
                     journal.append(result_node)
                     if synthesized is not None:
                         synthesis_advisor.mark_injected(synthesized, node=result_node)

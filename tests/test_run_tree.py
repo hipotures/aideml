@@ -259,6 +259,39 @@ def test_last_error_lines_uses_latest_bug_and_skips_execution_time():
     assert lines == ["model.fit(X, y)", "TypeError: bad categorical value"]
 
 
+def test_last_error_lines_prefers_exception_over_successful_terminal_output():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="bad submission")
+    node.metric = MetricValue(None, maximize=True)
+    node.is_buggy = True
+    node._term_out = ["CV AUC: 0.9528\nSubmission saved successfully.\n"]
+    node.analysis = "Submission validation failed: row count 4668287 != expected 188165"
+    node.exc_type = "SubmissionValidationError"
+    node.exc_info = {"args": ["row count 4668287 != expected 188165"]}
+    journal.append(node)
+
+    lines = last_error_lines(journal)
+
+    assert lines == [
+        "SubmissionValidationError: row count 4668287 != expected 188165"
+    ]
+
+
+def test_last_error_lines_uses_analysis_when_no_exception_or_error_output():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="bad review")
+    node.metric = MetricValue(None, maximize=True)
+    node.is_buggy = True
+    node._term_out = ["CV AUC: 0.9528\nSubmission saved successfully.\n"]
+    node.analysis = "Reviewer marked this node as buggy."
+    node.exc_type = None
+    journal.append(node)
+
+    lines = last_error_lines(journal)
+
+    assert lines == ["Reviewer marked this node as buggy."]
+
+
 def test_run_data_shows_last_error_below_separator(tmp_path):
     journal = Journal()
     journal.append(_bug_node())

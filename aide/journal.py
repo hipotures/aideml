@@ -47,6 +47,7 @@ class Node(DataClassJsonMixin):
     # whether the agent decided that the code is buggy
     # -> always True if exc_type is not None or no valid metric
     is_buggy: bool = field(default=None, kw_only=True)  # type: ignore
+    submission_validation: dict | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if self.parent is not None:

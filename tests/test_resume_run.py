@@ -1,5 +1,6 @@
 import os
 import time
+import datetime as dt
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from aide.run import (
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
 from aide.utils.metric import MetricValue
+from aide.utils import serialize
 
 
 def _write_run(tmp_path: Path, run_id: str, *, steps: int, mtime: float) -> None:
@@ -95,6 +97,37 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert cfg.generate_report is False
     assert len(journal.nodes) == 1
     assert journal.nodes[0].metric.value == 0.9
+
+
+def test_load_resume_state_persists_submission_contract_revalidation(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    log_dir = tmp_path / "logs" / "2-existing-run"
+    workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    (workspace_dir / "input" / "sample_submission.csv").write_text(
+        "id,PitNextLap\n1,0.0\n2,0.0\n"
+    )
+
+    journal = serialize.load_json(log_dir / "journal.json", Journal)
+    timestamp = dt.datetime.fromtimestamp(journal.nodes[0].ctime).strftime(
+        "%Y%m%dT%H%M%S"
+    )
+    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n1,0.9\n")
+
+    _cfg, loaded = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+    persisted = serialize.load_json(log_dir / "journal.json", Journal)
+
+    assert loaded.nodes[0].is_buggy is True
+    assert loaded.nodes[0].metric.value is None
+    assert persisted.nodes[0].is_buggy is True
+    assert persisted.nodes[0].metric.value is None
+    assert persisted.nodes[0].exc_type == "SubmissionValidationError"
 
 
 def test_load_resume_state_rejects_missing_workspace(tmp_path):
