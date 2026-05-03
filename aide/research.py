@@ -83,6 +83,10 @@ def _metric_value(node: Node) -> float | None:
     return None if node.metric is None else node.metric.value
 
 
+def count_scored_working_nodes(journal: Journal) -> int:
+    return sum(1 for node in journal.good_nodes if _metric_value(node) is not None)
+
+
 def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
     text = " ".join(str(value or "").split())
     if len(text) <= max_chars:

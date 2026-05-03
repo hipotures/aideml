@@ -10,6 +10,7 @@ from aide.research import (
     build_data_overview,
     build_research_prompt,
     collect_research_context,
+    count_scored_working_nodes,
     format_research_hints_for_prompt,
     load_latest_research_hints,
     run_research_checkpoint,
@@ -126,6 +127,15 @@ def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_pa
     assert '"code"' in serialized
 
 
+def test_count_scored_working_nodes_ignores_buggy_nodes(tmp_path):
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+    journal.append(_node(None, code="raise RuntimeError('bug')", plan="bug"))
+    journal.append(_node(0.8, code="print('ok2')", plan="ok2"))
+
+    assert count_scored_working_nodes(journal) == 2
+
+
 def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     cfg = _cfg(tmp_path)
     journal = Journal()
@@ -240,6 +250,34 @@ def test_research_advisor_does_not_duplicate_existing_checkpoint(tmp_path):
     advisor = ResearchAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
 
     assert advisor.maybe_start(journal=journal, completed_steps=10) is False
+
+
+def test_research_advisor_uses_scored_working_count_for_checkpoints(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.every_steps = 2
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+    journal.append(_node(None, code="raise RuntimeError('bug')", plan="bug"))
+    advisor = ResearchAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
+
+    assert (
+        advisor.maybe_start(
+            journal=journal,
+            completed_steps=count_scored_working_nodes(journal),
+        )
+        is False
+    )
+
+    journal.append(_node(0.8, code="print('ok2')", plan="ok2"))
+
+    assert (
+        advisor.maybe_start(
+            journal=journal,
+            completed_steps=count_scored_working_nodes(journal),
+        )
+        is True
+    )
+    assert (Path(cfg.log_dir) / "research" / "checkpoint-000002").exists()
 
 
 def test_research_advisor_status_text_shows_checkpoint_status(tmp_path):

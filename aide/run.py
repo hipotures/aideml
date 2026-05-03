@@ -14,7 +14,7 @@ from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
-from .research import ResearchAdvisor
+from .research import ResearchAdvisor, count_scored_working_nodes
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -496,7 +496,7 @@ def run(argv: list[str] | None = None):
                 global_step = len(journal)
                 research_advisor.maybe_start(
                     journal=journal,
-                    completed_steps=global_step,
+                    completed_steps=count_scored_working_nodes(journal),
                 )
                 live.update(generate_live(), refresh=True)
     finally:
