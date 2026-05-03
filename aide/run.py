@@ -29,6 +29,7 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
+from rich.rule import Rule
 from rich.text import Text
 from rich.status import Status
 from rich.tree import Tree
@@ -255,12 +256,50 @@ def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
     return Group(*lines)
 
 
+def _clip_error_line(line: str, max_chars: int = 88) -> str:
+    line = " ".join(line.split())
+    if len(line) <= max_chars:
+        return line
+    return line[: max_chars - 1].rstrip() + "…"
+
+
+def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
+    for node in reversed(journal.buggy_nodes):
+        raw_lines = []
+        if node._term_out:
+            raw_lines.extend("".join(node._term_out).splitlines())
+        if not raw_lines and node.analysis:
+            raw_lines.extend(str(node.analysis).splitlines())
+        if not raw_lines and node.exc_type:
+            raw_lines.append(str(node.exc_type))
+
+        lines = [
+            _clip_error_line(line)
+            for line in raw_lines
+            if line.strip() and not line.strip().startswith("Execution time:")
+        ]
+        if lines:
+            return lines[-max_lines:]
+    return []
+
+
+def build_last_error_summary(journal: Journal) -> Group:
+    lines: list[Text] = [Text("Last Error", style="bold red")]
+    error_lines = last_error_lines(journal)
+    if not error_lines:
+        lines.append(Text("-", style="dim"))
+    else:
+        lines.extend(Text(line) for line in error_lines)
+    return Group(*lines)
+
+
 def build_run_data(
     *,
     progress,
     status,
     research_status: str | None,
     synthesis_status: str | None,
+    journal: Journal,
     log_dir: Path,
     workspace_dir: Path,
 ) -> Group:
@@ -273,6 +312,7 @@ def build_run_data(
             lines.append("")
         lines.append(synthesis_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
+    lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     return Group(*lines)
 
 
@@ -457,6 +497,7 @@ def run(argv: list[str] | None = None):
                         if cfg.synthesis.enabled
                         else None
                     ),
+                    journal=journal,
                     log_dir=cfg.log_dir,
                     workspace_dir=cfg.workspace_dir,
                 ),

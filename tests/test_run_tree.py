@@ -5,6 +5,7 @@ from aide.run import (
     build_path_summary,
     build_run_data,
     journal_to_rich_tree,
+    last_error_lines,
     run_with_live_refresh,
     stage_status_message,
 )
@@ -23,6 +24,14 @@ def _bug_node(parent: Node | None = None) -> Node:
     node = Node(code="raise RuntimeError('bug')", plan="bug", parent=parent)
     node.metric = MetricValue(None, maximize=True)
     node.is_buggy = True
+    node._term_out = [
+        '  File "runfile.py", line 10, in <module>\n'
+        "    raise ValueError('bad feature')\n"
+        "ValueError: bad feature\n"
+        "Execution time: 1 second seconds (time limit is 20 minutes)."
+    ]
+    node.analysis = "bug analysis"
+    node.exc_type = "ValueError"
     return node
 
 
@@ -187,6 +196,7 @@ def test_run_data_shows_research_status_when_enabled(tmp_path):
             status="Generating code...",
             research_status="[cyan]Research: ▶ 000010",
             synthesis_status=None,
+            journal=Journal(),
             log_dir=log_dir,
             workspace_dir=workspace_dir,
         )
@@ -203,6 +213,7 @@ def test_run_data_hides_research_status_when_disabled(tmp_path):
             status="Generating code...",
             research_status=None,
             synthesis_status=None,
+            journal=Journal(),
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
         )
@@ -218,6 +229,7 @@ def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
             status="Generating code...",
             research_status=None,
             synthesis_status="[green]Synthesis: ✓ 000015",
+            journal=Journal(),
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
         )
@@ -225,6 +237,49 @@ def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
 
     assert "Synthesis: ✓ 000015" in output
     assert "Agent workspace directory" in output
+
+
+def test_last_error_lines_uses_latest_bug_and_skips_execution_time():
+    journal = Journal()
+    first = _bug_node()
+    first._term_out = ["RuntimeError: old bug\nExecution time: 1 second"]
+    journal.append(first)
+    journal.append(_good_node(0.9))
+    latest = _bug_node()
+    latest._term_out = [
+        '  File "runfile.py", line 12, in <module>\n'
+        "    model.fit(X, y)\n"
+        "TypeError: bad categorical value\n"
+        "Execution time: 2 seconds"
+    ]
+    journal.append(latest)
+
+    lines = last_error_lines(journal)
+
+    assert lines == ["model.fit(X, y)", "TypeError: bad categorical value"]
+
+
+def test_run_data_shows_last_error_below_separator(tmp_path):
+    journal = Journal()
+    journal.append(_bug_node())
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=journal,
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "Experiment log directory" in output
+    assert "Last Error" in output
+    assert output.index("Experiment log directory") < output.index("Last Error")
+    assert "ValueError: bad feature" in output
+    assert "Execution time:" not in output
 
 
 def test_stage_status_message_names_review_stage():
