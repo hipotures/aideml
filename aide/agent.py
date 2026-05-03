@@ -1,7 +1,8 @@
 import logging
+import json
 import random
 import time
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
 import humanize
 from .backend import FunctionSpec, query
@@ -11,7 +12,12 @@ from .research import format_research_hints_for_prompt, load_latest_research_hin
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
-from .utils.response import extract_code, extract_text_up_to_code, wrap_code
+from .utils.response import (
+    extract_code,
+    extract_jsons,
+    extract_text_up_to_code,
+    wrap_code,
+)
 
 logger = logging.getLogger("aide")
 
@@ -44,6 +50,34 @@ review_func_spec = FunctionSpec(
     },
     description="Submit a review evaluating the output of the training script.",
 )
+
+
+def _parse_review_response(response: Any) -> dict[str, Any] | None:
+    if isinstance(response, dict):
+        return response
+
+    if isinstance(response, str):
+        try:
+            parsed = json.loads(response)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+        for parsed in extract_jsons(response):
+            if isinstance(parsed, dict):
+                return parsed
+
+    return None
+
+
+def _mark_invalid_review_response(node: Node, response: Any) -> None:
+    node.analysis = (
+        "Invalid review response from feedback model; marking this node as buggy "
+        f"so the run can continue. Response type: {type(response).__name__}."
+    )
+    node.is_buggy = True
+    node.metric = WorstMetricValue()
 
 
 class Agent:
@@ -362,31 +396,38 @@ class Agent:
             "Execution output": wrap_code(node.term_out, lang=""),
         }
 
-        response = cast(
-            dict,
-            query(
-                system_message=prompt,
-                user_message=None,
-                func_spec=review_func_spec,
-                model=self.acfg.feedback.model,
-                temperature=self.acfg.feedback.temp,
-            ),
+        response = query(
+            system_message=prompt,
+            user_message=None,
+            func_spec=review_func_spec,
+            model=self.acfg.feedback.model,
+            temperature=self.acfg.feedback.temp,
         )
+        parsed_response = _parse_review_response(response)
+        if parsed_response is None:
+            _mark_invalid_review_response(node, response)
+            return
+
+        required_keys = {"is_bug", "summary", "metric", "lower_is_better"}
+        if not required_keys.issubset(parsed_response):
+            _mark_invalid_review_response(node, response)
+            return
 
         # if the metric isn't a float then fill the metric with the worst metric
-        if not isinstance(response["metric"], float):
-            response["metric"] = None
+        metric = parsed_response["metric"]
+        if not isinstance(metric, (float, int)) or isinstance(metric, bool):
+            metric = None
 
-        node.analysis = response["summary"]
+        node.analysis = str(parsed_response["summary"])
         node.is_buggy = (
-            response["is_bug"]
+            bool(parsed_response["is_bug"])
             or node.exc_type is not None
-            or response["metric"] is None
+            or metric is None
         )
 
         if node.is_buggy:
             node.metric = WorstMetricValue()
         else:
             node.metric = MetricValue(
-                response["metric"], maximize=not response["lower_is_better"]
+                metric, maximize=not bool(parsed_response["lower_is_better"])
             )

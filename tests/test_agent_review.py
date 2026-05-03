@@ -1,0 +1,63 @@
+from pathlib import Path
+
+from aide.agent import Agent
+from aide.interpreter import ExecutionResult
+from aide.journal import Journal, Node
+from aide.utils.config import _load_cfg, prep_cfg
+
+
+def _cfg(tmp_path: Path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "review-test"
+    return prep_cfg(cfg)
+
+
+def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.9\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+
+    monkeypatch.setattr("aide.agent.query", lambda **_kwargs: "not json")
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert "Invalid review response" in node.analysis
+
+
+def test_parse_exec_result_accepts_json_string_review_response(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.9\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: (
+            '{"is_bug": false, "summary": "good run", '
+            '"metric": 0.9, "lower_is_better": false}'
+        ),
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.is_buggy is False
+    assert node.metric.value == 0.9
+    assert node.metric.maximize is True
+    assert node.analysis == "good run"
