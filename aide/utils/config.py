@@ -60,6 +60,7 @@ class ExecConfig:
     timeout: int
     agent_file_name: str
     format_tb_ipython: bool
+    memory_limit_gb: float | None = 80.0
 
 
 @dataclass

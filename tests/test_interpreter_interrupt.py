@@ -1,4 +1,5 @@
 import os
+import resource
 
 import pytest
 
@@ -109,3 +110,35 @@ def test_child_process_runs_in_separate_process_group(tmp_path):
 
     assert result.exc_type is None
     assert child_process_group != os.getpgrp()
+
+
+def test_child_process_has_configured_memory_limit(tmp_path):
+    interpreter = Interpreter(tmp_path, timeout=10, memory_limit_gb=80)
+
+    result = interpreter.run(
+        "import resource\n"
+        "soft, hard = resource.getrlimit(resource.RLIMIT_AS)\n"
+        "print(soft)\n"
+        "print(hard)\n"
+    )
+    interpreter.cleanup_session()
+
+    expected = 80 * 1024**3
+    assert result.exc_type is None
+    limits = [
+        int(line.strip())
+        for line in result.term_out
+        if line.strip().isdigit()
+    ]
+    assert limits == [expected, expected]
+
+
+def test_parent_process_memory_limit_is_not_changed_by_child_limit(tmp_path):
+    before = resource.getrlimit(resource.RLIMIT_AS)
+    interpreter = Interpreter(tmp_path, timeout=10, memory_limit_gb=80)
+
+    result = interpreter.run("print('ok')")
+    interpreter.cleanup_session()
+
+    assert result.exc_type is None
+    assert resource.getrlimit(resource.RLIMIT_AS) == before

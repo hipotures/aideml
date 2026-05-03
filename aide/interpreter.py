@@ -9,6 +9,7 @@ Supports:
 import logging
 import os
 import queue
+import resource
 import signal
 import sys
 import time
@@ -100,6 +101,7 @@ class Interpreter:
         timeout: int = 3600,
         format_tb_ipython: bool = False,
         agent_file_name: str = "runfile.py",
+        memory_limit_gb: float | None = 80.0,
     ):
         """
         Simulates a standalone Python REPL with an execution time limit.
@@ -109,20 +111,29 @@ class Interpreter:
             timeout (int, optional): Timeout for each code execution step. Defaults to 3600.
             format_tb_ipython (bool, optional): Whether to use IPython or default python REPL formatting for exceptions. Defaults to False.
             agent_file_name (str, optional): The name for the agent's code file. Defaults to "runfile.py".
+            memory_limit_gb (float | None, optional): Address-space limit for the child process executing agent code. Defaults to 80 GiB.
         """
         # this really needs to be a path, otherwise causes issues that don't raise exc
         self.working_dir = Path(working_dir).resolve()
-        assert self.working_dir.exists(), (
-            f"Working directory {self.working_dir} does not exist"
-        )
+        assert (
+            self.working_dir.exists()
+        ), f"Working directory {self.working_dir} does not exist"
         self.timeout = timeout
         self.format_tb_ipython = format_tb_ipython
         self.agent_file_name = agent_file_name
+        self.memory_limit_gb = memory_limit_gb
         self.process: Process = None  # type: ignore
+
+    def _set_child_memory_limit(self) -> None:
+        if self.memory_limit_gb is None:
+            return
+        limit_bytes = int(float(self.memory_limit_gb) * 1024**3)
+        resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
 
     def child_proc_setup(self, result_outq: Queue) -> None:
         if hasattr(os, "setpgrp"):
             os.setpgrp()
+        self._set_child_memory_limit()
 
         # disable all warnings (before importing anything)
         import shutup
