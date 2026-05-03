@@ -81,6 +81,9 @@ class SynthesisConfig:
     every_scored_steps: int = 15
     top_k: int = 5
     source_runs: list[str] = field(default_factory=list)
+    score_round_decimals: int = 5
+    prediction_round_decimals: int = 5
+    prediction_similarity_rmse_threshold: float = 0.015
     timeout: int = 900
     model: str = "gpt-5.5"
     reasoning_effort: str = "medium"

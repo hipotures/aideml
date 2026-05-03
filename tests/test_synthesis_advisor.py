@@ -39,8 +39,10 @@ def _node(
     code: str,
     buggy: bool = False,
     parent: Node | None = None,
+    ctime: float | None = None,
 ) -> Node:
-    node = Node(code=code, plan="plan", parent=parent)
+    kwargs = {"ctime": ctime} if ctime is not None else {}
+    node = Node(code=code, plan="plan", parent=parent, **kwargs)
     node.metric = (
         WorstMetricValue() if score is None else MetricValue(score, maximize=True)
     )
@@ -56,6 +58,18 @@ def _write_journal(log_dir: Path, run_id: str, journal: Journal) -> None:
     run_dir = log_dir / run_id
     run_dir.mkdir(parents=True)
     serialize.dump_json(journal, run_dir / "journal.json")
+
+
+def _write_submission(cfg, node: Node, body: str, *, run_id: str | None = None) -> None:
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+    artifact_dir = (
+        Path(cfg.log_dir).parent
+        / (run_id or cfg.exp_name)
+        / "artifacts"
+        / timestamp
+    )
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "submission.csv").write_text(body)
 
 
 def test_collect_top_synthesis_solutions_uses_best_scored_nodes_across_runs(tmp_path):
@@ -136,25 +150,59 @@ def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
     assert solutions == [{"local_cv_score": 0.8, "code": "print('included')"}]
 
 
-def test_collect_top_synthesis_solutions_keeps_parent_for_same_rounded_child_score(
+def test_collect_top_synthesis_solutions_filters_similar_related_predictions(
     tmp_path,
 ):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 5
     journal = Journal()
-    parent = _node(0.948596, code="print('parent')")
-    child = _node(0.948604, code="print('child')", parent=parent)
-    unrelated = _node(0.948604, code="print('unrelated')")
+    parent = _node(0.948596, code="print('parent')", ctime=1777716000.0)
+    child = _node(
+        0.948604,
+        code="print('child')",
+        parent=parent,
+        ctime=1777716060.0,
+    )
+    sibling = _node(
+        0.948604,
+        code="print('sibling')",
+        parent=parent,
+        ctime=1777716120.0,
+    )
+    unrelated = _node(0.948604, code="print('unrelated')", ctime=1777716180.0)
     journal.append(parent)
     journal.append(child)
+    journal.append(sibling)
     journal.append(unrelated)
+    _write_submission(
+        cfg,
+        parent,
+        "id,target\n1,0.100000\n2,0.200000\n",
+    )
+    _write_submission(
+        cfg,
+        child,
+        "id,target\n1,0.105000\n2,0.205000\n",
+    )
+    _write_submission(
+        cfg,
+        sibling,
+        "id,target\n1,0.800000\n2,0.900000\n",
+    )
+    _write_submission(
+        cfg,
+        unrelated,
+        "id,target\n1,0.110000\n2,0.210000\n",
+    )
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
 
-    assert [solution["code"] for solution in solutions] == [
-        "print('parent')",
+    assert "print('child')" not in [solution["code"] for solution in solutions]
+    assert {solution["code"] for solution in solutions} == {
         "print('unrelated')",
-    ]
+        "print('sibling')",
+        "print('parent')",
+    }
 
 
 def test_collect_top_synthesis_solutions_keeps_child_when_rounded_score_improves(

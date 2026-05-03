@@ -13,6 +13,12 @@ from typing import Any, Iterable
 from aide.utils.submission_validation import (
     validate_submission_file as validate_submission_against_sample,
 )
+from aide.utils.prediction_similarity import (
+    DEFAULT_PREDICTION_ROUND_DECIMALS,
+    DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD,
+    DEFAULT_SCORE_ROUND_DECIMALS,
+    submission_prediction_rmse,
+)
 from rich.console import Console
 from rich.progress import track
 from rich.table import Table
@@ -29,6 +35,8 @@ class Candidate:
     run: str
     step: int
     node_id: str
+    parent_node_id: str | None
+    ancestor_node_ids: tuple[str, ...]
     timestamp: str
     ctime: float
     local_score: float | None
@@ -134,6 +142,20 @@ def _metric_value(node: dict[str, Any]) -> tuple[float | None, bool | None]:
     return float(value), maximize
 
 
+def _ancestor_node_ids(
+    node_id: str,
+    node2parent: dict[str, str],
+) -> tuple[str, ...]:
+    ancestors: list[str] = []
+    seen = {node_id}
+    parent_id = node2parent.get(node_id)
+    while parent_id and parent_id not in seen:
+        ancestors.append(parent_id)
+        seen.add(parent_id)
+        parent_id = node2parent.get(parent_id)
+    return tuple(ancestors)
+
+
 def collect_candidates(
     logs_dir: Path,
     *,
@@ -144,6 +166,7 @@ def collect_candidates(
     for journal_path in sorted(logs_dir.glob("*/journal.json")):
         run = journal_path.parent.name
         journal = _load_json(journal_path)
+        node2parent = journal.get("node2parent") or {}
         for node in journal.get("nodes", []):
             ctime = node.get("ctime")
             if ctime is None:
@@ -157,12 +180,15 @@ def collect_candidates(
             )
             score, maximize = _metric_value(node)
             checksum = _sha256(submission_path) if submission_path.exists() else None
+            node_id = str(node.get("id", ""))
             candidates.append(
                 Candidate(
                     competition=competition,
                     run=run,
                     step=int(node.get("step", -1)),
-                    node_id=str(node.get("id", "")),
+                    node_id=node_id,
+                    parent_node_id=node2parent.get(node_id),
+                    ancestor_node_ids=_ancestor_node_ids(node_id, node2parent),
                     timestamp=timestamp,
                     ctime=float(ctime),
                     local_score=score,
@@ -239,18 +265,204 @@ def _sort_key(candidate: Candidate) -> tuple[float, float]:
     return metric, candidate.ctime
 
 
+def _rounded_score(candidate: Candidate, score_round_decimals: int) -> float | None:
+    if candidate.local_score is None:
+        return None
+    return round(candidate.local_score, score_round_decimals)
+
+
+def _normalized_score(candidate: Candidate) -> float | None:
+    if candidate.local_score is None:
+        return None
+    if candidate.metric_maximize is False:
+        return -candidate.local_score
+    return candidate.local_score
+
+
+def _lineage_node_ids(candidate: Candidate) -> set[str]:
+    return {candidate.node_id, *candidate.ancestor_node_ids}
+
+
+def _are_in_same_branch_family(left: Candidate, right: Candidate) -> bool:
+    if left.run != right.run:
+        return False
+    return bool(_lineage_node_ids(left) & _lineage_node_ids(right))
+
+
+def _has_ancestor_relation(left: Candidate, right: Candidate) -> bool:
+    return (
+        left.node_id in right.ancestor_node_ids
+        or right.node_id in left.ancestor_node_ids
+    )
+
+
+def _rounded_normalized_score(
+    candidate: Candidate,
+    score_round_decimals: int,
+) -> float | None:
+    candidate_score = _normalized_score(candidate)
+    if candidate_score is None:
+        return None
+    return round(candidate_score, score_round_decimals)
+
+
+def _is_strictly_worse_than(
+    candidate: Candidate,
+    ancestor: Candidate,
+    *,
+    score_round_decimals: int,
+) -> bool:
+    candidate_score = _rounded_normalized_score(candidate, score_round_decimals)
+    ancestor_score = _rounded_normalized_score(ancestor, score_round_decimals)
+    if candidate_score is None or ancestor_score is None:
+        return False
+    return candidate_score < ancestor_score
+
+
+def _has_same_rounded_score(
+    left: Candidate,
+    right: Candidate,
+    *,
+    score_round_decimals: int,
+) -> bool:
+    return _rounded_score(left, score_round_decimals) == _rounded_score(
+        right,
+        score_round_decimals,
+    )
+
+
+def _has_similar_predictions(
+    left: Candidate,
+    right: Candidate,
+    *,
+    prediction_round_decimals: int,
+    prediction_similarity_rmse_threshold: float,
+) -> bool:
+    rmse = submission_prediction_rmse(
+        left.submission_path,
+        right.submission_path,
+        prediction_round_decimals=prediction_round_decimals,
+    )
+    return rmse is not None and rmse <= prediction_similarity_rmse_threshold
+
+
+def _should_collapse_related_candidate(
+    candidate: Candidate,
+    selected_candidate: Candidate,
+    *,
+    score_round_decimals: int,
+    prediction_round_decimals: int,
+    prediction_similarity_rmse_threshold: float,
+) -> bool:
+    if _has_ancestor_relation(candidate, selected_candidate):
+        if selected_candidate.node_id in candidate.ancestor_node_ids:
+            ancestor = selected_candidate
+            descendant = candidate
+        else:
+            ancestor = candidate
+            descendant = selected_candidate
+
+        if _is_strictly_worse_than(
+            descendant,
+            ancestor,
+            score_round_decimals=score_round_decimals,
+        ):
+            return True
+
+    return _has_same_rounded_score(
+        candidate,
+        selected_candidate,
+        score_round_decimals=score_round_decimals,
+    ) and _has_similar_predictions(
+        candidate,
+        selected_candidate,
+        prediction_round_decimals=prediction_round_decimals,
+        prediction_similarity_rmse_threshold=prediction_similarity_rmse_threshold,
+    )
+
+
+def _prefer_ancestor_for_duplicate_related(
+    candidates: list[Candidate],
+    *,
+    score_round_decimals: int,
+    prediction_round_decimals: int,
+    prediction_similarity_rmse_threshold: float,
+) -> list[Candidate]:
+    selected: list[Candidate] = []
+    for candidate in candidates:
+        related_indices = []
+        for idx, selected_candidate in enumerate(list(selected)):
+            if not _are_in_same_branch_family(candidate, selected_candidate):
+                continue
+            if not _should_collapse_related_candidate(
+                candidate,
+                selected_candidate,
+                score_round_decimals=score_round_decimals,
+                prediction_round_decimals=prediction_round_decimals,
+                prediction_similarity_rmse_threshold=(
+                    prediction_similarity_rmse_threshold
+                ),
+            ):
+                continue
+            related_indices.append(idx)
+
+        if not related_indices:
+            selected.append(candidate)
+            continue
+
+        if any(
+            selected[idx].node_id in candidate.ancestor_node_ids
+            for idx in related_indices
+        ):
+            continue
+
+        if any(
+            candidate.node_id in selected[idx].ancestor_node_ids
+            for idx in related_indices
+        ):
+            selected = [
+                selected_candidate
+                for idx, selected_candidate in enumerate(selected)
+                if idx not in set(related_indices)
+            ]
+            selected.append(candidate)
+    return selected
+
+
 def select_top_unsent_ready(
     candidates: Iterable[Candidate],
     *,
     registry: SubmissionRegistry,
     competition: str,
     limit: int,
+    include_related: bool = False,
+    score_round_decimals: int = DEFAULT_SCORE_ROUND_DECIMALS,
+    prediction_round_decimals: int = DEFAULT_PREDICTION_ROUND_DECIMALS,
+    prediction_similarity_rmse_threshold: float = (
+        DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD
+    ),
 ) -> list[Candidate]:
-    ready = [
+    ready = sorted(
+        [
+            candidate
+            for candidate in candidates
+            if candidate.is_submit_ready
+        ],
+        key=_sort_key,
+        reverse=True,
+    )
+    if not include_related:
+        ready = _prefer_ancestor_for_duplicate_related(
+            ready,
+            score_round_decimals=score_round_decimals,
+            prediction_round_decimals=prediction_round_decimals,
+            prediction_similarity_rmse_threshold=prediction_similarity_rmse_threshold,
+        )
+
+    unsent_ready = [
         candidate
-        for candidate in candidates
-        if candidate.is_submit_ready
-        and not registry.is_submitted(
+        for candidate in ready
+        if not registry.is_submitted(
             competition=competition,
             sha256=candidate.sha256,
             run=candidate.run,
@@ -258,7 +470,7 @@ def select_top_unsent_ready(
             timestamp=candidate.timestamp,
         )
     ]
-    return sorted(ready, key=_sort_key, reverse=True)[:limit]
+    return unsent_ready[:limit]
 
 
 def build_kaggle_message(candidate: Candidate) -> str:
@@ -649,6 +861,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Show scored or buggy local nodes that cannot be submitted.",
     )
+    parser.add_argument(
+        "--include-related",
+        action="store_true",
+        help=(
+            "Include related branch candidates that are normally hidden by "
+            "dominance or prediction-similarity filtering."
+        ),
+    )
+    parser.add_argument(
+        "--score-round-decimals",
+        type=int,
+        default=DEFAULT_SCORE_ROUND_DECIMALS,
+        help="Decimal places used to group local CV scores for related candidates.",
+    )
+    parser.add_argument(
+        "--prediction-round-decimals",
+        type=int,
+        default=DEFAULT_PREDICTION_ROUND_DECIMALS,
+        help="Decimal places used before comparing submission predictions.",
+    )
+    parser.add_argument(
+        "--prediction-similarity-rmse-threshold",
+        type=float,
+        default=DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD,
+        help="RMSE threshold below which related submissions are treated as similar.",
+    )
     return parser.parse_args(argv)
 
 
@@ -682,6 +920,12 @@ def main(argv: list[str] | None = None) -> int:
         registry=registry,
         competition=args.competition,
         limit=args.limit,
+        include_related=args.include_related,
+        score_round_decimals=args.score_round_decimals,
+        prediction_round_decimals=args.prediction_round_decimals,
+        prediction_similarity_rmse_threshold=(
+            args.prediction_similarity_rmse_threshold
+        ),
     )
 
     if args.submit:

@@ -24,6 +24,7 @@ from .research import (
 )
 from .utils import serialize
 from .utils.config import Config
+from .utils.prediction_similarity import submission_prediction_rmse
 from .utils.response import extract_code, is_valid_python_script
 
 SYNTHESIS_PROMPT_INTRO = (
@@ -162,35 +163,164 @@ def _solution_payload(
     return payload
 
 
-def _rounded_score(node: Node) -> float | None:
+def _rounded_score(node: Node, score_round_decimals: int) -> float | None:
     value = _metric_value(node)
-    return None if value is None else round(value, 5)
+    return None if value is None else round(value, score_round_decimals)
 
 
-def _are_direct_relatives(left: Node, right: Node) -> bool:
-    return left.parent is right or right.parent is left
+def _normalized_score(node: Node) -> float | None:
+    value = _metric_value(node)
+    if value is None or node.metric is None:
+        return None
+    return value if node.metric.maximize else -value
 
 
-def _prefer_parent_for_duplicate_direct_relatives(
+def _rounded_normalized_score(
+    node: Node,
+    score_round_decimals: int,
+) -> float | None:
+    value = _normalized_score(node)
+    return None if value is None else round(value, score_round_decimals)
+
+
+def _ancestor_nodes(node: Node) -> list[Node]:
+    ancestors: list[Node] = []
+    parent = node.parent
+    seen = {node.id}
+    while parent is not None and parent.id not in seen:
+        ancestors.append(parent)
+        seen.add(parent.id)
+        parent = parent.parent
+    return ancestors
+
+
+def _lineage_nodes(node: Node) -> set[Node]:
+    return {node, *_ancestor_nodes(node)}
+
+
+def _are_in_same_branch_family(left: Node, right: Node) -> bool:
+    return bool(_lineage_nodes(left) & _lineage_nodes(right))
+
+
+def _has_ancestor_relation(left: Node, right: Node) -> bool:
+    return left in _ancestor_nodes(right) or right in _ancestor_nodes(left)
+
+
+def _is_strictly_worse_than(
+    node: Node,
+    ancestor: Node,
+    *,
+    score_round_decimals: int,
+) -> bool:
+    node_score = _rounded_normalized_score(node, score_round_decimals)
+    ancestor_score = _rounded_normalized_score(ancestor, score_round_decimals)
+    if node_score is None or ancestor_score is None:
+        return False
+    return node_score < ancestor_score
+
+
+def _submission_path_for_node(cfg: Config, run_id: str, node: Node) -> Path:
+    timestamp = _timestamp_from_ctime(node.ctime)
+    return (
+        Path(cfg.log_dir).resolve().parent
+        / run_id
+        / "artifacts"
+        / timestamp
+        / "submission.csv"
+    )
+
+
+def _has_similar_submission_predictions(
+    *,
+    cfg: Config,
+    left_run_id: str,
+    left: Node,
+    right_run_id: str,
+    right: Node,
+) -> bool:
+    rmse = submission_prediction_rmse(
+        _submission_path_for_node(cfg, left_run_id, left),
+        _submission_path_for_node(cfg, right_run_id, right),
+        prediction_round_decimals=cfg.synthesis.prediction_round_decimals,
+    )
+    return (
+        rmse is not None
+        and rmse <= cfg.synthesis.prediction_similarity_rmse_threshold
+    )
+
+
+def _should_collapse_related_node(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+    selected_node: Node,
+) -> bool:
+    if _has_ancestor_relation(node, selected_node):
+        if selected_node in _ancestor_nodes(node):
+            ancestor = selected_node
+            descendant = node
+        else:
+            ancestor = node
+            descendant = selected_node
+
+        if _is_strictly_worse_than(
+            descendant,
+            ancestor,
+            score_round_decimals=cfg.synthesis.score_round_decimals,
+        ):
+            return True
+
+    return _rounded_score(
+        node,
+        cfg.synthesis.score_round_decimals,
+    ) == _rounded_score(
+        selected_node,
+        cfg.synthesis.score_round_decimals,
+    ) and _has_similar_submission_predictions(
+        cfg=cfg,
+        left_run_id=run_id,
+        left=node,
+        right_run_id=run_id,
+        right=selected_node,
+    )
+
+
+def _prefer_ancestor_for_related_predictions(
+    cfg: Config,
     candidates: list[tuple[str, Node]],
 ) -> list[tuple[str, Node]]:
     selected: list[tuple[str, Node]] = []
     for run_id, node in candidates:
-        should_add = True
+        related_indices = []
         for idx, (selected_run_id, selected_node) in enumerate(selected):
             if run_id != selected_run_id:
                 continue
-            if _rounded_score(node) != _rounded_score(selected_node):
+            if not _are_in_same_branch_family(node, selected_node):
                 continue
-            if not _are_direct_relatives(node, selected_node):
+            if not _should_collapse_related_node(
+                cfg=cfg,
+                run_id=run_id,
+                node=node,
+                selected_node=selected_node,
+            ):
                 continue
+            related_indices.append(idx)
 
-            if selected_node.parent is node:
-                selected[idx] = (run_id, node)
-            should_add = False
-            break
+        if not related_indices:
+            selected.append((run_id, node))
+            continue
 
-        if should_add:
+        if any(selected[idx][1] in _ancestor_nodes(node) for idx in related_indices):
+            continue
+
+        if any(node in _ancestor_nodes(selected[idx][1]) for idx in related_indices):
+            related_index_set = set(related_indices)
+            selected = [
+                item
+                for idx, item in enumerate(selected)
+                if idx not in related_index_set
+            ]
             selected.append((run_id, node))
     return selected
 
@@ -215,7 +345,7 @@ def collect_top_synthesis_solutions(
         )
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)
-    selected = _prefer_parent_for_duplicate_direct_relatives(selected)
+    selected = _prefer_ancestor_for_related_predictions(cfg, selected)
     return [
         _solution_payload(
             registry_entries=registry_entries,

@@ -48,6 +48,9 @@ synthesis:
   every_scored_steps: 15
   top_k: 5
   source_runs: []
+  score_round_decimals: 5
+  prediction_round_decimals: 5
+  prediction_similarity_rmse_threshold: 0.015
   timeout: 900
   model: gpt-5.5
   reasoning_effort: medium

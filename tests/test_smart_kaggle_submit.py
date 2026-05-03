@@ -144,6 +144,130 @@ def test_select_top_unsent_ready_sorts_by_metric_and_skips_registry_duplicates(
     assert [(c.step, c.local_score) for c in selected] == [(2, 0.85), (0, 0.8)]
 
 
+def test_select_top_unsent_ready_filters_similar_related_predictions(
+    tmp_path,
+):
+    logs_dir = tmp_path / "logs"
+    _write_journal(
+        logs_dir,
+        "run-a",
+        [
+            {
+                "step": 0,
+                "id": "parent-node",
+                "ctime": _ctime("20260502T100000"),
+                "metric": {"value": 0.948596, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 1,
+                "id": "child-node",
+                "ctime": _ctime("20260502T101000"),
+                "metric": {"value": 0.948604, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 2,
+                "id": "sibling-node",
+                "ctime": _ctime("20260502T102000"),
+                "metric": {"value": 0.948604, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 3,
+                "id": "bug-node",
+                "ctime": _ctime("20260502T103000"),
+                "metric": {"value": None, "maximize": True},
+                "is_buggy": True,
+            },
+            {
+                "step": 4,
+                "id": "grandchild-node",
+                "ctime": _ctime("20260502T104000"),
+                "metric": {"value": 0.948604, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 5,
+                "id": "unrelated-node",
+                "ctime": _ctime("20260502T105000"),
+                "metric": {"value": 0.948604, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 6,
+                "id": "worse-grandchild-node",
+                "ctime": _ctime("20260502T110000"),
+                "metric": {"value": 0.94850, "maximize": True},
+                "is_buggy": False,
+            },
+        ],
+    )
+    journal = json.loads((logs_dir / "run-a" / "journal.json").read_text())
+    journal["node2parent"] = {
+        "child-node": "parent-node",
+        "sibling-node": "parent-node",
+        "bug-node": "parent-node",
+        "grandchild-node": "bug-node",
+        "worse-grandchild-node": "child-node",
+    }
+    (logs_dir / "run-a" / "journal.json").write_text(json.dumps(journal))
+    _write_artifact(
+        logs_dir,
+        "run-a",
+        "20260502T100000",
+        "id,target\n1,0.100000\n2,0.200000\n",
+    )
+    _write_artifact(
+        logs_dir,
+        "run-a",
+        "20260502T101000",
+        "id,target\n1,0.105000\n2,0.205000\n",
+    )
+    _write_artifact(
+        logs_dir,
+        "run-a",
+        "20260502T102000",
+        "id,target\n1,0.800000\n2,0.900000\n",
+    )
+    _write_artifact(
+        logs_dir,
+        "run-a",
+        "20260502T104000",
+        "id,target\n1,0.110000\n2,0.210000\n",
+    )
+    _write_artifact(logs_dir, "run-a", "20260502T105000", "id,target\n1,0.87\n")
+    _write_artifact(logs_dir, "run-a", "20260502T110000", "id,target\n1,0.88\n")
+    candidates = collect_candidates(logs_dir)
+
+    selected = select_top_unsent_ready(
+        candidates,
+        registry=SubmissionRegistry(tmp_path / "registry.json"),
+        competition="playground-series-s6e5",
+        limit=5,
+    )
+    selected_with_related = select_top_unsent_ready(
+        candidates,
+        registry=SubmissionRegistry(tmp_path / "registry.json"),
+        competition="playground-series-s6e5",
+        limit=5,
+        include_related=True,
+    )
+
+    assert [(c.step, c.node_id) for c in selected] == [
+        (5, "unrelated-node"),
+        (2, "sibling-node"),
+        (0, "parent-node"),
+    ]
+    assert [(c.step, c.node_id) for c in selected_with_related] == [
+        (5, "unrelated-node"),
+        (4, "grandchild-node"),
+        (2, "sibling-node"),
+        (1, "child-node"),
+        (0, "parent-node"),
+    ]
+
+
 def test_registry_round_trip_and_duplicate_detection(tmp_path):
     registry_path = tmp_path / "submission_registry.json"
     registry = SubmissionRegistry(registry_path)
