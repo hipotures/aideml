@@ -33,8 +33,14 @@ def _cfg(tmp_path: Path):
     return cfg
 
 
-def _node(score: float | None, *, code: str, buggy: bool = False) -> Node:
-    node = Node(code=code, plan="plan")
+def _node(
+    score: float | None,
+    *,
+    code: str,
+    buggy: bool = False,
+    parent: Node | None = None,
+) -> Node:
+    node = Node(code=code, plan="plan", parent=parent)
     node.metric = (
         WorstMetricValue() if score is None else MetricValue(score, maximize=True)
     )
@@ -128,6 +134,46 @@ def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
 
     assert solutions == [{"local_cv_score": 0.8, "code": "print('included')"}]
+
+
+def test_collect_top_synthesis_solutions_keeps_parent_for_same_rounded_child_score(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.synthesis.top_k = 5
+    journal = Journal()
+    parent = _node(0.948596, code="print('parent')")
+    child = _node(0.948604, code="print('child')", parent=parent)
+    unrelated = _node(0.948604, code="print('unrelated')")
+    journal.append(parent)
+    journal.append(child)
+    journal.append(unrelated)
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert [solution["code"] for solution in solutions] == [
+        "print('parent')",
+        "print('unrelated')",
+    ]
+
+
+def test_collect_top_synthesis_solutions_keeps_child_when_rounded_score_improves(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.synthesis.top_k = 5
+    journal = Journal()
+    parent = _node(0.94859, code="print('parent')")
+    child = _node(0.94861, code="print('child')", parent=parent)
+    journal.append(parent)
+    journal.append(child)
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert [solution["code"] for solution in solutions] == [
+        "print('child')",
+        "print('parent')",
+    ]
 
 
 def test_synthesis_prompt_contains_only_relevant_context(tmp_path):

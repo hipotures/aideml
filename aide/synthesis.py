@@ -162,6 +162,39 @@ def _solution_payload(
     return payload
 
 
+def _rounded_score(node: Node) -> float | None:
+    value = _metric_value(node)
+    return None if value is None else round(value, 5)
+
+
+def _are_direct_relatives(left: Node, right: Node) -> bool:
+    return left.parent is right or right.parent is left
+
+
+def _prefer_parent_for_duplicate_direct_relatives(
+    candidates: list[tuple[str, Node]],
+) -> list[tuple[str, Node]]:
+    selected: list[tuple[str, Node]] = []
+    for run_id, node in candidates:
+        should_add = True
+        for idx, (selected_run_id, selected_node) in enumerate(selected):
+            if run_id != selected_run_id:
+                continue
+            if _rounded_score(node) != _rounded_score(selected_node):
+                continue
+            if not _are_direct_relatives(node, selected_node):
+                continue
+
+            if selected_node.parent is node:
+                selected[idx] = (run_id, node)
+            should_add = False
+            break
+
+        if should_add:
+            selected.append((run_id, node))
+    return selected
+
+
 def collect_top_synthesis_solutions(
     *,
     cfg: Config,
@@ -182,6 +215,7 @@ def collect_top_synthesis_solutions(
         )
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)
+    selected = _prefer_parent_for_duplicate_direct_relatives(selected)
     return [
         _solution_payload(
             registry_entries=registry_entries,
