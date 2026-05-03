@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import subprocess
 import time
 from dataclasses import dataclass
@@ -34,6 +35,14 @@ SYNTHESIS_PROMPT_INTRO = (
     "combines the best compatible ideas. Return only the Python code."
 )
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
+TARGET_LEAKAGE_PATTERNS = (
+    "next_pitstop",
+    "next_pit_stop",
+    "next_pit",
+    "next pitstop",
+    "next pit stop",
+    "pitstop_known",
+)
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -94,6 +103,41 @@ def _working_nodes_with_metrics(journal: Journal) -> list[Node]:
 
 def _timestamp_from_ctime(ctime: float) -> str:
     return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
+
+
+def _target_leakage_reasons(code: str) -> list[str]:
+    lowered = code.lower()
+    reasons: list[str] = []
+    for pattern in TARGET_LEAKAGE_PATTERNS:
+        if pattern in lowered:
+            reasons.append(f"suspicious token '{pattern}'")
+
+    lines = code.splitlines()
+    for idx, line in enumerate(lines):
+        normalized_line = re.sub(r"\s+", "", line.lower())
+        if (
+            "shift(-1" not in normalized_line
+            and "shift(periods=-1" not in normalized_line
+        ):
+            continue
+        window = "\n".join(lines[max(0, idx - 4) : idx + 5]).lower()
+        if "pitstop" in window or "pit_stop" in window:
+            reasons.append("future PitStop shift(-1)")
+
+    return list(dict.fromkeys(reasons))
+
+
+def _has_target_leakage_pattern(code: str) -> bool:
+    return bool(_target_leakage_reasons(code))
+
+
+def _validate_synthesis_code_for_injection(code: str) -> None:
+    reasons = _target_leakage_reasons(code)
+    if reasons:
+        raise ValueError(
+            "Codex synthesis response contains target leakage risk: "
+            + "; ".join(reasons)
+        )
 
 
 def _load_submission_registry(cfg: Config) -> list[dict[str, Any]]:
@@ -341,7 +385,9 @@ def collect_top_synthesis_solutions(
         if source_journal is None:
             continue
         selected.extend(
-            (run_id, node) for node in _working_nodes_with_metrics(source_journal)
+            (run_id, node)
+            for node in _working_nodes_with_metrics(source_journal)
+            if not _has_target_leakage_pattern(node.code)
         )
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)
@@ -414,6 +460,11 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         "and memory efficiency: avoid unnecessary full-data copies, unbounded "
         "feature explosions, oversized intermediate objects, and excessively "
         "expensive model searches.\n\n"
+        "# Leakage rules\n"
+        "Do not use target leakage. Do not use future PitStop values, next-lap "
+        "PitStop reconstruction, shift(-1) on PitStop, next_PitStop-like "
+        "features, or test PitStop values to overwrite predictions. Use PitStop "
+        "only as a normal current-row historical feature.\n\n"
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring scripts that ran "
         "successfully. local_cv_score is the AIDE validation score. "
@@ -540,6 +591,7 @@ def run_synthesis_checkpoint(
     if error is None:
         try:
             code = parse_synthesis_code(raw_response)
+            _validate_synthesis_code_for_injection(code)
             (checkpoint_dir / "response.py").write_text(code, encoding="utf-8")
         except ValueError as exc:
             error = str(exc)
@@ -607,6 +659,30 @@ def _checkpoint_step(checkpoint: Path) -> int:
     return int(_checkpoint_label(checkpoint))
 
 
+def _mark_checkpoint_failed(checkpoint: Path, error: str) -> None:
+    status = _read_json(checkpoint / "status.json")
+    if not isinstance(status, dict):
+        status = {}
+    status.update(
+        {
+            "status": "failed",
+            "failed_at": dt.datetime.now().isoformat(timespec="seconds"),
+            "error": error,
+        }
+    )
+    _write_json(checkpoint / "status.json", status)
+
+
+def _read_valid_ready_checkpoint_code(checkpoint: Path) -> str | None:
+    code = (checkpoint / "response.py").read_text(encoding="utf-8")
+    try:
+        _validate_synthesis_code_for_injection(code)
+    except ValueError as exc:
+        _mark_checkpoint_failed(checkpoint, str(exc))
+        return None
+    return code
+
+
 class SynthesisAdvisor:
     def __init__(
         self,
@@ -640,7 +716,9 @@ class SynthesisAdvisor:
         ready_checkpoint = _oldest_ready_checkpoint(self.cfg.log_dir)
         if ready_checkpoint is not None:
             checkpoint_step = _checkpoint_step(ready_checkpoint)
-            code = (ready_checkpoint / "response.py").read_text(encoding="utf-8")
+            code = _read_valid_ready_checkpoint_code(ready_checkpoint)
+            if code is None:
+                return None
             return SynthesisNode(
                 node=Node(
                     plan=f"{SYNTHESIS_PLAN_PREFIX} {checkpoint_step:06d}",
@@ -658,7 +736,9 @@ class SynthesisAdvisor:
         if status in {"injected", "failed"}:
             return None
         if status == "ready":
-            code = (checkpoint_dir / "response.py").read_text(encoding="utf-8")
+            code = _read_valid_ready_checkpoint_code(checkpoint_dir)
+            if code is None:
+                return None
         elif status is None:
             self._active_checkpoint = completed_steps
             try:
