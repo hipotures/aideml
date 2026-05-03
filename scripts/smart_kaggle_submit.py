@@ -20,7 +20,14 @@ from aide.utils.prediction_similarity import (
     submission_prediction_rmse,
 )
 from rich.console import Console
-from rich.progress import track
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    track,
+)
 from rich.table import Table
 
 
@@ -161,45 +168,58 @@ def collect_candidates(
     *,
     competition: str = DEFAULT_COMPETITION,
     since: dt.datetime | None = None,
+    progress: Any | None = None,
 ) -> list[Candidate]:
     candidates: list[Candidate] = []
-    for journal_path in sorted(logs_dir.glob("*/journal.json")):
+    journal_records = [
+        (journal_path, _load_json(journal_path))
+        for journal_path in sorted(logs_dir.glob("*/journal.json"))
+    ]
+    task_id = None
+    if progress is not None:
+        total = sum(len(journal.get("nodes", [])) for _, journal in journal_records)
+        task_id = progress.add_task("Scanning local AIDE nodes", total=total)
+
+    for journal_path, journal in journal_records:
         run = journal_path.parent.name
-        journal = _load_json(journal_path)
         node2parent = journal.get("node2parent") or {}
         for node in journal.get("nodes", []):
-            ctime = node.get("ctime")
-            if ctime is None:
-                continue
-            if since is not None and dt.datetime.fromtimestamp(ctime) < since:
-                continue
+            try:
+                ctime = node.get("ctime")
+                if ctime is None:
+                    continue
+                if since is not None and dt.datetime.fromtimestamp(ctime) < since:
+                    continue
 
-            timestamp = _timestamp_from_ctime(float(ctime))
-            submission_path = (
-                journal_path.parent / "artifacts" / timestamp / "submission.csv"
-            )
-            score, maximize = _metric_value(node)
-            checksum = _sha256(submission_path) if submission_path.exists() else None
-            node_id = str(node.get("id", ""))
-            candidates.append(
-                Candidate(
-                    competition=competition,
-                    run=run,
-                    step=int(node.get("step", -1)),
-                    node_id=node_id,
-                    parent_node_id=node2parent.get(node_id),
-                    ancestor_node_ids=_ancestor_node_ids(node_id, node2parent),
-                    timestamp=timestamp,
-                    ctime=float(ctime),
-                    local_score=score,
-                    metric_maximize=maximize,
-                    is_buggy=bool(node.get("is_buggy")),
-                    submission_path=submission_path,
-                    sha256=checksum,
-                    plan=node.get("plan"),
-                    analysis=node.get("analysis"),
+                timestamp = _timestamp_from_ctime(float(ctime))
+                submission_path = (
+                    journal_path.parent / "artifacts" / timestamp / "submission.csv"
                 )
-            )
+                score, maximize = _metric_value(node)
+                checksum = _sha256(submission_path) if submission_path.exists() else None
+                node_id = str(node.get("id", ""))
+                candidates.append(
+                    Candidate(
+                        competition=competition,
+                        run=run,
+                        step=int(node.get("step", -1)),
+                        node_id=node_id,
+                        parent_node_id=node2parent.get(node_id),
+                        ancestor_node_ids=_ancestor_node_ids(node_id, node2parent),
+                        timestamp=timestamp,
+                        ctime=float(ctime),
+                        local_score=score,
+                        metric_maximize=maximize,
+                        is_buggy=bool(node.get("is_buggy")),
+                        submission_path=submission_path,
+                        sha256=checksum,
+                        plan=node.get("plan"),
+                        analysis=node.get("analysis"),
+                    )
+                )
+            finally:
+                if progress is not None and task_id is not None:
+                    progress.advance(task_id)
     return candidates
 
 
@@ -237,21 +257,33 @@ def validate_candidates(
     candidates: Iterable[Candidate],
     *,
     data_dir: Path | None,
+    progress: Any | None = None,
 ) -> list[Candidate]:
     validated: list[Candidate] = []
-    for candidate in candidates:
-        if (
-            candidate.is_buggy
-            or candidate.local_score is None
-            or not candidate.submission_path.exists()
-            or candidate.sha256 is None
-        ):
-            validated.append(candidate)
-            continue
-        validation_error = validate_submission_file(candidate, data_dir)
-        validated.append(
-            _replace_candidate(candidate, validation_error=validation_error)
+    candidate_list = list(candidates)
+    task_id = None
+    if progress is not None:
+        task_id = progress.add_task(
+            "Validating local submissions",
+            total=len(candidate_list),
         )
+    for candidate in candidate_list:
+        try:
+            if (
+                candidate.is_buggy
+                or candidate.local_score is None
+                or not candidate.submission_path.exists()
+                or candidate.sha256 is None
+            ):
+                validated.append(candidate)
+                continue
+            validation_error = validate_submission_file(candidate, data_dir)
+            validated.append(
+                _replace_candidate(candidate, validation_error=validation_error)
+            )
+        finally:
+            if progress is not None and task_id is not None:
+                progress.advance(task_id)
     return validated
 
 
@@ -387,45 +419,56 @@ def _prefer_ancestor_for_duplicate_related(
     score_round_decimals: int,
     prediction_round_decimals: int,
     prediction_similarity_rmse_threshold: float,
+    progress: Any | None = None,
 ) -> list[Candidate]:
     selected: list[Candidate] = []
+    task_id = None
+    if progress is not None:
+        task_id = progress.add_task(
+            "Filtering related submissions",
+            total=len(candidates),
+        )
     for candidate in candidates:
-        related_indices = []
-        for idx, selected_candidate in enumerate(list(selected)):
-            if not _are_in_same_branch_family(candidate, selected_candidate):
+        try:
+            related_indices = []
+            for idx, selected_candidate in enumerate(list(selected)):
+                if not _are_in_same_branch_family(candidate, selected_candidate):
+                    continue
+                if not _should_collapse_related_candidate(
+                    candidate,
+                    selected_candidate,
+                    score_round_decimals=score_round_decimals,
+                    prediction_round_decimals=prediction_round_decimals,
+                    prediction_similarity_rmse_threshold=(
+                        prediction_similarity_rmse_threshold
+                    ),
+                ):
+                    continue
+                related_indices.append(idx)
+
+            if not related_indices:
+                selected.append(candidate)
                 continue
-            if not _should_collapse_related_candidate(
-                candidate,
-                selected_candidate,
-                score_round_decimals=score_round_decimals,
-                prediction_round_decimals=prediction_round_decimals,
-                prediction_similarity_rmse_threshold=(
-                    prediction_similarity_rmse_threshold
-                ),
+
+            if any(
+                selected[idx].node_id in candidate.ancestor_node_ids
+                for idx in related_indices
             ):
                 continue
-            related_indices.append(idx)
 
-        if not related_indices:
-            selected.append(candidate)
-            continue
-
-        if any(
-            selected[idx].node_id in candidate.ancestor_node_ids
-            for idx in related_indices
-        ):
-            continue
-
-        if any(
-            candidate.node_id in selected[idx].ancestor_node_ids
-            for idx in related_indices
-        ):
-            selected = [
-                selected_candidate
-                for idx, selected_candidate in enumerate(selected)
-                if idx not in set(related_indices)
-            ]
-            selected.append(candidate)
+            if any(
+                candidate.node_id in selected[idx].ancestor_node_ids
+                for idx in related_indices
+            ):
+                selected = [
+                    selected_candidate
+                    for idx, selected_candidate in enumerate(selected)
+                    if idx not in set(related_indices)
+                ]
+                selected.append(candidate)
+        finally:
+            if progress is not None and task_id is not None:
+                progress.advance(task_id)
     return selected
 
 
@@ -441,6 +484,7 @@ def select_top_unsent_ready(
     prediction_similarity_rmse_threshold: float = (
         DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD
     ),
+    progress: Any | None = None,
 ) -> list[Candidate]:
     ready = sorted(
         [
@@ -457,6 +501,7 @@ def select_top_unsent_ready(
             score_round_decimals=score_round_decimals,
             prediction_round_decimals=prediction_round_decimals,
             prediction_similarity_rmse_threshold=prediction_similarity_rmse_threshold,
+            progress=progress,
         )
 
     unsent_ready = [
@@ -890,6 +935,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _build_progress(console: Console) -> Progress:
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     console = Console()
@@ -909,24 +965,31 @@ def main(argv: list[str] | None = None) -> int:
         client = None
         console.print(f"Remote Kaggle submissions unavailable: {exc}")
 
-    candidates = collect_candidates(
-        args.logs_dir,
-        competition=args.competition,
-        since=parse_since(args.since),
-    )
-    candidates = validate_candidates(candidates, data_dir=args.data_dir)
-    selected = select_top_unsent_ready(
-        candidates,
-        registry=registry,
-        competition=args.competition,
-        limit=args.limit,
-        include_related=args.include_related,
-        score_round_decimals=args.score_round_decimals,
-        prediction_round_decimals=args.prediction_round_decimals,
-        prediction_similarity_rmse_threshold=(
-            args.prediction_similarity_rmse_threshold
-        ),
-    )
+    with _build_progress(console) as progress:
+        candidates = collect_candidates(
+            args.logs_dir,
+            competition=args.competition,
+            since=parse_since(args.since),
+            progress=progress,
+        )
+        candidates = validate_candidates(
+            candidates,
+            data_dir=args.data_dir,
+            progress=progress,
+        )
+        selected = select_top_unsent_ready(
+            candidates,
+            registry=registry,
+            competition=args.competition,
+            limit=args.limit,
+            include_related=args.include_related,
+            score_round_decimals=args.score_round_decimals,
+            prediction_round_decimals=args.prediction_round_decimals,
+            prediction_similarity_rmse_threshold=(
+                args.prediction_similarity_rmse_threshold
+            ),
+            progress=progress,
+        )
 
     if args.submit:
         if client is None:

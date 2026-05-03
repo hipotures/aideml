@@ -19,6 +19,22 @@ select_top_unsent_ready = smart_kaggle_submit.select_top_unsent_ready
 submit_candidates = smart_kaggle_submit.submit_candidates
 sync_registry_from_remote = smart_kaggle_submit.sync_registry_from_remote
 render_dry_run = smart_kaggle_submit.render_dry_run
+validate_candidates = smart_kaggle_submit.validate_candidates
+
+
+class FakeProgress:
+    def __init__(self):
+        self.tasks = []
+        self.advances = {}
+
+    def add_task(self, description, *, total=None):
+        task_id = len(self.tasks)
+        self.tasks.append({"description": description, "total": total})
+        self.advances[task_id] = 0
+        return task_id
+
+    def advance(self, task_id, advance=1):
+        self.advances[task_id] += advance
 
 
 def _ctime(timestamp: str) -> float:
@@ -83,6 +99,72 @@ def test_collect_candidates_reads_scores_and_marks_submit_ready(tmp_path):
     assert candidates[0].submission_path == (
         logs_dir / "run-a" / "artifacts" / "20260502T100000" / "submission.csv"
     )
+
+
+def test_collect_candidates_reports_progress_per_node(tmp_path):
+    logs_dir = tmp_path / "logs"
+    _write_journal(
+        logs_dir,
+        "run-a",
+        [
+            {
+                "step": 0,
+                "id": "node-ready-low",
+                "ctime": _ctime("20260502T100000"),
+                "metric": {"value": 0.8, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 1,
+                "id": "node-not-ready",
+                "ctime": _ctime("20260502T101000"),
+                "metric": {"value": 0.9, "maximize": True},
+                "is_buggy": False,
+            },
+        ],
+    )
+    progress = FakeProgress()
+
+    collect_candidates(logs_dir, progress=progress)
+
+    assert progress.tasks == [
+        {"description": "Scanning local AIDE nodes", "total": 2}
+    ]
+    assert progress.advances == {0: 2}
+
+
+def test_validate_candidates_reports_progress_per_candidate(tmp_path):
+    logs_dir = tmp_path / "logs"
+    _write_journal(
+        logs_dir,
+        "run-a",
+        [
+            {
+                "step": 0,
+                "id": "node-ready-low",
+                "ctime": _ctime("20260502T100000"),
+                "metric": {"value": 0.8, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 1,
+                "id": "node-buggy",
+                "ctime": _ctime("20260502T101000"),
+                "metric": {"value": None, "maximize": True},
+                "is_buggy": True,
+            },
+        ],
+    )
+    _write_artifact(logs_dir, "run-a", "20260502T100000", "id,target\n1,0.8\n")
+    candidates = collect_candidates(logs_dir)
+    progress = FakeProgress()
+
+    validate_candidates(candidates, data_dir=None, progress=progress)
+
+    assert progress.tasks == [
+        {"description": "Validating local submissions", "total": 2}
+    ]
+    assert progress.advances == {0: 2}
 
 
 def test_select_top_unsent_ready_sorts_by_metric_and_skips_registry_duplicates(
@@ -266,6 +348,47 @@ def test_select_top_unsent_ready_filters_similar_related_predictions(
         (1, "child-node"),
         (0, "parent-node"),
     ]
+
+
+def test_select_top_unsent_ready_reports_filtering_progress(tmp_path):
+    logs_dir = tmp_path / "logs"
+    _write_journal(
+        logs_dir,
+        "run-a",
+        [
+            {
+                "step": 0,
+                "id": "node-a",
+                "ctime": _ctime("20260502T100000"),
+                "metric": {"value": 0.8, "maximize": True},
+                "is_buggy": False,
+            },
+            {
+                "step": 1,
+                "id": "node-b",
+                "ctime": _ctime("20260502T101000"),
+                "metric": {"value": 0.9, "maximize": True},
+                "is_buggy": False,
+            },
+        ],
+    )
+    _write_artifact(logs_dir, "run-a", "20260502T100000", "id,target\n1,0.8\n")
+    _write_artifact(logs_dir, "run-a", "20260502T101000", "id,target\n1,0.9\n")
+    candidates = collect_candidates(logs_dir)
+    progress = FakeProgress()
+
+    select_top_unsent_ready(
+        candidates,
+        registry=SubmissionRegistry(tmp_path / "registry.json"),
+        competition="playground-series-s6e5",
+        limit=5,
+        progress=progress,
+    )
+
+    assert progress.tasks == [
+        {"description": "Filtering related submissions", "total": 2}
+    ]
+    assert progress.advances == {0: 2}
 
 
 def test_registry_round_trip_and_duplicate_detection(tmp_path):
