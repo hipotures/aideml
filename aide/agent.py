@@ -151,6 +151,7 @@ class Agent:
             "statsmodels",
             "xgboost",
             "catboost",
+            "autogluon",
             "lightGBM",
             "torch",
             "torchvision",
