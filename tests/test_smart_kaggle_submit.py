@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "smart_kaggle_submit.py"
@@ -20,6 +21,11 @@ submit_candidates = smart_kaggle_submit.submit_candidates
 sync_registry_from_remote = smart_kaggle_submit.sync_registry_from_remote
 render_dry_run = smart_kaggle_submit.render_dry_run
 validate_candidates = smart_kaggle_submit.validate_candidates
+filter_candidates_by_sha256 = smart_kaggle_submit.filter_candidates_by_sha256
+parse_sha256_filters = smart_kaggle_submit.parse_sha256_filters
+require_explicit_submit_ready_candidates = (
+    smart_kaggle_submit.require_explicit_submit_ready_candidates
+)
 
 
 class FakeProgress:
@@ -55,6 +61,24 @@ def _write_artifact(logs_dir: Path, run_name: str, timestamp: str, body: str) ->
     submission_path = artifact_dir / "submission.csv"
     submission_path.write_text(body)
     return submission_path
+
+
+def _candidate_for_sha(step: int, sha256: str) -> smart_kaggle_submit.Candidate:
+    return smart_kaggle_submit.Candidate(
+        competition="playground-series-s6e5",
+        run="run-a",
+        step=step,
+        node_id=f"node-{step}",
+        parent_node_id=None,
+        ancestor_node_ids=(),
+        timestamp=f"20260502T10000{step}",
+        ctime=float(step),
+        local_score=0.9 - step / 100,
+        metric_maximize=True,
+        is_buggy=False,
+        submission_path=Path(f"submission-{step}.csv"),
+        sha256=sha256,
+    )
 
 
 def test_collect_candidates_reads_scores_and_marks_submit_ready(tmp_path):
@@ -224,6 +248,103 @@ def test_select_top_unsent_ready_sorts_by_metric_and_skips_registry_duplicates(
     )
 
     assert [(c.step, c.local_score) for c in selected] == [(2, 0.85), (0, 0.8)]
+
+
+def test_parse_sha256_filters_supports_repeated_and_comma_values():
+    assert parse_sha256_filters(["abc123, DEF456", "789abc"]) == [
+        "abc123",
+        "def456",
+        "789abc",
+    ]
+
+
+def test_parse_sha256_filters_rejects_non_hex_values():
+    with pytest.raises(ValueError, match="Invalid sha256 prefix"):
+        parse_sha256_filters(["abc-not-hex"])
+
+
+def test_filter_candidates_by_sha256_uses_unique_prefixes_in_requested_order():
+    candidates = [
+        _candidate_for_sha(1, "aaaa1111bbbb"),
+        _candidate_for_sha(2, "bbbb2222cccc"),
+        _candidate_for_sha(3, "cccc3333dddd"),
+    ]
+
+    selected = filter_candidates_by_sha256(candidates, ["cccc", "aaaa1111"])
+
+    assert [candidate.step for candidate in selected] == [3, 1]
+
+
+def test_filter_candidates_by_sha256_rejects_missing_prefix():
+    with pytest.raises(ValueError, match="No submit-ready candidate matches"):
+        filter_candidates_by_sha256(
+            [_candidate_for_sha(1, "aaaa1111bbbb")],
+            ["deadbeef"],
+        )
+
+
+def test_filter_candidates_by_sha256_rejects_ambiguous_prefix():
+    candidates = [
+        _candidate_for_sha(1, "aaaa1111bbbb"),
+        _candidate_for_sha(2, "aaaa2222cccc"),
+    ]
+
+    with pytest.raises(ValueError, match="Ambiguous sha256 prefix"):
+        filter_candidates_by_sha256(candidates, ["aaaa"])
+
+
+def test_filter_candidates_by_sha256_deduplicates_exact_same_hash():
+    candidates = [
+        _candidate_for_sha(1, "aaaa1111bbbb"),
+        _candidate_for_sha(2, "aaaa1111bbbb"),
+    ]
+
+    selected = filter_candidates_by_sha256(candidates, ["aaaa1111", "aaaa1111"])
+
+    assert [candidate.step for candidate in selected] == [1]
+
+
+def test_require_explicit_submit_ready_candidates_rejects_registry_duplicates(tmp_path):
+    candidate = _candidate_for_sha(1, "aaaa1111bbbb")
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,target\n1,0.5\n")
+    candidate = smart_kaggle_submit._replace_candidate(
+        candidate,
+        submission_path=submission_path,
+    )
+    registry = SubmissionRegistry(
+        Path("registry.json"),
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "run": candidate.run,
+                "step": candidate.step,
+                "timestamp": candidate.timestamp,
+                "sha256": candidate.sha256,
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="already submitted"):
+        require_explicit_submit_ready_candidates(
+            [candidate],
+            registry=registry,
+            competition="playground-series-s6e5",
+        )
+
+
+def test_require_explicit_submit_ready_candidates_rejects_not_ready_candidate():
+    candidate = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(1, "aaaa1111bbbb"),
+        validation_error="duplicate ids",
+    )
+
+    with pytest.raises(ValueError, match="invalid-submission: duplicate ids"):
+        require_explicit_submit_ready_candidates(
+            [candidate],
+            registry=SubmissionRegistry(Path("registry.json")),
+            competition="playground-series-s6e5",
+        )
 
 
 def test_select_top_unsent_ready_filters_similar_related_predictions(

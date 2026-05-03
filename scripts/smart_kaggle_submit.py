@@ -518,6 +518,97 @@ def select_top_unsent_ready(
     return unsent_ready[:limit]
 
 
+def parse_sha256_filters(values: list[str] | None) -> list[str]:
+    filters: list[str] = []
+    for value in values or []:
+        for item in value.split(","):
+            item = item.strip().lower()
+            if not item:
+                continue
+            if not re.fullmatch(r"[0-9a-f]+", item):
+                raise ValueError(
+                    f"Invalid sha256 prefix '{item}'; use hexadecimal characters."
+                )
+            filters.append(item)
+    return filters
+
+
+def filter_candidates_by_sha256(
+    candidates: list[Candidate],
+    sha256_filters: list[str],
+) -> list[Candidate]:
+    if not sha256_filters:
+        return candidates
+
+    selected: list[Candidate] = []
+    selected_hashes: set[str] = set()
+    for sha_filter in sha256_filters:
+        matches = [
+            candidate
+            for candidate in candidates
+            if (candidate.sha256 or "").lower().startswith(sha_filter)
+        ]
+        if not matches:
+            raise ValueError(
+                f"No submit-ready candidate matches sha256 prefix: {sha_filter}"
+            )
+
+        matched_hashes = {candidate.sha256 for candidate in matches}
+        if len(matched_hashes) > 1:
+            preview = ", ".join(sorted(str(value)[:10] for value in matched_hashes))
+            raise ValueError(
+                f"Ambiguous sha256 prefix {sha_filter}; matches: {preview}"
+            )
+
+        candidate = matches[0]
+        if candidate.sha256 not in selected_hashes:
+            selected.append(candidate)
+            if candidate.sha256 is not None:
+                selected_hashes.add(candidate.sha256)
+
+    return selected
+
+
+def _not_ready_reason(candidate: Candidate) -> str:
+    reasons = []
+    if candidate.is_buggy:
+        reasons.append("buggy")
+    if candidate.local_score is None:
+        reasons.append("no-score")
+    if not candidate.submission_path.exists():
+        reasons.append("missing-submission")
+    if candidate.sha256 is None:
+        reasons.append("missing-sha256")
+    if candidate.validation_error is not None:
+        reasons.append(f"invalid-submission: {candidate.validation_error}")
+    return ", ".join(reasons) or "unknown"
+
+
+def require_explicit_submit_ready_candidates(
+    candidates: list[Candidate],
+    *,
+    registry: SubmissionRegistry,
+    competition: str,
+) -> list[Candidate]:
+    selected: list[Candidate] = []
+    for candidate in candidates:
+        sha = (candidate.sha256 or "")[:10]
+        if not candidate.is_submit_ready:
+            raise ValueError(
+                f"Candidate {sha} is not submit-ready: {_not_ready_reason(candidate)}"
+            )
+        if registry.is_submitted(
+            competition=competition,
+            sha256=candidate.sha256,
+            run=candidate.run,
+            step=candidate.step,
+            timestamp=candidate.timestamp,
+        ):
+            raise ValueError(f"Candidate {sha} is already submitted.")
+        selected.append(candidate)
+    return selected
+
+
 def build_kaggle_message(candidate: Candidate) -> str:
     score = "nan" if candidate.local_score is None else f"{candidate.local_score:.5f}"
     node = candidate.node_id[:8] if candidate.node_id else "unknown"
@@ -902,6 +993,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--submit", action="store_true", help="Actually submit to Kaggle."
     )
     parser.add_argument(
+        "--sha256",
+        action="append",
+        default=[],
+        metavar="PREFIX",
+        help=(
+            "Only show or submit candidates matching a SHA-256 prefix. "
+            "Repeat the option or pass comma-separated prefixes."
+        ),
+    )
+    parser.add_argument(
         "--include-not-ready",
         action="store_true",
         help="Show scored or buggy local nodes that cannot be submitted.",
@@ -949,6 +1050,11 @@ def _build_progress(console: Console) -> Progress:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     console = Console()
+    try:
+        sha256_filters = parse_sha256_filters(args.sha256)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 2
     registry = SubmissionRegistry.load(args.registry)
     remote_submissions = None
     try:
@@ -972,24 +1078,45 @@ def main(argv: list[str] | None = None) -> int:
             since=parse_since(args.since),
             progress=progress,
         )
-        candidates = validate_candidates(
-            candidates,
-            data_dir=args.data_dir,
-            progress=progress,
-        )
-        selected = select_top_unsent_ready(
-            candidates,
-            registry=registry,
-            competition=args.competition,
-            limit=args.limit,
-            include_related=args.include_related,
-            score_round_decimals=args.score_round_decimals,
-            prediction_round_decimals=args.prediction_round_decimals,
-            prediction_similarity_rmse_threshold=(
-                args.prediction_similarity_rmse_threshold
-            ),
-            progress=progress,
-        )
+        if sha256_filters:
+            try:
+                selected = filter_candidates_by_sha256(candidates, sha256_filters)
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
+                return 2
+            selected = validate_candidates(
+                selected,
+                data_dir=args.data_dir,
+                progress=progress,
+            )
+            try:
+                selected = require_explicit_submit_ready_candidates(
+                    selected,
+                    registry=registry,
+                    competition=args.competition,
+                )
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
+                return 2
+        else:
+            candidates = validate_candidates(
+                candidates,
+                data_dir=args.data_dir,
+                progress=progress,
+            )
+            selected = select_top_unsent_ready(
+                candidates,
+                registry=registry,
+                competition=args.competition,
+                limit=args.limit,
+                include_related=args.include_related,
+                score_round_decimals=args.score_round_decimals,
+                prediction_round_decimals=args.prediction_round_decimals,
+                prediction_similarity_rmse_threshold=(
+                    args.prediction_similarity_rmse_threshold
+                ),
+                progress=progress,
+            )
 
     if args.submit:
         if client is None:
