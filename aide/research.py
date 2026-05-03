@@ -31,7 +31,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
         "summary": {"type": "string"},
         "hypotheses": {
             "type": "array",
-                "items": {
+            "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "properties": {
@@ -83,6 +83,10 @@ def _metric_value(node: Node) -> float | None:
     return None if node.metric is None else node.metric.value
 
 
+def _timestamp_from_ctime(ctime: float) -> str:
+    return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
+
+
 def count_scored_working_nodes(journal: Journal) -> int:
     return sum(1 for node in journal.good_nodes if _metric_value(node) is not None)
 
@@ -131,6 +135,169 @@ def checkpoint_dir_for(cfg: Config, completed_steps: int) -> Path:
     return Path(cfg.log_dir) / "research" / _checkpoint_name(completed_steps)
 
 
+def _checkpoint_step(checkpoint: Path) -> int:
+    return int(_checkpoint_label(checkpoint))
+
+
+def _load_submission_registry(cfg: Config) -> list[dict[str, Any]]:
+    registry_path = Path(cfg.log_dir).resolve().parent / "submission_registry.json"
+    if not registry_path.exists():
+        return []
+    try:
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    entries = data.get("submissions", []) if isinstance(data, dict) else data
+    return entries if isinstance(entries, list) else []
+
+
+def _parse_public_score(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _public_score_for_node(
+    *,
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    node: Node,
+) -> float | None:
+    timestamp = _timestamp_from_ctime(node.ctime)
+    for entry in registry_entries:
+        if entry.get("run") != run_id:
+            continue
+        if str(entry.get("remote_status", "")).upper() != "COMPLETE":
+            continue
+        public_score = _parse_public_score(entry.get("public_score"))
+        if public_score is None:
+            continue
+
+        if entry.get("node_id") == node.id:
+            return public_score
+        if (
+            str(entry.get("step")) == str(node.step)
+            and entry.get("timestamp") == timestamp
+        ):
+            return public_score
+    return None
+
+
+def _scored_nodes_with_counts(journal: Journal) -> list[tuple[int, Node]]:
+    scored: list[tuple[int, Node]] = []
+    count = 0
+    for node in journal.nodes:
+        if node in journal.good_nodes and _metric_value(node) is not None:
+            count += 1
+            scored.append((count, node))
+    return scored
+
+
+def _max_local_score(nodes: list[Node]) -> float | None:
+    if not nodes:
+        return None
+    best = max(nodes, key=lambda node: node.metric)
+    return _metric_value(best)
+
+
+def _max_public_score(
+    *,
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    nodes: list[Node],
+) -> float | None:
+    scores = [
+        score
+        for node in nodes
+        if (
+            score := _public_score_for_node(
+                registry_entries=registry_entries,
+                run_id=run_id,
+                node=node,
+            )
+        )
+        is not None
+    ]
+    return max(scores) if scores else None
+
+
+def _completed_research_checkpoints(
+    *, cfg: Config, before_step: int
+) -> list[tuple[int, Path]]:
+    research_dir = Path(cfg.log_dir) / "research"
+    if not research_dir.exists():
+        return []
+    checkpoints: list[tuple[int, Path]] = []
+    for checkpoint in sorted(research_dir.glob("checkpoint-*")):
+        if _checkpoint_status(checkpoint) != "completed":
+            continue
+        step = _checkpoint_step(checkpoint)
+        if step < before_step:
+            checkpoints.append((step, checkpoint))
+    return checkpoints
+
+
+def collect_previous_research_summaries(
+    *,
+    cfg: Config,
+    journal: Journal,
+    completed_steps: int,
+) -> list[dict[str, Any]]:
+    limit = max(0, int(cfg.research.previous_summary_count))
+    if limit == 0:
+        return []
+
+    checkpoints = _completed_research_checkpoints(
+        cfg=cfg,
+        before_step=completed_steps,
+    )
+    if not checkpoints:
+        return []
+
+    registry_entries = _load_submission_registry(cfg)
+    scored_nodes = _scored_nodes_with_counts(journal)
+    selected_checkpoints = checkpoints[-limit:]
+    summaries: list[dict[str, Any]] = []
+    for index, (checkpoint_step, checkpoint) in enumerate(
+        reversed(selected_checkpoints),
+        start=1,
+    ):
+        next_step = (
+            completed_steps if index == 1 else selected_checkpoints[-index + 1][0]
+        )
+        window_nodes = [
+            node
+            for scored_count, node in scored_nodes
+            if checkpoint_step < scored_count <= next_step
+        ]
+        try:
+            response = _read_json(checkpoint / "response.json")
+        except (OSError, json.JSONDecodeError):
+            continue
+        parsed = response.get("parsed_response", {})
+        if not isinstance(parsed, dict):
+            continue
+        summary = _compact_prompt_text(parsed.get("summary"), max_chars=700)
+        if not summary:
+            continue
+        summaries.append(
+            {
+                "checkpoint": checkpoint.name,
+                "summary": summary,
+                "max_local_cv_score_after": _max_local_score(window_nodes),
+                "max_kaggle_public_score_after": _max_public_score(
+                    registry_entries=registry_entries,
+                    run_id=cfg.exp_name,
+                    nodes=window_nodes,
+                ),
+            }
+        )
+    return summaries
+
+
 def collect_research_context(
     *,
     cfg: Config,
@@ -161,6 +328,11 @@ def collect_research_context(
         ),
         "best_working_solutions": [_node_payload(node) for node in top_best],
         "worst_working_solutions": [_node_payload(node) for node in top_worst],
+        "previous_research_summaries": collect_previous_research_summaries(
+            cfg=cfg,
+            journal=journal,
+            completed_steps=completed_steps,
+        ),
     }
 
 
@@ -173,6 +345,7 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "metric_direction",
             "best_working_solutions",
             "worst_working_solutions",
+            "previous_research_summaries",
         ]
         if key in context and context.get(key) is not None
     }
@@ -191,6 +364,13 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "previous node or code block. Use the prior results only to avoid "
         "repeating approaches that have already been tried. Do not debug broken "
         "code.\n\n"
+        "# Prior research history\n"
+        "If previous_research_summaries is present, it lists recent completed "
+        "research proposals. Each entry includes its summary plus the maximum "
+        "local CV score and Kaggle public score observed afterwards when "
+        "available. Try to propose ideas that are unique relative to those "
+        "earlier summaries, or explicitly develop the strongest methods from "
+        "them into a new testable direction.\n\n"
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring code snippets that "
         "ran successfully. worst_working_solutions contains the lowest-scoring "
@@ -436,9 +616,7 @@ def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
             title = _compact_prompt_text(hypothesis.get("title"), max_chars=160)
             lines.append(f"{idx}. {title}")
 
-            rationale = _compact_prompt_text(
-                hypothesis.get("rationale"), max_chars=260
-            )
+            rationale = _compact_prompt_text(hypothesis.get("rationale"), max_chars=260)
             if rationale:
                 lines.append(f"   Why: {rationale}")
 
@@ -525,7 +703,9 @@ class ResearchAdvisor:
 
         latest = load_latest_research_hints(self.cfg.log_dir)
         if latest is not None:
-            return f"[green]Research: ✓ {latest['checkpoint'].removeprefix('checkpoint-')}"
+            return (
+                f"[green]Research: ✓ {latest['checkpoint'].removeprefix('checkpoint-')}"
+            )
 
         if latest_checkpoint is not None:
             checkpoint, status = latest_checkpoint

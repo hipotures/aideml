@@ -37,6 +37,7 @@ research:
   every_steps: 10
   top_k_best: 5
   top_k_worst: 5
+  previous_summary_count: 5
   timeout: 900
   model: gpt-5.5
   reasoning_effort: medium

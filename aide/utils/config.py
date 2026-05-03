@@ -69,6 +69,7 @@ class ResearchConfig:
     every_steps: int = 10
     top_k_best: int = 5
     top_k_worst: int = 5
+    previous_summary_count: int = 5
     timeout: int = 900
     model: str = "gpt-5.5"
     reasoning_effort: str = "medium"

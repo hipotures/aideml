@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import subprocess
 from pathlib import Path
@@ -9,6 +10,7 @@ from aide.research import (
     ResearchAdvisor,
     build_data_overview,
     build_research_prompt,
+    collect_previous_research_summaries,
     collect_research_context,
     count_scored_working_nodes,
     format_research_hints_for_prompt,
@@ -44,6 +46,29 @@ def _node(score: float | None, *, code: str, plan: str, buggy: bool = False) -> 
     return node
 
 
+def _write_research_checkpoint(
+    cfg,
+    step: int,
+    *,
+    summary: str,
+    status: str = "completed",
+) -> Path:
+    checkpoint = Path(cfg.log_dir) / "research" / f"checkpoint-{step:06d}"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text(json.dumps({"status": status}))
+    (checkpoint / "response.json").write_text(
+        json.dumps(
+            {
+                "parsed_response": {
+                    "summary": summary,
+                    "hypotheses": [],
+                }
+            }
+        )
+    )
+    return checkpoint
+
+
 def test_build_data_overview_includes_compact_column_schema(tmp_path):
     input_dir = tmp_path / "input"
     input_dir.mkdir()
@@ -54,8 +79,7 @@ def test_build_data_overview_includes_compact_column_schema(tmp_path):
         encoding="utf-8",
     )
     (input_dir / "test.csv").write_text(
-        "id,Driver,Race,TyreLife\n"
-        "3,HAM,Bahrain,13\n",
+        "id,Driver,Race,TyreLife\n" "3,HAM,Bahrain,13\n",
         encoding="utf-8",
     )
     (input_dir / "sample_submission.csv").write_text(
@@ -136,6 +160,74 @@ def test_count_scored_working_nodes_ignores_buggy_nodes(tmp_path):
     assert count_scored_working_nodes(journal) == 2
 
 
+def test_collect_previous_research_summaries_includes_scores_after_each_checkpoint(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.previous_summary_count = 2
+    journal = Journal()
+    for idx, score in enumerate(
+        [
+            0.70,
+            0.71,
+            0.72,
+            0.73,
+            0.74,
+            0.81,
+            0.84,
+            0.82,
+            0.83,
+            0.80,
+            0.91,
+            0.90,
+        ],
+        start=1,
+    ):
+        journal.append(_node(score, code=f"print({idx})", plan=f"node {idx}"))
+    _write_research_checkpoint(cfg, 5, summary="older research summary")
+    _write_research_checkpoint(cfg, 10, summary="newer research summary")
+    public_node = journal.nodes[10]
+    (Path(cfg.log_dir).parent / "submission_registry.json").write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "run": cfg.exp_name,
+                        "step": public_node.step,
+                        "timestamp": dt.datetime.fromtimestamp(
+                            public_node.ctime
+                        ).strftime("%Y%m%dT%H%M%S"),
+                        "node_id": public_node.id,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.70124",
+                    }
+                ]
+            }
+        )
+    )
+
+    summaries = collect_previous_research_summaries(
+        cfg=cfg,
+        journal=journal,
+        completed_steps=12,
+    )
+
+    assert summaries == [
+        {
+            "checkpoint": "checkpoint-000010",
+            "summary": "newer research summary",
+            "max_local_cv_score_after": 0.91,
+            "max_kaggle_public_score_after": 0.70124,
+        },
+        {
+            "checkpoint": "checkpoint-000005",
+            "summary": "older research summary",
+            "max_local_cv_score_after": 0.84,
+            "max_kaggle_public_score_after": None,
+        },
+    ]
+
+
 def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     cfg = _cfg(tmp_path)
     journal = Journal()
@@ -164,6 +256,29 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "hypotheses[].target" not in prompt
     assert "Return exactly 5 concise new solution ideas" in prompt
     assert "Do not target a specific previous node or code block" in prompt
+
+
+def test_research_prompt_includes_previous_research_summaries(tmp_path):
+    context = {
+        "task_desc": "task",
+        "best_working_solutions": [],
+        "worst_working_solutions": [],
+        "previous_research_summaries": [
+            {
+                "checkpoint": "checkpoint-000010",
+                "summary": "Try pit-window features",
+                "max_local_cv_score_after": 0.91,
+                "max_kaggle_public_score_after": 0.70124,
+            }
+        ],
+    }
+
+    prompt = build_research_prompt(context)
+
+    assert '"previous_research_summaries"' in prompt
+    assert '"label"' not in prompt
+    assert "Try pit-window features" in prompt
+    assert "unique relative to those earlier summaries" in prompt
 
 
 def test_run_research_checkpoint_logs_request_and_response(tmp_path):
