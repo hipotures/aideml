@@ -150,6 +150,7 @@ class Agent:
             "scikit-learn",
             "statsmodels",
             "xgboost",
+            "catboost",
             "lightGBM",
             "torch",
             "torchvision",
