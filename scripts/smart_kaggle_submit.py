@@ -946,17 +946,26 @@ def render_dry_run(
         console.print(details)
 
     submitted = Table(title="Local submission registry")
+    submitted.add_column("#", justify="right")
     submitted.add_column("cv", justify="right")
     submitted.add_column("public", justify="right")
     submitted.add_column("status")
     submitted.add_column("run")
     submitted.add_column("step", justify="right")
     submitted.add_column("date")
+    complete_rank = 0
     for entry in sorted(registry.entries, key=_registry_sort_key, reverse=True):
+        remote_status = str(entry.get("remote_status") or "")
+        if remote_status.upper() == "COMPLETE":
+            complete_rank += 1
+            display_rank = str(complete_rank)
+        else:
+            display_rank = "-"
         submitted.add_row(
+            display_rank,
             _format_score(entry.get("local_score")),
             str(entry.get("public_score") or ""),
-            str(entry.get("remote_status") or ""),
+            remote_status,
             str(entry.get("run", "")),
             str(entry.get("step", "")),
             _format_submission_date(entry.get("timestamp")),

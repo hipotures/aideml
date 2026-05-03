@@ -700,6 +700,10 @@ def test_render_dry_run_sorts_registry_by_public_score_desc(tmp_path):
 
     assert output.index("run-high") < output.index("run-low")
     assert output.index("run-low") < output.index("run-missing")
+    registry_lines = [line for line in output.splitlines() if "run-" in line]
+    assert "│ 1 " in registry_lines[0]
+    assert "│ 2 " in registry_lines[1]
+    assert "│ - " in registry_lines[2]
 
 
 def test_submit_candidates_records_each_successful_submission(tmp_path):
