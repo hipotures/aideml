@@ -251,6 +251,7 @@ def build_run_data(
 ) -> Group:
     lines = [progress, status]
     if research_status is not None:
+        lines.append("")
         lines.append(research_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     return Group(*lines)

@@ -10,10 +10,34 @@ import re
 import logging
 import os
 import threading
+from pathlib import Path
 
 logger = logging.getLogger("aide")
 _llm_call_counter = 0
 _llm_call_counter_lock = threading.Lock()
+
+
+def _max_logged_llm_call(log_dir: str | None) -> int:
+    if not log_dir:
+        return 0
+    path = Path(log_dir) / "llm_communication.md"
+    if not path.exists():
+        return 0
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return 0
+    calls = [int(match.group(1)) for match in re.finditer(r"\bllm_call=(\d+)\b", text)]
+    return max(calls, default=0)
+
+
+def _next_llm_sequence_id() -> int:
+    global _llm_call_counter
+    with _llm_call_counter_lock:
+        if _llm_call_counter == 0:
+            _llm_call_counter = _max_logged_llm_call(os.getenv("AIDE_LOG_DIR"))
+        _llm_call_counter += 1
+        return _llm_call_counter
 
 
 def determine_provider(model: str) -> str:
@@ -78,10 +102,7 @@ def query(
     )
     compiled_user_message = compile_prompt_to_md(user_message) if user_message else None
 
-    global _llm_call_counter
-    with _llm_call_counter_lock:
-        _llm_call_counter += 1
-        sequence_id = _llm_call_counter
+    sequence_id = _next_llm_sequence_id()
 
     request_payload = {
         "model": model,

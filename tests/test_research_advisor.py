@@ -9,6 +9,7 @@ from aide.research import (
     ResearchAdvisor,
     build_research_prompt,
     collect_research_context,
+    format_research_hints_for_prompt,
     load_latest_research_hints,
     run_research_checkpoint,
 )
@@ -138,9 +139,16 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     checkpoint_dir = Path(result["checkpoint_dir"])
     command = seen["cmd"]
 
+    assert command[:6] == [
+        "codex",
+        "--search",
+        "--ask-for-approval",
+        "never",
+        "exec",
+        "--ignore-user-config",
+    ]
     assert "--ignore-user-config" in command
     assert "--search" in command
-    assert command[command.index("--ask-for-approval") + 1] == "never"
     assert command[command.index("--sandbox") + 1] == "read-only"
     assert command[command.index("--model") + 1] == "gpt-5.5"
     assert 'model_reasoning_effort="medium"' in command
@@ -203,6 +211,36 @@ def test_load_latest_research_hints_returns_latest_completed_checkpoint(tmp_path
     assert hints["summary"] == "new"
 
 
+def test_format_research_hints_for_prompt_renders_concise_human_hints():
+    rendered = format_research_hints_for_prompt(
+        {
+            "checkpoint": "checkpoint-000010",
+            "summary": "research summary",
+            "hypotheses": [
+                {
+                    "target": "node",
+                    "parent_node_id": "dfe8126b1b4c46d68446bcb513e51d10",
+                    "title": "Use tire-age feature",
+                    "rationale": "Tyre age matters.",
+                    "implementation_hint": "Add TyreLife rolling features.",
+                    "expected_effect": "Better pit-window ranking.",
+                    "risk": "May overfit.",
+                    "sources": ["https://example.com/source"],
+                }
+            ],
+        }
+    )
+
+    assert "Research checkpoint: 000010" in rendered
+    assert "Summary: research summary" in rendered
+    assert "Use tire-age feature" in rendered
+    assert "Try: Add TyreLife rolling features." in rendered
+    assert "parent_node_id" not in rendered
+    assert "dfe8126b1b4c46d68446bcb513e51d10" not in rendered
+    assert "https://example.com/source" not in rendered
+    assert "```json" not in rendered
+
+
 def test_agent_includes_latest_research_hints_in_draft_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
@@ -230,6 +268,71 @@ def test_agent_includes_latest_research_hints_in_draft_prompt(tmp_path):
 
     agent._draft()
 
-    assert (
-        captured["prompt"]["External research hints"]["summary"] == "research summary"
+    assert "research summary" in captured["prompt"]["External research hints"]
+    assert "Use tire-age feature" in captured["prompt"]["External research hints"]
+
+
+def test_agent_includes_latest_research_hints_in_debug_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    checkpoint = Path(cfg.log_dir) / "research" / "checkpoint-000010"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text('{"status": "completed"}')
+    (checkpoint / "response.json").write_text(
+        json.dumps(
+            {
+                "parsed_response": {
+                    "summary": "debug research summary",
+                    "hypotheses": [{"title": "Fix tire-age leakage"}],
+                }
+            }
+        )
     )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    parent = _node(None, code="raise RuntimeError('bug')", plan="bug")
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._debug(parent)
+
+    assert "debug research summary" in captured["prompt"]["External research hints"]
+    assert "Fix tire-age leakage" in captured["prompt"]["External research hints"]
+
+
+def test_agent_includes_serialized_research_hints_in_improve_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    checkpoint = Path(cfg.log_dir) / "research" / "checkpoint-000010"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text('{"status": "completed"}')
+    (checkpoint / "response.json").write_text(
+        json.dumps(
+            {
+                "parsed_response": {
+                    "summary": "improve research summary",
+                    "hypotheses": [{"title": "Add race-driver sequential features"}],
+                }
+            }
+        )
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    parent = _node(0.94, code="print('baseline')", plan="baseline")
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    hints = captured["prompt"]["External research hints"]
+    assert isinstance(hints, str)
+    assert "improve research summary" in hints
+    assert "Add race-driver sequential features" in hints

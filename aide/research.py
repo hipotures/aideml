@@ -215,11 +215,11 @@ def _codex_profile_text(model: str, reasoning_effort: str) -> str:
 def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
     return [
         "codex",
-        "exec",
-        "--ignore-user-config",
         "--search",
         "--ask-for-approval",
         "never",
+        "exec",
+        "--ignore-user-config",
         "--sandbox",
         "read-only",
         "--cd",
@@ -405,6 +405,67 @@ def load_latest_research_hints(log_dir: Path | str) -> dict[str, Any] | None:
         "summary": parsed.get("summary", ""),
         "hypotheses": parsed.get("hypotheses", []),
     }
+
+
+def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "…"
+
+
+def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
+    checkpoint = str(hints.get("checkpoint", "")).removeprefix("checkpoint-")
+    lines = [
+        "Use these external Codex research hints only when relevant.",
+        "Treat them as hypotheses to test, not as proven facts.",
+    ]
+    if checkpoint:
+        lines.append(f"Research checkpoint: {checkpoint}")
+
+    summary = _compact_prompt_text(hints.get("summary"), max_chars=800)
+    if summary:
+        lines.extend(["", f"Summary: {summary}"])
+
+    hypotheses = hints.get("hypotheses", [])
+    if isinstance(hypotheses, list) and hypotheses:
+        lines.extend(["", "Prioritized hypotheses:"])
+        for idx, hypothesis in enumerate(hypotheses[:8], start=1):
+            if not isinstance(hypothesis, dict):
+                lines.append(f"{idx}. {_compact_prompt_text(hypothesis)}")
+                continue
+
+            title = _compact_prompt_text(hypothesis.get("title"), max_chars=160)
+            target = (
+                "fresh approach"
+                if hypothesis.get("target") == "root"
+                else "extend an existing solution"
+            )
+            lines.append(f"{idx}. {title} ({target})")
+
+            rationale = _compact_prompt_text(
+                hypothesis.get("rationale"), max_chars=260
+            )
+            if rationale:
+                lines.append(f"   Why: {rationale}")
+
+            implementation = _compact_prompt_text(
+                hypothesis.get("implementation_hint"), max_chars=360
+            )
+            if implementation:
+                lines.append(f"   Try: {implementation}")
+
+            expected = _compact_prompt_text(
+                hypothesis.get("expected_effect"), max_chars=220
+            )
+            if expected:
+                lines.append(f"   Expected: {expected}")
+
+            risk = _compact_prompt_text(hypothesis.get("risk"), max_chars=220)
+            if risk:
+                lines.append(f"   Risk: {risk}")
+
+    return "\n".join(lines)
 
 
 class ResearchAdvisor:

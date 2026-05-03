@@ -7,7 +7,7 @@ import humanize
 from .backend import FunctionSpec, query
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
-from .research import load_latest_research_hints
+from .research import format_research_hints_for_prompt, load_latest_research_hints
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
@@ -164,7 +164,7 @@ class Agent:
             return
         hints = load_latest_research_hints(self.cfg.log_dir)
         if hints is not None:
-            prompt["External research hints"] = hints
+            prompt["External research hints"] = format_research_hints_for_prompt(hints)
 
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
         """Generate a natural language plan + code in the same LLM call and split them apart."""
@@ -283,6 +283,7 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
+        self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
         return Node(plan=plan, code=code, parent=parent_node)
 
