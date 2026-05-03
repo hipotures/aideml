@@ -289,7 +289,7 @@ def build_last_error_summary(journal: Journal) -> Group:
     if not error_lines:
         lines.append(Text("-", style="dim"))
     else:
-        lines.extend(Text(line) for line in error_lines)
+        lines.extend(Text(line, style="dim") for line in error_lines)
     return Group(*lines)
 
 
