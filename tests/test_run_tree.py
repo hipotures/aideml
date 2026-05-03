@@ -337,7 +337,72 @@ def test_render_tree_view_highlights_focused_line_and_slices_viewport():
     assert "0.91000" in output
     assert "0.92000" in output
     assert "0.93000" not in output
-    assert "\x1b[7m" in output
+    assert "\x1b[7;" in output
+
+
+def test_render_tree_view_highlights_node_marker_and_score_not_tree_guides():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.91, parent=root)
+    journal.append(root)
+    journal.append(child)
+    view = build_tree_view(journal)
+
+    output = _render_ansi(render_tree_view(
+        view,
+        focused_item_id=child.id,
+        scroll_top=0,
+        viewport_height=10,
+    ))
+
+    assert "\x1b[7m└──" not in output
+    assert "\x1b[7;32m●" in output
+
+
+def test_tree_view_renders_active_placeholder_as_tree_child():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.91, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="executing",
+        blink_on=True,
+    )
+    output = _render_text(render_tree_view(
+        view,
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    ))
+
+    assert "├── ● 0.91000 (best)" in output
+    assert "└── [*]" in output
+
+
+def test_tree_view_renders_root_active_placeholder_as_tree_child():
+    journal = Journal()
+    root = _good_node(0.90)
+    journal.append(root)
+
+    view = build_tree_view(
+        journal,
+        active_parent_node=None,
+        active_stage="generating",
+        blink_on=False,
+    )
+    output = _render_text(render_tree_view(
+        view,
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    ))
+
+    assert "├── ● 0.90000 (best)" in output
+    assert "└── [ ]" in output
 
 
 def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):

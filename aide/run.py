@@ -79,6 +79,7 @@ class TreeViewItem:
     parent_id: str | None
     line: Text
     node: Node | None = None
+    focus_start: int = 0
 
 
 @dataclass(frozen=True)
@@ -360,7 +361,12 @@ def build_tree_view(
     show_invalid_submission_branches: bool = False,
 ) -> TreeView:
     items: list[TreeViewItem] = [
-        TreeViewItem("header", None, Text("Solution tree", style="bold blue"))
+        TreeViewItem(
+            "header",
+            None,
+            Text("Solution tree", style="bold blue"),
+            focus_start=0,
+        )
     ]
     children_by_id: dict[str, list[str]] = {"header": []}
     parent_by_id: dict[str, str | None] = {"header": None}
@@ -385,9 +391,14 @@ def build_tree_view(
         if item.parent_id is not None:
             children_by_id.setdefault(item.parent_id, []).append(item.item_id)
 
-    def append_active(parent_id: str, prefix: str) -> None:
+    def append_active(parent_id: str, ancestor_has_next: list[bool]) -> None:
         if active_stage is None:
             return
+        prefix = "".join(
+            "│   " if has_next else "    "
+            for has_next in ancestor_has_next
+        )
+        prefix += "└── "
         line = Text(prefix)
         line.append_text(
             _tree_active_placeholder_line(
@@ -395,7 +406,7 @@ def build_tree_view(
                 blink_on=blink_on,
             )
         )
-        append_item(TreeViewItem("active", parent_id, line))
+        append_item(TreeViewItem("active", parent_id, line, focus_start=len(prefix)))
 
     def append_rec(
         node: Node,
@@ -413,7 +424,15 @@ def build_tree_view(
         prefix += "└── " if is_last else "├── "
         line = Text(prefix)
         line.append_text(_tree_node_label(node, best_node=best_node))
-        append_item(TreeViewItem(node.id, parent_id, line, node=node))
+        append_item(
+            TreeViewItem(
+                node.id,
+                parent_id,
+                line,
+                node=node,
+                focus_start=len(prefix),
+            )
+        )
 
         children = sorted(
             (child for child in node.children if child in journal_nodes),
@@ -426,24 +445,23 @@ def build_tree_view(
             or not child.is_submission_contract_error
         ]
         next_ancestors = [*ancestor_has_next, not is_last]
+        has_active_child = node is active_parent_node
         for index, child in enumerate(visible_children):
             append_rec(
                 child,
                 node.id,
                 next_ancestors,
-                index == len(visible_children) - 1,
+                index == len(visible_children) - 1 and not has_active_child,
             )
         if node is active_parent_node:
-            active_prefix = "".join(
-                "│   " if has_next else "    " for has_next in next_ancestors
-            )
-            append_active(node.id, active_prefix)
+            append_active(node.id, next_ancestors)
 
     roots = list(journal.draft_nodes)
+    has_root_active = active_parent_node is None and active_stage is not None
     for index, node in enumerate(roots):
-        append_rec(node, "header", [], index == len(roots) - 1)
+        append_rec(node, "header", [], index == len(roots) - 1 and not has_root_active)
     if active_parent_node is None:
-        append_active("header", "")
+        append_active("header", [])
 
     return TreeView(
         items=items,
@@ -506,7 +524,7 @@ def render_tree_view(
     for item in visible_items:
         line = item.line.copy()
         if item.item_id == focused_item_id:
-            line.stylize("reverse")
+            line.stylize("reverse", item.focus_start, len(line.plain))
         lines.append(line)
     return Group(*lines)
 
