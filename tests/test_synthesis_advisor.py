@@ -145,6 +145,8 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
 
     assert prompt.startswith(SYNTHESIS_PROMPT_INTRO)
     assert "Return only Python code" in prompt
+    assert "strong time and memory efficiency" in prompt
+    assert "avoid unnecessary full-data copies" in prompt
     assert "task" in prompt
     assert '"best_working_solutions"' in prompt
     assert '"local_cv_score"' in prompt
