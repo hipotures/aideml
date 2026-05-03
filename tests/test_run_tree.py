@@ -4,8 +4,12 @@ from aide.journal import Journal, Node
 from aide.run import (
     build_path_summary,
     build_run_data,
+    build_tree_view,
+    clamp_tree_viewport,
     journal_to_rich_tree,
     last_error_lines,
+    move_tree_focus,
+    render_tree_view,
     run_with_live_refresh,
     stage_status_message,
 )
@@ -228,6 +232,112 @@ def test_journal_tree_ignores_unappended_active_child_node():
     assert "● 0.94500 (best)" in output
     assert "n/a" not in output
     assert "[*]" in output
+
+
+def test_tree_view_starts_with_focusable_header_and_node_rows():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.91, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    view = build_tree_view(journal)
+
+    assert view.items[0].item_id == "header"
+    assert view.items[0].parent_id is None
+    assert [item.item_id for item in view.items[1:]] == [root.id, child.id]
+    assert view.children_by_id["header"] == [root.id]
+    assert view.children_by_id[root.id] == [child.id]
+
+
+def test_tree_focus_moves_by_siblings_parent_and_child():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.91, parent=root)
+    second_child = _good_node(0.92, parent=root)
+    sibling = _good_node(0.89)
+    journal.append(root)
+    journal.append(child)
+    journal.append(second_child)
+    journal.append(sibling)
+    view = build_tree_view(journal)
+
+    assert move_tree_focus(view, "header", "down") == root.id
+    assert move_tree_focus(view, root.id, "down") == sibling.id
+    assert move_tree_focus(view, sibling.id, "down") == sibling.id
+    assert move_tree_focus(view, root.id, "up") == "header"
+    assert move_tree_focus(view, sibling.id, "up") == root.id
+    assert move_tree_focus(view, child.id, "down") == second_child.id
+    assert move_tree_focus(view, second_child.id, "up") == child.id
+    assert move_tree_focus(view, child.id, "left") == root.id
+    assert move_tree_focus(view, root.id, "left") == "header"
+    assert move_tree_focus(view, "header", "right") == root.id
+    assert move_tree_focus(view, root.id, "right") == child.id
+    assert move_tree_focus(view, child.id, "right") == child.id
+
+
+def test_tree_viewport_keeps_focus_visible_without_empty_bottom():
+    current_scroll = 0
+
+    assert (
+        clamp_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=3,
+            current_scroll=current_scroll,
+        )
+        == 0
+    )
+    assert (
+        clamp_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=6,
+            current_scroll=0,
+        )
+        == 2
+    )
+    assert (
+        clamp_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=1,
+            current_scroll=6,
+        )
+        == 1
+    )
+    assert (
+        clamp_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=19,
+            current_scroll=18,
+        )
+        == 15
+    )
+
+
+def test_render_tree_view_highlights_focused_line_and_slices_viewport():
+    journal = Journal()
+    nodes = [_good_node(0.90 + idx / 100) for idx in range(4)]
+    for node in nodes:
+        journal.append(node)
+    view = build_tree_view(journal)
+
+    rendered = render_tree_view(
+        view,
+        focused_item_id=nodes[2].id,
+        scroll_top=1,
+        viewport_height=3,
+    )
+    output = _render_ansi(rendered)
+
+    assert "Solution tree" not in output
+    assert "0.90000" in output
+    assert "0.91000" in output
+    assert "0.92000" in output
+    assert "0.93000" not in output
+    assert "\x1b[7m" in output
 
 
 def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):

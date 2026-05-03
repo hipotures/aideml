@@ -3,10 +3,13 @@ import datetime as dt
 import logging
 import os
 import queue
+import select
 import shutil
 import sys
+import termios
 import threading
 import time
+import tty
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -68,6 +71,22 @@ class ResumeRequest:
 class RuntimeOptions:
     show_invalid_submission_branches: bool = False
     force_check_submissions: bool = False
+
+
+@dataclass(frozen=True)
+class TreeViewItem:
+    item_id: str
+    parent_id: str | None
+    line: Text
+    node: Node | None = None
+
+
+@dataclass(frozen=True)
+class TreeView:
+    items: list[TreeViewItem]
+    index_by_id: dict[str, int]
+    parent_by_id: dict[str, str | None]
+    children_by_id: dict[str, list[str]]
 
 
 def parse_runtime_args(
@@ -269,6 +288,288 @@ def journal_to_rich_tree(
     if active_parent_node is None:
         append_active_placeholder(tree)
     return tree
+
+
+def _visible_best_node(
+    journal: Journal,
+    *,
+    show_invalid_submission_branches: bool,
+) -> Node | None:
+    if show_invalid_submission_branches:
+        return journal.get_best_node()
+
+    visible_good_nodes = [
+        node
+        for node in journal.good_nodes
+        if not node.is_in_submission_contract_error_branch
+    ]
+    return max(visible_good_nodes, key=lambda node: node.metric, default=None)
+
+
+def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
+    synthesis_root = node.parent is None and str(node.plan or "").startswith(
+        SYNTHESIS_PLAN_PREFIX
+    )
+    if synthesis_root and (
+        node.is_buggy or node.metric is None or node.metric.value is None
+    ):
+        label = Text()
+        label.append("◆", style="bold blue")
+        label.append(" bug", style="red")
+        return label
+    if node.is_buggy or node.metric is None or node.metric.value is None:
+        return Text("◍ bug", style="red")
+
+    label = Text()
+    if synthesis_root:
+        label.append("◆", style="blue")
+        label.append(" ")
+    else:
+        label.append("● ", style="green")
+
+    metric_style = "bold green" if node is best_node else "green"
+    metric_text = f"{node.metric.value:.5f}"
+    if node is best_node:
+        metric_text += " (best)"
+    label.append(metric_text, style=metric_style)
+    return label
+
+
+def _tree_active_placeholder_line(
+    *,
+    active_stage: str | None,
+    blink_on: bool,
+) -> Text:
+    indicator = "[*]" if blink_on else "[ ]"
+    style = "bold yellow"
+    if active_stage == "generating":
+        style = "bold white"
+    elif active_stage == "executing":
+        style = "bold yellow"
+    elif active_stage == "reviewing":
+        style = "bold blue"
+    return Text(indicator, style=style)
+
+
+def build_tree_view(
+    journal: Journal,
+    *,
+    active_parent_node: Node | None = None,
+    active_stage: str | None = None,
+    blink_on: bool = True,
+    show_invalid_submission_branches: bool = False,
+) -> TreeView:
+    items: list[TreeViewItem] = [
+        TreeViewItem("header", None, Text("Solution tree", style="bold blue"))
+    ]
+    children_by_id: dict[str, list[str]] = {"header": []}
+    parent_by_id: dict[str, str | None] = {"header": None}
+    journal_nodes = set(journal.nodes)
+    best_node = _visible_best_node(
+        journal,
+        show_invalid_submission_branches=show_invalid_submission_branches,
+    )
+
+    def node_order_key(node: Node):
+        return (
+            node.step is None,
+            node.step if node.step is not None else len(journal.nodes),
+            node.ctime,
+            node.id,
+        )
+
+    def append_item(item: TreeViewItem) -> None:
+        items.append(item)
+        parent_by_id[item.item_id] = item.parent_id
+        children_by_id.setdefault(item.item_id, [])
+        if item.parent_id is not None:
+            children_by_id.setdefault(item.parent_id, []).append(item.item_id)
+
+    def append_active(parent_id: str, prefix: str) -> None:
+        if active_stage is None:
+            return
+        line = Text(prefix)
+        line.append_text(
+            _tree_active_placeholder_line(
+                active_stage=active_stage,
+                blink_on=blink_on,
+            )
+        )
+        append_item(TreeViewItem("active", parent_id, line))
+
+    def append_rec(
+        node: Node,
+        parent_id: str,
+        ancestor_has_next: list[bool],
+        is_last: bool,
+    ) -> None:
+        if node.is_submission_contract_error and not show_invalid_submission_branches:
+            return
+
+        prefix = "".join(
+            "│   " if has_next else "    "
+            for has_next in ancestor_has_next
+        )
+        prefix += "└── " if is_last else "├── "
+        line = Text(prefix)
+        line.append_text(_tree_node_label(node, best_node=best_node))
+        append_item(TreeViewItem(node.id, parent_id, line, node=node))
+
+        children = sorted(
+            (child for child in node.children if child in journal_nodes),
+            key=node_order_key,
+        )
+        visible_children = [
+            child
+            for child in children
+            if show_invalid_submission_branches
+            or not child.is_submission_contract_error
+        ]
+        next_ancestors = [*ancestor_has_next, not is_last]
+        for index, child in enumerate(visible_children):
+            append_rec(
+                child,
+                node.id,
+                next_ancestors,
+                index == len(visible_children) - 1,
+            )
+        if node is active_parent_node:
+            active_prefix = "".join(
+                "│   " if has_next else "    " for has_next in next_ancestors
+            )
+            append_active(node.id, active_prefix)
+
+    roots = list(journal.draft_nodes)
+    for index, node in enumerate(roots):
+        append_rec(node, "header", [], index == len(roots) - 1)
+    if active_parent_node is None:
+        append_active("header", "")
+
+    return TreeView(
+        items=items,
+        index_by_id={item.item_id: index for index, item in enumerate(items)},
+        parent_by_id=parent_by_id,
+        children_by_id=children_by_id,
+    )
+
+
+def move_tree_focus(view: TreeView, focused_item_id: str, direction: str) -> str:
+    if focused_item_id not in view.index_by_id:
+        focused_item_id = "header"
+    if direction == "left":
+        return view.parent_by_id.get(focused_item_id) or focused_item_id
+    if direction == "right":
+        children = view.children_by_id.get(focused_item_id) or []
+        return children[0] if children else focused_item_id
+    if direction in {"up", "down"}:
+        if focused_item_id == "header":
+            children = view.children_by_id.get("header") or []
+            return children[0] if direction == "down" and children else "header"
+        parent_id = view.parent_by_id.get(focused_item_id)
+        siblings = view.children_by_id.get(parent_id or "header") or [focused_item_id]
+        sibling_index = siblings.index(focused_item_id)
+        if direction == "up":
+            if sibling_index == 0:
+                return parent_id or "header"
+            return siblings[sibling_index - 1]
+        return siblings[min(len(siblings) - 1, sibling_index + 1)]
+    return focused_item_id
+
+
+def clamp_tree_viewport(
+    *,
+    total_lines: int,
+    viewport_height: int,
+    focus_index: int,
+    current_scroll: int,
+) -> int:
+    viewport_height = max(1, viewport_height)
+    max_scroll = max(0, total_lines - viewport_height)
+    scroll = min(max(0, current_scroll), max_scroll)
+    if focus_index < scroll:
+        scroll = focus_index
+    elif focus_index >= scroll + viewport_height:
+        scroll = focus_index - viewport_height + 1
+    return min(max(0, scroll), max_scroll)
+
+
+def render_tree_view(
+    view: TreeView,
+    *,
+    focused_item_id: str,
+    scroll_top: int,
+    viewport_height: int,
+) -> Group:
+    viewport_height = max(1, viewport_height)
+    visible_items = view.items[scroll_top : scroll_top + viewport_height]
+    lines: list[Text] = []
+    for item in visible_items:
+        line = item.line.copy()
+        if item.item_id == focused_item_id:
+            line.stylize("reverse")
+        lines.append(line)
+    return Group(*lines)
+
+
+class ArrowKeyReader:
+    KEY_MAP = {
+        b"\x1b[A": "up",
+        b"\x1b[B": "down",
+        b"\x1b[C": "right",
+        b"\x1b[D": "left",
+        b"\x1bOA": "up",
+        b"\x1bOB": "down",
+        b"\x1bOC": "right",
+        b"\x1bOD": "left",
+    }
+
+    def __init__(self):
+        self.enabled = False
+        self.fd: int | None = None
+        self._old_termios = None
+
+    def __enter__(self):
+        if not sys.stdin.isatty():
+            return self
+        try:
+            self.fd = sys.stdin.fileno()
+            self._old_termios = termios.tcgetattr(self.fd)
+            tty.setcbreak(self.fd)
+            self.enabled = True
+        except (OSError, termios.error):
+            self.enabled = False
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.enabled and self.fd is not None and self._old_termios is not None:
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self._old_termios)
+        self.enabled = False
+
+    def read_key(self) -> str | None:
+        if not self.enabled or self.fd is None:
+            return None
+        try:
+            ready, _, _ = select.select([self.fd], [], [], 0)
+            if not ready:
+                return None
+            first = os.read(self.fd, 1)
+            if first != b"\x1b":
+                return None
+
+            data = bytearray(first)
+            deadline = time.monotonic() + 0.05
+            while time.monotonic() < deadline and len(data) < 8:
+                ready, _, _ = select.select([self.fd], [], [], 0)
+                if not ready:
+                    time.sleep(0.001)
+                    continue
+                data.extend(os.read(self.fd, 1))
+                key = self.KEY_MAP.get(bytes(data))
+                if key is not None:
+                    return key
+            return self.KEY_MAP.get(bytes(data[:3]))
+        except (OSError, termios.error):
+            return None
 
 
 def _display_base_path(base_path: Path) -> str:
@@ -623,7 +924,7 @@ def stage_status_message(active_stage: str | None, elapsed: float | None = None)
     return f"[green]Generating code...{elapsed_text}"
 
 
-def run_with_live_refresh(live: Live, render, func):
+def run_with_live_refresh(live: Live, render, func, tick=None):
     result_queue = queue.Queue(maxsize=1)
 
     def worker():
@@ -635,8 +936,12 @@ def run_with_live_refresh(live: Live, render, func):
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
     while thread.is_alive():
+        if tick is not None:
+            tick()
         live.update(render(), refresh=True)
         thread.join(timeout=0.25)
+    if tick is not None:
+        tick()
     live.update(render(), refresh=True)
 
     ok, result = result_queue.get()
@@ -713,6 +1018,9 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
     stop_after_current_execution = False
+    focused_tree_item_id = "header"
+    tree_scroll_top = 0
+    key_reader: ArrowKeyReader | None = None
 
     def exec_callback(*args, **kwargs):
         nonlocal status_override, stop_after_current_execution
@@ -748,9 +1056,32 @@ def run(argv: list[str] | None = None):
         status_override = f"[blue]Saving run: {message}..."
         live.update(generate_live(), refresh=True)
 
-    def generate_live():
-        blink_on = int(time.monotonic() * 2) % 2 == 0
-        tree = journal_to_rich_tree(
+    def tree_viewport_height() -> int:
+        return max(1, shutil.get_terminal_size((120, 40)).lines - 4)
+
+    def drain_tree_navigation(view: TreeView) -> None:
+        nonlocal focused_tree_item_id, tree_scroll_top
+        if focused_tree_item_id not in view.index_by_id:
+            focused_tree_item_id = "header"
+        while key_reader is not None:
+            direction = key_reader.read_key()
+            if direction is None:
+                break
+            focused_tree_item_id = move_tree_focus(
+                view,
+                focused_tree_item_id,
+                direction,
+            )
+        focus_index = view.index_by_id.get(focused_tree_item_id, 0)
+        tree_scroll_top = clamp_tree_viewport(
+            total_lines=len(view.items),
+            viewport_height=tree_viewport_height(),
+            focus_index=focus_index,
+            current_scroll=tree_scroll_top,
+        )
+
+    def current_tree_view(*, blink_on: bool) -> TreeView:
+        return build_tree_view(
             journal,
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
@@ -758,6 +1089,18 @@ def run(argv: list[str] | None = None):
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
             ),
+        )
+
+    def generate_live():
+        nonlocal focused_tree_item_id, tree_scroll_top
+        blink_on = int(time.monotonic() * 2) % 2 == 0
+        tree_view = current_tree_view(blink_on=blink_on)
+        drain_tree_navigation(tree_view)
+        tree = render_tree_view(
+            tree_view,
+            focused_item_id=focused_tree_item_id,
+            scroll_top=tree_scroll_top,
+            viewport_height=tree_viewport_height(),
         )
         prog.update(prog.task_ids[0], completed=global_step)
         elapsed = (
@@ -772,7 +1115,7 @@ def run(argv: list[str] | None = None):
         tree_panel = Panel(
             Padding(tree, (0, 1, 0, 1)),
             title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
-            subtitle="Press [b]Ctrl+C[/b] to stop the run",
+            subtitle="↑/↓ move  ← parent  → child  Ctrl+C stop",
         )
         data_panel = Panel(
             Padding(
@@ -806,76 +1149,93 @@ def run(argv: list[str] | None = None):
     interrupted = False
     interrupt_message = ""
     try:
-        with Live(
-            get_renderable=generate_live,
-            refresh_per_second=16,
-            screen=True,
-        ) as live:
-            while global_step < cfg.agent.steps:
-                synthesized: SynthesisNode | None = None
-                try:
-                    if cfg.synthesis.enabled:
-                        agent.active_parent_node = None
-                        agent.set_active_stage("generating")
-                        synthesized = run_with_live_refresh(
+        with ArrowKeyReader() as reader:
+            key_reader = reader
+            with Live(
+                get_renderable=generate_live,
+                refresh_per_second=16,
+                screen=True,
+            ) as live:
+                while global_step < cfg.agent.steps:
+                    synthesized: SynthesisNode | None = None
+                    try:
+                        if cfg.synthesis.enabled:
+                            agent.active_parent_node = None
+                            agent.set_active_stage("generating")
+                            synthesized = run_with_live_refresh(
+                                live,
+                                generate_live,
+                                lambda: synthesis_advisor.generate_node_if_due(
+                                    journal=journal,
+                                    completed_steps=count_scored_working_nodes(journal),
+                                ),
+                                tick=lambda: drain_tree_navigation(
+                                    current_tree_view(blink_on=True)
+                                ),
+                            )
+                            if synthesized is None:
+                                agent.clear_active_step()
+
+                        if synthesized is None:
+                            parent_node = agent.prepare_step()
+                            result_node = run_with_live_refresh(
+                                live,
+                                generate_live,
+                                lambda: agent.generate_node(parent_node),
+                                tick=lambda: drain_tree_navigation(
+                                    current_tree_view(blink_on=True)
+                                ),
+                            )
+                        else:
+                            result_node = synthesized.node
+
+                        exec_result = agent.execute_node(result_node, exec_callback)
+                        run_with_live_refresh(
                             live,
                             generate_live,
-                            lambda: synthesis_advisor.generate_node_if_due(
-                                journal=journal,
-                                completed_steps=count_scored_working_nodes(journal),
+                            lambda: agent.review_node(result_node, exec_result),
+                            tick=lambda: drain_tree_navigation(
+                                current_tree_view(blink_on=True)
                             ),
                         )
-                        if synthesized is None:
-                            agent.clear_active_step()
-
-                    if synthesized is None:
-                        parent_node = agent.prepare_step()
-                        result_node = run_with_live_refresh(
-                            live,
-                            generate_live,
-                            lambda: agent.generate_node(parent_node),
+                        enforce_submission_contract(cfg, result_node)
+                        journal.append(result_node)
+                        if synthesized is not None:
+                            synthesis_advisor.mark_injected(
+                                synthesized,
+                                node=result_node,
+                            )
+                    except ExecutionInterrupted:
+                        interrupted = True
+                        interrupt_message = (
+                            "Execution stopped by user. Current node was not saved; "
+                            "previous journal state is preserved."
                         )
-                    else:
-                        result_node = synthesized.node
-
-                    exec_result = agent.execute_node(result_node, exec_callback)
-                    run_with_live_refresh(
-                        live,
-                        generate_live,
-                        lambda: agent.review_node(result_node, exec_result),
+                        break
+                    except KeyboardInterrupt:
+                        interrupted = True
+                        interrupt_message = (
+                            "Run interrupted by user. Current node was not saved; "
+                            "previous journal state is preserved."
+                        )
+                        break
+                    finally:
+                        agent.clear_active_step()
+                    save_run(
+                        cfg,
+                        journal,
+                        current_node=journal[-1],
+                        progress_callback=lambda message: update_save_status(
+                            message,
+                            live,
+                        ),
                     )
-                    enforce_submission_contract(cfg, result_node)
-                    journal.append(result_node)
-                    if synthesized is not None:
-                        synthesis_advisor.mark_injected(synthesized, node=result_node)
-                except ExecutionInterrupted:
-                    interrupted = True
-                    interrupt_message = (
-                        "Execution stopped by user. Current node was not saved; "
-                        "previous journal state is preserved."
+                    status_override = None
+                    global_step = len(journal)
+                    research_advisor.maybe_start(
+                        journal=journal,
+                        completed_steps=count_scored_working_nodes(journal),
                     )
-                    break
-                except KeyboardInterrupt:
-                    interrupted = True
-                    interrupt_message = (
-                        "Run interrupted by user. Current node was not saved; "
-                        "previous journal state is preserved."
-                    )
-                    break
-                finally:
-                    agent.clear_active_step()
-                save_run(
-                    cfg,
-                    journal,
-                    current_node=journal[-1],
-                    progress_callback=lambda message: update_save_status(message, live),
-                )
-                status_override = None
-                global_step = len(journal)
-                research_advisor.maybe_start(
-                    journal=journal,
-                    completed_steps=count_scored_working_nodes(journal),
-                )
                 live.update(generate_live(), refresh=True)
     finally:
         interpreter.cleanup_session()
