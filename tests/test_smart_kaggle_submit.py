@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+from rich.console import Console
+
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "smart_kaggle_submit.py"
 SPEC = importlib.util.spec_from_file_location("smart_kaggle_submit", MODULE_PATH)
 smart_kaggle_submit = importlib.util.module_from_spec(SPEC)
@@ -16,6 +18,7 @@ collect_candidates = smart_kaggle_submit.collect_candidates
 select_top_unsent_ready = smart_kaggle_submit.select_top_unsent_ready
 submit_candidates = smart_kaggle_submit.submit_candidates
 sync_registry_from_remote = smart_kaggle_submit.sync_registry_from_remote
+render_dry_run = smart_kaggle_submit.render_dry_run
 
 
 def _ctime(timestamp: str) -> float:
@@ -275,6 +278,60 @@ def test_sync_registry_from_remote_updates_public_score_by_timestamp_description
     assert changed == 1
     assert reloaded.entries[0]["public_score"] == "0.87654"
     assert reloaded.entries[0]["remote_description"].startswith("cv=0.90000")
+
+
+def test_render_dry_run_sorts_registry_by_public_score_desc(tmp_path):
+    registry = SubmissionRegistry(
+        tmp_path / "registry.json",
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-low",
+                "step": 1,
+                "timestamp": "20260502T101000",
+                "local_score": 0.95,
+                "public_score": "0.70124",
+                "remote_status": "COMPLETE",
+                "uploaded_filename": "low.csv",
+                "sha256": "lowhash",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-missing",
+                "step": 2,
+                "timestamp": "20260502T102000",
+                "local_score": 0.99,
+                "remote_status": "SUBMITTED",
+                "uploaded_filename": "missing.csv",
+                "sha256": "missinghash",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-high",
+                "step": 3,
+                "timestamp": "20260502T103000",
+                "local_score": 0.90,
+                "public_score": "0.81234",
+                "remote_status": "COMPLETE",
+                "uploaded_filename": "high.csv",
+                "sha256": "highhash",
+            },
+        ],
+    )
+    console = Console(record=True, width=160, color_system=None)
+
+    render_dry_run(
+        console=console,
+        candidates=[],
+        selected=[],
+        registry=registry,
+        include_not_ready=False,
+        remote_submissions=None,
+    )
+    output = console.export_text()
+
+    assert output.index("run-high") < output.index("run-low")
+    assert output.index("run-low") < output.index("run-missing")
 
 
 def test_submit_candidates_records_each_successful_submission(tmp_path):

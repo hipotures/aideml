@@ -429,6 +429,29 @@ def _format_score(value: float | None) -> str:
     return "-" if value is None else f"{value:.5f}"
 
 
+def _format_submission_date(timestamp: Any) -> str:
+    text = str(timestamp or "")
+    return text[:8] if len(text) >= 8 else text
+
+
+def _parse_public_score(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _registry_sort_key(entry: dict[str, Any]) -> tuple[bool, float, str]:
+    public_score = _parse_public_score(entry.get("public_score"))
+    return (
+        public_score is not None,
+        public_score if public_score is not None else float("-inf"),
+        str(entry.get("submitted_at") or entry.get("remote_date") or ""),
+    )
+
+
 def render_dry_run(
     *,
     console: Console,
@@ -491,19 +514,15 @@ def render_dry_run(
     submitted.add_column("status")
     submitted.add_column("run")
     submitted.add_column("step", justify="right")
-    submitted.add_column("timestamp")
-    submitted.add_column("file")
-    submitted.add_column("sha256")
-    for entry in registry.entries:
+    submitted.add_column("date")
+    for entry in sorted(registry.entries, key=_registry_sort_key, reverse=True):
         submitted.add_row(
             _format_score(entry.get("local_score")),
             str(entry.get("public_score") or ""),
             str(entry.get("remote_status") or ""),
             str(entry.get("run", "")),
             str(entry.get("step", "")),
-            str(entry.get("timestamp", "")),
-            str(entry.get("remote_filename") or entry.get("uploaded_filename") or ""),
-            str(entry.get("sha256", ""))[:10],
+            _format_submission_date(entry.get("timestamp")),
         )
     console.print(submitted)
 

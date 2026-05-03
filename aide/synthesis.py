@@ -90,11 +90,83 @@ def _working_nodes_with_metrics(journal: Journal) -> list[Node]:
     ]
 
 
+def _timestamp_from_ctime(ctime: float) -> str:
+    return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
+
+
+def _load_submission_registry(cfg: Config) -> list[dict[str, Any]]:
+    registry_path = Path(cfg.log_dir).resolve().parent / "submission_registry.json"
+    if not registry_path.exists():
+        return []
+    try:
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    entries = data.get("submissions", []) if isinstance(data, dict) else data
+    return entries if isinstance(entries, list) else []
+
+
+def _parse_public_score(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _completed_public_score_for_node(
+    *,
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    node: Node,
+) -> float | None:
+    timestamp = _timestamp_from_ctime(node.ctime)
+    for entry in registry_entries:
+        if entry.get("run") != run_id:
+            continue
+        if str(entry.get("remote_status", "")).upper() != "COMPLETE":
+            continue
+        public_score = _parse_public_score(entry.get("public_score"))
+        if public_score is None:
+            continue
+
+        if entry.get("node_id") == node.id:
+            return public_score
+        if (
+            str(entry.get("step")) == str(node.step)
+            and entry.get("timestamp") == timestamp
+        ):
+            return public_score
+    return None
+
+
+def _solution_payload(
+    *,
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    node: Node,
+) -> dict[str, Any]:
+    payload = {
+        "local_cv_score": _metric_value(node),
+        "code": node.code,
+    }
+    public_score = _completed_public_score_for_node(
+        registry_entries=registry_entries,
+        run_id=run_id,
+        node=node,
+    )
+    if public_score is not None:
+        payload["kaggle_public_score"] = public_score
+    return payload
+
+
 def collect_top_synthesis_solutions(
     *,
     cfg: Config,
     journal: Journal,
 ) -> list[dict[str, Any]]:
+    registry_entries = _load_submission_registry(cfg)
     selected: list[tuple[str, Node]] = []
     for run_id in _candidate_run_ids(cfg):
         source_journal = _journal_for_run(
@@ -110,11 +182,12 @@ def collect_top_synthesis_solutions(
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)
     return [
-        {
-            "metric": _metric_value(node),
-            "code": node.code,
-        }
-        for _run_id, node in selected[: cfg.synthesis.top_k]
+        _solution_payload(
+            registry_entries=registry_entries,
+            run_id=run_id,
+            node=node,
+        )
+        for run_id, node in selected[: cfg.synthesis.top_k]
     ]
 
 
@@ -175,9 +248,12 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         "the configured AIDE timeout.\n\n"
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring scripts that ran "
-        "successfully. Each solution has only its numeric validation metric and "
-        "code. Use these examples to identify strong modeling and feature "
-        "engineering patterns to merge into a better root solution.\n\n"
+        "successfully. local_cv_score is the AIDE validation score. "
+        "kaggle_public_score is included only when the local submission registry "
+        "has a completed Kaggle public leaderboard score for that exact node. "
+        "Each solution also includes code. Use these examples to identify strong "
+        "modeling and feature engineering patterns to merge into a better root "
+        "solution.\n\n"
         "# Compact AIDE synthesis context\n"
         f"```json\n{context_json}\n```\n"
     )

@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import subprocess
 from pathlib import Path
@@ -64,13 +65,49 @@ def test_collect_top_synthesis_solutions_uses_best_scored_nodes_across_runs(tmp_
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
 
-    assert [solution["metric"] for solution in solutions] == [0.95, 0.9, 0.7]
+    assert [solution["local_cv_score"] for solution in solutions] == [0.95, 0.9, 0.7]
     assert [solution["code"] for solution in solutions] == [
         "print('best')",
         "print('current')",
         "print('weak')",
     ]
-    assert all(set(solution) == {"metric", "code"} for solution in solutions)
+    assert all(set(solution) == {"local_cv_score", "code"} for solution in solutions)
+
+
+def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_path):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    node = _node(0.90, code="print('submitted')")
+    journal.append(node)
+    registry_path = Path(cfg.log_dir).parent / "submission_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "run": cfg.exp_name,
+                        "step": node.step,
+                        "timestamp": dt.datetime.fromtimestamp(node.ctime).strftime(
+                            "%Y%m%dT%H%M%S"
+                        ),
+                        "node_id": node.id,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.81234",
+                    }
+                ]
+            }
+        )
+    )
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert solutions == [
+        {
+            "local_cv_score": 0.9,
+            "kaggle_public_score": 0.81234,
+            "code": "print('submitted')",
+        }
+    ]
 
 
 def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
@@ -89,7 +126,7 @@ def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
 
-    assert solutions == [{"metric": 0.8, "code": "print('included')"}]
+    assert solutions == [{"local_cv_score": 0.8, "code": "print('included')"}]
 
 
 def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
@@ -109,8 +146,9 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
     assert "Return only Python code" in prompt
     assert "task" in prompt
     assert '"best_working_solutions"' in prompt
-    assert '"metric"' in prompt
+    assert '"local_cv_score"' in prompt
     assert '"code"' in prompt
+    assert '"metric":' not in prompt
     assert '"run_id"' not in prompt
     assert '"checkpoint_step"' not in prompt
     assert '"created_at"' not in prompt
@@ -137,7 +175,7 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
         "run_id": cfg.exp_name,
         "checkpoint_step": 15,
         "task_desc": "task",
-        "best_working_solutions": [{"metric": 0.9, "code": "print('old')"}],
+        "best_working_solutions": [{"local_cv_score": 0.9, "code": "print('old')"}],
     }
     seen = {}
 
