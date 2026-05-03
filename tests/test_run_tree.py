@@ -8,6 +8,7 @@ from aide.run import (
     run_with_live_refresh,
     stage_status_message,
 )
+from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.utils.metric import MetricValue
 
 
@@ -102,6 +103,27 @@ def test_journal_tree_renders_children_in_step_order():
     output = _render_text(tree)
 
     assert output.index("● 0.94100") < output.index("● 0.94300")
+
+
+def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
+    journal = Journal()
+    root = Node(
+        code="print('synth')",
+        plan=f"{SYNTHESIS_PLAN_PREFIX} 000010",
+    )
+    root.metric = MetricValue(0.946, maximize=True)
+    root.is_buggy = False
+    child = _good_node(0.947, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    output = _render_text(journal_to_rich_tree(journal))
+    ansi = _render_ansi(journal_to_rich_tree(journal))
+
+    assert "◆ 0.94600" in output
+    assert "synthesis)" not in output
+    assert "● 0.94700 (best)" in output
+    assert "\x1b[34m◆ 0.94600" in ansi
 
 
 def test_journal_tree_treats_appended_node_without_metric_as_bug():

@@ -15,7 +15,7 @@ from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import ResearchAdvisor, count_scored_working_nodes
-from .synthesis import SynthesisAdvisor, SynthesisNode
+from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -173,14 +173,27 @@ def journal_to_rich_tree(
             node.id,
         )
 
+    def is_synthesis_root(node: Node) -> bool:
+        return node.parent is None and str(node.plan or "").startswith(
+            SYNTHESIS_PLAN_PREFIX
+        )
+
     def append_rec(node: Node, tree):
-        if node.is_buggy or node.metric is None or node.metric.value is None:
+        synthesis_root = is_synthesis_root(node)
+        if synthesis_root and (
+            node.is_buggy or node.metric is None or node.metric.value is None
+        ):
+            s = "[bold blue]◆[/bold blue] [red]bug[/red]"
+        elif node.is_buggy or node.metric is None or node.metric.value is None:
             s = "[red]◍ bug"
         else:
             style = "bold " if node is best_node else ""
             metric_text = f"{node.metric.value:.5f}"
 
-            if node is best_node:
+            if synthesis_root:
+                suffix = " (best)" if node is best_node else ""
+                s = f"[{style}blue]◆ {metric_text}{suffix}"
+            elif node is best_node:
                 s = f"[{style}green]● {metric_text} (best)"
             else:
                 s = f"[{style}green]● {metric_text}"

@@ -8,6 +8,7 @@ import pytest
 from aide.journal import Journal, Node
 from aide.synthesis import (
     SYNTHESIS_PROMPT_INTRO,
+    SYNTHESIS_PLAN_PREFIX,
     SynthesisAdvisor,
     build_synthesis_prompt,
     collect_synthesis_context,
@@ -243,6 +244,7 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
 
     assert synthesized is not None
     assert synthesized.node.parent is None
+    assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000002"
     assert synthesized.node.code == "value = 2\nprint(value)\n"
     assert len(calls) == 1
 
@@ -252,3 +254,25 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
     assert advisor.generate_node_if_due(journal=journal, completed_steps=2) is None
     assert len(calls) == 1
     assert "Synthesis: ✓ 000002" in advisor.status_text()
+
+
+def test_synthesis_advisor_injects_existing_ready_checkpoint_even_after_count_moves_on(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')"))
+    checkpoint = Path(cfg.log_dir) / "synthesis" / "checkpoint-000010"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text('{"status": "ready"}')
+    (checkpoint / "response.py").write_text("value = 10\nprint(value)\n")
+    advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
+
+    synthesized = advisor.generate_node_if_due(journal=journal, completed_steps=23)
+
+    assert synthesized is not None
+    assert synthesized.completed_steps == 10
+    assert synthesized.checkpoint_dir == checkpoint
+    assert synthesized.node.parent is None
+    assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000010"
+    assert synthesized.node.code == "value = 10\nprint(value)\n"

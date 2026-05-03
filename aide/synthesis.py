@@ -32,6 +32,7 @@ SYNTHESIS_PROMPT_INTRO = (
     "AIDE solution scripts, and produce one coherent Python solution that "
     "combines the best compatible ideas. Return only the Python code."
 )
+SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -422,6 +423,23 @@ def _latest_checkpoint_with_status(log_dir: Path | str) -> tuple[Path, str] | No
     return candidates[-1] if candidates else None
 
 
+def _oldest_ready_checkpoint(log_dir: Path | str) -> Path | None:
+    synthesis_dir = _synthesis_dir(log_dir)
+    if not synthesis_dir.exists():
+        return None
+    for checkpoint in sorted(synthesis_dir.glob("checkpoint-*")):
+        if (
+            _checkpoint_status(checkpoint) == "ready"
+            and (checkpoint / "response.py").exists()
+        ):
+            return checkpoint
+    return None
+
+
+def _checkpoint_step(checkpoint: Path) -> int:
+    return int(_checkpoint_label(checkpoint))
+
+
 class SynthesisAdvisor:
     def __init__(
         self,
@@ -449,6 +467,22 @@ class SynthesisAdvisor:
         journal: Journal,
         completed_steps: int,
     ) -> SynthesisNode | None:
+        if not self.cfg.synthesis.enabled:
+            return None
+
+        ready_checkpoint = _oldest_ready_checkpoint(self.cfg.log_dir)
+        if ready_checkpoint is not None:
+            checkpoint_step = _checkpoint_step(ready_checkpoint)
+            code = (ready_checkpoint / "response.py").read_text(encoding="utf-8")
+            return SynthesisNode(
+                node=Node(
+                    plan=f"{SYNTHESIS_PLAN_PREFIX} {checkpoint_step:06d}",
+                    code=code,
+                ),
+                completed_steps=checkpoint_step,
+                checkpoint_dir=ready_checkpoint,
+            )
+
         if not self._is_due(completed_steps):
             return None
 
@@ -482,7 +516,7 @@ class SynthesisAdvisor:
 
         return SynthesisNode(
             node=Node(
-                plan=f"External Codex synthesis checkpoint {completed_steps:06d}",
+                plan=f"{SYNTHESIS_PLAN_PREFIX} {completed_steps:06d}",
                 code=code,
             ),
             completed_steps=completed_steps,
