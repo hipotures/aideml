@@ -82,7 +82,11 @@ class Agent:
             debuggable_nodes = [
                 n
                 for n in self.journal.buggy_nodes
-                if (n.is_leaf and n.debug_depth <= search_cfg.max_debug_depth)
+                if (
+                    n.is_leaf
+                    and n.debug_depth <= search_cfg.max_debug_depth
+                    and not n.is_submission_contract_error
+                )
             ]
             if debuggable_nodes:
                 logger.debug("[search policy] debugging")
@@ -90,13 +94,17 @@ class Agent:
             logger.debug("[search policy] not debugging by chance")
 
         # back to drafting if no nodes to improve
-        good_nodes = self.journal.good_nodes
+        good_nodes = [
+            n
+            for n in self.journal.good_nodes
+            if not n.is_in_submission_contract_error_branch
+        ]
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return None
 
         # greedy
-        greedy_node = self.journal.get_best_node()
+        greedy_node = max(good_nodes, key=lambda n: n.metric)
         logger.debug("[search policy] greedy node selected")
         return greedy_node
 

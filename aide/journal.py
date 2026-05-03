@@ -83,6 +83,23 @@ class Node(DataClassJsonMixin):
         """Check if the node is a leaf node in the solution tree."""
         return not self.children
 
+    @property
+    def is_submission_contract_error(self) -> bool:
+        validation = self.submission_validation or {}
+        return (
+            self.exc_type == "SubmissionValidationError"
+            or validation.get("status") == "error"
+        )
+
+    @property
+    def is_in_submission_contract_error_branch(self) -> bool:
+        node: Node | None = self
+        while node is not None:
+            if node.is_submission_contract_error:
+                return True
+            node = node.parent
+        return False
+
     def __eq__(self, other):
         return isinstance(other, Node) and self.id == other.id
 

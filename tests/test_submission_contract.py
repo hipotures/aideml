@@ -140,3 +140,39 @@ def test_enforce_journal_submission_contract_caches_valid_artifact(tmp_path, mon
     assert second_changed == 0
     assert node.is_buggy is False
     assert node.metric.value == 0.99
+
+
+def test_force_recheck_can_restore_fixed_submission_validation_error(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    log_dir = tmp_path / "logs" / "run"
+    _write_sample(workspace_dir)
+    node = Node(code="print('ok')", plan="ok", ctime=1777750547.0057797)
+    node.metric = MetricValue(None, maximize=True)
+    node.is_buggy = True
+    node._term_out = ["CV AUC: 0.99\nSubmission saved successfully.\n"]
+    node.exec_time = 1.0
+    node.exc_type = "SubmissionValidationError"
+    node.exc_info = {"args": ["duplicate id rows: 1"]}
+    node.analysis = "Submission validation failed: duplicate id rows: 1"
+    node.submission_validation = {
+        "status": "error",
+        "error": "duplicate id rows: 1",
+        "previous_metric": {"value": 0.99, "maximize": True},
+    }
+    journal = Journal()
+    journal.append(node)
+    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n2,0.9\n")
+
+    changed = enforce_journal_submission_contract(
+        DummyConfig(workspace_dir=workspace_dir, log_dir=log_dir),
+        journal,
+        force_check_submissions=True,
+    )
+
+    assert changed == 1
+    assert node.is_buggy is False
+    assert node.metric.value == 0.99
+    assert node.exc_type is None
+    assert node.submission_validation["status"] == "ok"

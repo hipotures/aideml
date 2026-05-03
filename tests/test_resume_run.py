@@ -10,6 +10,7 @@ from aide.journal import Journal, Node
 from aide.run import (
     find_latest_run_id,
     load_resume_state,
+    parse_runtime_args,
     parse_resume_args,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -73,6 +74,23 @@ def test_parse_resume_args_without_run_id_uses_latest_and_keeps_next_override():
     assert remaining == ["agent.steps=200"]
 
 
+def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--resume",
+            "2-example-run",
+            "--show-invalid-submission-branches",
+            "--force-check-submissions",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.run_id == "2-example-run"
+    assert runtime.show_invalid_submission_branches is True
+    assert runtime.force_check_submissions is True
+    assert remaining == ["agent.steps=200"]
+
+
 def test_find_latest_run_id_uses_newest_journal_mtime(tmp_path):
     _write_run(tmp_path, "1-old-run", steps=10, mtime=time.time() - 100)
     _write_run(tmp_path, "2-new-run", steps=20, mtime=time.time())
@@ -128,6 +146,47 @@ def test_load_resume_state_persists_submission_contract_revalidation(tmp_path):
     assert persisted.nodes[0].is_buggy is True
     assert persisted.nodes[0].metric.value is None
     assert persisted.nodes[0].exc_type == "SubmissionValidationError"
+
+
+def test_load_resume_state_force_revalidates_cached_submission(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    log_dir = tmp_path / "logs" / "2-existing-run"
+    workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    (workspace_dir / "input" / "sample_submission.csv").write_text(
+        "id,PitNextLap\n1,0.0\n"
+    )
+
+    journal = serialize.load_json(log_dir / "journal.json", Journal)
+    timestamp = dt.datetime.fromtimestamp(journal.nodes[0].ctime).strftime(
+        "%Y%m%dT%H%M%S"
+    )
+    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    submission_path = artifact_dir / "submission.csv"
+    submission_path.write_text("id,PitNextLap\n1,0.8\n")
+    journal.nodes[0].submission_validation = {
+        "status": "ok",
+        "sample_signature": {"size": 1, "mtime_ns": 1},
+        "submission_signature": {"size": 1, "mtime_ns": 1},
+    }
+    serialize.dump_json(journal, log_dir / "journal.json")
+    calls = []
+
+    def fake_validate(_submission_path, _sample_path):
+        calls.append((_submission_path, _sample_path))
+        return None
+
+    monkeypatch.setattr("aide.run.validate_submission_file", fake_validate)
+
+    load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+        force_check_submissions=True,
+    )
+
+    assert calls
 
 
 def test_load_resume_state_rejects_missing_workspace(tmp_path):

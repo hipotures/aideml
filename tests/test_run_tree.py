@@ -35,6 +35,17 @@ def _bug_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _submission_bug_node(parent: Node | None = None) -> Node:
+    node = _bug_node(parent=parent)
+    node.exc_type = "SubmissionValidationError"
+    node.exc_info = {"args": ["row count 10 != expected 2"]}
+    node.submission_validation = {
+        "status": "error",
+        "error": "row count 10 != expected 2",
+    }
+    return node
+
+
 def _render_text(tree) -> str:
     console = Console(record=True, width=100, color_system=None)
     console.print(tree)
@@ -96,6 +107,53 @@ def test_journal_tree_replaces_active_placeholder_with_final_bug_result():
     assert "[*]" not in output
     assert "[ ]" not in output
     assert "◍ bug" in output
+
+
+def test_journal_tree_hides_invalid_submission_branch_by_default():
+    journal = Journal()
+    root = _submission_bug_node()
+    child = _good_node(0.99, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    tree = journal_to_rich_tree(journal)
+
+    output = _render_text(tree)
+
+    assert "◍ bug" not in output
+    assert "0.99000" not in output
+
+
+def test_journal_tree_best_marker_ignores_hidden_invalid_submission_branch():
+    journal = Journal()
+    invalid = _submission_bug_node()
+    hidden_best = _good_node(0.99, parent=invalid)
+    visible_best = _good_node(0.90)
+    journal.append(invalid)
+    journal.append(hidden_best)
+    journal.append(visible_best)
+
+    tree = journal_to_rich_tree(journal)
+
+    output = _render_text(tree)
+
+    assert "0.99000" not in output
+    assert "● 0.90000 (best)" in output
+
+
+def test_journal_tree_can_show_invalid_submission_branch():
+    journal = Journal()
+    root = _submission_bug_node()
+    child = _good_node(0.99, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    tree = journal_to_rich_tree(journal, show_invalid_submission_branches=True)
+
+    output = _render_text(tree)
+
+    assert "◍ bug" in output
+    assert "0.99000" in output
 
 
 def test_journal_tree_renders_children_in_step_order():

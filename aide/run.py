@@ -43,7 +43,7 @@ from .utils.config import (
     save_run,
     load_cfg,
 )
-from .utils.metric import WorstMetricValue
+from .utils.metric import MetricValue, WorstMetricValue
 from .utils.submission_validation import (
     file_signature,
     find_sample_submission,
@@ -64,9 +64,18 @@ class ResumeRequest:
         return self.requested and self.run_id is None
 
 
-def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
+@dataclass(frozen=True)
+class RuntimeOptions:
+    show_invalid_submission_branches: bool = False
+    force_check_submissions: bool = False
+
+
+def parse_runtime_args(
+    argv: list[str],
+) -> tuple[ResumeRequest, RuntimeOptions, list[str]]:
     remaining: list[str] = []
     resume = ResumeRequest()
+    runtime = RuntimeOptions()
     i = 0
     while i < len(argv):
         arg = argv[i]
@@ -88,9 +97,24 @@ def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
                 raise ValueError("`--resume` can only be provided once.")
             run_id = arg.split("=", 1)[1] or None
             resume = ResumeRequest(requested=True, run_id=run_id)
+        elif arg == "--show-invalid-submission-branches":
+            runtime = RuntimeOptions(
+                show_invalid_submission_branches=True,
+                force_check_submissions=runtime.force_check_submissions,
+            )
+        elif arg == "--force-check-submissions":
+            runtime = RuntimeOptions(
+                show_invalid_submission_branches=runtime.show_invalid_submission_branches,
+                force_check_submissions=True,
+            )
         else:
             remaining.append(arg)
         i += 1
+    return resume, runtime, remaining
+
+
+def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
+    resume, _runtime, remaining = parse_runtime_args(argv)
     return resume, remaining
 
 
@@ -107,6 +131,7 @@ def load_resume_state(
     top_log_dir: Path,
     top_workspace_dir: Path,
     cli_overrides: list[str],
+    force_check_submissions: bool = False,
 ) -> tuple[Config, Journal]:
     log_dir = (top_log_dir / run_id).resolve()
     workspace_dir = (top_workspace_dir / run_id).resolve()
@@ -136,7 +161,11 @@ def load_resume_state(
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     journal = serialize.load_json(journal_path, Journal)
-    if enforce_journal_submission_contract(cfg, journal):
+    if enforce_journal_submission_contract(
+        cfg,
+        journal,
+        force_check_submissions=force_check_submissions,
+    ):
         serialize.dump_json(journal, journal_path)
     return cast(Config, cfg), journal
 
@@ -157,8 +186,17 @@ def journal_to_rich_tree(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     blink_on: bool = True,
+    show_invalid_submission_branches: bool = False,
 ):
-    best_node = journal.get_best_node()
+    if show_invalid_submission_branches:
+        best_node = journal.get_best_node()
+    else:
+        visible_good_nodes = [
+            node
+            for node in journal.good_nodes
+            if not node.is_in_submission_contract_error_branch
+        ]
+        best_node = max(visible_good_nodes, key=lambda node: node.metric, default=None)
     journal_nodes = set(journal.nodes)
 
     def active_placeholder_style() -> str:
@@ -190,6 +228,12 @@ def journal_to_rich_tree(
         )
 
     def append_rec(node: Node, tree):
+        if (
+            node.is_submission_contract_error
+            and not show_invalid_submission_branches
+        ):
+            return
+
         synthesis_root = is_synthesis_root(node)
         if synthesis_root and (
             node.is_buggy or node.metric is None or node.metric.value is None
@@ -371,6 +415,7 @@ def _submission_validation_record(
     sample_path: Path,
     submission_path: Path,
     error: str | None = None,
+    previous_metric: MetricValue | None = None,
 ) -> dict:
     record = {
         "status": status,
@@ -379,6 +424,11 @@ def _submission_validation_record(
     }
     if error is not None:
         record["error"] = error
+    if previous_metric is not None and previous_metric.value is not None:
+        record["previous_metric"] = {
+            "value": previous_metric.value,
+            "maximize": previous_metric.maximize,
+        }
     return record
 
 
@@ -408,6 +458,21 @@ def _mark_node_submission_ok(
         sample_path=sample_path,
         submission_path=submission_path,
     )
+    previous_metric = None
+    if isinstance(node.submission_validation, dict):
+        previous_metric = node.submission_validation.get("previous_metric")
+    if node.is_submission_contract_error and isinstance(previous_metric, dict):
+        value = previous_metric.get("value")
+        if value is not None:
+            node.metric = MetricValue(
+                float(value),
+                maximize=previous_metric.get("maximize"),
+            )
+            node.is_buggy = False
+            node.exc_type = None
+            node.exc_info = None
+            node.exc_stack = None
+
     if node.submission_validation == record:
         return False
     node.submission_validation = record
@@ -424,6 +489,7 @@ def _mark_node_submission_bug(
     if node.is_buggy and node.exc_type == "SubmissionValidationError":
         return False
 
+    previous_metric = node.metric if isinstance(node.metric, MetricValue) else None
     node.is_buggy = True
     node.metric = WorstMetricValue()
     node.exc_type = node.exc_type or "SubmissionValidationError"
@@ -434,6 +500,7 @@ def _mark_node_submission_bug(
             sample_path=sample_path,
             submission_path=submission_path,
             error=error,
+            previous_metric=previous_metric,
         )
     validation_message = f"SubmissionValidationError: {error}\n"
     if node._term_out is None:
@@ -481,13 +548,23 @@ def _node_artifact_submission_path(cfg, node: Node) -> Path:
     return Path(cfg.log_dir) / "artifacts" / timestamp / "submission.csv"
 
 
-def enforce_journal_submission_contract(cfg, journal: Journal) -> int:
+def enforce_journal_submission_contract(
+    cfg,
+    journal: Journal,
+    *,
+    force_check_submissions: bool = False,
+) -> int:
     sample_path = find_sample_submission(Path(cfg.workspace_dir) / "input")
     if sample_path is None:
         return 0
 
     changed = 0
-    for node in journal.good_nodes:
+    nodes_to_check = [
+        node
+        for node in journal.nodes
+        if not node.is_buggy or node.is_submission_contract_error
+    ]
+    for node in nodes_to_check:
         submission_path = _node_artifact_submission_path(cfg, node)
         if not submission_path.exists():
             error = "missing artifact submission.csv while sample_submission exists"
@@ -495,10 +572,13 @@ def enforce_journal_submission_contract(cfg, journal: Journal) -> int:
                 changed += 1
             continue
 
-        if _submission_validation_cache_matches(
-            node,
-            sample_path=sample_path,
-            submission_path=submission_path,
+        if (
+            not force_check_submissions
+            and _submission_validation_cache_matches(
+                node,
+                sample_path=sample_path,
+                submission_path=submission_path,
+            )
         ):
             continue
 
@@ -566,7 +646,7 @@ def run_with_live_refresh(live: Live, render, func):
 
 def run(argv: list[str] | None = None):
     raw_argv = list(sys.argv[1:] if argv is None else argv)
-    resume_request, cli_args = parse_resume_args(raw_argv)
+    resume_request, runtime_options, cli_args = parse_runtime_args(raw_argv)
 
     if resume_request.requested:
         base_cfg = _load_cfg(cli_args=cli_args)
@@ -578,6 +658,7 @@ def run(argv: list[str] | None = None):
             top_log_dir=top_log_dir,
             top_workspace_dir=top_workspace_dir,
             cli_overrides=cli_args,
+            force_check_submissions=runtime_options.force_check_submissions,
         )
         if resume_request.use_latest and not confirm_resume_latest(
             run_id,
@@ -673,6 +754,9 @@ def run(argv: list[str] | None = None):
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
             blink_on=blink_on,
+            show_invalid_submission_branches=(
+                runtime_options.show_invalid_submission_branches
+            ),
         )
         prog.update(prog.task_ids[0], completed=global_step)
         elapsed = (
