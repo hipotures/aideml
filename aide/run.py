@@ -27,7 +27,7 @@ from rich.progress import (
     MofNCompleteColumn,
     Progress,
     TextColumn,
-    TimeRemainingColumn,
+    TimeElapsedColumn,
 )
 from rich.rule import Rule
 from rich.text import Text
@@ -420,7 +420,7 @@ def run(argv: list[str] | None = None):
         TextColumn("[progress.description]{task.description}"),
         BarColumn(bar_width=20),
         MofNCompleteColumn(),
-        TimeRemainingColumn(),
+        TimeElapsedColumn(),
     )
     status = Status("[green]Generating code...")
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
