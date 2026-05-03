@@ -15,6 +15,7 @@ from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import ResearchAdvisor, count_scored_working_nodes
+from .synthesis import SynthesisAdvisor, SynthesisNode
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -246,6 +247,7 @@ def build_run_data(
     progress,
     status,
     research_status: str | None,
+    synthesis_status: str | None,
     log_dir: Path,
     workspace_dir: Path,
 ) -> Group:
@@ -253,6 +255,10 @@ def build_run_data(
     if research_status is not None:
         lines.append("")
         lines.append(research_status)
+    if synthesis_status is not None:
+        if research_status is None:
+            lines.append("")
+        lines.append(synthesis_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     return Group(*lines)
 
@@ -350,6 +356,7 @@ def run(argv: list[str] | None = None):
         journal=journal,
     )
     research_advisor = ResearchAdvisor(cfg=cfg, task_desc=task_desc)
+    synthesis_advisor = SynthesisAdvisor(cfg=cfg, task_desc=task_desc)
     interpreter = Interpreter(
         cfg.workspace_dir,
         **OmegaConf.to_container(cfg.exec),  # type: ignore
@@ -432,6 +439,11 @@ def run(argv: list[str] | None = None):
                     research_status=(
                         research_advisor.status_text() if cfg.research.enabled else None
                     ),
+                    synthesis_status=(
+                        synthesis_advisor.status_text()
+                        if cfg.synthesis.enabled
+                        else None
+                    ),
                     log_dir=cfg.log_dir,
                     workspace_dir=cfg.workspace_dir,
                 ),
@@ -456,13 +468,32 @@ def run(argv: list[str] | None = None):
             screen=True,
         ) as live:
             while global_step < cfg.agent.steps:
+                synthesized: SynthesisNode | None = None
                 try:
-                    parent_node = agent.prepare_step()
-                    result_node = run_with_live_refresh(
-                        live,
-                        generate_live,
-                        lambda: agent.generate_node(parent_node),
-                    )
+                    if cfg.synthesis.enabled:
+                        agent.active_parent_node = None
+                        agent.set_active_stage("generating")
+                        synthesized = run_with_live_refresh(
+                            live,
+                            generate_live,
+                            lambda: synthesis_advisor.generate_node_if_due(
+                                journal=journal,
+                                completed_steps=count_scored_working_nodes(journal),
+                            ),
+                        )
+                        if synthesized is None:
+                            agent.clear_active_step()
+
+                    if synthesized is None:
+                        parent_node = agent.prepare_step()
+                        result_node = run_with_live_refresh(
+                            live,
+                            generate_live,
+                            lambda: agent.generate_node(parent_node),
+                        )
+                    else:
+                        result_node = synthesized.node
+
                     exec_result = agent.execute_node(result_node, exec_callback)
                     run_with_live_refresh(
                         live,
@@ -470,6 +501,8 @@ def run(argv: list[str] | None = None):
                         lambda: agent.review_node(result_node, exec_result),
                     )
                     journal.append(result_node)
+                    if synthesized is not None:
+                        synthesis_advisor.mark_injected(synthesized, node=result_node)
                 except ExecutionInterrupted:
                     interrupted = True
                     interrupt_message = (

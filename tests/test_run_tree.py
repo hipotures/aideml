@@ -164,6 +164,7 @@ def test_run_data_shows_research_status_when_enabled(tmp_path):
             progress="Progress: 1/20",
             status="Generating code...",
             research_status="[cyan]Research: ▶ 000010",
+            synthesis_status=None,
             log_dir=log_dir,
             workspace_dir=workspace_dir,
         )
@@ -179,12 +180,29 @@ def test_run_data_hides_research_status_when_disabled(tmp_path):
             progress="Progress: 1/20",
             status="Generating code...",
             research_status=None,
+            synthesis_status=None,
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
         )
     )
 
     assert "Research:" not in output
+
+
+def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status="[green]Synthesis: ✓ 000015",
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "Synthesis: ✓ 000015" in output
+    assert "Agent workspace directory" in output
 
 
 def test_stage_status_message_names_review_stage():

@@ -40,6 +40,16 @@ research:
   model: gpt-5.5
   reasoning_effort: medium
 
+# optional external Codex solution synthesis
+synthesis:
+  enabled: False
+  every_scored_steps: 15
+  top_k: 5
+  source_runs: []
+  timeout: 900
+  model: gpt-5.5
+  reasoning_effort: medium
+
 # agent hyperparams
 agent:
   # how many improvement iterations to run

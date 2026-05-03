@@ -74,6 +74,17 @@ class ResearchConfig:
 
 
 @dataclass
+class SynthesisConfig:
+    enabled: bool = False
+    every_scored_steps: int = 15
+    top_k: int = 5
+    source_runs: list[str] = field(default_factory=list)
+    timeout: int = 900
+    model: str = "gpt-5.5"
+    reasoning_effort: str = "medium"
+
+
+@dataclass
 class Config(Hashable):
     data_dir: Path
     desc_file: Path | None
@@ -94,6 +105,7 @@ class Config(Hashable):
     report: StageConfig
     agent: AgentConfig
     research: ResearchConfig = field(default_factory=ResearchConfig)
+    synthesis: SynthesisConfig = field(default_factory=SynthesisConfig)
 
 
 def _get_next_logindex(dir: Path) -> int:
