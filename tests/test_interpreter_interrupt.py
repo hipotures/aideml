@@ -136,6 +136,41 @@ def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeyp
     assert cleaned == [True]
 
 
+def test_cleanup_session_joins_after_sigkill_before_closing(tmp_path, monkeypatch):
+    interpreter = Interpreter(tmp_path, timeout=60)
+    killed = []
+
+    class StubbornProcess:
+        pid = 12345
+        exitcode = None
+        closed = False
+
+        def terminate(self):
+            pass
+
+        def join(self, timeout=None):
+            if killed:
+                self.exitcode = -9
+
+        def kill(self):
+            pass
+
+        def close(self):
+            if self.exitcode is None:
+                raise ValueError("Cannot close a process while it is still running.")
+            self.closed = True
+
+    process = StubbornProcess()
+    interpreter.process = process
+    monkeypatch.setattr("aide.interpreter.os.kill", lambda pid, sig: killed.append(sig))
+
+    interpreter.cleanup_session()
+
+    assert killed == [9]
+    assert process.closed is True
+    assert interpreter.process is None
+
+
 def test_child_process_runs_in_separate_process_group(tmp_path):
     interpreter = Interpreter(tmp_path, timeout=10)
 

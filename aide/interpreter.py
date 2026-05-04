@@ -216,11 +216,15 @@ class Interpreter:
                 if self.process.exitcode is None:
                     logger.error("Process refuses to die, using SIGKILL")
                     os.kill(self.process.pid, signal.SIGKILL)
+                    self.process.join(timeout=0.5)
         except Exception as e:
             logger.error(f"Error during process cleanup: {e}")
         finally:
             if self.process is not None:
-                self.process.close()
+                if self.process.exitcode is not None:
+                    self.process.close()
+                else:
+                    logger.error("Process still running after SIGKILL; leaving unclosed")
                 self.process = None
 
     def run(
