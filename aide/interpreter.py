@@ -22,6 +22,8 @@ from typing import Callable
 import humanize
 from dataclasses_json import DataClassJsonMixin
 
+from .utils.resource_monitor import ProcessResourceMonitor, ResourceSnapshot
+
 logger = logging.getLogger("aide")
 
 
@@ -226,6 +228,7 @@ class Interpreter:
         code: str,
         reset_session=True,
         interrupt_callback: Callable[[int], None] | None = None,
+        resource_callback: Callable[[ResourceSnapshot], None] | None = None,
     ) -> ExecutionResult:
         """
         Execute the provided Python command in a separate process and return its output.
@@ -234,6 +237,7 @@ class Interpreter:
             code (str): Python code to execute.
             reset_session (bool, optional): Whether to reset the interpreter session before executing the code. Defaults to True.
             interrupt_callback (Callable[[int], None] | None, optional): Called with the Ctrl+C count while waiting for code execution.
+            resource_callback (Callable[[ResourceSnapshot], None] | None, optional): Called with process-tree resource usage snapshots while code is running.
 
         Returns:
             ExecutionResult: Object containing the output and metadata of the code execution.
@@ -266,6 +270,14 @@ class Interpreter:
             raise RuntimeError(msg) from None
         assert state[0] == "state:ready", state
         start_time = time.time()
+        resource_monitor = None
+        if resource_callback is not None and self.process.pid is not None:
+            try:
+                resource_monitor = ProcessResourceMonitor.from_pid(self.process.pid)
+            except Exception as exc:  # noqa: BLE001 - resource UI must not stop execution
+                logger.debug(f"Resource monitor unavailable: {exc}")
+        if resource_monitor is not None:
+            resource_callback(resource_monitor.sample())
 
         # this flag indicates that the child ahs exceeded the time limit and an interrupt was sent
         # if the child process dies without this flag being set, it's an unexpected termination
@@ -288,6 +300,9 @@ class Interpreter:
                 self.cleanup_session()
                 raise ExecutionInterrupted("Execution interrupted by user.") from None
             except queue.Empty:
+                if resource_monitor is not None and resource_callback is not None:
+                    resource_callback(resource_monitor.sample())
+
                 # we haven't heard back from the child -> check if it's still alive (assuming overtime interrupt wasn't sent yet)
                 if not child_in_overtime and not self.process.is_alive():
                     msg = "REPL child process died unexpectedly"

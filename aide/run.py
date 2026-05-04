@@ -48,6 +48,7 @@ from .utils.config import (
     load_cfg,
 )
 from .utils.metric import MetricValue, WorstMetricValue
+from .utils.resource_monitor import ResourceSnapshot
 from .utils.submission_validation import (
     file_signature,
     find_sample_submission,
@@ -730,6 +731,36 @@ def build_last_error_summary(journal: Journal) -> Group:
     return Group(*lines)
 
 
+def _format_percent(value: float) -> str:
+    if value == 0 or value >= 10:
+        return f"{value:.0f}%"
+    return f"{value:.1f}%"
+
+
+def _format_gib(value: int) -> str:
+    return f"{value / 1024**3:.1f}G"
+
+
+def build_resource_summary(snapshot: ResourceSnapshot | None) -> Group:
+    lines: list[Text] = [Text("Resources", style="bold cyan")]
+    if snapshot is None:
+        values = [
+            ("CPU", "-"),
+            ("RAM", "-"),
+            ("peak", "-"),
+            ("proc", "-"),
+        ]
+    else:
+        values = [
+            ("CPU", _format_percent(snapshot.cpu_percent)),
+            ("RAM", _format_gib(snapshot.ram_bytes)),
+            ("peak", _format_gib(snapshot.peak_ram_bytes)),
+            ("proc", str(snapshot.process_count)),
+        ]
+    lines.extend(Text(f"▶ {label} {value}", style="yellow") for label, value in values)
+    return Group(*lines)
+
+
 def build_run_data(
     *,
     progress,
@@ -739,6 +770,7 @@ def build_run_data(
     journal: Journal,
     log_dir: Path,
     workspace_dir: Path,
+    resource_snapshot: ResourceSnapshot | None = None,
 ) -> Group:
     lines = [progress, status]
     if research_status is not None:
@@ -750,6 +782,7 @@ def build_run_data(
         lines.append(synthesis_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
+    lines.extend([Rule(style="dim"), build_resource_summary(resource_snapshot)])
     return Group(*lines)
 
 
@@ -1065,12 +1098,13 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
     stop_after_current_execution = False
+    resource_snapshot: ResourceSnapshot | None = None
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
 
     def exec_callback(*args, **kwargs):
-        nonlocal status_override, stop_after_current_execution
+        nonlocal status_override, stop_after_current_execution, resource_snapshot
 
         def on_interrupt(interrupt_count: int):
             nonlocal status_override, stop_after_current_execution
@@ -1083,10 +1117,16 @@ def run(argv: list[str] | None = None):
             else:
                 status_override = "[red]Stopping current code execution..."
 
+        def on_resource(snapshot: ResourceSnapshot):
+            nonlocal resource_snapshot
+            resource_snapshot = snapshot
+
         try:
+            resource_snapshot = None
             result = interpreter.run(
                 *args,
                 interrupt_callback=on_interrupt,
+                resource_callback=on_resource,
                 **kwargs,
             )
             if stop_after_current_execution:
@@ -1193,6 +1233,7 @@ def run(argv: list[str] | None = None):
                     journal=journal,
                     log_dir=cfg.log_dir,
                     workspace_dir=cfg.workspace_dir,
+                    resource_snapshot=resource_snapshot,
                 ),
                 (0, 1, 0, 1),
             ),

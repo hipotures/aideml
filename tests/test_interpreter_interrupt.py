@@ -4,6 +4,7 @@ import resource
 import pytest
 
 from aide.interpreter import ExecutionInterrupted, Interpreter
+from aide.utils.resource_monitor import ResourceSnapshot
 
 
 class FakeCodeQueue:
@@ -74,6 +75,41 @@ def test_first_keyboard_interrupt_waits_for_execution_to_finish(tmp_path):
     assert result.term_out == [
         "Execution time: a moment seconds (time limit is a minute)."
     ]
+
+
+def test_resource_callback_receives_execution_process_snapshot(tmp_path, monkeypatch):
+    interpreter = _interpreter_with_queues(
+        tmp_path,
+        [
+            ("state:ready",),
+            ("state:finished", None, None, None),
+        ],
+    )
+    snapshot = ResourceSnapshot(
+        cpu_percent=120.0,
+        ram_bytes=1024,
+        peak_ram_bytes=2048,
+        process_count=2,
+    )
+
+    class FakeMonitor:
+        def sample(self):
+            return snapshot
+
+    monkeypatch.setattr(
+        "aide.interpreter.ProcessResourceMonitor.from_pid",
+        lambda pid: FakeMonitor(),
+    )
+    snapshots = []
+
+    result = interpreter.run(
+        "print('ok')",
+        reset_session=False,
+        resource_callback=snapshots.append,
+    )
+
+    assert result.exc_type is None
+    assert snapshots == [snapshot]
 
 
 def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeypatch):

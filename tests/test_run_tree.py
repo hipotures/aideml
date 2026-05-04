@@ -4,6 +4,7 @@ from aide.journal import Journal, Node
 from aide.run import (
     build_path_summary,
     build_run_data,
+    ResourceSnapshot,
     build_tree_view,
     clamp_tree_viewport,
     journal_to_rich_tree,
@@ -598,6 +599,34 @@ def test_run_data_shows_last_error_below_separator(tmp_path):
     assert output.index("Experiment log directory") < output.index("Last Error")
     assert "ValueError: bad feature" in output
     assert "Execution time:" not in output
+
+
+def test_run_data_shows_resources_below_last_error(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Executing code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            resource_snapshot=ResourceSnapshot(
+                cpu_percent=640.0,
+                ram_bytes=int(18.4 * 1024**3),
+                peak_ram_bytes=int(22.1 * 1024**3),
+                process_count=9,
+            ),
+        )
+    )
+
+    assert "Last Error" in output
+    assert "Resources" in output
+    assert output.index("Last Error") < output.index("Resources")
+    assert "▶ CPU 640%" in output
+    assert "▶ RAM 18.4G" in output
+    assert "▶ peak 22.1G" in output
+    assert "▶ proc 9" in output
 
 
 def test_stage_status_message_names_review_stage():

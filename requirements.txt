@@ -98,3 +98,4 @@ xlrd
 backoff
 streamlit~=1.54.0
 python-dotenv
+psutil
