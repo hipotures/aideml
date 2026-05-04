@@ -1173,22 +1173,23 @@ def run(argv: list[str] | None = None):
     status = Status("[green]Generating code...")
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
-    stop_after_current_execution = False
+    stop_after_current_node = False
     resource_history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
 
     def exec_callback(*args, **kwargs):
-        nonlocal status_override, stop_after_current_execution
+        nonlocal status_override, stop_after_current_node
 
         def on_interrupt(interrupt_count: int):
-            nonlocal status_override, stop_after_current_execution
+            nonlocal status_override, stop_after_current_node
             if interrupt_count == 1:
-                stop_after_current_execution = True
+                stop_after_current_node = True
                 status_override = (
                     "[yellow]Ctrl+C received. Waiting for current code to finish. "
-                    "The run will stop before review. Press Ctrl+C again to stop now."
+                    "The node will be reviewed and saved, then the run will stop. "
+                    "Press Ctrl+C again to stop now."
                 )
             else:
                 status_override = "[red]Stopping current code execution..."
@@ -1203,13 +1204,9 @@ def run(argv: list[str] | None = None):
                 resource_callback=on_resource,
                 **kwargs,
             )
-            if stop_after_current_execution:
-                raise ExecutionInterrupted(
-                    "Execution finished after interrupt request."
-                )
             return result
         finally:
-            if not stop_after_current_execution:
+            if not stop_after_current_node:
                 status_override = None
 
     def prepare_node_artifact_env(node: Node) -> str | None:
@@ -1414,6 +1411,12 @@ def run(argv: list[str] | None = None):
                     )
                     status_override = None
                     global_step = len(journal)
+                    if stop_after_current_node:
+                        interrupted = True
+                        interrupt_message = (
+                            "Execution stopped by user after saving current node."
+                        )
+                        break
                     research_advisor.maybe_start(
                         journal=journal,
                         completed_steps=count_scored_working_nodes(journal),
