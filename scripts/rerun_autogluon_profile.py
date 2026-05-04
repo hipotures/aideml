@@ -57,6 +57,15 @@ def resolve_process_timeout(timeout: int | None, autogluon_time_limit: int) -> i
     return max(1200, int(autogluon_time_limit) + DEFAULT_PROCESS_TIMEOUT_MARGIN)
 
 
+def _format_seconds(seconds: float) -> str:
+    seconds_i = max(0, int(seconds))
+    minutes, secs = divmod(seconds_i, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
 def _copy_or_link_input(source: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     for child in source.iterdir():
@@ -143,6 +152,8 @@ def execute_code(
     artifact_dir: Path,
     timeout: int,
     memory_limit_gb: float | None,
+    console: Console | None = None,
+    progress_time_limit: int | None = None,
 ) -> ExecutionResult:
     workspace_dir.mkdir(parents=True, exist_ok=True)
     (workspace_dir / "working").mkdir(parents=True, exist_ok=True)
@@ -158,26 +169,83 @@ def execute_code(
     env = os.environ.copy()
     env["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir.resolve())
     start_time = time.time()
+    stdout_path = artifact_dir / "process_stdout.log"
+    stdout_handle = None
+    stdout_target: Any
+    if console is not None and progress_time_limit is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        stdout_handle = stdout_path.open("w", encoding="utf-8", buffering=1)
+        stdout_target = stdout_handle
+    else:
+        stdout_target = subprocess.PIPE
+
     proc = subprocess.Popen(
         [sys.executable, str(runfile.name)],
         cwd=str(workspace_dir),
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=stdout_target,
         stderr=subprocess.STDOUT,
         text=True,
         start_new_session=True,
         preexec_fn=limit_child_memory,
     )
     try:
-        output_text, _ = proc.communicate(timeout=timeout)
+        if stdout_handle is None:
+            output_text, _ = proc.communicate(timeout=timeout)
+        else:
+            assert console is not None
+            assert progress_time_limit is not None
+            progress = Progress(
+                TextColumn("{task.description}"),
+                BarColumn(),
+                TextColumn("{task.fields[elapsed_text]} / {task.fields[target_text]}"),
+                console=console,
+            )
+            with progress:
+                task_id = progress.add_task(
+                    f"Running AutoGluon ({artifact_dir.name})",
+                    total=max(1, int(progress_time_limit)),
+                    elapsed_text="00:00",
+                    target_text=_format_seconds(progress_time_limit),
+                )
+                while proc.poll() is None:
+                    elapsed = time.time() - start_time
+                    progress.update(
+                        task_id,
+                        completed=min(elapsed, float(progress_time_limit)),
+                        elapsed_text=_format_seconds(elapsed),
+                    )
+                    if elapsed >= timeout:
+                        raise subprocess.TimeoutExpired(proc.args, timeout)
+                    time.sleep(1.0)
+                progress.update(
+                    task_id,
+                    completed=min(time.time() - start_time, float(progress_time_limit)),
+                    elapsed_text=_format_seconds(time.time() - start_time),
+                )
+            stdout_handle.close()
+            stdout_handle = None
+            output_text = stdout_path.read_text(errors="replace")
         exec_time = time.time() - start_time
     except subprocess.TimeoutExpired:
         os.killpg(proc.pid, signal.SIGINT)
         try:
-            output_text, _ = proc.communicate(timeout=5)
+            if stdout_handle is None:
+                output_text, _ = proc.communicate(timeout=5)
+            else:
+                proc.wait(timeout=5)
+                stdout_handle.close()
+                stdout_handle = None
+                output_text = stdout_path.read_text(errors="replace")
         except subprocess.TimeoutExpired:
             os.killpg(proc.pid, signal.SIGKILL)
-            output_text, _ = proc.communicate()
+            if stdout_handle is None:
+                output_text, _ = proc.communicate()
+            else:
+                proc.wait()
+                stdout_handle.close()
+                stdout_handle = None
+                output_text = stdout_path.read_text(errors="replace")
         exec_time = float(timeout)
         return ExecutionResult(
             [output_text, f"TimeoutError: Execution exceeded the time limit of {timeout} seconds"],
@@ -186,6 +254,9 @@ def execute_code(
             {},
             [],
         )
+    finally:
+        if stdout_handle is not None:
+            stdout_handle.close()
 
     output = [output_text]
     if proc.returncode == 0:
@@ -278,6 +349,11 @@ def run_profile_eval(
             artifact_dir=artifact_dir,
             timeout=effective_timeout,
             memory_limit_gb=memory_limit_gb,
+            **(
+                {"console": console, "progress_time_limit": resolved_time_limit}
+                if console is not None
+                else {}
+            ),
         )
         generated_submission = workspace_dir / "working" / "submission.csv"
         if generated_submission.exists():
@@ -392,32 +468,54 @@ def _format_score(value: Any) -> str:
     return "-" if value is None else f"{float(value):.5f}"
 
 
+def _shorten_middle(value: Any, width: int) -> str:
+    text = str(value or "-")
+    if len(text) <= width:
+        return text
+    if width <= 3:
+        return text[:width]
+    left = max(1, (width - 1) // 2)
+    right = max(1, width - left - 1)
+    return f"{text[:left]}…{text[-right:]}"
+
+
 def render_profile_eval_results(console: Console, records: list[dict[str, Any]]) -> None:
-    table = Table(title="Created profile evaluations", expand=True)
-    table.add_column("#", justify="right", no_wrap=True, width=3)
-    table.add_column("status", no_wrap=True, width=6)
-    table.add_column("cv", justify="right", no_wrap=True, width=7)
-    table.add_column("profile", no_wrap=True, width=10)
-    table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
-    table.add_column("ts", no_wrap=True, width=15)
-    table.add_column("src_step", justify="right", no_wrap=True, width=8)
-    table.add_column("src_sha", no_wrap=True, width=10)
-    table.add_column("new_sha", no_wrap=True, width=10)
-    table.add_column("artifacts", no_wrap=True, overflow="ellipsis", ratio=1)
+    wide = console.width >= 150
+    table = Table(title="Created profile evaluations", expand=False)
+    table.add_column("#", justify="right", no_wrap=True)
+    table.add_column("status", no_wrap=True)
+    table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("profile", no_wrap=True)
+    table.add_column("run", no_wrap=True)
+    table.add_column("ts", no_wrap=True)
+    table.add_column("step", justify="right", no_wrap=True)
+    table.add_column("src_sha", no_wrap=True)
+    table.add_column("new_sha", no_wrap=True)
+    if wide:
+        table.add_column("artifacts", no_wrap=True)
+
+    artifact_lines: list[str] = []
     for rank, record in enumerate(records, start=1):
-        table.add_row(
+        row = [
             str(rank),
             str(record.get("status") or "-"),
             _format_score(record.get("local_score")),
             str(record.get("profile") or "-"),
-            str(record.get("run") or "-"),
+            _shorten_middle(record.get("run") or "-", 28 if wide else 20),
             str(record.get("timestamp") or "-"),
             "" if record.get("source_step") is None else str(record.get("source_step")),
             str(record.get("source_sha256") or "")[:10] or "-",
             str(record.get("sha256") or "")[:10] or "-",
-            str(record.get("artifact_dir") or "-"),
-        )
+        ]
+        if wide:
+            row.append(str(record.get("artifact_dir") or "-"))
+        else:
+            artifact_lines.append(f"{rank}. artifacts: {record.get('artifact_dir') or '-'}")
+        table.add_row(*row)
     console.print(table)
+    if artifact_lines:
+        for line in artifact_lines:
+            console.print(line)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

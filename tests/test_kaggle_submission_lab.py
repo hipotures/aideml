@@ -229,4 +229,30 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
 
     output = console.export_text()
     assert "src" not in output
+    assert "prof" not in output
     assert "20260504" in output
+
+
+def test_render_table_shows_profile_only_in_full_view(tmp_path):
+    records = [
+        {
+            "kind": "source_node",
+            "run": "2-intelligent-amber-bandicoot",
+            "step": 1,
+            "timestamp": "20260504T134159",
+            "local_score": 0.95026,
+            "profile": "full_best_30m",
+            "included_model_types": ["XGB", "GBM", "CAT"],
+            "sha256": "13bc36ab26abcdef",
+        }
+    ]
+    compact = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+    full = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+
+    kaggle_submission_lab.render_table(compact, records)
+    kaggle_submission_lab.render_table(full, records, full_view=True)
+
+    assert "prof" not in compact.export_text()
+    full_output = full.export_text()
+    assert "prof" in full_output
+    assert "full_best_30m" in full_output

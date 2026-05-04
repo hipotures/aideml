@@ -502,8 +502,12 @@ def main() -> None:
         test_pred = _positive_probability(predictor, test_model)
     submission = sample_submission.copy()
     submission[target_col] = test_pred.to_numpy()
-    _save_submission(submission, working_dir)
+    submission_path = _save_submission(submission, working_dir)
+    artifact_submission_path = _artifact_dir(working_dir) / "submission.csv"
     print("AIDE AutoGluon: finished validation and prediction", flush=True)
+    print(f"AIDE AutoGluon: submission saved to {{submission_path}}", flush=True)
+    if artifact_submission_path.resolve() != submission_path.resolve():
+        print(f"AIDE AutoGluon: artifact submission saved to {{artifact_submission_path}}", flush=True)
 
     summary = (
         f"AutoGluon preprocess wrapper completed with {{eval_metric}}="

@@ -454,20 +454,26 @@ def _short_models(models: list[Any] | None) -> str:
     return "".join(labels.get(str(model), str(model)[:1].lower()) for model in models or [])
 
 
-def render_table(console: Console, records: list[dict[str, Any]]) -> None:
+def render_table(
+    console: Console,
+    records: list[dict[str, Any]],
+    *,
+    full_view: bool = False,
+) -> None:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
-    table = Table(title="Top unsent submit-ready candidates", expand=True)
-    table.add_column("#", justify="right", no_wrap=True, width=3)
-    table.add_column("cv", justify="right", no_wrap=True, width=7)
-    table.add_column("k", no_wrap=True, width=1)
-    table.add_column("prof", no_wrap=True, width=4)
-    table.add_column("m", no_wrap=True, width=3)
+    table = Table(title="Top unsent submit-ready candidates", expand=True, padding=(0, 1))
+    table.add_column("#", justify="right", no_wrap=True)
+    table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("k", no_wrap=True)
+    if full_view:
+        table.add_column("prof", no_wrap=True)
+    table.add_column("m", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
-    table.add_column("step", justify="right", no_wrap=True, width=4)
-    table.add_column("date", no_wrap=True, width=8)
-    table.add_column("sha", no_wrap=True, width=10)
+    table.add_column("step", justify="right", no_wrap=True)
+    table.add_column("date", no_wrap=True)
+    table.add_column("sha", no_wrap=True)
     if show_source:
-        table.add_column("src_sha", no_wrap=True, width=10)
+        table.add_column("src_sha", no_wrap=True)
     for rank, record in enumerate(records, start=1):
         models = _short_models(record.get("included_model_types"))
         source_sha = ""
@@ -477,13 +483,18 @@ def render_table(console: Console, records: list[dict[str, Any]]) -> None:
             str(rank),
             _format_score(record.get("local_score")),
             "e" if record.get("kind") == "profile_eval" else "n",
-            _short_profile(record.get("profile")),
-            models,
-            _short_run(record.get("run")),
-            "-" if record.get("step") is None else str(record.get("step")),
-            _timestamp_date(record.get("timestamp")),
-            str(record.get("sha256") or "")[:10],
         ]
+        if full_view:
+            row.append(_short_profile(record.get("profile")))
+        row.extend(
+            [
+                models,
+                _short_run(record.get("run")),
+                "-" if record.get("step") is None else str(record.get("step")),
+                _timestamp_date(record.get("timestamp")),
+                str(record.get("sha256") or "")[:10],
+            ]
+        )
         if show_source:
             row.append(source_sha)
         table.add_row(*row)
@@ -548,6 +559,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reindex", action="store_true")
     parser.add_argument("--submit", action="store_true")
     parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    parser.add_argument("--full-view", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -610,7 +622,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
-        render_table(console, selected)
+        render_table(console, selected, full_view=args.full_view)
     return 0
 
 
