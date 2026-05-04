@@ -212,6 +212,46 @@ def test_collect_research_context_uses_preprocess_only_in_autogluon_mode(tmp_pat
     assert '"code"' in json.dumps(context)
 
 
+def test_collect_research_context_rounds_scores_for_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    node = _node(
+        0.9507496188899213,
+        code="print('score rounding')",
+        plan="rounding",
+    )
+    journal.append(node)
+    (Path(cfg.log_dir).parent / "submission_registry.json").write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "run": cfg.exp_name,
+                        "step": node.step,
+                        "timestamp": dt.datetime.fromtimestamp(
+                            node.ctime
+                        ).strftime("%Y%m%dT%H%M%S"),
+                        "node_id": node.id,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.948831234",
+                    }
+                ]
+            }
+        )
+    )
+
+    context = collect_research_context(
+        cfg=cfg,
+        task_desc="task",
+        journal=journal,
+        completed_steps=10,
+    )
+
+    payload = context["best_working_solutions"][0]
+    assert payload["local_cv_score"] == 0.95075
+    assert payload["kaggle_public_score"] == 0.94883
+
+
 def test_count_scored_working_nodes_ignores_buggy_nodes(tmp_path):
     journal = Journal()
     journal.append(_node(0.9, code="print('ok')", plan="ok"))
@@ -260,7 +300,7 @@ def test_collect_previous_research_summaries_includes_scores_after_each_checkpoi
                         ).strftime("%Y%m%dT%H%M%S"),
                         "node_id": public_node.id,
                         "remote_status": "COMPLETE",
-                        "public_score": "0.70124",
+                        "public_score": "0.7012449",
                     }
                 ]
             }

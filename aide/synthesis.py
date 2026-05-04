@@ -27,6 +27,7 @@ from .research import (
     _codex_profile_text,
     _json_default,
     _metric_value,
+    _prompt_score,
     _read_json,
     _write_json,
     build_data_overview,
@@ -206,7 +207,7 @@ def _solution_payload(
     if preprocess_only:
         code = extract_preprocess_source(code)
     payload = {
-        "local_cv_score": _metric_value(node),
+        "local_cv_score": _prompt_score(_metric_value(node)),
         "code": code,
     }
     public_score = _completed_public_score_for_node(
@@ -215,7 +216,7 @@ def _solution_payload(
         node=node,
     )
     if public_score is not None:
-        payload["kaggle_public_score"] = public_score
+        payload["kaggle_public_score"] = _prompt_score(public_score)
     return payload
 
 

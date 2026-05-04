@@ -65,6 +65,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
+PROMPT_SCORE_DECIMALS = 5
 
 
 def _json_default(value: Any) -> str:
@@ -85,6 +86,10 @@ def _read_json(path: Path) -> Any:
 
 def _metric_value(node: Node) -> float | None:
     return None if node.metric is None else node.metric.value
+
+
+def _prompt_score(value: float | None) -> float | None:
+    return None if value is None else round(float(value), PROMPT_SCORE_DECIMALS)
 
 
 def _timestamp_from_ctime(ctime: float) -> str:
@@ -138,7 +143,7 @@ def _node_payload(
         except ValueError:
             return None
     payload = {
-        "local_cv_score": _metric_value(node),
+        "local_cv_score": _prompt_score(_metric_value(node)),
         "code": code,
     }
     public_score = _public_score_for_node(
@@ -147,7 +152,7 @@ def _node_payload(
         node=node,
     )
     if public_score is not None:
-        payload["kaggle_public_score"] = public_score
+        payload["kaggle_public_score"] = _prompt_score(public_score)
     return payload
 
 
@@ -256,7 +261,7 @@ def _max_local_score(nodes: list[Node]) -> float | None:
     if not nodes:
         return None
     best = max(nodes, key=lambda node: node.metric)
-    return _metric_value(best)
+    return _prompt_score(_metric_value(best))
 
 
 def _max_public_score(
@@ -277,7 +282,7 @@ def _max_public_score(
         )
         is not None
     ]
-    return max(scores) if scores else None
+    return _prompt_score(max(scores)) if scores else None
 
 
 def _completed_research_checkpoints(

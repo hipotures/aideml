@@ -99,7 +99,7 @@ def test_collect_top_synthesis_solutions_uses_best_scored_nodes_across_runs(tmp_
 def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_path):
     cfg = _cfg(tmp_path)
     journal = Journal()
-    node = _node(0.90, code="print('submitted')")
+    node = _node(0.900006, code="print('submitted')")
     journal.append(node)
     registry_path = Path(cfg.log_dir).parent / "submission_registry.json"
     registry_path.write_text(
@@ -114,7 +114,7 @@ def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_
                         ),
                         "node_id": node.id,
                         "remote_status": "COMPLETE",
-                        "public_score": "0.81234",
+                        "public_score": "0.812344",
                     }
                 ]
             }
@@ -125,11 +125,22 @@ def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_
 
     assert solutions == [
         {
-            "local_cv_score": 0.9,
+            "local_cv_score": 0.90001,
             "kaggle_public_score": 0.81234,
             "code": "print('submitted')",
         }
     ]
+
+
+def test_collect_top_synthesis_solutions_rounds_scores_for_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    node = _node(0.9507496188899213, code="print('rounding')")
+    journal.append(node)
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert solutions[0]["local_cv_score"] == 0.95075
 
 
 def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
