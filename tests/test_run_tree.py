@@ -77,7 +77,7 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
 
     output = _render_text(tree)
 
-    assert "★ 0.94500" in output
+    assert "* 0.94500" in output
     assert "[*]" in output
     assert "executing" not in output
 
@@ -143,7 +143,7 @@ def test_journal_tree_best_marker_ignores_hidden_invalid_submission_branch():
     output = _render_text(tree)
 
     assert "0.99000" not in output
-    assert "★ 0.90000" in output
+    assert "* 0.90000" in output
 
 
 def test_journal_tree_can_show_invalid_submission_branch():
@@ -194,7 +194,7 @@ def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
 
     assert "◆ 0.94600" in output
     assert "synthesis)" not in output
-    assert "★ 0.94700" in output
+    assert "* 0.94700" in output
     assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
 
 
@@ -211,9 +211,9 @@ def test_journal_tree_marks_baseline_with_star_until_new_best_then_bullseye():
     output = _render_text(journal_to_rich_tree(journal))
     ansi = _render_ansi(journal_to_rich_tree(journal))
 
-    assert "★ 0.95000" in output
+    assert "* 0.95000" in output
     assert "◎" not in output
-    assert "\x1b[1;33m★" in ansi
+    assert "\x1b[1;33m*" in ansi
 
     improved = _good_node(0.951)
     journal.append(improved)
@@ -222,7 +222,7 @@ def test_journal_tree_marks_baseline_with_star_until_new_best_then_bullseye():
     ansi = _render_ansi(journal_to_rich_tree(journal))
 
     assert "◎ 0.95000" in output
-    assert "★ 0.95100" in output
+    assert "* 0.95100" in output
     assert "\x1b[95m◎" in ansi
 
 
@@ -258,7 +258,7 @@ def test_journal_tree_ignores_unappended_active_child_node():
 
     output = _render_text(tree)
 
-    assert "★ 0.94500" in output
+    assert "* 0.94500" in output
     assert "n/a" not in output
     assert "[*]" in output
 
@@ -385,7 +385,7 @@ def test_render_tree_view_highlights_node_marker_and_score_not_tree_guides():
     ))
 
     assert "\x1b[7m└──" not in output
-    assert "\x1b[1;7;33m★" in output
+    assert "\x1b[1;7;33m*" in output
 
 
 def test_tree_view_renders_active_placeholder_as_tree_child():
@@ -408,7 +408,7 @@ def test_tree_view_renders_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── ★ 0.91000" in output
+    assert "├── * 0.91000" in output
     assert "└── [*]" in output
 
 
@@ -432,7 +432,7 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
     )
 
     assert "◎ 0.95000" in output
-    assert "★ 0.95100" in output
+    assert "* 0.95100" in output
 
 
 def test_tree_view_renders_root_active_placeholder_as_tree_child():
@@ -453,7 +453,7 @@ def test_tree_view_renders_root_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── ★ 0.90000" in output
+    assert "├── * 0.90000" in output
     assert "└── [ ]" in output
 
 

@@ -284,7 +284,7 @@ def journal_to_rich_tree(
             metric_text = f"{node.metric.value:.5f}"
 
             if node is best_node:
-                s = f"[bold yellow]★[/bold yellow] [{style}green]{metric_text}"
+                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}"
             elif is_baseline_root(node):
                 s = f"[bright_magenta]◎[/bright_magenta] [{style}green]{metric_text}"
             elif synthesis_root:
@@ -345,7 +345,7 @@ def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
 
     label = Text()
     if node is best_node:
-        label.append("★ ", style="bold yellow")
+        label.append("* ", style="bold yellow")
     elif baseline_root:
         label.append("◎ ", style="bright_magenta")
     elif synthesis_root:
