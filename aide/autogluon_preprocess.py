@@ -133,6 +133,7 @@ import json
 import shutil
 import warnings
 import contextlib
+import logging
 import os
 from pathlib import Path
 
@@ -231,8 +232,36 @@ def _quiet_model_output(working_dir: Path):
 
     with open(log_path, "a", encoding="utf-8", buffering=1) as log_file:
         writer = _AutoFlushWriter(log_file)
-        with contextlib.redirect_stdout(writer), contextlib.redirect_stderr(writer):
-            yield
+        log_handler = logging.StreamHandler(writer)
+        log_handler.setFormatter(logging.Formatter("%(message)s"))
+        logger_names = ["", "autogluon"]
+        loggers = [logging.getLogger(name) for name in logger_names]
+        previous_states = [
+            (
+                logger.level,
+                logger.disabled,
+                list(logger.handlers),
+                logger.propagate,
+            )
+            for logger in loggers
+        ]
+        for logger in loggers:
+            logger.disabled = False
+            logger.setLevel(logging.INFO)
+            logger.handlers = [log_handler]
+            logger.propagate = False
+        try:
+            with contextlib.redirect_stdout(writer), contextlib.redirect_stderr(writer):
+                yield
+        finally:
+            for logger, (level, disabled, handlers, propagate) in zip(
+                loggers,
+                previous_states,
+            ):
+                logger.setLevel(level)
+                logger.disabled = disabled
+                logger.handlers = handlers
+                logger.propagate = propagate
 
 
 def main() -> None:

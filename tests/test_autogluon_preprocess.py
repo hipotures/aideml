@@ -97,6 +97,10 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "verbosity=2" in code
     assert 'os.environ.get("AIDE_NODE_ARTIFACT_DIR"' in code
     assert "class _AutoFlushWriter" in code
+    assert "logging.StreamHandler(writer)" in code
+    assert "logger.handlers = [log_handler]" in code
+    assert "logger.propagate = False" in code
+    assert '"autogluon"' in code
     assert 'print("AIDE AutoGluon: starting fit", flush=True)' in code
     assert 'if __name__ == "__main__"' not in code
     assert code.rstrip().endswith("main()")
