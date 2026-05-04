@@ -5,6 +5,14 @@ import time
 from typing import Any, Callable
 
 import humanize
+from .autogluon_preprocess import (
+    build_autogluon_wrapper,
+    extract_preprocess_source,
+    infer_sample_submission_columns,
+    is_autogluon_preprocess_mode,
+    parse_result_marker,
+    validate_preprocess_source,
+)
 from .backend import FunctionSpec, query
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
@@ -217,12 +225,71 @@ class Agent:
             )
         }
 
+    @property
+    def _prompt_autogluon_preprocess_guideline(self):
+        return {
+            "AutoGluon preprocess mode contract": [
+                "You are writing only the feature preprocessing function for a fixed AutoGluon training wrapper.",
+                "Return a single markdown code block containing exactly one top-level function: def preprocess(df: pd.DataFrame) -> pd.DataFrame.",
+                "The df argument contains concatenated train features followed by Kaggle prediction/test features.",
+                "The target column, id column, and train/test split marker are intentionally not present in df.",
+                "No helper row-id column is exposed to preprocess(df); row order must be preserved.",
+                "Do not create, reference, infer, or use target, id, `__is_train__`, or `__aide_row_id__` as features.",
+                "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
+                "Do not change row count or reorder rows.",
+                "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only non-target columns.",
+            ]
+        }
+
     def _add_research_hints(self, prompt: dict[str, Any]) -> None:
         if not self.cfg.research.enabled:
             return
         hints = load_latest_research_hints(self.cfg.log_dir)
         if hints is not None:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
+
+    def _autogluon_target_column(self) -> str | None:
+        columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
+        return columns[1] if columns is not None else None
+
+    def _add_autogluon_context(self, prompt: dict[str, Any]) -> None:
+        target_col = self._autogluon_target_column()
+        if target_col is not None:
+            prompt["Fixed AutoGluon wrapper context"] = {
+                "Target column": target_col,
+                "Important": (
+                    "The fixed wrapper removes this target before calling "
+                    "preprocess(df), keeps y_train internally, and adds it back "
+                    "only after preprocessing for AutoGluon training. It also "
+                    "removes the id column and does not expose a train/test marker. "
+                    "preprocess(df) must not reference or create target, id, or "
+                    "split-marker columns."
+                ),
+            }
+
+    def _wrap_autogluon_preprocess_node(
+        self,
+        *,
+        plan: str,
+        code: str,
+        parent: Node | None = None,
+    ) -> Node:
+        try:
+            preprocess_source = extract_preprocess_source(code)
+            validate_preprocess_source(
+                preprocess_source,
+                target_col=self._autogluon_target_column(),
+            )
+            wrapped_code = build_autogluon_wrapper(preprocess_source, self.cfg)
+        except ValueError as exc:
+            wrapped_code = f"raise ValueError({str(exc)!r})\n"
+        return Node(plan=plan, code=wrapped_code, parent=parent)
+
+    def _previous_preprocess_source(self, parent_node: Node) -> str:
+        try:
+            return extract_preprocess_source(parent_node.code)
+        except ValueError:
+            return parent_node.code
 
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
         """Generate a natural language plan + code in the same LLM call and split them apart."""
@@ -247,6 +314,9 @@ class Agent:
         return "", completion_text  # type: ignore
 
     def _draft(self) -> Node:
+        if is_autogluon_preprocess_mode(self.cfg):
+            return self._draft_autogluon_preprocess()
+
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
@@ -279,7 +349,41 @@ class Agent:
         plan, code = self.plan_and_code_query(prompt)
         return Node(plan=plan, code=code)
 
+    def _draft_autogluon_preprocess(self) -> Node:
+        prompt: Any = {
+            "Introduction": (
+                "You are a Kaggle grandmaster attending a competition. "
+                "A fixed AutoGluon runner will handle model training, validation, "
+                "and submission generation. Your job is to design leakage-safe "
+                "feature preprocessing for that runner."
+            ),
+            "Task description": self.task_desc,
+            "Memory": self.journal.generate_summary(),
+            "Instructions": {},
+        }
+        prompt["Instructions"] |= self._prompt_resp_fmt
+        prompt["Instructions"] |= {
+            "Preprocessing sketch guideline": [
+                "The solution sketch should be 3-5 sentences describing the feature engineering idea.",
+                "Keep the first solution relatively simple and deterministic.",
+                "Don't suggest to do EDA.",
+            ],
+        }
+        prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
+        prompt["Instructions"] |= self._prompt_environment
+
+        if self.acfg.data_preview:
+            prompt["Data Overview"] = self.data_preview
+
+        self._add_autogluon_context(prompt)
+        self._add_research_hints(prompt)
+        plan, code = self.plan_and_code_query(prompt)
+        return self._wrap_autogluon_preprocess_node(plan=plan, code=code)
+
     def _improve(self, parent_node: Node) -> Node:
+        if is_autogluon_preprocess_mode(self.cfg):
+            return self._improve_autogluon_preprocess(parent_node)
+
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. You are provided with a previously developed "
@@ -316,7 +420,42 @@ class Agent:
             parent=parent_node,
         )
 
+    def _improve_autogluon_preprocess(self, parent_node: Node) -> Node:
+        prompt: Any = {
+            "Introduction": (
+                "You are improving only the feature preprocessing function for a "
+                "fixed AutoGluon training wrapper. Keep the wrapper behavior "
+                "unchanged and make one atomic, leakage-safe feature improvement."
+            ),
+            "Task description": self.task_desc,
+            "Memory": self.journal.generate_summary(),
+            "Previous preprocess function": wrap_code(
+                self._previous_preprocess_source(parent_node)
+            ),
+            "Instructions": {},
+        }
+        prompt["Instructions"] |= self._prompt_resp_fmt
+        prompt["Instructions"] |= {
+            "Preprocessing improvement sketch guideline": [
+                "The solution sketch should describe one specific feature engineering improvement.",
+                "Make the change atomic so the AutoGluon wrapper can evaluate its effect.",
+                "Don't suggest to do EDA.",
+            ],
+        }
+        prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
+        self._add_autogluon_context(prompt)
+        self._add_research_hints(prompt)
+        plan, code = self.plan_and_code_query(prompt)
+        return self._wrap_autogluon_preprocess_node(
+            plan=plan,
+            code=code,
+            parent=parent_node,
+        )
+
     def _debug(self, parent_node: Node) -> Node:
+        if is_autogluon_preprocess_mode(self.cfg):
+            return self._debug_autogluon_preprocess(parent_node)
+
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
@@ -341,9 +480,45 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
+        self._add_autogluon_context(prompt)
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
         return Node(plan=plan, code=code, parent=parent_node)
+
+    def _debug_autogluon_preprocess(self, parent_node: Node) -> Node:
+        prompt: Any = {
+            "Introduction": (
+                "You are fixing a buggy feature preprocessing function used by a "
+                "fixed AutoGluon training wrapper. Revise only preprocess(df); "
+                "do not write a full model pipeline."
+            ),
+            "Task description": self.task_desc,
+            "Previous preprocess function": wrap_code(
+                self._previous_preprocess_source(parent_node)
+            ),
+            "Execution output": wrap_code(parent_node.term_out, lang=""),
+            "Instructions": {},
+        }
+        prompt["Instructions"] |= self._prompt_resp_fmt
+        prompt["Instructions"] |= {
+            "Bugfix preprocessing sketch guideline": [
+                "Describe the cause of the preprocessing failure and the narrow fix.",
+                "Keep the function deterministic and leakage-safe.",
+                "Don't suggest to do EDA.",
+            ],
+        }
+        prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
+
+        if self.acfg.data_preview:
+            prompt["Data Overview"] = self.data_preview
+
+        self._add_research_hints(prompt)
+        plan, code = self.plan_and_code_query(prompt)
+        return self._wrap_autogluon_preprocess_node(
+            plan=plan,
+            code=code,
+            parent=parent_node,
+        )
 
     def update_data_preview(
         self,
@@ -400,6 +575,25 @@ class Agent:
         logger.info(f"Agent is parsing execution results for node {node.id}")
 
         node.absorb_exec_result(exec_result)
+        marker_response = parse_result_marker(node.term_out)
+        if marker_response is not None:
+            metric = marker_response.get("metric")
+            if not isinstance(metric, (float, int)) or isinstance(metric, bool):
+                metric = None
+            node.analysis = str(marker_response.get("summary", ""))
+            node.is_buggy = (
+                bool(marker_response.get("is_bug"))
+                or node.exc_type is not None
+                or metric is None
+            )
+            if node.is_buggy:
+                node.metric = WorstMetricValue()
+            else:
+                node.metric = MetricValue(
+                    metric,
+                    maximize=not bool(marker_response.get("lower_is_better")),
+                )
+            return
 
         prompt = {
             "Introduction": (

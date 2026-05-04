@@ -11,6 +11,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from .autogluon_preprocess import (
+    AGENT_MODE as AUTOGLUON_PREPROCESS_MODE,
+    build_autogluon_wrapper,
+    extract_preprocess_source,
+    infer_sample_submission_columns,
+    is_autogluon_preprocess_mode,
+    validate_preprocess_source,
+)
 from .journal import Journal, Node
 from .research import (
     _checkpoint_label,
@@ -192,10 +200,14 @@ def _solution_payload(
     registry_entries: list[dict[str, Any]],
     run_id: str,
     node: Node,
+    preprocess_only: bool = False,
 ) -> dict[str, Any]:
+    code = node.code
+    if preprocess_only:
+        code = extract_preprocess_source(code)
     payload = {
         "local_cv_score": _metric_value(node),
-        "code": node.code,
+        "code": code,
     }
     public_score = _completed_public_score_for_node(
         registry_entries=registry_entries,
@@ -376,6 +388,7 @@ def collect_top_synthesis_solutions(
 ) -> list[dict[str, Any]]:
     registry_entries = _load_submission_registry(cfg)
     selected: list[tuple[str, Node]] = []
+    preprocess_only = is_autogluon_preprocess_mode(cfg)
     for run_id in _candidate_run_ids(cfg):
         source_journal = _journal_for_run(
             cfg=cfg,
@@ -384,11 +397,15 @@ def collect_top_synthesis_solutions(
         )
         if source_journal is None:
             continue
-        selected.extend(
-            (run_id, node)
-            for node in _working_nodes_with_metrics(source_journal)
-            if not _has_target_leakage_pattern(node.code)
-        )
+        for node in _working_nodes_with_metrics(source_journal):
+            if _has_target_leakage_pattern(node.code):
+                continue
+            if preprocess_only:
+                try:
+                    extract_preprocess_source(node.code)
+                except ValueError:
+                    continue
+            selected.append((run_id, node))
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)
     selected = _prefer_ancestor_for_related_predictions(cfg, selected)
@@ -397,6 +414,7 @@ def collect_top_synthesis_solutions(
             registry_entries=registry_entries,
             run_id=run_id,
             node=node,
+            preprocess_only=preprocess_only,
         )
         for run_id, node in selected[: cfg.synthesis.top_k]
     ]
@@ -414,6 +432,7 @@ def collect_synthesis_context(
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
         "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "agent_mode": getattr(cfg.agent, "mode", "legacy"),
         "task_desc": task_desc,
         "data_overview": build_data_overview(cfg),
         "metric_direction": (
@@ -442,6 +461,50 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
     context_json = json.dumps(
         prompt_context, indent=2, ensure_ascii=False, default=_json_default
     )
+    if context.get("agent_mode") == AUTOGLUON_PREPROCESS_MODE:
+        return (
+            f"{SYNTHESIS_PROMPT_INTRO}\n\n"
+            "# Synthesis task\n"
+            "Create one coherent leakage-safe feature preprocessing function for "
+            "a fixed AutoGluon training wrapper. Combine compatible high-performing "
+            "feature engineering ideas from the provided successful preprocess "
+            "functions, but do not merely paste them together. You may use live web "
+            "search to check competition-specific or closely related feature ideas "
+            "before writing the function.\n\n"
+            "# Output contract\n"
+            "Return only Python code defining exactly one top-level function: "
+            "`def preprocess(df: pd.DataFrame) -> pd.DataFrame`. Do not include "
+            "markdown fences, prose, JSON, explanations, titles, or comments "
+            "outside the code. Do not read files, write files, train models, call "
+            "AutoGluon, create validation splits, or save submissions. The fixed "
+            "AIDE wrapper handles all model training, metric reporting, and "
+            "submission generation.\n\n"
+            "# Data contract\n"
+            "`df` contains concatenated train features followed by Kaggle "
+            "prediction/test features. The target column, id column, and train/test "
+            "split marker are intentionally not present in df. No helper row-id "
+            "column is exposed to preprocess(df); row order must be preserved. "
+            "Return a DataFrame with the same row count.\n\n"
+            "# Leakage rules\n"
+            "Do not use target leakage. Do not use the target column to create "
+            "features, encodings, filters, groups, or labels, and do not create "
+            "the target column inside preprocess(df). Do not create, reference, "
+            "infer, or use id, `__is_train__`, or `__aide_row_id__` as features. "
+            "Do not use future PitStop values, next-lap PitStop reconstruction, shift(-1) on PitStop, "
+            "next_PitStop-like features, or test PitStop values to overwrite "
+            "predictions. Use PitStop only as a normal current-row historical "
+            "feature.\n\n"
+            "# Context field meanings\n"
+            "best_working_solutions contains the highest-scoring preprocess "
+            "functions that ran successfully through the fixed AutoGluon wrapper. "
+            "local_cv_score is the AutoGluon validation score. kaggle_public_score "
+            "is included only when the local submission registry has a completed "
+            "Kaggle public leaderboard score for that exact node. Each solution "
+            "also includes code containing only preprocess(df).\n\n"
+            "# Compact AIDE synthesis context\n"
+            f"```json\n{context_json}\n```\n"
+        )
+
     return (
         f"{SYNTHESIS_PROMPT_INTRO}\n\n"
         "# Synthesis task\n"
@@ -590,8 +653,19 @@ def run_synthesis_checkpoint(
         error = f"Codex exited with status {exit_code}."
     if error is None:
         try:
-            code = parse_synthesis_code(raw_response)
-            _validate_synthesis_code_for_injection(code)
+            if context.get("agent_mode") == AUTOGLUON_PREPROCESS_MODE:
+                preprocess_source = extract_preprocess_source(raw_response)
+                columns = infer_sample_submission_columns(
+                    Path(cfg.workspace_dir) / "input"
+                )
+                validate_preprocess_source(
+                    preprocess_source,
+                    target_col=columns[1] if columns is not None else None,
+                )
+                code = build_autogluon_wrapper(preprocess_source, cfg)
+            else:
+                code = parse_synthesis_code(raw_response)
+                _validate_synthesis_code_for_injection(code)
             (checkpoint_dir / "response.py").write_text(code, encoding="utf-8")
         except ValueError as exc:
             error = str(exc)

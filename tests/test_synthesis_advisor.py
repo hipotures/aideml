@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from aide.journal import Journal, Node
+from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
 from aide.synthesis import (
     SYNTHESIS_PROMPT_INTRO,
     SYNTHESIS_PLAN_PREFIX,
@@ -278,6 +279,37 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
     assert '"analysis"' not in prompt
 
 
+def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    journal = Journal()
+    journal.append(
+        _node(
+            0.9,
+            code=build_autogluon_wrapper(
+                "def preprocess(df):\n"
+                "    df = df.copy()\n"
+                "    df['x'] = 1\n"
+                "    return df\n",
+                cfg,
+            ),
+        )
+    )
+
+    context = collect_synthesis_context(
+        cfg=cfg,
+        task_desc="task",
+        journal=journal,
+        completed_steps=15,
+    )
+    prompt = build_synthesis_prompt(context)
+
+    assert "def preprocess(df: pd.DataFrame)" in prompt
+    assert "Do not read files, write files, train models" in prompt
+    assert "TabularPredictor" not in prompt
+    assert '"code": "def preprocess' in prompt
+
+
 def test_parse_synthesis_code_accepts_raw_and_fenced_python():
     raw = "value = 1\nprint(value)\n"
     fenced = "```python\nvalue = 2\nprint(value)\n```\n"
@@ -372,6 +404,49 @@ def test_run_synthesis_checkpoint_rejects_generated_next_pitstop_leakage(tmp_pat
     assert status["status"] == "failed"
     assert "target leakage" in response["error"]
     assert not (checkpoint_dir / "response.py").exists()
+
+
+def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    context = {
+        "run_id": cfg.exp_name,
+        "checkpoint_step": 15,
+        "agent_mode": AGENT_MODE,
+        "task_desc": "task",
+        "best_working_solutions": [
+            {
+                "local_cv_score": 0.9,
+                "code": "def preprocess(df):\n    return df\n",
+            }
+        ],
+    }
+
+    def fake_runner(cmd, **kwargs):
+        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
+        (checkpoint_dir / "response_raw.txt").write_text(
+            "def preprocess(df):\n"
+            "    df = df.copy()\n"
+            "    df['feature'] = 1\n"
+            "    return df\n"
+        )
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    result = run_synthesis_checkpoint(
+        cfg=cfg,
+        context=context,
+        runner=fake_runner,
+    )
+
+    checkpoint_dir = Path(result["checkpoint_dir"])
+    response_code = (checkpoint_dir / "response.py").read_text()
+    response = json.loads((checkpoint_dir / "response.json").read_text())
+
+    assert result["status"] == "ready"
+    assert "TabularPredictor" in response_code
+    assert "def preprocess(df):" in response_code
+    assert "feature" in response_code
+    assert response["code"] == response_code
 
 
 def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):

@@ -59,6 +59,9 @@ synthesis:
 agent:
   # how many improvement iterations to run
   steps: 20
+  # code generation mode: legacy writes full ML scripts; autogluon_preprocess
+  # asks the LLM for feature preprocessing only and uses a fixed AutoGluon runner
+  mode: legacy
   # whether to instruct the agent to use CV (set to 1 to disable)
   k_fold_validation: 5
   # whether to instruct the agent to generate a prediction function
@@ -81,3 +84,19 @@ agent:
     max_debug_depth: 3
     debug_prob: 0.5
     num_drafts: 5
+
+  autogluon:
+    presets: medium_quality
+    time_limit: 600
+    validation_fraction: 0.2
+    seed: 42
+    use_gpu: false
+    eval_metric: auto
+    included_model_types:
+      - XGB
+      - GBM
+      - CAT
+    fit_args:
+      save_space: true
+      fit_weighted_ensemble: false
+      auto_stack: false

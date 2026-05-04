@@ -43,6 +43,26 @@ class SearchConfig:
 
 
 @dataclass
+class AutoGluonConfig:
+    presets: str = "medium_quality"
+    time_limit: int = 600
+    validation_fraction: float = 0.2
+    seed: int = 42
+    use_gpu: bool = False
+    eval_metric: str = "auto"
+    included_model_types: list[str] = field(
+        default_factory=lambda: ["XGB", "GBM", "CAT"]
+    )
+    fit_args: dict = field(
+        default_factory=lambda: {
+            "save_space": True,
+            "fit_weighted_ensemble": False,
+            "auto_stack": False,
+        }
+    )
+
+
+@dataclass
 class AgentConfig:
     steps: int
     k_fold_validation: int
@@ -53,6 +73,8 @@ class AgentConfig:
     feedback: StageConfig
 
     search: SearchConfig
+    mode: str = "legacy"
+    autogluon: AutoGluonConfig = field(default_factory=AutoGluonConfig)
 
 
 @dataclass

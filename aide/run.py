@@ -868,6 +868,11 @@ def _node_artifact_submission_path(cfg, node: Node) -> Path:
     return Path(cfg.log_dir) / "artifacts" / timestamp / "submission.csv"
 
 
+def _node_artifact_dir(cfg, node: Node) -> Path:
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+    return Path(cfg.log_dir) / "artifacts" / timestamp
+
+
 def enforce_journal_submission_contract(
     cfg,
     journal: Journal,
@@ -1069,6 +1074,19 @@ def run(argv: list[str] | None = None):
             if not stop_after_current_execution:
                 status_override = None
 
+    def prepare_node_artifact_env(node: Node) -> str | None:
+        previous = os.environ.get("AIDE_NODE_ARTIFACT_DIR")
+        artifact_dir = _node_artifact_dir(cfg, node)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir)
+        return previous
+
+    def restore_node_artifact_env(previous: str | None) -> None:
+        if previous is None:
+            os.environ.pop("AIDE_NODE_ARTIFACT_DIR", None)
+        else:
+            os.environ["AIDE_NODE_ARTIFACT_DIR"] = previous
+
     def update_save_status(message: str, live: Live) -> None:
         nonlocal status_override
         status_override = f"[blue]Saving run: {message}..."
@@ -1207,7 +1225,14 @@ def run(argv: list[str] | None = None):
                         else:
                             result_node = synthesized.node
 
-                        exec_result = agent.execute_node(result_node, exec_callback)
+                        previous_artifact_env = prepare_node_artifact_env(result_node)
+                        try:
+                            exec_result = agent.execute_node(
+                                result_node,
+                                exec_callback,
+                            )
+                        finally:
+                            restore_node_artifact_env(previous_artifact_env)
                         run_with_live_refresh(
                             live,
                             generate_live,

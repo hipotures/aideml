@@ -225,3 +225,6 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     assert cfg.synthesis.model == "gpt-5.5"
     assert cfg.synthesis.every_scored_steps == 15
     assert cfg.exec.memory_limit_gb == 80.0
+    assert cfg.agent.mode == "legacy"
+    assert cfg.agent.autogluon.time_limit == 600
+    assert cfg.agent.autogluon.included_model_types == ["XGB", "GBM", "CAT"]
