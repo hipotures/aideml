@@ -46,6 +46,7 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     assert artifact_dirs[0].name == "20260502T213547"
     assert (artifact_dirs[0] / "solution.py").read_text() == "print('current node')"
     assert (artifact_dirs[0] / "submission.csv").read_text() == "id,PitNextLap\n1,0.7\n"
+    assert not (artifact_dirs[0] / "error.txt").exists()
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
 
 
@@ -98,6 +99,8 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
     node._term_out = ["RuntimeError: bug\n"]
     node.exec_time = 1.0
     node.exc_type = "RuntimeError"
+    node.exc_info = {"args": ["bug"]}
+    node.exc_stack = [("runfile.py", 1, "<module>", "raise RuntimeError('bug')")]
     node.analysis = "buggy"
     journal.append(node)
 
@@ -107,6 +110,11 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
+    error_text = (artifact_dir / "error.txt").read_text()
+    assert "Exception type:\nRuntimeError" in error_text
+    assert '"args": [' in error_text
+    assert "Terminal output:\nRuntimeError: bug" in error_text
+    assert "Analysis:\nbuggy" in error_text
 
 
 def test_save_run_reports_progress_for_each_save_stage(tmp_path):

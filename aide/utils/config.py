@@ -1,6 +1,7 @@
 """configuration and setup utils"""
 
 import datetime as dt
+import json
 import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -251,6 +252,41 @@ def _node_artifact_timestamp(node) -> str:
     return dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
 
 
+def _node_error_text(node) -> str | None:
+    if not getattr(node, "is_buggy", False):
+        return None
+
+    sections: list[str] = []
+    if getattr(node, "exc_type", None):
+        sections.append(f"Exception type:\n{node.exc_type}")
+    if getattr(node, "exc_info", None):
+        sections.append(
+            "Exception info:\n"
+            + json.dumps(node.exc_info, indent=2, ensure_ascii=False, default=str)
+        )
+    if getattr(node, "exc_stack", None):
+        sections.append(
+            "Exception stack:\n"
+            + json.dumps(node.exc_stack, indent=2, ensure_ascii=False, default=str)
+        )
+    if getattr(node, "_term_out", None):
+        sections.append("Terminal output:\n" + "".join(node._term_out).rstrip())
+    if getattr(node, "analysis", None):
+        sections.append("Analysis:\n" + str(node.analysis).rstrip())
+    if getattr(node, "submission_validation", None):
+        sections.append(
+            "Submission validation:\n"
+            + json.dumps(
+                node.submission_validation,
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            )
+        )
+
+    return "\n\n".join(section for section in sections if section).strip() or "Unknown error"
+
+
 def _save_node_artifacts(cfg: Config, node) -> None:
     timestamp = _node_artifact_timestamp(node)
     artifact_dir = cfg.log_dir / "artifacts" / timestamp
@@ -262,6 +298,10 @@ def _save_node_artifacts(cfg: Config, node) -> None:
     submission_path = cfg.workspace_dir / "working" / "submission.csv"
     if submission_path.exists() and submission_path.stat().st_mtime >= node.ctime:
         shutil.copy2(submission_path, artifact_dir / "submission.csv")
+
+    error_text = _node_error_text(node)
+    if error_text is not None:
+        (artifact_dir / "error.txt").write_text(error_text + "\n")
 
 
 def save_run(
