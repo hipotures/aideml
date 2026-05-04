@@ -9,6 +9,7 @@ from .backend import FunctionSpec, query
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import format_research_hints_for_prompt, load_latest_research_hints
+from .synthesis import SYNTHESIS_PLAN_PREFIX
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
@@ -80,6 +81,10 @@ def _mark_invalid_review_response(node: Node, response: Any) -> None:
     node.metric = WorstMetricValue()
 
 
+def _is_synthesis_node(node: Node) -> bool:
+    return str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
+
+
 class Agent:
     def __init__(
         self,
@@ -118,7 +123,7 @@ class Agent:
                 for n in self.journal.buggy_nodes
                 if (
                     n.is_leaf
-                    and n.debug_depth <= search_cfg.max_debug_depth
+                    and n.debug_depth < search_cfg.max_debug_depth
                     and not n.is_submission_contract_error
                 )
             ]
@@ -136,6 +141,15 @@ class Agent:
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return None
+
+        synthesis_leaf_nodes = [
+            n
+            for n in good_nodes
+            if n.is_leaf and _is_synthesis_node(n)
+        ]
+        if synthesis_leaf_nodes:
+            logger.debug("[search policy] improving synthesis leaf")
+            return max(synthesis_leaf_nodes, key=lambda n: n.metric)
 
         # greedy
         greedy_node = max(good_nodes, key=lambda n: n.metric)

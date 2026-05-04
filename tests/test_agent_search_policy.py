@@ -2,6 +2,7 @@ from pathlib import Path
 
 from aide.agent import Agent
 from aide.journal import Journal, Node
+from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.utils.config import _load_cfg, prep_cfg
 from aide.utils.metric import MetricValue, WorstMetricValue
 
@@ -79,3 +80,39 @@ def test_search_policy_ignores_good_descendants_of_invalid_submission_branch(tmp
     selected = agent.search_policy()
 
     assert selected is safe_good
+
+
+def test_search_policy_does_not_debug_past_configured_max_depth(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 1.0
+    cfg.agent.search.max_debug_depth = 3
+    journal = Journal()
+    root = _bug_node()
+    depth_1 = _bug_node(parent=root)
+    depth_2 = _bug_node(parent=depth_1)
+    depth_3 = _bug_node(parent=depth_2)
+    journal.append(root)
+    journal.append(depth_1)
+    journal.append(depth_2)
+    journal.append(depth_3)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is None
+
+
+def test_search_policy_gives_good_synthesis_leaf_a_followup_improvement(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    journal = Journal()
+    best = _good_node(0.95)
+    synthesis_leaf = _good_node(0.94)
+    synthesis_leaf.plan = f"{SYNTHESIS_PLAN_PREFIX} 000015"
+    journal.append(best)
+    journal.append(synthesis_leaf)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is synthesis_leaf
