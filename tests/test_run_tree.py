@@ -16,6 +16,7 @@ from aide.run import (
 )
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
+from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
 
 
@@ -602,6 +603,24 @@ def test_run_data_shows_last_error_below_separator(tmp_path):
 
 
 def test_run_data_shows_resources_below_last_error(tmp_path):
+    history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=320.0,
+            ram_bytes=int(10.0 * 1024**3),
+            peak_ram_bytes=int(10.0 * 1024**3),
+            process_count=4,
+        )
+    )
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=640.0,
+            ram_bytes=int(18.4 * 1024**3),
+            peak_ram_bytes=int(22.1 * 1024**3),
+            process_count=9,
+        )
+    )
+
     output = _render_text(
         build_run_data(
             progress="Progress: 1/20",
@@ -611,12 +630,7 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
             journal=Journal(),
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
-            resource_snapshot=ResourceSnapshot(
-                cpu_percent=640.0,
-                ram_bytes=int(18.4 * 1024**3),
-                peak_ram_bytes=int(22.1 * 1024**3),
-                process_count=9,
-            ),
+            resource_history=history,
         )
     )
 
@@ -627,6 +641,8 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
     assert "▶ RAM 18.4G" in output
     assert "▶ peak 22.1G" in output
     assert "▶ proc 9" in output
+    assert "█" in output
+    assert "▁" in output or "▂" in output or "▃" in output
 
 
 def test_stage_status_message_names_review_stage():

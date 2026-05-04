@@ -48,7 +48,7 @@ from .utils.config import (
     load_cfg,
 )
 from .utils.metric import MetricValue, WorstMetricValue
-from .utils.resource_monitor import ResourceSnapshot
+from .utils.resource_monitor import ResourceHistory, ResourceSnapshot, downsample_max
 from .utils.submission_validation import (
     file_signature,
     find_sample_submission,
@@ -741,23 +741,95 @@ def _format_gib(value: int) -> str:
     return f"{value / 1024**3:.1f}G"
 
 
-def build_resource_summary(snapshot: ResourceSnapshot | None) -> Group:
+RESOURCE_SPARKLINE_LEVELS = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(values: list[float], *, width: int, ceiling: float) -> str:
+    sampled = downsample_max(values, width)
+    if not sampled:
+        return " " * width
+
+    top = max(ceiling, max(sampled), 1.0)
+    chars: list[str] = []
+    for value in sampled:
+        ratio = min(max(value / top, 0.0), 1.0)
+        chars.append(RESOURCE_SPARKLINE_LEVELS[round(ratio * (len(RESOURCE_SPARKLINE_LEVELS) - 1))])
+    return "".join(chars)
+
+
+def _hbar(value: float, *, ceiling: float, width: int = 10) -> str:
+    top = max(ceiling, 1.0)
+    filled = round(min(max(value / top, 0.0), 1.0) * width)
+    return "█" * filled + "░" * (width - filled)
+
+
+def build_resource_summary(
+    resource_history: ResourceHistory | None,
+    *,
+    graph_width: int = 24,
+) -> Group:
     lines: list[Text] = [Text("Resources", style="bold cyan")]
-    if snapshot is None:
+    snapshot = resource_history.latest if resource_history is not None else None
+    if snapshot is None or resource_history is None:
         values = [
-            ("CPU", "-"),
-            ("RAM", "-"),
-            ("peak", "-"),
-            ("proc", "-"),
+            ("CPU", "-", "", ""),
+            ("RAM", "-", "", ""),
+            ("peak", "-", "", ""),
+            ("proc", "-", "", ""),
         ]
     else:
+        cpu_ceiling = float((os.cpu_count() or 1) * 100)
+        memory_ceiling = max(
+            1.0,
+            max(resource_history.ram_gib_values + resource_history.peak_ram_gib_values) * 1.2,
+        )
+        proc_ceiling = max(4.0, max(resource_history.process_count_values) * 1.25)
         values = [
-            ("CPU", _format_percent(snapshot.cpu_percent)),
-            ("RAM", _format_gib(snapshot.ram_bytes)),
-            ("peak", _format_gib(snapshot.peak_ram_bytes)),
-            ("proc", str(snapshot.process_count)),
+            (
+                "CPU",
+                _format_percent(snapshot.cpu_percent),
+                _hbar(snapshot.cpu_percent, ceiling=cpu_ceiling),
+                _sparkline(
+                    resource_history.cpu_percent_values,
+                    width=graph_width,
+                    ceiling=cpu_ceiling,
+                ),
+            ),
+            (
+                "RAM",
+                _format_gib(snapshot.ram_bytes),
+                _hbar(snapshot.ram_bytes / 1024**3, ceiling=memory_ceiling),
+                _sparkline(
+                    resource_history.ram_gib_values,
+                    width=graph_width,
+                    ceiling=memory_ceiling,
+                ),
+            ),
+            (
+                "peak",
+                _format_gib(snapshot.peak_ram_bytes),
+                _hbar(snapshot.peak_ram_bytes / 1024**3, ceiling=memory_ceiling),
+                _sparkline(
+                    resource_history.peak_ram_gib_values,
+                    width=graph_width,
+                    ceiling=memory_ceiling,
+                ),
+            ),
+            (
+                "proc",
+                str(snapshot.process_count),
+                _hbar(snapshot.process_count, ceiling=proc_ceiling),
+                _sparkline(
+                    resource_history.process_count_values,
+                    width=graph_width,
+                    ceiling=proc_ceiling,
+                ),
+            ),
         ]
-    lines.extend(Text(f"▶ {label} {value}", style="yellow") for label, value in values)
+    lines.extend(
+        Text(f"▶ {label} {value} {bar} {spark}", style="yellow")
+        for label, value, bar, spark in values
+    )
     return Group(*lines)
 
 
@@ -771,7 +843,11 @@ def build_run_data(
     log_dir: Path,
     workspace_dir: Path,
     resource_snapshot: ResourceSnapshot | None = None,
+    resource_history: ResourceHistory | None = None,
 ) -> Group:
+    if resource_history is None and resource_snapshot is not None:
+        resource_history = ResourceHistory()
+        resource_history.add(resource_snapshot)
     lines = [progress, status]
     if research_status is not None:
         lines.append("")
@@ -782,7 +858,7 @@ def build_run_data(
         lines.append(synthesis_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
-    lines.extend([Rule(style="dim"), build_resource_summary(resource_snapshot)])
+    lines.extend([Rule(style="dim"), build_resource_summary(resource_history)])
     return Group(*lines)
 
 
@@ -1098,13 +1174,13 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
     stop_after_current_execution = False
-    resource_snapshot: ResourceSnapshot | None = None
+    resource_history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
 
     def exec_callback(*args, **kwargs):
-        nonlocal status_override, stop_after_current_execution, resource_snapshot
+        nonlocal status_override, stop_after_current_execution
 
         def on_interrupt(interrupt_count: int):
             nonlocal status_override, stop_after_current_execution
@@ -1118,11 +1194,9 @@ def run(argv: list[str] | None = None):
                 status_override = "[red]Stopping current code execution..."
 
         def on_resource(snapshot: ResourceSnapshot):
-            nonlocal resource_snapshot
-            resource_snapshot = snapshot
+            resource_history.add(snapshot)
 
         try:
-            resource_snapshot = None
             result = interpreter.run(
                 *args,
                 interrupt_callback=on_interrupt,
@@ -1233,7 +1307,7 @@ def run(argv: list[str] | None = None):
                     journal=journal,
                     log_dir=cfg.log_dir,
                     workspace_dir=cfg.workspace_dir,
-                    resource_snapshot=resource_snapshot,
+                    resource_history=resource_history,
                 ),
                 (0, 1, 0, 1),
             ),

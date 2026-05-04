@@ -1,4 +1,9 @@
-from aide.utils.resource_monitor import ProcessResourceMonitor
+from aide.utils.resource_monitor import (
+    ProcessResourceMonitor,
+    ResourceHistory,
+    ResourceSnapshot,
+    downsample_max,
+)
 
 
 class FakeMemory:
@@ -53,3 +58,45 @@ def test_process_resource_monitor_sums_process_tree_and_tracks_peak():
     assert second.ram_bytes == 5 * 1024**3
     assert second.peak_ram_bytes == 5 * 1024**3
     assert second.process_count == 2
+
+
+def test_resource_history_keeps_sliding_window_and_latest_values():
+    history = ResourceHistory(window_seconds=5, interval_seconds=2)
+
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=100.0,
+            ram_bytes=1 * 1024**3,
+            peak_ram_bytes=1 * 1024**3,
+            process_count=1,
+        )
+    )
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=200.0,
+            ram_bytes=2 * 1024**3,
+            peak_ram_bytes=2 * 1024**3,
+            process_count=2,
+        )
+    )
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=300.0,
+            ram_bytes=3 * 1024**3,
+            peak_ram_bytes=4 * 1024**3,
+            process_count=3,
+        )
+    )
+
+    assert history.latest is not None
+    assert history.latest.cpu_percent == 300.0
+    assert history.cpu_percent_values == [200.0, 300.0]
+    assert history.ram_gib_values == [2.0, 3.0]
+    assert history.peak_ram_gib_values == [2.0, 4.0]
+    assert history.process_count_values == [2.0, 3.0]
+
+
+def test_downsample_max_preserves_spikes_when_compressing_series():
+    values = [1.0, 100.0, 2.0, 3.0, 80.0, 4.0]
+
+    assert downsample_max(values, width=3) == [100.0, 3.0, 80.0]

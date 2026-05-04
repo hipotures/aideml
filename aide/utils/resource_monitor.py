@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,6 +16,50 @@ class ResourceSnapshot:
     ram_bytes: int
     peak_ram_bytes: int
     process_count: int
+
+
+def downsample_max(values: list[float], width: int) -> list[float]:
+    if width <= 0 or not values:
+        return []
+    if len(values) <= width:
+        return list(values)
+
+    step = len(values) / width
+    sampled: list[float] = []
+    for index in range(width):
+        start = int(index * step)
+        end = max(start + 1, int((index + 1) * step))
+        sampled.append(max(values[start:end]))
+    return sampled
+
+
+class ResourceHistory:
+    def __init__(self, *, window_seconds: int = 30 * 60, interval_seconds: int = 1):
+        maxlen = max(1, int(window_seconds / max(interval_seconds, 1)))
+        self.snapshots: deque[ResourceSnapshot] = deque(maxlen=maxlen)
+
+    def add(self, snapshot: ResourceSnapshot) -> None:
+        self.snapshots.append(snapshot)
+
+    @property
+    def latest(self) -> ResourceSnapshot | None:
+        return self.snapshots[-1] if self.snapshots else None
+
+    @property
+    def cpu_percent_values(self) -> list[float]:
+        return [snapshot.cpu_percent for snapshot in self.snapshots]
+
+    @property
+    def ram_gib_values(self) -> list[float]:
+        return [snapshot.ram_bytes / 1024**3 for snapshot in self.snapshots]
+
+    @property
+    def peak_ram_gib_values(self) -> list[float]:
+        return [snapshot.peak_ram_bytes / 1024**3 for snapshot in self.snapshots]
+
+    @property
+    def process_count_values(self) -> list[float]:
+        return [float(snapshot.process_count) for snapshot in self.snapshots]
 
 
 class ProcessResourceMonitor:
