@@ -86,19 +86,61 @@ agent:
     num_drafts: 5
 
   autogluon:
-    # model selection profile for the fixed AutoGluon runner:
-    # - fast_boost: XGB + GBM, intended for quick feature/preprocess iteration
-    # - full_boost: XGB + GBM + CAT, slower but can improve score depending on features
-    # Set included_model_types to a list to override the profile manually.
+    # Named profiles for the fixed AutoGluon runner.
     profile: full_boost
+    profiles:
+      fast_boost:
+        included_model_types: [XGB, GBM]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: false
+        validation_strategy: holdout
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      full_boost:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: false
+        validation_strategy: holdout
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      full_best_30m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: best_quality
+        time_limit: 1800
+      full_best_30m_gpu:
+        included_model_types: [XGB, GBM, CAT]
+        presets: best_quality
+        time_limit: 1800
+        use_gpu: true
+        hyperparameters:
+          GBM:
+            - ag_args_fit:
+                num_gpus: 0
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              ag_args_fit:
+                num_gpus: 1
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
+    # Fallback values used only if a profile does not define a field.
     presets: medium_quality
     time_limit: 600
     validation_fraction: 0.2
     seed: 42
-    use_gpu: false
     eval_metric: auto
     included_model_types: null
-    fit_args:
-      save_space: true
-      fit_weighted_ensemble: false
-      auto_stack: false
+    validation_strategy: null
+    use_gpu: null
+    hyperparameters: null
+    fit_args: null

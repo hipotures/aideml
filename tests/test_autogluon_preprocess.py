@@ -2,12 +2,14 @@ from pathlib import Path
 
 import pytest
 
+from aide.interpreter import RedirectQueue
 from aide.agent import Agent
 from aide.autogluon_preprocess import (
     AGENT_MODE,
     build_autogluon_wrapper,
     extract_preprocess_source,
     parse_result_marker,
+    resolve_autogluon_settings,
     resolve_autogluon_included_model_types,
     validate_preprocess_source,
 )
@@ -96,15 +98,59 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "df[HELPER_ROW_ID]" not in code
     assert "FORBIDDEN_ROW_ID in after.columns" in code
     assert "verbosity=2" in code
+    assert "import sys" in code
     assert 'os.environ.get("AIDE_NODE_ARTIFACT_DIR"' in code
-    assert "class _AutoFlushWriter" in code
-    assert "logging.StreamHandler(writer)" in code
+    assert "def _save_submission" in code
+    assert 'artifact_submission_path = artifact_dir / "submission.csv"' in code
+    assert "shutil.copy2(submission_path, artifact_submission_path)" in code
+    assert "class _TeeWriter" in code
+    assert "def fileno(self):" in code
+    assert "logging.StreamHandler(stderr_writer)" in code
     assert "logger.handlers = [log_handler]" in code
     assert "logger.propagate = False" in code
     assert '"autogluon"' in code
     assert 'print("AIDE AutoGluon: starting fit", flush=True)' in code
     assert 'if __name__ == "__main__"' not in code
     assert code.rstrip().endswith("main()")
+
+
+def test_generated_quiet_model_output_supports_redirect_queue_streams(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    class DummyQueue:
+        def put(self, _msg, timeout=None):
+            return None
+
+    redirect = RedirectQueue(DummyQueue())
+    monkeypatch.setattr(namespace["sys"], "stdout", redirect)
+    monkeypatch.setattr(namespace["sys"], "stderr", redirect)
+
+    with namespace["_quiet_model_output"](tmp_path):
+        print("runtime log", file=namespace["sys"].stdout)
+
+    assert "runtime log" in (tmp_path / "autogluon_stdout.log").read_text()
+
+
+def test_generated_save_submission_copies_to_artifact_dir(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    working_dir = tmp_path / "workspace" / "working"
+    artifact_dir = tmp_path / "logs" / "run" / "artifacts" / "20260504T171209"
+    working_dir.mkdir(parents=True)
+    submission = namespace["pd"].DataFrame({"id": [1, 2], "PitNextLap": [0.1, 0.9]})
+    monkeypatch.setenv("AIDE_NODE_ARTIFACT_DIR", str(artifact_dir))
+
+    namespace["_save_submission"](submission, working_dir)
+
+    assert (working_dir / "submission.csv").read_text() == (
+        artifact_dir / "submission.csv"
+    ).read_text()
 
 
 def test_autogluon_fast_boost_profile_excludes_catboost(tmp_path):
@@ -135,6 +181,89 @@ def test_autogluon_included_model_types_overrides_profile(tmp_path):
     cfg.agent.autogluon.included_model_types = ["CAT"]
 
     assert resolve_autogluon_included_model_types(cfg) == ["CAT"]
+
+
+def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["presets"] == "medium_quality"
+    assert settings["time_limit"] == 600
+    assert settings["use_gpu"] is False
+    assert settings["validation_strategy"] == "holdout"
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    assert "if AIDE_AG_CONFIG.get(\"use_gpu\") is not None:" in code
+    assert "fit_kwargs[\"num_gpus\"] = 1 if AIDE_AG_CONFIG[\"use_gpu\"] else 0" in code
+    assert "fit_kwargs.update(AIDE_AG_CONFIG.get(\"fit_args\", {}))" in code
+
+
+def test_autogluon_best_profile_uses_only_models_presets_and_time_limit(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_best_30m"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["presets"] == "best_quality"
+    assert settings["time_limit"] == 1800
+    assert "use_gpu" not in settings
+    assert "validation_strategy" not in settings
+    assert "hyperparameters" not in settings
+    assert "fit_args" not in settings
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    assert "'presets': 'best_quality'" in code
+    assert "'time_limit': 1800" in code
+    assert "'validation_strategy'" not in code.split("RESULT_MARKER", 1)[0]
+    assert "'validation_fraction'" not in code.split("RESULT_MARKER", 1)[0]
+    assert "'fit_args'" not in code.split("RESULT_MARKER", 1)[0]
+    assert 'if valid_data is not None:' in code
+
+
+def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_best_30m_gpu"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["presets"] == "best_quality"
+    assert settings["time_limit"] == 1800
+    assert settings["use_gpu"] is True
+    assert "validation_strategy" not in settings
+    assert "fit_args" not in settings
+    assert settings["hyperparameters"] == {
+        "GBM": [{"ag_args_fit": {"num_gpus": 0}}],
+        "CAT": [
+            {
+                "task_type": "GPU",
+                "devices": "0",
+                "ag_args_fit": {"num_gpus": 1},
+            }
+        ],
+        "XGB": [
+            {
+                "device": "cuda",
+                "tree_method": "hist",
+                "n_jobs": 8,
+                "ag_args_fit": {"num_gpus": 1},
+            }
+        ],
+    }
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    assert "'GBM': [{'ag_args_fit': {'num_gpus': 0}}]" in code
+    assert "'use_gpu': True" in code
+    assert "fit_kwargs[\"hyperparameters\"] = AIDE_AG_CONFIG[\"hyperparameters\"]" in code
 
 
 def test_autogluon_unknown_profile_is_rejected(tmp_path):

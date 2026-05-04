@@ -1,0 +1,618 @@
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import re
+from pathlib import Path
+from typing import Any, Iterable
+
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    track,
+)
+from rich.table import Table
+
+from scripts import smart_kaggle_submit as smart
+
+
+DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
+DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
+DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
+DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def file_signature(path: Path) -> dict[str, Any]:
+    stat = path.stat()
+    return {
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "sha256": sha256_file(path),
+    }
+
+
+def stat_signature(path: Path) -> dict[str, Any]:
+    stat = path.stat()
+    return {
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    }
+
+
+def run_scan_signature(journal_path: Path) -> dict[str, Any]:
+    run_dir = journal_path.parent
+    artifact_files: dict[str, dict[str, Any]] = {}
+    artifacts_dir = run_dir / "artifacts"
+    if artifacts_dir.exists():
+        for artifact_path in sorted(artifacts_dir.glob("*")):
+            if not artifact_path.is_dir():
+                continue
+            for name in ("solution.py", "submission.csv", "submission_eval.json"):
+                path = artifact_path / name
+                if path.exists():
+                    artifact_files[f"{artifact_path.name}/{name}"] = stat_signature(path)
+    return {
+        "journal": stat_signature(journal_path),
+        "artifacts": artifact_files,
+    }
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text())
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _timestamp_from_ctime(ctime: float) -> str:
+    return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
+
+
+def _metric_value(node: dict[str, Any]) -> tuple[float | None, bool | None]:
+    metric = node.get("metric") or {}
+    value = metric.get("value")
+    maximize = metric.get("maximize")
+    return (float(value), maximize) if value is not None else (None, maximize)
+
+
+def parse_autogluon_config(code: str) -> dict[str, Any] | None:
+    match = re.search(r"AIDE_AG_CONFIG\s*=\s*(\{.*?\})\nRESULT_MARKER", code, re.S)
+    if match is None:
+        match = re.search(r"AIDE_AG_CONFIG\s*=\s*(\{.*?\})(?:\n|$)", code, re.S)
+    if match is None:
+        return None
+    import ast
+
+    try:
+        parsed = ast.literal_eval(match.group(1))
+    except (SyntaxError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _record_sort_key(record: dict[str, Any]) -> tuple[float, str]:
+    score = record.get("local_score")
+    metric_maximize = record.get("metric_maximize")
+    if score is None:
+        normalized = float("-inf")
+    elif metric_maximize is False:
+        normalized = -float(score)
+    else:
+        normalized = float(score)
+    return normalized, str(record.get("timestamp") or "")
+
+
+def deduplicate_records_by_sha256(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    best_by_sha: dict[str, dict[str, Any]] = {}
+    for record in records:
+        sha = record.get("sha256")
+        if not sha:
+            continue
+        current = best_by_sha.get(str(sha))
+        if current is None or _record_sort_key(record) > _record_sort_key(current):
+            best_by_sha[str(sha)] = record
+    return sorted(best_by_sha.values(), key=_record_sort_key, reverse=True)
+
+
+def _artifact_record_base(
+    *,
+    competition: str,
+    run: str,
+    timestamp: str,
+    artifact_dir: Path,
+) -> dict[str, Any]:
+    submission_path = artifact_dir / "submission.csv"
+    solution_path = artifact_dir / "solution.py"
+    code = solution_path.read_text() if solution_path.exists() else ""
+    ag_config = parse_autogluon_config(code) or {}
+    included_model_types = ag_config.get("included_model_types")
+    profile = ag_config.get("profile")
+    if profile is None:
+        models = ",".join(included_model_types or [])
+        if models == "XGB,GBM":
+            profile = "fast_boost"
+        elif models == "XGB,GBM,CAT":
+            profile = "full_boost"
+
+    return {
+        "competition": competition,
+        "run": run,
+        "timestamp": timestamp,
+        "artifact_dir": str(artifact_dir),
+        "solution_path": str(solution_path),
+        "submission_path": str(submission_path),
+        "sha256": sha256_file(submission_path) if submission_path.exists() else None,
+        "profile": profile,
+        "autogluon_presets": ag_config.get("presets"),
+        "included_model_types": included_model_types,
+        "time_limit": ag_config.get("time_limit"),
+    }
+
+
+def build_source_node_records(
+    *,
+    logs_dir: Path,
+    run: str,
+    journal: dict[str, Any],
+    competition: str,
+) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    run_dir = logs_dir / run
+    for node in journal.get("nodes", []):
+        ctime = node.get("ctime")
+        if ctime is None:
+            continue
+        timestamp = _timestamp_from_ctime(float(ctime))
+        artifact_dir = run_dir / "artifacts" / timestamp
+        score, maximize = _metric_value(node)
+        base = _artifact_record_base(
+            competition=competition,
+            run=run,
+            timestamp=timestamp,
+            artifact_dir=artifact_dir,
+        )
+        records.append(
+            {
+                **base,
+                "kind": "source_node",
+                "step": node.get("step"),
+                "node_id": node.get("id"),
+                "parent_node_id": (journal.get("node2parent") or {}).get(
+                    node.get("id")
+                ),
+                "local_score": score,
+                "metric_maximize": maximize,
+                "is_buggy": bool(node.get("is_buggy")),
+                "exec_time": node.get("exec_time"),
+                "status": (
+                    "ok"
+                    if not node.get("is_buggy")
+                    and score is not None
+                    and base["sha256"] is not None
+                    else "not_ready"
+                ),
+                "source_run": None,
+                "source_node_id": None,
+                "source_step": None,
+                "source_timestamp": None,
+                "source_sha256": None,
+            }
+        )
+    return records
+
+
+def build_profile_eval_records(
+    *,
+    logs_dir: Path,
+    run: str,
+    competition: str,
+) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    artifacts_dir = logs_dir / run / "artifacts"
+    if not artifacts_dir.exists():
+        return records
+    for eval_path in sorted(artifacts_dir.glob("*/submission_eval.json")):
+        artifact_dir = eval_path.parent
+        timestamp = artifact_dir.name
+        metadata = _load_json(eval_path)
+        base = _artifact_record_base(
+            competition=metadata.get("competition", competition),
+            run=run,
+            timestamp=timestamp,
+            artifact_dir=artifact_dir,
+        )
+        records.append(
+            {
+                **base,
+                "kind": "profile_eval",
+                "step": None,
+                "node_id": None,
+                "parent_node_id": None,
+                "local_score": metadata.get("local_score"),
+                "metric_maximize": metadata.get("metric_maximize", True),
+                "is_buggy": metadata.get("status") != "ok",
+                "exec_time": metadata.get("exec_time"),
+                "status": metadata.get("status", "unknown"),
+                "profile": metadata.get("profile") or base.get("profile"),
+                "autogluon_presets": metadata.get("autogluon_presets")
+                or base.get("autogluon_presets"),
+                "included_model_types": metadata.get("included_model_types")
+                or base.get("included_model_types"),
+                "time_limit": metadata.get("time_limit") or base.get("time_limit"),
+                "source_run": metadata.get("source_run"),
+                "source_node_id": metadata.get("source_node_id"),
+                "source_step": metadata.get("source_step"),
+                "source_timestamp": metadata.get("source_timestamp"),
+                "source_sha256": metadata.get("source_sha256"),
+            }
+        )
+    return records
+
+
+def build_run_records(
+    *,
+    logs_dir: Path,
+    journal_path: Path,
+    competition: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    run = journal_path.parent.name
+    journal = _load_json(journal_path)
+    records = build_source_node_records(
+        logs_dir=logs_dir,
+        run=run,
+        journal=journal,
+        competition=competition,
+    )
+    records.extend(
+        build_profile_eval_records(logs_dir=logs_dir, run=run, competition=competition)
+    )
+    artifact_signatures = {}
+    for record in records:
+        submission_path = Path(record["submission_path"])
+        if submission_path.exists():
+            artifact_signatures[record["timestamp"]] = {
+                "submission_sha256": record["sha256"],
+                "submission_signature": file_signature(submission_path),
+            }
+    return records, {
+        "journal_signature": file_signature(journal_path),
+        "scan_signature": run_scan_signature(journal_path),
+        "artifact_signatures": artifact_signatures,
+    }
+
+
+def _run_is_unchanged(
+    *,
+    run: str,
+    journal_path: Path,
+    cached_runs: dict[str, Any],
+) -> bool:
+    cached = cached_runs.get(run)
+    if not isinstance(cached, dict):
+        return False
+    return cached.get("scan_signature") == run_scan_signature(journal_path)
+
+
+def refresh_index(
+    *,
+    logs_dir: Path = DEFAULT_LOGS_DIR,
+    index_path: Path = DEFAULT_INDEX_PATH,
+    competition: str = DEFAULT_COMPETITION,
+    reindex: bool = False,
+    progress: Any | None = None,
+) -> dict[str, Any]:
+    logs_dir = Path(logs_dir)
+    index = _load_json(index_path) or {"records": [], "runs": {}}
+    existing_records = list(index.get("records", []))
+    cached_runs = dict(index.get("runs", {}))
+    records_by_run: dict[str, list[dict[str, Any]]] = {}
+    for record in existing_records:
+        records_by_run.setdefault(record.get("run"), []).append(record)
+
+    run_signatures: dict[str, Any] = dict(cached_runs)
+    journal_paths = sorted(logs_dir.glob("*/journal.json"))
+    task_id = None
+    if progress is not None:
+        task_id = progress.add_task("Indexing AIDE runs", total=len(journal_paths))
+    for journal_path in journal_paths:
+        run = journal_path.parent.name
+        try:
+            if not reindex and _run_is_unchanged(
+                run=run,
+                journal_path=journal_path,
+                cached_runs=cached_runs,
+            ):
+                continue
+            records, run_meta = build_run_records(
+                logs_dir=logs_dir,
+                journal_path=journal_path,
+                competition=competition,
+            )
+            records_by_run[run] = records
+            run_signatures[run] = run_meta
+        finally:
+            if progress is not None and task_id is not None:
+                progress.advance(task_id)
+
+    all_records = [
+        record
+        for run in sorted(records_by_run)
+        for record in records_by_run.get(run, [])
+    ]
+    refreshed = {
+        "version": 1,
+        "competition": competition,
+        "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "records": all_records,
+        "runs": run_signatures,
+    }
+    _write_json(index_path, refreshed)
+    return refreshed
+
+
+def _record_is_submit_ready(record: dict[str, Any]) -> bool:
+    return (
+        record.get("status") == "ok"
+        and not record.get("is_buggy")
+        and record.get("local_score") is not None
+        and record.get("sha256") is not None
+        and Path(record.get("submission_path", "")).exists()
+    )
+
+
+def parse_sha256_filters(values: list[str] | None) -> list[str]:
+    return smart.parse_sha256_filters(values)
+
+
+def filter_records_by_sha256(
+    records: list[dict[str, Any]],
+    sha256_filters: list[str],
+) -> list[dict[str, Any]]:
+    if not sha256_filters:
+        return records
+    selected: list[dict[str, Any]] = []
+    selected_hashes: set[str] = set()
+    for sha_filter in sha256_filters:
+        matches = [
+            record
+            for record in records
+            if str(record.get("sha256") or "").lower().startswith(sha_filter)
+        ]
+        if not matches:
+            raise ValueError(f"No submission index record matches sha256 prefix: {sha_filter}")
+        matched_hashes = {record.get("sha256") for record in matches}
+        if len(matched_hashes) > 1:
+            preview = ", ".join(sorted(str(value)[:10] for value in matched_hashes))
+            raise ValueError(f"Ambiguous sha256 prefix {sha_filter}; matches: {preview}")
+        record = matches[0]
+        if record.get("sha256") not in selected_hashes:
+            selected.append(record)
+            selected_hashes.add(str(record.get("sha256")))
+    return selected
+
+
+def select_top_records(
+    records: Iterable[dict[str, Any]],
+    *,
+    registry: smart.SubmissionRegistry,
+    competition: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    ready = [
+        record
+        for record in records
+        if _record_is_submit_ready(record)
+        and not registry.is_submitted(
+            competition=competition,
+            sha256=record.get("sha256"),
+            run=str(record.get("run")),
+            step=int(record.get("step") or -1),
+            timestamp=str(record.get("timestamp")),
+        )
+    ]
+    return deduplicate_records_by_sha256(ready)[:limit]
+
+
+def _format_score(value: Any) -> str:
+    return "-" if value is None else f"{float(value):.5f}"
+
+
+def _timestamp_date(value: Any) -> str:
+    text = str(value or "")
+    return text[:8] if len(text) >= 8 else text
+
+
+def _short_profile(value: Any) -> str:
+    text = str(value or "")
+    return text.replace("_boost", "")
+
+
+def _short_run(value: Any) -> str:
+    return str(value or "")
+
+
+def _short_models(models: list[Any] | None) -> str:
+    labels = {"XGB": "x", "GBM": "g", "CAT": "c"}
+    return "".join(labels.get(str(model), str(model)[:1].lower()) for model in models or [])
+
+
+def render_table(console: Console, records: list[dict[str, Any]]) -> None:
+    show_source = any(record.get("kind") == "profile_eval" for record in records)
+    table = Table(title="Top unsent submit-ready candidates", expand=True)
+    table.add_column("#", justify="right", no_wrap=True, width=3)
+    table.add_column("cv", justify="right", no_wrap=True, width=7)
+    table.add_column("k", no_wrap=True, width=1)
+    table.add_column("prof", no_wrap=True, width=4)
+    table.add_column("m", no_wrap=True, width=3)
+    table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("step", justify="right", no_wrap=True, width=4)
+    table.add_column("date", no_wrap=True, width=8)
+    table.add_column("sha", no_wrap=True, width=10)
+    if show_source:
+        table.add_column("src_sha", no_wrap=True, width=10)
+    for rank, record in enumerate(records, start=1):
+        models = _short_models(record.get("included_model_types"))
+        source_sha = ""
+        if record.get("kind") == "profile_eval":
+            source_sha = str(record.get("source_sha256") or "")[:10]
+        row = [
+            str(rank),
+            _format_score(record.get("local_score")),
+            "e" if record.get("kind") == "profile_eval" else "n",
+            _short_profile(record.get("profile")),
+            models,
+            _short_run(record.get("run")),
+            "-" if record.get("step") is None else str(record.get("step")),
+            _timestamp_date(record.get("timestamp")),
+            str(record.get("sha256") or "")[:10],
+        ]
+        if show_source:
+            row.append(source_sha)
+        table.add_row(*row)
+    console.print(table)
+
+
+def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
+    step = int(record.get("step") if record.get("step") is not None else -1)
+    return smart.Candidate(
+        competition=str(record.get("competition") or DEFAULT_COMPETITION),
+        run=str(record.get("run")),
+        step=step,
+        node_id=str(record.get("node_id") or f"profile-eval-{record.get('timestamp')}"),
+        parent_node_id=None,
+        ancestor_node_ids=(),
+        timestamp=str(record.get("timestamp")),
+        ctime=dt.datetime.strptime(str(record.get("timestamp")), "%Y%m%dT%H%M%S").timestamp(),
+        local_score=record.get("local_score"),
+        metric_maximize=record.get("metric_maximize", True),
+        is_buggy=bool(record.get("is_buggy")),
+        submission_path=Path(record.get("submission_path")),
+        sha256=record.get("sha256"),
+        validation_error=None,
+    )
+
+
+def submit_records(
+    records: Iterable[dict[str, Any]],
+    *,
+    registry: smart.SubmissionRegistry,
+    client: Any,
+    competition: str,
+) -> list[dict[str, Any]]:
+    return smart.submit_candidates(
+        [_record_to_candidate(record) for record in records],
+        registry=registry,
+        client=client,
+        competition=competition,
+    )
+
+
+def _build_progress(console: Console) -> Progress:
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Submission index viewer and Kaggle submitter."
+    )
+    parser.add_argument("--competition", default=DEFAULT_COMPETITION)
+    parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
+    parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
+    parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
+    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--reindex", action="store_true")
+    parser.add_argument("--submit", action="store_true")
+    parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    console = Console()
+    try:
+        sha_filters = parse_sha256_filters(args.sha256)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 2
+
+    registry = smart.SubmissionRegistry.load(args.registry)
+    with _build_progress(console) as progress:
+        index = refresh_index(
+            logs_dir=args.logs_dir,
+            index_path=args.index,
+            competition=args.competition,
+            reindex=args.reindex,
+            progress=progress,
+        )
+
+    records = list(index.get("records", []))
+    try:
+        if sha_filters:
+            selected = filter_records_by_sha256(records, sha_filters)
+            for record in selected:
+                if not _record_is_submit_ready(record):
+                    raise ValueError(
+                        f"Record {(record.get('sha256') or '')[:10]} is not submit-ready."
+                    )
+                if registry.is_submitted(
+                    competition=args.competition,
+                    sha256=record.get("sha256"),
+                    run=str(record.get("run")),
+                    step=int(record.get("step") or -1),
+                    timestamp=str(record.get("timestamp")),
+                ):
+                    raise ValueError(
+                        f"Record {(record.get('sha256') or '')[:10]} is already submitted."
+                    )
+        else:
+            selected = select_top_records(
+                records,
+                registry=registry,
+                competition=args.competition,
+                limit=args.limit,
+            )
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 2
+
+    if args.submit:
+        client = smart._build_kaggle_client()
+        submitted = submit_records(
+            track(selected, description="Submitting to Kaggle"),
+            registry=registry,
+            client=client,
+            competition=args.competition,
+        )
+        console.print(f"Submitted {len(submitted)} candidate(s).")
+    else:
+        render_table(console, selected)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

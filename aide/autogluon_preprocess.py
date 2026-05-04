@@ -18,11 +18,6 @@ RESULT_MARKER = "AIDE_RESULT_JSON:"
 FORBIDDEN_SPLIT_MARKER = "__is_train__"
 FORBIDDEN_ROW_ID = "__aide_row_id__"
 
-AUTOGLUON_PROFILES = {
-    "fast_boost": ["XGB", "GBM"],
-    "full_boost": ["XGB", "GBM", "CAT"],
-}
-
 _PITSTOP_LEAKAGE_PATTERNS = (
     "next_pitstop",
     "next_pit_stop",
@@ -114,38 +109,125 @@ def _container(value: Any) -> Any:
     return OmegaConf.to_container(value, resolve=True) if OmegaConf.is_config(value) else value
 
 
-def resolve_autogluon_included_model_types(cfg: Config) -> list[str]:
+def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     ag = cfg.agent.autogluon
-    explicit = _container(ag.included_model_types)
-    if explicit is not None:
-        return list(explicit)
-
+    profiles = dict(_container(getattr(ag, "profiles", {})) or {})
     profile = getattr(ag, "profile", "full_boost")
-    try:
-        return list(AUTOGLUON_PROFILES[profile])
-    except KeyError as exc:
-        known = ", ".join(sorted(AUTOGLUON_PROFILES))
+    profile_settings = profiles.get(profile)
+    if profile_settings is None:
+        known = ", ".join(sorted(profiles))
         raise ValueError(
             f"Unknown AutoGluon profile {profile!r}. Expected one of: {known}"
-        ) from exc
+        )
+    if isinstance(profile_settings, list):
+        profile_settings = {"included_model_types": profile_settings}
+    if not isinstance(profile_settings, dict):
+        raise ValueError(
+            f"AutoGluon profile {profile!r} must be a mapping or a model list."
+        )
 
-
-def build_autogluon_wrapper(preprocess_source: str, cfg: Config) -> str:
-    validate_preprocess_source(preprocess_source)
-    ag = cfg.agent.autogluon
-    included_model_types = resolve_autogluon_included_model_types(cfg)
-    fit_args = dict(_container(ag.fit_args) or {})
-
-    constants = {
+    settings = {
         "presets": ag.presets,
         "time_limit": int(ag.time_limit),
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
-        "use_gpu": bool(ag.use_gpu),
         "eval_metric": ag.eval_metric,
-        "included_model_types": included_model_types,
-        "fit_args": fit_args,
+        "included_model_types": None,
     }
+    validation_strategy = getattr(ag, "validation_strategy", None)
+    if validation_strategy is not None:
+        settings["validation_strategy"] = validation_strategy
+    use_gpu = getattr(ag, "use_gpu", None)
+    if use_gpu is not None:
+        settings["use_gpu"] = bool(use_gpu)
+    hyperparameters = _container(getattr(ag, "hyperparameters", None))
+    if hyperparameters is not None:
+        settings["hyperparameters"] = dict(hyperparameters or {})
+    fit_args = _container(getattr(ag, "fit_args", None))
+    if fit_args is not None:
+        settings["fit_args"] = dict(fit_args or {})
+    settings.update(dict(profile_settings))
+
+    explicit = _container(ag.included_model_types)
+    if explicit is not None:
+        settings["included_model_types"] = list(explicit)
+
+    if settings["included_model_types"] is not None:
+        settings["included_model_types"] = list(settings["included_model_types"])
+    settings["time_limit"] = int(settings["time_limit"])
+    settings["validation_fraction"] = float(settings["validation_fraction"])
+    settings["seed"] = int(settings["seed"])
+    if "use_gpu" in settings and settings["use_gpu"] is not None:
+        settings["use_gpu"] = bool(settings["use_gpu"])
+    if "validation_strategy" in settings and settings["validation_strategy"] is not None:
+        settings["validation_strategy"] = str(settings["validation_strategy"])
+    if "hyperparameters" in settings:
+        settings["hyperparameters"] = dict(settings.get("hyperparameters") or {})
+    if "fit_args" in settings:
+        settings["fit_args"] = dict(settings.get("fit_args") or {})
+    if settings.get("validation_strategy") not in {None, "holdout", "autogluon"}:
+        raise ValueError(
+            "AutoGluon validation_strategy must be one of: holdout, autogluon"
+        )
+    return settings
+
+
+def resolve_autogluon_included_model_types(cfg: Config) -> list[str]:
+    included = resolve_autogluon_settings(cfg).get("included_model_types")
+    return list(included or [])
+
+
+def _profile_settings_for_cfg(cfg: Config) -> dict[str, Any]:
+    ag = cfg.agent.autogluon
+    profiles = dict(_container(getattr(ag, "profiles", {})) or {})
+    profile = getattr(ag, "profile", "full_boost")
+    profile_settings = profiles.get(profile)
+    if isinstance(profile_settings, list):
+        return {"included_model_types": profile_settings}
+    if profile_settings is None:
+        return {}
+    if not isinstance(profile_settings, dict):
+        return {}
+    return dict(profile_settings)
+
+
+def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dict[str, Any]:
+    visible: dict[str, Any] = {}
+    profile_settings = _profile_settings_for_cfg(cfg)
+    for key in (
+        "included_model_types",
+        "presets",
+        "time_limit",
+        "use_gpu",
+        "hyperparameters",
+        "validation_strategy",
+        "validation_fraction",
+        "seed",
+        "fit_args",
+    ):
+        if key not in profile_settings:
+            continue
+        value = settings.get(key)
+        if value is None:
+            continue
+        if isinstance(value, (dict, list)) and not value:
+            continue
+        visible[key] = value
+
+    explicit_included = _container(cfg.agent.autogluon.included_model_types)
+    if explicit_included is not None:
+        visible["included_model_types"] = list(explicit_included)
+
+    eval_metric = settings.get("eval_metric")
+    if eval_metric and eval_metric != "auto":
+        visible["eval_metric"] = eval_metric
+    return visible
+
+
+def build_autogluon_wrapper(preprocess_source: str, cfg: Config) -> str:
+    validate_preprocess_source(preprocess_source)
+    settings = resolve_autogluon_settings(cfg)
+    constants = build_visible_autogluon_config(cfg, settings)
     constants_literal = pprint.pformat(constants, sort_dicts=True, width=88)
     return (
         f'''from __future__ import annotations
@@ -156,6 +238,7 @@ import warnings
 import contextlib
 import logging
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -225,7 +308,7 @@ def _validate_preprocessed_frame(
 
 
 def _infer_metric(target: pd.Series) -> tuple[str, str | None]:
-    configured = AIDE_AG_CONFIG["eval_metric"]
+    configured = AIDE_AG_CONFIG.get("eval_metric", "auto")
     if configured != "auto":
         return configured, "binary" if target.nunique(dropna=True) == 2 else None
     if target.nunique(dropna=True) == 2:
@@ -233,27 +316,64 @@ def _infer_metric(target: pd.Series) -> tuple[str, str | None]:
     return "accuracy", None
 
 
+def _artifact_dir(working_dir: Path) -> Path:
+    return Path(os.environ.get("AIDE_NODE_ARTIFACT_DIR", str(working_dir)))
+
+
+def _save_submission(submission: pd.DataFrame, working_dir: Path) -> Path:
+    submission_path = working_dir / "submission.csv"
+    submission.to_csv(submission_path, index=False)
+    artifact_dir = _artifact_dir(working_dir)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_submission_path = artifact_dir / "submission.csv"
+    if artifact_submission_path.resolve() != submission_path.resolve():
+        shutil.copy2(submission_path, artifact_submission_path)
+    return submission_path
+
+
 @contextlib.contextmanager
 def _quiet_model_output(working_dir: Path):
-    artifact_dir = Path(os.environ.get("AIDE_NODE_ARTIFACT_DIR", str(working_dir)))
+    artifact_dir = _artifact_dir(working_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     log_path = artifact_dir / "autogluon_stdout.log"
 
-    class _AutoFlushWriter:
-        def __init__(self, wrapped):
-            self.wrapped = wrapped
+    class _TeeWriter:
+        def __init__(self, primary, log_file):
+            self.primary = primary
+            self.log_file = log_file
 
         def write(self, text):
-            written = self.wrapped.write(text)
-            self.wrapped.flush()
+            written = self.primary.write(text)
+            self.log_file.write(text)
+            if hasattr(self.primary, "flush"):
+                self.primary.flush()
+            self.log_file.flush()
             return written
 
         def flush(self):
-            self.wrapped.flush()
+            if hasattr(self.primary, "flush"):
+                self.primary.flush()
+            self.log_file.flush()
+
+        def fileno(self):
+            if hasattr(self.primary, "fileno"):
+                return self.primary.fileno()
+            fallback = getattr(sys, "__stderr__", None) or getattr(sys, "__stdout__", None)
+            if fallback is not None and hasattr(fallback, "fileno"):
+                return fallback.fileno()
+            return self.log_file.fileno()
+
+        def isatty(self):
+            return bool(self.primary.isatty()) if hasattr(self.primary, "isatty") else False
+
+        @property
+        def encoding(self):
+            return getattr(self.primary, "encoding", "utf-8")
 
     with open(log_path, "a", encoding="utf-8", buffering=1) as log_file:
-        writer = _AutoFlushWriter(log_file)
-        log_handler = logging.StreamHandler(writer)
+        stdout_writer = _TeeWriter(sys.stdout, log_file)
+        stderr_writer = _TeeWriter(sys.stderr, log_file)
+        log_handler = logging.StreamHandler(stderr_writer)
         log_handler.setFormatter(logging.Formatter("%(message)s"))
         logger_names = ["", "autogluon"]
         loggers = [logging.getLogger(name) for name in logger_names]
@@ -272,7 +392,7 @@ def _quiet_model_output(working_dir: Path):
             logger.handlers = [log_handler]
             logger.propagate = False
         try:
-            with contextlib.redirect_stdout(writer), contextlib.redirect_stderr(writer):
+            with contextlib.redirect_stdout(stdout_writer), contextlib.redirect_stderr(stderr_writer):
                 yield
         finally:
             for logger, (level, disabled, handlers, propagate) in zip(
@@ -318,26 +438,34 @@ def main() -> None:
     test_model = test_fe.copy()
 
     eval_metric, problem_type = _infer_metric(train_model[target_col])
-    stratify = train_model[target_col] if problem_type == "binary" else None
-    train_data, valid_data = train_test_split(
-        train_model,
-        test_size=AIDE_AG_CONFIG["validation_fraction"],
-        random_state=AIDE_AG_CONFIG["seed"],
-        stratify=stratify,
-    )
+    if AIDE_AG_CONFIG.get("validation_strategy") == "holdout":
+        stratify = train_model[target_col] if problem_type == "binary" else None
+        train_data, valid_data = train_test_split(
+            train_model,
+            test_size=AIDE_AG_CONFIG.get("validation_fraction", 0.2),
+            random_state=AIDE_AG_CONFIG.get("seed", 42),
+            stratify=stratify,
+        )
+    else:
+        train_data = train_model
+        valid_data = None
 
     model_dir = working_dir / "autogluon_model"
     shutil.rmtree(model_dir, ignore_errors=True)
     fit_kwargs = {{
         "train_data": train_data,
-        "tuning_data": valid_data,
         "presets": AIDE_AG_CONFIG["presets"],
         "time_limit": AIDE_AG_CONFIG["time_limit"],
-        "num_gpus": 1 if AIDE_AG_CONFIG["use_gpu"] else 0,
     }}
-    if AIDE_AG_CONFIG["included_model_types"]:
+    if AIDE_AG_CONFIG.get("use_gpu") is not None:
+        fit_kwargs["num_gpus"] = 1 if AIDE_AG_CONFIG["use_gpu"] else 0
+    if valid_data is not None:
+        fit_kwargs["tuning_data"] = valid_data
+    if AIDE_AG_CONFIG.get("included_model_types"):
         fit_kwargs["included_model_types"] = AIDE_AG_CONFIG["included_model_types"]
-    fit_kwargs.update(AIDE_AG_CONFIG["fit_args"])
+    if AIDE_AG_CONFIG.get("hyperparameters"):
+        fit_kwargs["hyperparameters"] = AIDE_AG_CONFIG["hyperparameters"]
+    fit_kwargs.update(AIDE_AG_CONFIG.get("fit_args", {{}}))
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting fit", flush=True)
         predictor = TabularPredictor(
@@ -352,7 +480,14 @@ def main() -> None:
 
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting validation and prediction", flush=True)
-        if eval_metric == "roc_auc":
+        if valid_data is None:
+            leaderboard = predictor.leaderboard(silent=True)
+            score_candidates = [
+                col for col in ("score_val", "score_test") if col in leaderboard.columns
+            ]
+            metric_value = float(leaderboard[score_candidates[0]].max()) if score_candidates else float("nan")
+            lower_is_better = False
+        elif eval_metric == "roc_auc":
             valid_pred = _positive_probability(
                 predictor,
                 valid_data.drop(columns=[target_col]),
@@ -365,10 +500,10 @@ def main() -> None:
             lower_is_better = False
 
         test_pred = _positive_probability(predictor, test_model)
-        print("AIDE AutoGluon: finished validation and prediction", flush=True)
     submission = sample_submission.copy()
     submission[target_col] = test_pred.to_numpy()
-    submission.to_csv(working_dir / "submission.csv", index=False)
+    _save_submission(submission, working_dir)
+    print("AIDE AutoGluon: finished validation and prediction", flush=True)
 
     summary = (
         f"AutoGluon preprocess wrapper completed with {{eval_metric}}="
