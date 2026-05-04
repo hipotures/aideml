@@ -256,3 +256,117 @@ def test_render_table_shows_profile_only_in_full_view(tmp_path):
     full_output = full.export_text()
     assert "prof" in full_output
     assert "full_best_30m" in full_output
+
+
+def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "ERROR",
+                "public_score": None,
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-b",
+                "step": 2,
+                "timestamp": "20260504T110000",
+                "local_score": 0.96,
+                "sha256": "dddd11112222",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+        ],
+    )
+    console = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(console, registry)
+
+    output = console.export_text()
+    assert "Submission registry" in output
+    assert "0.90123" in output
+    assert "COMPLETE" in output
+    assert "ERROR" in output
+
+
+def test_sync_registry_from_kaggle_updates_public_score(tmp_path, monkeypatch):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "node_id": "node-source",
+                "sha256": "aaaabbbbcccc",
+            }
+        ],
+    )
+
+    class FakeRemote:
+        ref = 123
+        file_name = "submission.csv"
+        description = "cv=0.95000 | run=run-a | step=1 | aide_ts=20260504T100000 | node=node-sour | sha=aaaabbbbcc"
+        status = "COMPLETE"
+        public_score = "0.91234"
+        private_score = None
+        url = None
+        total_bytes = 100
+        date = "2026-05-04"
+
+    fake_client = object()
+    monkeypatch.setattr(
+        kaggle_submission_lab.smart,
+        "_build_kaggle_client",
+        lambda: fake_client,
+    )
+    monkeypatch.setattr(
+        kaggle_submission_lab.smart,
+        "fetch_remote_submissions",
+        lambda client, competition: [FakeRemote()],
+    )
+    console = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+
+    client, remote = kaggle_submission_lab.sync_registry_from_kaggle(
+        console=console,
+        registry=registry,
+        competition="playground-series-s6e5",
+    )
+
+    assert client is fake_client
+    assert len(remote) == 1
+    assert registry.entries[0]["public_score"] == "0.91234"
+    assert registry.entries[0]["remote_status"] == "COMPLETE"
+
+
+def test_render_registry_table_includes_remote_only_submissions(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+
+    class FakeRemote:
+        file_name = "submission_autogluon.csv"
+        description = "Ensemble Weights: should not be rendered"
+        status = "COMPLETE"
+        public_score = "0.94895"
+        date = "2026-05-04T18:04:00Z"
+
+    console = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(console, registry, [FakeRemote()])
+
+    output = console.export_text()
+    assert "Submission registry" in output
+    assert "0.94895" in output
+    assert "COMPLETE" in output
+    assert "20260504" in output
+    assert "submission_autogluon.csv" in output
+    assert "Ensemble Weights" not in output

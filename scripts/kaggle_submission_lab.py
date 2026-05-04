@@ -435,8 +435,30 @@ def _format_score(value: Any) -> str:
     return "-" if value is None else f"{float(value):.5f}"
 
 
+def _format_step(value: Any) -> str:
+    if value is None:
+        return "-"
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return "-" if parsed < 0 else str(parsed)
+
+
+def _format_public_score(value: Any) -> str:
+    parsed = smart._parse_public_score(value)
+    return "" if parsed is None else f"{parsed:.5f}"
+
+
 def _timestamp_date(value: Any) -> str:
     text = str(value or "")
+    return text[:8] if len(text) >= 8 else text
+
+
+def _display_date(value: Any) -> str:
+    text = smart._date_to_string(value) or ""
+    if re.match(r"\d{4}-\d{2}-\d{2}", text):
+        return text[:10].replace("-", "")
     return text[:8] if len(text) >= 8 else text
 
 
@@ -490,7 +512,7 @@ def render_table(
             [
                 models,
                 _short_run(record.get("run")),
-                "-" if record.get("step") is None else str(record.get("step")),
+                _format_step(record.get("step")),
                 _timestamp_date(record.get("timestamp")),
                 str(record.get("sha256") or "")[:10],
             ]
@@ -499,6 +521,137 @@ def render_table(
             row.append(source_sha)
         table.add_row(*row)
     console.print(table)
+
+
+def _remote_identity(remote: Any) -> tuple[Any, str, str]:
+    description = smart._remote_attr(remote, "description")
+    parsed = smart.parse_submission_description(description)
+    return (
+        smart._remote_ref(remote),
+        parsed.get("timestamp") or "",
+        str(smart._remote_attr(remote, "file_name") or ""),
+    )
+
+
+def _registry_display_sort_key(row: dict[str, Any]) -> tuple[bool, float, str]:
+    public_score = smart._parse_public_score(row.get("public_score"))
+    return (
+        public_score is not None,
+        public_score if public_score is not None else float("-inf"),
+        str(row.get("date") or ""),
+    )
+
+
+def _remote_display_rows(
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None,
+) -> list[dict[str, Any]]:
+    if remote_submissions is None:
+        return []
+
+    known_refs = {smart._entry_ref(entry) for entry in registry.entries}
+    known_timestamps = {str(entry.get("timestamp") or "") for entry in registry.entries}
+    known_files = {
+        str(entry.get("remote_filename") or "")
+        for entry in registry.entries
+        if entry.get("remote_filename")
+    }
+    rows = []
+    for remote in remote_submissions:
+        remote_ref, remote_timestamp, remote_file = _remote_identity(remote)
+        if remote_ref is not None and remote_ref in known_refs:
+            continue
+        if remote_timestamp and remote_timestamp in known_timestamps:
+            continue
+        if remote_file and remote_file in known_files:
+            continue
+
+        rows.append(
+            {
+                "local_score": None,
+                "public_score": smart._remote_attr(remote, "public_score"),
+                "remote_status": smart._status_to_string(
+                    smart._remote_attr(remote, "status")
+                ),
+                "run": str(smart._remote_attr(remote, "file_name") or "-"),
+                "step": None,
+                "date": smart._remote_attr(remote, "date"),
+                "sha256": None,
+            }
+        )
+    return rows
+
+
+def render_registry_table(
+    console: Console,
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None = None,
+) -> None:
+    table = Table(title="Submission registry", expand=True, padding=(0, 1))
+    table.add_column("#", justify="right", no_wrap=True)
+    table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("public", justify="right", no_wrap=True)
+    table.add_column("status", no_wrap=True)
+    table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("step", justify="right", no_wrap=True)
+    table.add_column("date", no_wrap=True)
+    table.add_column("sha", no_wrap=True)
+
+    rows = [
+        {
+            "local_score": entry.get("local_score"),
+            "public_score": entry.get("public_score"),
+            "remote_status": entry.get("remote_status"),
+            "run": entry.get("run"),
+            "step": entry.get("step"),
+            "date": entry.get("timestamp"),
+            "sha256": entry.get("sha256"),
+        }
+        for entry in registry.entries
+    ]
+    rows.extend(_remote_display_rows(registry, remote_submissions))
+
+    complete_rank = 0
+    for entry in sorted(rows, key=_registry_display_sort_key, reverse=True):
+        remote_status = str(entry.get("remote_status") or "")
+        if remote_status.upper() == "COMPLETE":
+            complete_rank += 1
+            display_rank = str(complete_rank)
+        else:
+            display_rank = "-"
+        table.add_row(
+            display_rank,
+            _format_score(entry.get("local_score")),
+            _format_public_score(entry.get("public_score")),
+            remote_status or "-",
+            str(entry.get("run") or "-"),
+            _format_step(entry.get("step")),
+            _display_date(entry.get("date")),
+            str(entry.get("sha256") or "")[:10] or "-",
+        )
+    console.print(table)
+
+
+def sync_registry_from_kaggle(
+    *,
+    console: Console,
+    registry: smart.SubmissionRegistry,
+    competition: str,
+) -> tuple[Any | None, list[Any] | None]:
+    try:
+        client = smart._build_kaggle_client()
+        remote_submissions = smart.fetch_remote_submissions(client, competition)
+        synced = smart.sync_registry_from_remote(
+            registry=registry,
+            competition=competition,
+            remote_submissions=remote_submissions,
+        )
+        if synced:
+            console.print(f"Synchronized {synced} Kaggle submission(s).")
+        return client, remote_submissions
+    except Exception as exc:
+        console.print(f"Remote Kaggle submissions unavailable: {exc}")
+        return None, None
 
 
 def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
@@ -560,6 +713,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--submit", action="store_true")
     parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
     parser.add_argument("--full-view", action="store_true")
+    parser.add_argument(
+        "--no-remote",
+        action="store_true",
+        help="Do not fetch Kaggle submissions or synchronize public scores.",
+    )
     return parser.parse_args(argv)
 
 
@@ -573,6 +731,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     registry = smart.SubmissionRegistry.load(args.registry)
+    client = None
+    remote_submissions = None
+    if not args.no_remote:
+        client, remote_submissions = sync_registry_from_kaggle(
+            console=console,
+            registry=registry,
+            competition=args.competition,
+        )
     with _build_progress(console) as progress:
         index = refresh_index(
             logs_dir=args.logs_dir,
@@ -613,7 +779,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.submit:
-        client = smart._build_kaggle_client()
+        if client is None:
+            client = smart._build_kaggle_client()
         submitted = submit_records(
             track(selected, description="Submitting to Kaggle"),
             registry=registry,
@@ -623,6 +790,9 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
         render_table(console, selected, full_view=args.full_view)
+        render_registry_table(console, registry, remote_submissions)
+        if remote_submissions is not None:
+            console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
     return 0
 
 
