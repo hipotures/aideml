@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 from aide.agent import Agent
+from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
 from aide.journal import Journal, Node
 from aide.research import (
     RESEARCH_PROMPT_INTRO,
@@ -98,6 +99,30 @@ def test_build_data_overview_includes_compact_column_schema(tmp_path):
     assert "TyreLife (int64)" in overview
 
 
+def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "train.csv").write_text("id,x,y\n1,2,0\n", encoding="utf-8")
+    (data_dir / "test.csv").write_text("id,x\n2,3\n", encoding="utf-8")
+    (data_dir / "sample_submission.csv").write_text("id,y\n2,0\n", encoding="utf-8")
+
+    workspace_dir = tmp_path / "workspace"
+    metadata_dir = workspace_dir / "working" / "autogluon_model"
+    metadata_dir.mkdir(parents=True)
+    (metadata_dir / "metadata.json").write_text('{"packages": {"noise": "1"}}')
+
+    cfg = _cfg(tmp_path)
+    cfg.data_dir = str(data_dir)
+    cfg.workspace_dir = str(workspace_dir)
+
+    overview = build_data_overview(cfg)
+
+    assert "train.csv" in overview
+    assert "working/" not in overview
+    assert "metadata.json" not in overview
+    assert "packages" not in overview
+
+
 def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.top_k_best = 2
@@ -119,12 +144,16 @@ def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_pa
     )
     context["data_overview"] = {"columns": ["feature"]}
 
-    assert [n["metric"] for n in context["best_working_solutions"][:2]] == [
+    assert [n["local_cv_score"] for n in context["best_working_solutions"][:2]] == [
         0.95,
         0.81,
     ]
-    assert [n["metric"] for n in context["worst_working_solutions"][:2]] == [0.1]
-    assert all(n["metric"] is not None for n in context["worst_working_solutions"])
+    assert [n["local_cv_score"] for n in context["worst_working_solutions"][:2]] == [
+        0.1
+    ]
+    assert all(
+        n["local_cv_score"] is not None for n in context["worst_working_solutions"]
+    )
     assert context["run_id"] == cfg.exp_name
     assert context["checkpoint_step"] == 10
     assert "created_at" in context
@@ -148,7 +177,39 @@ def test_collect_research_context_selects_top_best_and_worst_scored_nodes(tmp_pa
     assert "exec_time" not in serialized
     assert "exc_type" not in serialized
     assert "exc_info" not in serialized
-    assert '"code"' in serialized
+
+
+def test_collect_research_context_uses_preprocess_only_in_autogluon_mode(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    journal = Journal()
+    journal.append(
+        _node(
+            0.95,
+            code=build_autogluon_wrapper(
+                "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n"
+                "    df = df.copy()\n"
+                "    df['x2'] = df['x'] * 2\n"
+                "    return df\n",
+                cfg,
+            ),
+            plan="best",
+        )
+    )
+
+    context = collect_research_context(
+        cfg=cfg,
+        task_desc="task",
+        journal=journal,
+        completed_steps=10,
+    )
+
+    payload = context["best_working_solutions"][0]
+    assert payload["local_cv_score"] == 0.95
+    assert payload["code"].startswith("def preprocess")
+    assert "TabularPredictor" not in payload["code"]
+    assert "AIDE_AG_CONFIG" not in payload["code"]
+    assert '"code"' in json.dumps(context)
 
 
 def test_count_scored_working_nodes_ignores_buggy_nodes(tmp_path):

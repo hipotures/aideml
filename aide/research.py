@@ -10,6 +10,10 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from .autogluon_preprocess import (
+    extract_preprocess_source,
+    is_autogluon_preprocess_mode,
+)
 from .journal import Journal, Node
 from .utils import data_preview
 from .utils.config import Config
@@ -99,20 +103,72 @@ def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
 
 
 def build_data_overview(cfg: Config) -> str | None:
-    for base_dir in [Path(cfg.workspace_dir), Path(cfg.data_dir)]:
-        if base_dir.exists():
+    candidate_dirs = [Path(cfg.data_dir)]
+    workspace_input_dir = Path(cfg.workspace_dir) / "input"
+    if workspace_input_dir.exists():
+        candidate_dirs.append(workspace_input_dir)
+    else:
+        candidate_dirs.append(Path(cfg.workspace_dir))
+
+    seen: set[Path] = set()
+    for base_dir in candidate_dirs:
+        resolved = base_dir.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.exists():
             try:
-                return data_preview.generate(base_dir)
+                return data_preview.generate(resolved)
             except Exception:  # noqa: BLE001 - research should not stop the run
                 continue
     return None
 
 
-def _node_payload(node: Node) -> dict[str, Any]:
-    return {
-        "metric": _metric_value(node),
-        "code": node.code,
+def _node_payload(
+    *,
+    node: Node,
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    preprocess_only: bool,
+) -> dict[str, Any] | None:
+    code = node.code
+    if preprocess_only:
+        try:
+            code = extract_preprocess_source(code)
+        except ValueError:
+            return None
+    payload = {
+        "local_cv_score": _metric_value(node),
+        "code": code,
     }
+    public_score = _public_score_for_node(
+        registry_entries=registry_entries,
+        run_id=run_id,
+        node=node,
+    )
+    if public_score is not None:
+        payload["kaggle_public_score"] = public_score
+    return payload
+
+
+def _node_payloads(
+    *,
+    nodes: list[Node],
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    preprocess_only: bool,
+) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for node in nodes:
+        payload = _node_payload(
+            node=node,
+            registry_entries=registry_entries,
+            run_id=run_id,
+            preprocess_only=preprocess_only,
+        )
+        if payload is not None:
+            payloads.append(payload)
+    return payloads
 
 
 def _sort_best(nodes: list[Node]) -> list[Node]:
@@ -315,6 +371,8 @@ def collect_research_context(
     ]
     top_worst = worst_candidates[: cfg.research.top_k_worst]
     best_node = journal.get_best_node()
+    registry_entries = _load_submission_registry(cfg)
+    preprocess_only = is_autogluon_preprocess_mode(cfg)
     return {
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
@@ -326,8 +384,18 @@ def collect_research_context(
             if best_node is None or best_node.metric is None
             else ("maximize" if best_node.metric.maximize else "minimize")
         ),
-        "best_working_solutions": [_node_payload(node) for node in top_best],
-        "worst_working_solutions": [_node_payload(node) for node in top_worst],
+        "best_working_solutions": _node_payloads(
+            nodes=top_best,
+            registry_entries=registry_entries,
+            run_id=cfg.exp_name,
+            preprocess_only=preprocess_only,
+        ),
+        "worst_working_solutions": _node_payloads(
+            nodes=top_worst,
+            registry_entries=registry_entries,
+            run_id=cfg.exp_name,
+            preprocess_only=preprocess_only,
+        ),
         "previous_research_summaries": collect_previous_research_summaries(
             cfg=cfg,
             journal=journal,
@@ -374,9 +442,11 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring code snippets that "
         "ran successfully. worst_working_solutions contains the lowest-scoring "
-        "code snippets that still ran successfully. Each solution has a numeric "
-        "validation metric and code. Use these examples only to understand what "
-        "has already been tried and what performed well or poorly.\n\n"
+        "code snippets that still ran successfully. local_cv_score is the "
+        "validation metric. kaggle_public_score is included only when a "
+        "completed Kaggle public leaderboard score is available for that exact "
+        "node. Use these examples only to understand what has already been tried "
+        "and what performed well or poorly.\n\n"
         "# Required JSON output shape\n"
         "Return JSON with: summary; hypotheses[].title; hypotheses[].rationale; "
         "hypotheses[].implementation_hint; hypotheses[].expected_effect; "
