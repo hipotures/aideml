@@ -6,6 +6,7 @@ from aide.interpreter import RedirectQueue
 from aide.agent import Agent
 from aide.autogluon_preprocess import (
     AGENT_MODE,
+    BASELINE_PLAN_PREFIX,
     build_autogluon_wrapper,
     extract_preprocess_source,
     parse_result_marker,
@@ -297,6 +298,39 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "AutoGluon preprocess mode contract" in captured["prompt"]["Instructions"]
     assert "TabularPredictor" in node.code
     assert "TyreLife_x2" in node.code
+
+
+def test_agent_autogluon_first_node_is_raw_baseline_without_llm(tmp_path):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fail_plan_and_code(_prompt):
+        raise AssertionError("baseline should not call the code LLM")
+
+    agent.plan_and_code_query = fail_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert node.parent is None
+    assert node.plan.startswith(BASELINE_PLAN_PREFIX)
+    assert "def preprocess(df: pd.DataFrame) -> pd.DataFrame:" in node.code
+    assert "return df.copy()" in node.code
+    assert "TabularPredictor" in node.code
+
+
+def test_agent_autogluon_baseline_is_selected_for_expansion(tmp_path):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    baseline = Node(
+        code=build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg),
+        plan=f"{BASELINE_PLAN_PREFIX}: raw features",
+    )
+    baseline.metric = MetricValue(0.95, maximize=True)
+    baseline.is_buggy = False
+    journal.append(baseline)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent.search_policy() is baseline
 
 
 def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):

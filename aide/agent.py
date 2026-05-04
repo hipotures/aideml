@@ -6,6 +6,8 @@ from typing import Any, Callable
 
 import humanize
 from .autogluon_preprocess import (
+    BASELINE_PLAN_PREFIX,
+    baseline_preprocess_source,
     build_autogluon_wrapper,
     extract_preprocess_source,
     infer_sample_submission_columns,
@@ -285,6 +287,16 @@ class Agent:
             wrapped_code = f"raise ValueError({str(exc)!r})\n"
         return Node(plan=plan, code=wrapped_code, parent=parent)
 
+    def _autogluon_raw_baseline(self) -> Node:
+        code = build_autogluon_wrapper(baseline_preprocess_source(), self.cfg)
+        return Node(
+            plan=(
+                f"{BASELINE_PLAN_PREFIX}: raw features with the configured "
+                "fixed AutoGluon runner."
+            ),
+            code=code,
+        )
+
     def _previous_preprocess_source(self, parent_node: Node) -> str:
         try:
             return extract_preprocess_source(parent_node.code)
@@ -537,6 +549,12 @@ class Agent:
         self.set_active_stage("generating")
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
 
+        if (
+            parent_node is None
+            and is_autogluon_preprocess_mode(self.cfg)
+            and not self.journal.nodes
+        ):
+            return self._autogluon_raw_baseline()
         if parent_node is None:
             return self._draft()
         if parent_node.is_buggy:

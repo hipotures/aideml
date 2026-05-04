@@ -14,6 +14,7 @@ from aide.run import (
     stage_status_message,
 )
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
+from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
 from aide.utils.metric import MetricValue
 
 
@@ -76,7 +77,7 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
 
     output = _render_text(tree)
 
-    assert "● 0.94500 (best)" in output
+    assert "★ 0.94500" in output
     assert "[*]" in output
     assert "executing" not in output
 
@@ -142,7 +143,7 @@ def test_journal_tree_best_marker_ignores_hidden_invalid_submission_branch():
     output = _render_text(tree)
 
     assert "0.99000" not in output
-    assert "● 0.90000 (best)" in output
+    assert "★ 0.90000" in output
 
 
 def test_journal_tree_can_show_invalid_submission_branch():
@@ -193,8 +194,36 @@ def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
 
     assert "◆ 0.94600" in output
     assert "synthesis)" not in output
-    assert "● 0.94700 (best)" in output
+    assert "★ 0.94700" in output
     assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+
+
+def test_journal_tree_marks_baseline_with_star_until_new_best_then_bullseye():
+    journal = Journal()
+    baseline = Node(
+        code="print('baseline')",
+        plan=f"{BASELINE_PLAN_PREFIX}: raw features",
+    )
+    baseline.metric = MetricValue(0.950, maximize=True)
+    baseline.is_buggy = False
+    journal.append(baseline)
+
+    output = _render_text(journal_to_rich_tree(journal))
+    ansi = _render_ansi(journal_to_rich_tree(journal))
+
+    assert "★ 0.95000" in output
+    assert "◎" not in output
+    assert "\x1b[1;33m★" in ansi
+
+    improved = _good_node(0.951)
+    journal.append(improved)
+
+    output = _render_text(journal_to_rich_tree(journal))
+    ansi = _render_ansi(journal_to_rich_tree(journal))
+
+    assert "◎ 0.95000" in output
+    assert "★ 0.95100" in output
+    assert "\x1b[95m◎" in ansi
 
 
 def test_journal_tree_treats_appended_node_without_metric_as_bug():
@@ -229,7 +258,7 @@ def test_journal_tree_ignores_unappended_active_child_node():
 
     output = _render_text(tree)
 
-    assert "● 0.94500 (best)" in output
+    assert "★ 0.94500" in output
     assert "n/a" not in output
     assert "[*]" in output
 
@@ -356,7 +385,7 @@ def test_render_tree_view_highlights_node_marker_and_score_not_tree_guides():
     ))
 
     assert "\x1b[7m└──" not in output
-    assert "\x1b[7;32m●" in output
+    assert "\x1b[1;7;33m★" in output
 
 
 def test_tree_view_renders_active_placeholder_as_tree_child():
@@ -379,8 +408,31 @@ def test_tree_view_renders_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── ● 0.91000 (best)" in output
+    assert "├── ★ 0.91000" in output
     assert "└── [*]" in output
+
+
+def test_tree_view_marks_baseline_bullseye_when_not_best():
+    journal = Journal()
+    baseline = Node(code="print('baseline')", plan=f"{BASELINE_PLAN_PREFIX}: raw")
+    baseline.metric = MetricValue(0.950, maximize=True)
+    baseline.is_buggy = False
+    best = _good_node(0.951)
+    journal.append(baseline)
+    journal.append(best)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "◎ 0.95000" in output
+    assert "★ 0.95100" in output
 
 
 def test_tree_view_renders_root_active_placeholder_as_tree_child():
@@ -401,7 +453,7 @@ def test_tree_view_renders_root_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── ● 0.90000 (best)" in output
+    assert "├── ★ 0.90000" in output
     assert "└── [ ]" in output
 
 

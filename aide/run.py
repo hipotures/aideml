@@ -20,6 +20,7 @@ from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import ResearchAdvisor, count_scored_working_nodes
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
+from .autogluon_preprocess import BASELINE_PLAN_PREFIX
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -259,6 +260,11 @@ def journal_to_rich_tree(
             SYNTHESIS_PLAN_PREFIX
         )
 
+    def is_baseline_root(node: Node) -> bool:
+        return node.parent is None and str(node.plan or "").startswith(
+            BASELINE_PLAN_PREFIX
+        )
+
     def append_rec(node: Node, tree):
         if (
             node.is_submission_contract_error
@@ -277,12 +283,13 @@ def journal_to_rich_tree(
             style = "bold " if node is best_node else ""
             metric_text = f"{node.metric.value:.5f}"
 
-            if synthesis_root:
-                suffix = " (best)" if node is best_node else ""
+            if node is best_node:
+                s = f"[bold yellow]★[/bold yellow] [{style}green]{metric_text}"
+            elif is_baseline_root(node):
+                s = f"[bright_magenta]◎[/bright_magenta] [{style}green]{metric_text}"
+            elif synthesis_root:
                 metric_style = f"{style}green"
-                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}"
-            elif node is best_node:
-                s = f"[{style}green]● {metric_text} (best)"
+                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}"
             else:
                 s = f"[{style}green]● {metric_text}"
 
@@ -323,6 +330,9 @@ def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
     synthesis_root = node.parent is None and str(node.plan or "").startswith(
         SYNTHESIS_PLAN_PREFIX
     )
+    baseline_root = node.parent is None and str(node.plan or "").startswith(
+        BASELINE_PLAN_PREFIX
+    )
     if synthesis_root and (
         node.is_buggy or node.metric is None or node.metric.value is None
     ):
@@ -334,7 +344,11 @@ def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
         return Text("◍ bug", style="red")
 
     label = Text()
-    if synthesis_root:
+    if node is best_node:
+        label.append("★ ", style="bold yellow")
+    elif baseline_root:
+        label.append("◎ ", style="bright_magenta")
+    elif synthesis_root:
         label.append("◆", style="blue")
         label.append(" ")
     else:
@@ -342,8 +356,6 @@ def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
 
     metric_style = "bold green" if node is best_node else "green"
     metric_text = f"{node.metric.value:.5f}"
-    if node is best_node:
-        metric_text += " (best)"
     label.append(metric_text, style=metric_style)
     return label
 

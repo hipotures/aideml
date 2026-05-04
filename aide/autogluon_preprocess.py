@@ -17,6 +17,11 @@ AGENT_MODE = "autogluon_preprocess"
 RESULT_MARKER = "AIDE_RESULT_JSON:"
 FORBIDDEN_SPLIT_MARKER = "__is_train__"
 FORBIDDEN_ROW_ID = "__aide_row_id__"
+BASELINE_PLAN_PREFIX = "AutoGluon raw baseline"
+
+
+def baseline_preprocess_source() -> str:
+    return "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df.copy()\n"
 
 _PITSTOP_LEAKAGE_PATTERNS = (
     "next_pitstop",
