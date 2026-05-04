@@ -145,6 +145,11 @@ def find_latest_run_id(top_log_dir: Path) -> str:
     return max(journals, key=lambda path: path.stat().st_mtime).parent.name
 
 
+def _cli_sets_key(cli_overrides: list[str], key: str) -> bool:
+    prefix = f"{key}="
+    return any(arg == key or arg.startswith(prefix) for arg in cli_overrides)
+
+
 def load_resume_state(
     *,
     run_id: str,
@@ -173,6 +178,13 @@ def load_resume_state(
         )
 
     cfg = OmegaConf.load(config_path)
+    if (
+        _cli_sets_key(cli_overrides, "agent.autogluon.profile")
+        and not _cli_sets_key(cli_overrides, "agent.autogluon.included_model_types")
+        and "agent" in cfg
+        and "autogluon" in cfg.agent
+    ):
+        cfg.agent.autogluon.included_model_types = None
     if cli_overrides:
         cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(cli_overrides))
     cfg.exp_name = run_id

@@ -8,6 +8,7 @@ from aide.autogluon_preprocess import (
     build_autogluon_wrapper,
     extract_preprocess_source,
     parse_result_marker,
+    resolve_autogluon_included_model_types,
     validate_preprocess_source,
 )
 from aide.interpreter import ExecutionResult
@@ -104,6 +105,45 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert 'print("AIDE AutoGluon: starting fit", flush=True)' in code
     assert 'if __name__ == "__main__"' not in code
     assert code.rstrip().endswith("main()")
+
+
+def test_autogluon_fast_boost_profile_excludes_catboost(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "fast_boost"
+    cfg.agent.autogluon.included_model_types = None
+
+    assert resolve_autogluon_included_model_types(cfg) == ["XGB", "GBM"]
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    assert "'included_model_types': ['XGB', 'GBM']" in code
+
+
+def test_autogluon_full_boost_profile_includes_catboost(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost"
+    cfg.agent.autogluon.included_model_types = None
+
+    assert resolve_autogluon_included_model_types(cfg) == ["XGB", "GBM", "CAT"]
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    assert "'included_model_types': ['XGB', 'GBM', 'CAT']" in code
+
+
+def test_autogluon_included_model_types_overrides_profile(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "fast_boost"
+    cfg.agent.autogluon.included_model_types = ["CAT"]
+
+    assert resolve_autogluon_included_model_types(cfg) == ["CAT"]
+
+
+def test_autogluon_unknown_profile_is_rejected(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "slow_magic"
+    cfg.agent.autogluon.included_model_types = None
+
+    with pytest.raises(ValueError, match="Unknown AutoGluon profile"):
+        resolve_autogluon_included_model_types(cfg)
 
 
 def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):

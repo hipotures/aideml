@@ -18,6 +18,11 @@ RESULT_MARKER = "AIDE_RESULT_JSON:"
 FORBIDDEN_SPLIT_MARKER = "__is_train__"
 FORBIDDEN_ROW_ID = "__aide_row_id__"
 
+AUTOGLUON_PROFILES = {
+    "fast_boost": ["XGB", "GBM"],
+    "full_boost": ["XGB", "GBM", "CAT"],
+}
+
 _PITSTOP_LEAKAGE_PATTERNS = (
     "next_pitstop",
     "next_pit_stop",
@@ -109,10 +114,26 @@ def _container(value: Any) -> Any:
     return OmegaConf.to_container(value, resolve=True) if OmegaConf.is_config(value) else value
 
 
+def resolve_autogluon_included_model_types(cfg: Config) -> list[str]:
+    ag = cfg.agent.autogluon
+    explicit = _container(ag.included_model_types)
+    if explicit is not None:
+        return list(explicit)
+
+    profile = getattr(ag, "profile", "full_boost")
+    try:
+        return list(AUTOGLUON_PROFILES[profile])
+    except KeyError as exc:
+        known = ", ".join(sorted(AUTOGLUON_PROFILES))
+        raise ValueError(
+            f"Unknown AutoGluon profile {profile!r}. Expected one of: {known}"
+        ) from exc
+
+
 def build_autogluon_wrapper(preprocess_source: str, cfg: Config) -> str:
     validate_preprocess_source(preprocess_source)
     ag = cfg.agent.autogluon
-    included_model_types = list(_container(ag.included_model_types) or [])
+    included_model_types = resolve_autogluon_included_model_types(cfg)
     fit_args = dict(_container(ag.fit_args) or {})
 
     constants = {

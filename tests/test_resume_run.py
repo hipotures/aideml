@@ -117,6 +117,45 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert journal.nodes[0].metric.value == 0.9
 
 
+def test_resume_profile_override_clears_old_autogluon_model_list(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.agent.autogluon.included_model_types = ["XGB", "GBM", "CAT"]
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.autogluon.profile=fast_boost"],
+    )
+
+    assert cfg.agent.autogluon.profile == "fast_boost"
+    assert cfg.agent.autogluon.included_model_types is None
+
+
+def test_resume_explicit_model_list_override_wins_over_profile(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.agent.autogluon.included_model_types = ["XGB", "GBM", "CAT"]
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[
+            "agent.autogluon.profile=fast_boost",
+            "agent.autogluon.included_model_types=[CAT]",
+        ],
+    )
+
+    assert cfg.agent.autogluon.profile == "fast_boost"
+    assert cfg.agent.autogluon.included_model_types == ["CAT"]
+
+
 def test_load_resume_state_persists_submission_contract_revalidation(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     log_dir = tmp_path / "logs" / "2-existing-run"
@@ -226,5 +265,6 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     assert cfg.synthesis.every_scored_steps == 15
     assert cfg.exec.memory_limit_gb == 80.0
     assert cfg.agent.mode == "legacy"
+    assert cfg.agent.autogluon.profile == "full_boost"
     assert cfg.agent.autogluon.time_limit == 600
-    assert cfg.agent.autogluon.included_model_types == ["XGB", "GBM", "CAT"]
+    assert cfg.agent.autogluon.included_model_types is None

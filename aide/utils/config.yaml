@@ -86,16 +86,18 @@ agent:
     num_drafts: 5
 
   autogluon:
+    # model selection profile for the fixed AutoGluon runner:
+    # - fast_boost: XGB + GBM, intended for quick feature/preprocess iteration
+    # - full_boost: XGB + GBM + CAT, slower but can improve score depending on features
+    # Set included_model_types to a list to override the profile manually.
+    profile: full_boost
     presets: medium_quality
     time_limit: 600
     validation_fraction: 0.2
     seed: 42
     use_gpu: false
     eval_metric: auto
-    included_model_types:
-      - XGB
-      - GBM
-      - CAT
+    included_model_types: null
     fit_args:
       save_space: true
       fit_weighted_ensemble: false
