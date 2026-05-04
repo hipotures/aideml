@@ -410,6 +410,15 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     )
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["parsed_response"]["summary"] == "researched"
+    assert response["raw_response"].startswith('{"summary":')
+    readable_response = (checkpoint_dir / "response_raw.txt").read_text()
+    assert readable_response.startswith(
+        "Use these external Codex research hints only when relevant."
+    )
+    assert "Research checkpoint: 000010" in readable_response
+    assert "Summary: researched" in readable_response
+    assert "Try calibrated LightGBM" in readable_response
+    assert '{"summary":' not in readable_response
     assert response["exit_code"] == 0
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "completed"

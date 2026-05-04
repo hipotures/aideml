@@ -575,6 +575,14 @@ def run_research_checkpoint(
         else ""
     )
     parsed_response = _parse_response(raw_response)
+    if isinstance(parsed_response, dict):
+        raw_response_path.write_text(
+            _format_research_response_for_file(
+                checkpoint_name=_checkpoint_name(completed_steps),
+                parsed_response=parsed_response,
+            ),
+            encoding="utf-8",
+        )
     status = "completed" if exit_code == 0 and parsed_response is not None else "failed"
     if error is not None:
         status = "failed"
@@ -707,6 +715,23 @@ def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
                 lines.append(f"   Risk: {risk}")
 
     return "\n".join(lines)
+
+
+def _format_research_response_for_file(
+    *,
+    checkpoint_name: str,
+    parsed_response: dict[str, Any],
+) -> str:
+    return (
+        format_research_hints_for_prompt(
+            {
+                "checkpoint": checkpoint_name,
+                "summary": parsed_response.get("summary", ""),
+                "hypotheses": parsed_response.get("hypotheses", []),
+            }
+        )
+        + "\n"
+    )
 
 
 class ResearchAdvisor:
