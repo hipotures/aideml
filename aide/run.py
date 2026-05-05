@@ -771,12 +771,8 @@ def build_resource_summary(
     lines: list[Text] = [Text("Resources", style="bold cyan")]
     snapshot = resource_history.latest if resource_history is not None else None
     if snapshot is None or resource_history is None:
-        values = [
-            ("CPU", "-", "", ""),
-            ("RAM", "-", "", ""),
-            ("peak", "-", "", ""),
-            ("proc", "-", "", ""),
-        ]
+        lines.append(Text("▶ waiting for code execution sample", style="yellow"))
+        return Group(*lines)
     else:
         cpu_ceiling = float((os.cpu_count() or 1) * 100)
         memory_ceiling = max(
@@ -827,7 +823,7 @@ def build_resource_summary(
             ),
         ]
     lines.extend(
-        Text(f"▶ {label} {value} {bar} {spark}", style="yellow")
+        Text(f"▶ {label:<4} {value:>7} {bar} {spark}", style="yellow")
         for label, value, bar, spark in values
     )
     return Group(*lines)
@@ -844,6 +840,7 @@ def build_run_data(
     workspace_dir: Path,
     resource_snapshot: ResourceSnapshot | None = None,
     resource_history: ResourceHistory | None = None,
+    resource_active: bool = False,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -858,7 +855,8 @@ def build_run_data(
         lines.append(synthesis_status)
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
-    lines.extend([Rule(style="dim"), build_resource_summary(resource_history)])
+    if resource_active:
+        lines.extend([Rule(style="dim"), build_resource_summary(resource_history)])
     return Group(*lines)
 
 
@@ -1175,12 +1173,13 @@ def run(argv: list[str] | None = None):
     status_override: str | None = None
     stop_after_current_node = False
     resource_history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    resource_active = False
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
 
     def exec_callback(*args, **kwargs):
-        nonlocal status_override, stop_after_current_node
+        nonlocal status_override, stop_after_current_node, resource_active
 
         def on_interrupt(interrupt_count: int):
             nonlocal status_override, stop_after_current_node
@@ -1198,6 +1197,7 @@ def run(argv: list[str] | None = None):
             resource_history.add(snapshot)
 
         try:
+            resource_active = True
             result = interpreter.run(
                 *args,
                 interrupt_callback=on_interrupt,
@@ -1206,6 +1206,7 @@ def run(argv: list[str] | None = None):
             )
             return result
         finally:
+            resource_active = False
             if not stop_after_current_node:
                 status_override = None
 
@@ -1305,6 +1306,7 @@ def run(argv: list[str] | None = None):
                     log_dir=cfg.log_dir,
                     workspace_dir=cfg.workspace_dir,
                     resource_history=resource_history,
+                    resource_active=resource_active,
                 ),
                 (0, 1, 0, 1),
             ),

@@ -631,18 +631,63 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
             resource_history=history,
+            resource_active=True,
         )
     )
 
     assert "Last Error" in output
     assert "Resources" in output
     assert output.index("Last Error") < output.index("Resources")
-    assert "▶ CPU 640%" in output
-    assert "▶ RAM 18.4G" in output
-    assert "▶ peak 22.1G" in output
-    assert "▶ proc 9" in output
+    assert "CPU" in output and "640%" in output
+    assert "RAM" in output and "18.4G" in output
+    assert "peak" in output and "22.1G" in output
+    assert "proc" in output and "9" in output
     assert "█" in output
     assert "▁" in output or "▂" in output or "▃" in output
+
+    resource_lines = [
+        line for line in output.splitlines() if line.startswith("▶ ") and "█" in line
+    ]
+    assert len(resource_lines) == 4
+    bar_columns = [line.index("█") for line in resource_lines]
+    assert len(set(bar_columns)) == 1
+
+
+def test_run_data_hides_resources_when_code_is_not_executing(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "Resources" not in output
+    assert "waiting for code execution sample" not in output
+
+
+def test_run_data_shows_waiting_resources_during_execution_before_first_sample(
+    tmp_path,
+):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Executing code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            resource_active=True,
+        )
+    )
+
+    assert "Resources" in output
+    assert "▶ waiting for code execution sample" in output
 
 
 def test_stage_status_message_names_review_stage():
