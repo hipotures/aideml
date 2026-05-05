@@ -4,6 +4,10 @@ import json
 import sys
 from pathlib import Path
 
+from aide.journal import Journal, Node
+from aide.utils import serialize
+from aide.utils.metric import MetricValue
+
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "kaggle_submission_lab.py"
 SPEC = importlib.util.spec_from_file_location("kaggle_submission_lab", MODULE_PATH)
@@ -106,6 +110,64 @@ def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     assert record["sha256"] == submission_sha
     assert record["profile"] == "full_boost_gpu"
     assert record["artifact_dir"] == str(artifact)
+
+
+def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
+    logs_dir = tmp_path / "logs"
+    run_name = "legacy-run"
+    timestamp = "20260505T235122"
+    code = (
+        "AIDE_AG_CONFIG = {'profile': 'full_boost_gpu', "
+        "'included_model_types': ['XGB', 'GBM', 'CAT'], "
+        "'presets': 'medium_quality', 'time_limit': 600}\n"
+        "def preprocess(df):\n    return df\n"
+    )
+    artifact = _write_artifact(
+        logs_dir,
+        run_name,
+        timestamp,
+        code=code,
+        submission="id,target\n1,0.9\n",
+    )
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    run_dir = logs_dir / run_name
+    journal = Journal()
+    journal.append(
+        Node(
+            code=code,
+            plan="legacy plan",
+            id="node-legacy",
+            ctime=_ctime(timestamp),
+            status="ok",
+            exec_time=12.5,
+            analysis="legacy analysis",
+            metric=MetricValue(0.95098, maximize=True),
+            is_buggy=False,
+        )
+    )
+    serialize.dump_json(journal, run_dir / "journal.json")
+
+    assert not (artifact / "aide_result.json").exists()
+
+    index = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=logs_dir / "submission_index.json",
+        competition="playground-series-s6e5",
+        reindex=True,
+    )
+
+    assert (artifact / "aide_result.json").exists()
+    assert len(index["records"]) == 1
+    record = index["records"][0]
+    assert record["kind"] == "source_node"
+    assert record["run"] == run_name
+    assert record["step"] == 0
+    assert record["node_id"] == "node-legacy"
+    assert record["local_score"] == 0.95098
+    assert record["sha256"] == submission_sha
+    assert record["profile"] == "full_boost_gpu"
+    assert record["included_model_types"] == ["XGB", "GBM", "CAT"]
+
 
 def test_refresh_index_skips_unchanged_runs_without_reindex(tmp_path, monkeypatch):
     logs_dir = tmp_path / "logs"

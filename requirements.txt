@@ -33,6 +33,7 @@ lightgbm
 xgboost
 catboost
 autogluon
+# ray intentionally disabled; AutoGluon should fall back to local/sequential fitting.
 statsmodels
 matplotlib
 seaborn

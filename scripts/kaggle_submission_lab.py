@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Iterable
 
 from rich.console import Console
@@ -20,7 +21,13 @@ from rich.progress import (
 from rich.table import Table
 
 from scripts import smart_kaggle_submit as smart
-from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
+from aide.journal import Journal
+from aide.utils import serialize
+from aide.utils.artifact_manifest import (
+    RESULT_MANIFEST_NAME,
+    artifact_timestamp_from_ctime,
+    write_node_artifact_manifest,
+)
 
 
 DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
@@ -79,6 +86,27 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def backfill_legacy_source_manifests(run_dir: Path) -> int:
+    journal_path = run_dir / "journal.json"
+    artifacts_dir = run_dir / "artifacts"
+    if not journal_path.exists() or not artifacts_dir.exists():
+        return 0
+
+    journal = serialize.load_json(journal_path, Journal)
+    cfg = SimpleNamespace(log_dir=run_dir)
+    written = 0
+    for node in journal.nodes:
+        artifact_dir = artifacts_dir / artifact_timestamp_from_ctime(node.ctime)
+        manifest_path = artifact_dir / RESULT_MANIFEST_NAME
+        if manifest_path.exists():
+            continue
+        if not (artifact_dir / "solution.py").exists():
+            continue
+        write_node_artifact_manifest(cfg=cfg, node=node, artifact_dir=artifact_dir)
+        written += 1
+    return written
 
 
 def parse_autogluon_config(code: str) -> dict[str, Any] | None:
@@ -277,7 +305,6 @@ def refresh_index(
         for run_dir in sorted(logs_dir.iterdir())
         if run_dir.is_dir()
         and (run_dir / "artifacts").exists()
-        and any((run_dir / "artifacts").glob(f"*/{RESULT_MANIFEST_NAME}"))
     ]
     task_id = None
     if progress is not None:
@@ -285,11 +312,12 @@ def refresh_index(
     for run_dir in run_dirs:
         run = run_dir.name
         try:
+            backfilled = backfill_legacy_source_manifests(run_dir)
             if not reindex and _run_is_unchanged(
                 run=run,
                 run_dir=run_dir,
                 cached_runs=cached_runs,
-            ):
+            ) and backfilled == 0:
                 continue
             records, run_meta = build_run_records(
                 logs_dir=logs_dir,
