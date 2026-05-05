@@ -4,6 +4,7 @@ from aide.agent import Agent
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.utils.config import _load_cfg, prep_cfg
+from aide.utils.metric import MetricValue
 
 
 def _cfg(tmp_path: Path):
@@ -14,6 +15,19 @@ def _cfg(tmp_path: Path):
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "review-test"
     return prep_cfg(cfg)
+
+
+def test_journal_summary_formats_validation_metric_to_five_decimals():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="plan")
+    node.analysis = "AutoGluon preprocess wrapper completed"
+    node.metric = MetricValue(0.9504787907447247, maximize=True)
+    journal.append(node)
+
+    summary = journal.generate_summary()
+
+    assert "Validation Metric: 0.95048" in summary
+    assert "0.9504787907447247" not in summary
 
 
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(

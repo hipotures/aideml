@@ -205,6 +205,6 @@ class Journal(DataClassJsonMixin):
             if include_code:
                 summary_part += f"Code: {n.code}\n"
             summary_part += f"Results: {n.analysis}\n"
-            summary_part += f"Validation Metric: {n.metric.value}\n"
+            summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
