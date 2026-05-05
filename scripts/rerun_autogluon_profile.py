@@ -169,32 +169,22 @@ def execute_code(
     env = os.environ.copy()
     env["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir.resolve())
     start_time = time.time()
-    stdout_path = artifact_dir / "process_stdout.log"
-    stdout_handle = None
-    stdout_target: Any
-    if console is not None and progress_time_limit is not None:
-        artifact_dir.mkdir(parents=True, exist_ok=True)
-        stdout_handle = stdout_path.open("w", encoding="utf-8", buffering=1)
-        stdout_target = stdout_handle
-    else:
-        stdout_target = subprocess.PIPE
+    stdout_path = artifact_dir / "autogluon_stdout.log"
 
     proc = subprocess.Popen(
         [sys.executable, str(runfile.name)],
         cwd=str(workspace_dir),
         env=env,
-        stdout=stdout_target,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         start_new_session=True,
         preexec_fn=limit_child_memory,
     )
     try:
-        if stdout_handle is None:
+        if console is None or progress_time_limit is None:
             output_text, _ = proc.communicate(timeout=timeout)
         else:
-            assert console is not None
-            assert progress_time_limit is not None
             progress = Progress(
                 TextColumn("{task.description}"),
                 BarColumn(),
@@ -218,34 +208,24 @@ def execute_code(
                     if elapsed >= timeout:
                         raise subprocess.TimeoutExpired(proc.args, timeout)
                     time.sleep(1.0)
+                output_text, _ = proc.communicate(timeout=5)
                 progress.update(
                     task_id,
                     completed=min(time.time() - start_time, float(progress_time_limit)),
                     elapsed_text=_format_seconds(time.time() - start_time),
                 )
-            stdout_handle.close()
-            stdout_handle = None
-            output_text = stdout_path.read_text(errors="replace")
+            if stdout_path.exists():
+                output_text = stdout_path.read_text(errors="replace")
         exec_time = time.time() - start_time
     except subprocess.TimeoutExpired:
         os.killpg(proc.pid, signal.SIGINT)
         try:
-            if stdout_handle is None:
-                output_text, _ = proc.communicate(timeout=5)
-            else:
-                proc.wait(timeout=5)
-                stdout_handle.close()
-                stdout_handle = None
-                output_text = stdout_path.read_text(errors="replace")
+            output_text, _ = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:
             os.killpg(proc.pid, signal.SIGKILL)
-            if stdout_handle is None:
-                output_text, _ = proc.communicate()
-            else:
-                proc.wait()
-                stdout_handle.close()
-                stdout_handle = None
-                output_text = stdout_path.read_text(errors="replace")
+            output_text, _ = proc.communicate()
+        if stdout_path.exists():
+            output_text = stdout_path.read_text(errors="replace")
         exec_time = float(timeout)
         return ExecutionResult(
             [output_text, f"TimeoutError: Execution exceeded the time limit of {timeout} seconds"],
@@ -254,9 +234,6 @@ def execute_code(
             {},
             [],
         )
-    finally:
-        if stdout_handle is not None:
-            stdout_handle.close()
 
     output = [output_text]
     if proc.returncode == 0:

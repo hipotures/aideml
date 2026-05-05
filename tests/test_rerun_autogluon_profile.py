@@ -251,6 +251,32 @@ def test_resolve_process_timeout_defaults_to_profile_time_limit_plus_margin():
     assert rerun_autogluon_profile.resolve_process_timeout(300, 1800) == 300
 
 
+def test_execute_code_uses_single_autogluon_log_file(tmp_path):
+    artifact_dir = tmp_path / "artifacts"
+    code = (
+        "from pathlib import Path\n"
+        "import os\n"
+        "artifact = Path(os.environ['AIDE_NODE_ARTIFACT_DIR'])\n"
+        "artifact.mkdir(parents=True, exist_ok=True)\n"
+        "(artifact / 'autogluon_stdout.log').write_text('training log\\n')\n"
+        "print('AIDE_RESULT_JSON: {\"is_bug\": false, \"metric\": 0.9, \"lower_is_better\": false}')\n"
+    )
+
+    result = rerun_autogluon_profile.execute_code(
+        code,
+        workspace_dir=tmp_path / "workspace",
+        artifact_dir=artifact_dir,
+        timeout=60,
+        memory_limit_gb=None,
+        console=rerun_autogluon_profile.Console(record=True),
+        progress_time_limit=1,
+    )
+
+    assert result.exc_type is None
+    assert (artifact_dir / "autogluon_stdout.log").read_text() == "training log\n"
+    assert not (artifact_dir / "process_stdout.log").exists()
+
+
 def test_main_leaves_timeout_unset_for_profile_default(tmp_path, monkeypatch):
     source_submission = tmp_path / "source.csv"
     source_submission.write_text("id,target\n1,0.8\n")
