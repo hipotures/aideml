@@ -46,63 +46,7 @@ class SearchConfig:
 @dataclass
 class AutoGluonConfig:
     profile: str = "full_boost"
-    profiles: dict = field(
-        default_factory=lambda: {
-            "fast_boost": {
-                "included_model_types": ["XGB", "GBM"],
-                "presets": "medium_quality",
-                "time_limit": 600,
-                "use_gpu": False,
-                "validation_strategy": "holdout",
-                "fit_args": {
-                    "save_space": True,
-                    "fit_weighted_ensemble": False,
-                    "auto_stack": False,
-                },
-            },
-            "full_boost": {
-                "included_model_types": ["XGB", "GBM", "CAT"],
-                "presets": "medium_quality",
-                "time_limit": 600,
-                "use_gpu": False,
-                "validation_strategy": "holdout",
-                "fit_args": {
-                    "save_space": True,
-                    "fit_weighted_ensemble": False,
-                    "auto_stack": False,
-                },
-            },
-            "full_best_30m": {
-                "included_model_types": ["XGB", "GBM", "CAT"],
-                "presets": "best_quality",
-                "time_limit": 1800,
-            },
-            "full_best_30m_gpu": {
-                "included_model_types": ["XGB", "GBM", "CAT"],
-                "presets": "best_quality",
-                "time_limit": 1800,
-                "use_gpu": True,
-                "hyperparameters": {
-                    "GBM": [{"ag_args_fit": {"num_gpus": 0}}],
-                    "CAT": [
-                        {
-                            "task_type": "GPU",
-                            "devices": "0",
-                            "ag_args_fit": {"num_gpus": 1},
-                        }
-                    ],
-                    "XGB": [
-                        {
-                            "device": "cuda",
-                            "tree_method": "hist",
-                            "n_jobs": 8,
-                            "ag_args_fit": {"num_gpus": 1},
-                        }
-                    ],
-                },
-            },
-        }
-    )
+    profiles: dict = field(default_factory=dict)
     presets: str = "medium_quality"
     time_limit: int = 600
     validation_fraction: float = 0.2
