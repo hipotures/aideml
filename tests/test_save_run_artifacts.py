@@ -5,6 +5,7 @@ import os
 from aide.journal import Journal, Node
 from aide.utils.config import save_run
 from aide.utils.metric import MetricValue
+import json
 
 
 @dataclass
@@ -46,6 +47,16 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     assert artifact_dirs[0].name == "20260502T213547"
     assert (artifact_dirs[0] / "solution.py").read_text() == "print('current node')"
     assert (artifact_dirs[0] / "submission.csv").read_text() == "id,PitNextLap\n1,0.7\n"
+    manifest = json.loads((artifact_dirs[0] / "aide_result.json").read_text())
+    assert manifest["kind"] == "source_node"
+    assert manifest["run"] == "run"
+    assert manifest["timestamp"] == "20260502T213547"
+    assert manifest["status"] == "ok"
+    assert manifest["local_score"] == 0.9473
+    assert manifest["node"]["id"] == node.id
+    assert manifest["node"]["step"] == 0
+    assert manifest["execution"]["exec_time"] == 1.0
+    assert manifest["files"]["submission"]["path"] == "submission.csv"
     assert not (artifact_dirs[0] / "error.txt").exists()
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
 
@@ -76,6 +87,10 @@ def test_save_run_does_not_archive_submission_when_missing(tmp_path):
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
+    manifest = json.loads((artifact_dir / "aide_result.json").read_text())
+    assert manifest["status"] == "ok"
+    assert manifest["local_score"] == 0.5
+    assert manifest["files"]["submission"] is None
 
 
 def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path):
@@ -110,6 +125,11 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
+    manifest = json.loads((artifact_dir / "aide_result.json").read_text())
+    assert manifest["status"] == "bug"
+    assert manifest["local_score"] is None
+    assert manifest["files"]["error"]["path"] == "error.txt"
+    assert manifest["execution"]["exc_type"] == "RuntimeError"
     error_text = (artifact_dir / "error.txt").read_text()
     assert "Exception type:\nRuntimeError" in error_text
     assert '"args": [' in error_text

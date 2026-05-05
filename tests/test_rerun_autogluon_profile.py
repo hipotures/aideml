@@ -119,6 +119,18 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
     assert eval_meta["profile"] == "full_boost"
     assert eval_meta["autogluon_presets"] == "best_quality"
     assert eval_meta["included_model_types"] == ["XGB", "GBM", "CAT"]
+    manifest = json.loads((eval_artifact / "aide_result.json").read_text())
+    assert manifest["kind"] == "profile_eval"
+    assert manifest["run"] == "run-a"
+    assert manifest["timestamp"] == "20260504T120000"
+    assert manifest["status"] == "ok"
+    assert manifest["local_score"] == 0.951
+    assert manifest["profile"] == "full_boost"
+    assert manifest["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert manifest["time_limit"] == 600
+    assert manifest["execution"]["exec_time"] == 42.0
+    assert manifest["source"]["source_sha256"] == source_record["sha256"]
+    assert manifest["files"]["submission"]["path"] == "submission.csv"
     assert record["kind"] == "profile_eval"
     assert record["sha256"] == kaggle_submission_lab.sha256_file(
         eval_artifact / "submission.csv"

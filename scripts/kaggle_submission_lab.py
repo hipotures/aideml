@@ -20,6 +20,7 @@ from rich.progress import (
 from rich.table import Table
 
 from scripts import smart_kaggle_submit as smart
+from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
 
 
 DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
@@ -53,20 +54,18 @@ def stat_signature(path: Path) -> dict[str, Any]:
     }
 
 
-def run_scan_signature(journal_path: Path) -> dict[str, Any]:
-    run_dir = journal_path.parent
+def run_scan_signature(run_dir: Path) -> dict[str, Any]:
     artifact_files: dict[str, dict[str, Any]] = {}
     artifacts_dir = run_dir / "artifacts"
     if artifacts_dir.exists():
         for artifact_path in sorted(artifacts_dir.glob("*")):
             if not artifact_path.is_dir():
                 continue
-            for name in ("solution.py", "submission.csv", "submission_eval.json"):
+            for name in ("solution.py", "submission.csv", RESULT_MANIFEST_NAME):
                 path = artifact_path / name
                 if path.exists():
                     artifact_files[f"{artifact_path.name}/{name}"] = stat_signature(path)
     return {
-        "journal": stat_signature(journal_path),
         "artifacts": artifact_files,
     }
 
@@ -80,17 +79,6 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-
-
-def _timestamp_from_ctime(ctime: float) -> str:
-    return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
-
-
-def _metric_value(node: dict[str, Any]) -> tuple[float | None, bool | None]:
-    metric = node.get("metric") or {}
-    value = metric.get("value")
-    maximize = metric.get("maximize")
-    return (float(value), maximize) if value is not None else (None, maximize)
 
 
 def parse_autogluon_config(code: str) -> dict[str, Any] | None:
@@ -167,59 +155,7 @@ def _artifact_record_base(
     }
 
 
-def build_source_node_records(
-    *,
-    logs_dir: Path,
-    run: str,
-    journal: dict[str, Any],
-    competition: str,
-) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    run_dir = logs_dir / run
-    for node in journal.get("nodes", []):
-        ctime = node.get("ctime")
-        if ctime is None:
-            continue
-        timestamp = _timestamp_from_ctime(float(ctime))
-        artifact_dir = run_dir / "artifacts" / timestamp
-        score, maximize = _metric_value(node)
-        base = _artifact_record_base(
-            competition=competition,
-            run=run,
-            timestamp=timestamp,
-            artifact_dir=artifact_dir,
-        )
-        records.append(
-            {
-                **base,
-                "kind": "source_node",
-                "step": node.get("step"),
-                "node_id": node.get("id"),
-                "parent_node_id": (journal.get("node2parent") or {}).get(
-                    node.get("id")
-                ),
-                "local_score": score,
-                "metric_maximize": maximize,
-                "is_buggy": bool(node.get("is_buggy")),
-                "exec_time": node.get("exec_time"),
-                "status": (
-                    "ok"
-                    if not node.get("is_buggy")
-                    and score is not None
-                    and base["sha256"] is not None
-                    else "not_ready"
-                ),
-                "source_run": None,
-                "source_node_id": None,
-                "source_step": None,
-                "source_timestamp": None,
-                "source_sha256": None,
-            }
-        )
-    return records
-
-
-def build_profile_eval_records(
+def build_manifest_records(
     *,
     logs_dir: Path,
     run: str,
@@ -229,39 +165,53 @@ def build_profile_eval_records(
     artifacts_dir = logs_dir / run / "artifacts"
     if not artifacts_dir.exists():
         return records
-    for eval_path in sorted(artifacts_dir.glob("*/submission_eval.json")):
-        artifact_dir = eval_path.parent
+    for manifest_path in sorted(artifacts_dir.glob(f"*/{RESULT_MANIFEST_NAME}")):
+        artifact_dir = manifest_path.parent
         timestamp = artifact_dir.name
-        metadata = _load_json(eval_path)
+        manifest = _load_json(manifest_path)
+        node = manifest.get("node") or {}
+        source = manifest.get("source") or {}
+        autogluon = manifest.get("autogluon") or {}
         base = _artifact_record_base(
-            competition=metadata.get("competition", competition),
-            run=run,
-            timestamp=timestamp,
+            competition=manifest.get("competition", competition),
+            run=str(manifest.get("run") or run),
+            timestamp=str(manifest.get("timestamp") or timestamp),
             artifact_dir=artifact_dir,
         )
+        metric = node.get("metric") or {}
+        status = str(manifest.get("status") or node.get("status") or "unknown")
         records.append(
             {
                 **base,
-                "kind": "profile_eval",
-                "step": None,
-                "node_id": None,
-                "parent_node_id": None,
-                "local_score": metadata.get("local_score"),
-                "metric_maximize": metadata.get("metric_maximize", True),
-                "is_buggy": metadata.get("status") != "ok",
-                "exec_time": metadata.get("exec_time"),
-                "status": metadata.get("status", "unknown"),
-                "profile": metadata.get("profile") or base.get("profile"),
-                "autogluon_presets": metadata.get("autogluon_presets")
+                "kind": manifest.get("kind") or "source_node",
+                "step": node.get("step"),
+                "node_id": node.get("id"),
+                "parent_node_id": node.get("parent_id"),
+                "local_score": manifest.get("local_score", metric.get("value")),
+                "metric_maximize": manifest.get(
+                    "metric_maximize",
+                    metric.get("maximize", True),
+                ),
+                "is_buggy": bool(manifest.get("is_buggy") or status != "ok"),
+                "exec_time": (manifest.get("execution") or {}).get("exec_time"),
+                "status": status,
+                "profile": manifest.get("profile")
+                or autogluon.get("profile")
+                or base.get("profile"),
+                "autogluon_presets": manifest.get("autogluon_presets")
+                or autogluon.get("presets")
                 or base.get("autogluon_presets"),
-                "included_model_types": metadata.get("included_model_types")
+                "included_model_types": manifest.get("included_model_types")
+                or autogluon.get("included_model_types")
                 or base.get("included_model_types"),
-                "time_limit": metadata.get("time_limit") or base.get("time_limit"),
-                "source_run": metadata.get("source_run"),
-                "source_node_id": metadata.get("source_node_id"),
-                "source_step": metadata.get("source_step"),
-                "source_timestamp": metadata.get("source_timestamp"),
-                "source_sha256": metadata.get("source_sha256"),
+                "time_limit": manifest.get("time_limit")
+                or autogluon.get("time_limit")
+                or base.get("time_limit"),
+                "source_run": source.get("source_run"),
+                "source_node_id": source.get("source_node_id"),
+                "source_step": source.get("source_step"),
+                "source_timestamp": source.get("source_timestamp"),
+                "source_sha256": source.get("source_sha256"),
             }
         )
     return records
@@ -270,19 +220,14 @@ def build_profile_eval_records(
 def build_run_records(
     *,
     logs_dir: Path,
-    journal_path: Path,
+    run_dir: Path,
     competition: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    run = journal_path.parent.name
-    journal = _load_json(journal_path)
-    records = build_source_node_records(
+    run = run_dir.name
+    records = build_manifest_records(
         logs_dir=logs_dir,
         run=run,
-        journal=journal,
         competition=competition,
-    )
-    records.extend(
-        build_profile_eval_records(logs_dir=logs_dir, run=run, competition=competition)
     )
     artifact_signatures = {}
     for record in records:
@@ -293,8 +238,7 @@ def build_run_records(
                 "submission_signature": file_signature(submission_path),
             }
     return records, {
-        "journal_signature": file_signature(journal_path),
-        "scan_signature": run_scan_signature(journal_path),
+        "scan_signature": run_scan_signature(run_dir),
         "artifact_signatures": artifact_signatures,
     }
 
@@ -302,13 +246,13 @@ def build_run_records(
 def _run_is_unchanged(
     *,
     run: str,
-    journal_path: Path,
+    run_dir: Path,
     cached_runs: dict[str, Any],
 ) -> bool:
     cached = cached_runs.get(run)
     if not isinstance(cached, dict):
         return False
-    return cached.get("scan_signature") == run_scan_signature(journal_path)
+    return cached.get("scan_signature") == run_scan_signature(run_dir)
 
 
 def refresh_index(
@@ -328,22 +272,28 @@ def refresh_index(
         records_by_run.setdefault(record.get("run"), []).append(record)
 
     run_signatures: dict[str, Any] = dict(cached_runs)
-    journal_paths = sorted(logs_dir.glob("*/journal.json"))
+    run_dirs = [
+        run_dir
+        for run_dir in sorted(logs_dir.iterdir())
+        if run_dir.is_dir()
+        and (run_dir / "artifacts").exists()
+        and any((run_dir / "artifacts").glob(f"*/{RESULT_MANIFEST_NAME}"))
+    ]
     task_id = None
     if progress is not None:
-        task_id = progress.add_task("Indexing AIDE runs", total=len(journal_paths))
-    for journal_path in journal_paths:
-        run = journal_path.parent.name
+        task_id = progress.add_task("Indexing AIDE runs", total=len(run_dirs))
+    for run_dir in run_dirs:
+        run = run_dir.name
         try:
             if not reindex and _run_is_unchanged(
                 run=run,
-                journal_path=journal_path,
+                run_dir=run_dir,
                 cached_runs=cached_runs,
             ):
                 continue
             records, run_meta = build_run_records(
                 logs_dir=logs_dir,
-                journal_path=journal_path,
+                run_dir=run_dir,
                 competition=competition,
             )
             records_by_run[run] = records

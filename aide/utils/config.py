@@ -19,6 +19,7 @@ import logging
 
 from . import tree_export
 from . import copytree, preproc_data, serialize
+from .artifact_manifest import write_node_artifact_manifest
 
 shutup.mute_warnings()
 logging.basicConfig(
@@ -431,6 +432,8 @@ def _save_node_artifacts(cfg: Config, node) -> None:
     error_text = _node_error_text(node)
     if error_text is not None:
         (artifact_dir / "error.txt").write_text(error_text + "\n")
+
+    write_node_artifact_manifest(cfg=cfg, node=node, artifact_dir=artifact_dir)
 
 
 def save_run(

@@ -33,6 +33,7 @@ from aide.autogluon_preprocess import (
     resolve_autogluon_included_model_types,
 )
 from aide.interpreter import ExecutionResult
+from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
 from aide.utils.config import _load_cfg
 from aide.utils.submission_validation import validate_submission_file
 from scripts import kaggle_submission_lab as lab
@@ -49,6 +50,17 @@ def timestamp_now() -> str:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return {
+        "path": path.relative_to(base_dir).as_posix(),
+        "size": path.stat().st_size,
+        "mtime_ns": path.stat().st_mtime_ns,
+        "sha256": lab.sha256_file(path),
+    }
 
 
 def resolve_process_timeout(timeout: int | None, autogluon_time_limit: int) -> int:
@@ -383,6 +395,68 @@ def run_profile_eval(
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     _write_json(artifact_dir / "submission_eval.json", metadata)
+
+    manifest = {
+        "schema_version": 1,
+        **metadata,
+        "run": run,
+        "timestamp": timestamp,
+        "artifact_dir": str(artifact_dir),
+        "local_score": float(metric) if metric is not None else None,
+        "metric_maximize": not lower_is_better,
+        "is_buggy": not is_ok,
+        "sha256": lab.sha256_file(submission_path) if submission_path.exists() else None,
+        "files": {
+            "solution": _file_entry(artifact_dir / "solution.py", base_dir=artifact_dir),
+            "submission": _file_entry(submission_path, base_dir=artifact_dir),
+            "error": _file_entry(artifact_dir / "error.txt", base_dir=artifact_dir),
+        },
+        "node": {
+            "id": None,
+            "step": None,
+            "ctime": dt.datetime.strptime(timestamp, "%Y%m%dT%H%M%S").timestamp(),
+            "parent_id": None,
+            "status": "ok" if is_ok else "bug",
+            "origin": "profile_eval",
+            "plan": f"Profile evaluation {profile}",
+            "analysis": marker.get("summary") if marker else None,
+            "is_buggy": not is_ok,
+            "metric": {
+                "value": float(metric) if metric is not None else None,
+                "maximize": not lower_is_better,
+            },
+            "submission_validation": (
+                {"status": "ok"} if validation_error is None else {"status": "error", "error": validation_error}
+            ),
+        },
+        "execution": {
+            "exec_time": exec_result.exec_time,
+            "exc_type": exec_result.exc_type,
+            "exc_info": exec_result.exc_info,
+            "exc_stack": exec_result.exc_stack,
+        },
+        "submission_validation": (
+            {"status": "ok"} if validation_error is None else {"status": "error", "error": validation_error}
+        ),
+        "autogluon": {
+            "profile": profile,
+            "presets": autogluon_presets,
+            "included_model_types": included_model_types,
+            "time_limit": resolved_time_limit,
+            "process_timeout": effective_timeout,
+            "use_gpu": None,
+            "resolved_settings": {},
+        },
+        "source": {
+            "source_run": source_record.get("run"),
+            "source_node_id": source_record.get("node_id")
+            or source_record.get("source_node_id"),
+            "source_step": source_record.get("step") or source_record.get("source_step"),
+            "source_timestamp": source_record.get("timestamp"),
+            "source_sha256": source_sha,
+        },
+    }
+    _write_json(artifact_dir / RESULT_MANIFEST_NAME, manifest)
 
     record = {
         **metadata,

@@ -17,16 +17,6 @@ def _ctime(timestamp: str) -> float:
     return dt.datetime.strptime(timestamp, "%Y%m%dT%H%M%S").timestamp()
 
 
-def _write_journal(logs_dir: Path, run_name: str, nodes: list[dict]) -> Path:
-    run_dir = logs_dir / run_name
-    run_dir.mkdir(parents=True)
-    journal_path = run_dir / "journal.json"
-    journal_path.write_text(
-        json.dumps({"__version": "test", "node2parent": {}, "nodes": nodes})
-    )
-    return journal_path
-
-
 def _write_artifact(
     logs_dir: Path,
     run_name: str,
@@ -43,60 +33,57 @@ def _write_artifact(
     return artifact_dir
 
 
-def test_refresh_index_records_source_nodes_and_profile_evals(tmp_path):
+def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     logs_dir = tmp_path / "logs"
-    source_code = (
-        "AIDE_AG_CONFIG = {'profile': 'fast_boost', "
-        "'included_model_types': ['XGB', 'GBM'], 'presets': 'medium_quality', "
-        "'time_limit': 300}\n"
-        "def preprocess(df):\n    return df\n"
-    )
-    _write_journal(
+    artifact = _write_artifact(
         logs_dir,
-        "run-a",
-        [
-            {
-                "step": 2,
-                "id": "node-source",
-                "ctime": _ctime("20260504T100000"),
-                "metric": {"value": 0.95, "maximize": True},
-                "is_buggy": False,
-                "exec_time": 12.5,
-            }
-        ],
-    )
-    source_artifact = _write_artifact(
-        logs_dir,
-        "run-a",
-        "20260504T100000",
-        code=source_code,
-    )
-    eval_artifact = _write_artifact(
-        logs_dir,
-        "run-a",
-        "20260504T110000",
-        code=source_code.replace("fast_boost", "full_boost"),
+        "remote-run",
+        "20260506T120000",
+        code=(
+            "AIDE_AG_CONFIG = {'profile': 'full_boost_gpu', "
+            "'included_model_types': ['XGB', 'GBM', 'CAT'], "
+            "'presets': 'medium_quality', 'time_limit': 600}\n"
+            "def preprocess(df):\n    return df\n"
+        ),
         submission="id,target\n1,0.9\n",
     )
-    (eval_artifact / "submission_eval.json").write_text(
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    (artifact / "aide_result.json").write_text(
         json.dumps(
             {
-                "kind": "profile_eval",
+                "schema_version": 1,
+                "kind": "source_node",
                 "competition": "playground-series-s6e5",
-                "source_run": "run-a",
-                "source_node_id": "node-source",
-                "source_step": 2,
-                "source_timestamp": "20260504T100000",
-                "source_sha256": kaggle_submission_lab.sha256_file(
-                    source_artifact / "submission.csv"
-                ),
-                "profile": "full_boost",
-                "autogluon_presets": "best_quality",
+                "run": "remote-run",
+                "timestamp": "20260506T120000",
+                "artifact_dir": str(artifact),
+                "status": "ok",
+                "local_score": 0.95098,
+                "metric_maximize": True,
+                "is_buggy": False,
+                "sha256": submission_sha,
+                "profile": "full_boost_gpu",
+                "autogluon_presets": "medium_quality",
                 "included_model_types": ["XGB", "GBM", "CAT"],
                 "time_limit": 600,
-                "local_score": 0.951,
-                "exec_time": 42.0,
-                "status": "ok",
+                "node": {
+                    "id": "node-remote",
+                    "step": 4,
+                    "ctime": _ctime("20260506T120000"),
+                    "parent_id": "node-parent",
+                    "metric": {"value": 0.95098, "maximize": True},
+                    "is_buggy": False,
+                    "plan": "remote plan",
+                    "analysis": "remote analysis",
+                },
+                "execution": {"exec_time": 123.0},
+                "source": {
+                    "source_run": None,
+                    "source_node_id": None,
+                    "source_step": None,
+                    "source_timestamp": None,
+                    "source_sha256": None,
+                },
             }
         )
     )
@@ -108,39 +95,46 @@ def test_refresh_index_records_source_nodes_and_profile_evals(tmp_path):
         reindex=True,
     )
 
-    assert [record["kind"] for record in index["records"]] == [
-        "source_node",
-        "profile_eval",
-    ]
-    assert index["records"][0]["artifact_dir"] == str(source_artifact)
-    assert index["records"][0]["profile"] == "fast_boost"
-    assert index["records"][0]["autogluon_presets"] == "medium_quality"
-    assert index["records"][0]["included_model_types"] == ["XGB", "GBM"]
-    assert index["records"][1]["autogluon_presets"] == "best_quality"
-    assert index["records"][1]["source_sha256"] == index["records"][0]["sha256"]
-    assert index["records"][1]["artifact_dir"] == str(eval_artifact)
-
+    assert len(index["records"]) == 1
+    record = index["records"][0]
+    assert record["kind"] == "source_node"
+    assert record["run"] == "remote-run"
+    assert record["step"] == 4
+    assert record["node_id"] == "node-remote"
+    assert record["parent_node_id"] == "node-parent"
+    assert record["local_score"] == 0.95098
+    assert record["sha256"] == submission_sha
+    assert record["profile"] == "full_boost_gpu"
+    assert record["artifact_dir"] == str(artifact)
 
 def test_refresh_index_skips_unchanged_runs_without_reindex(tmp_path, monkeypatch):
     logs_dir = tmp_path / "logs"
-    _write_journal(
-        logs_dir,
-        "run-a",
-        [
-            {
-                "step": 0,
-                "id": "node-a",
-                "ctime": _ctime("20260504T100000"),
-                "metric": {"value": 0.9, "maximize": True},
-                "is_buggy": False,
-            }
-        ],
-    )
-    _write_artifact(
+    artifact = _write_artifact(
         logs_dir,
         "run-a",
         "20260504T100000",
         code="AIDE_AG_CONFIG = {'included_model_types': ['XGB']}\n",
+    )
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "source_node",
+                "run": "run-a",
+                "timestamp": "20260504T100000",
+                "status": "ok",
+                "local_score": 0.9,
+                "metric_maximize": True,
+                "is_buggy": False,
+                "node": {
+                    "id": "node-a",
+                    "step": 0,
+                    "metric": {"value": 0.9, "maximize": True},
+                },
+                "execution": {},
+                "source": {},
+            }
+        )
     )
     index_path = logs_dir / "submission_index.json"
     first = kaggle_submission_lab.refresh_index(
