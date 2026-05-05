@@ -70,6 +70,7 @@ def query(
     model_name = filtered_kwargs.get("model", "")
     is_openai_model = re.match(r"^(gpt-|o\d-|codex-mini-latest$)", model_name)
     use_chat_api = os.getenv("OPENAI_BASE_URL") is not None and not is_openai_model
+    reasoning_effort = filtered_kwargs.pop("reasoning_effort", None)
 
     if use_chat_api:
         _setup_custom_client()
@@ -81,6 +82,8 @@ def query(
     else:
         if "max_tokens" in filtered_kwargs:
             filtered_kwargs["max_output_tokens"] = filtered_kwargs.pop("max_tokens")
+        if reasoning_effort is not None:
+            filtered_kwargs["reasoning"] = {"effort": reasoning_effort}
         # OpenAI responses API (for official OpenAI models)
         messages = opt_messages_to_list(system_message, user_message)
         # Convert to the responses API format

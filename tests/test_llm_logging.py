@@ -1,6 +1,8 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from aide.backend import query
+from aide.backend import backend_openai
 from aide.backend.utils import log_llm_exchange
 
 
@@ -91,3 +93,71 @@ def test_backend_query_continues_llm_call_counter_from_existing_log(
 
     output = Path(tmp_path / "llm_communication.md").read_text()
     assert "llm_call=0011" in output
+
+
+def test_openai_responses_api_receives_reasoning_effort(monkeypatch):
+    captured = {}
+
+    def fake_backoff_create(create_fn, exceptions, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            output=[],
+            output_text="ok",
+            usage=SimpleNamespace(input_tokens=1, output_tokens=1),
+            model="gpt-5.4-mini",
+        )
+
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.setattr(backend_openai, "_setup_openai_client", lambda: None)
+    monkeypatch.setattr(backend_openai, "_client", SimpleNamespace(responses=SimpleNamespace(create=object())))
+    monkeypatch.setattr(backend_openai, "backoff_create", fake_backoff_create)
+
+    output, *_ = backend_openai.query(
+        system_message="system",
+        user_message=None,
+        model="gpt-5.4-mini",
+        reasoning_effort="low",
+    )
+
+    assert output == "ok"
+    assert captured["reasoning"] == {"effort": "low"}
+    assert "reasoning_effort" not in captured
+
+
+def test_local_openai_compatible_chat_api_does_not_receive_reasoning_effort(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_backoff_create(create_fn, exceptions, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="ok", tool_calls=None),
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+            model="gemma-4-31B",
+        )
+
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://127.0.0.1:8081/v1")
+    monkeypatch.setattr(backend_openai, "_setup_openai_client", lambda: None)
+    monkeypatch.setattr(backend_openai, "_setup_custom_client", lambda: None)
+    monkeypatch.setattr(
+        backend_openai,
+        "_custom_client",
+        SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=object()))),
+    )
+    monkeypatch.setattr(backend_openai, "backoff_create", fake_backoff_create)
+
+    output, *_ = backend_openai.query(
+        system_message="system",
+        user_message=None,
+        model="gemma-4-31B",
+        reasoning_effort="low",
+    )
+
+    assert output == "ok"
+    assert "reasoning" not in captured
+    assert "reasoning_effort" not in captured

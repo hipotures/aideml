@@ -311,6 +311,7 @@ class Agent:
                 system_message=prompt,
                 user_message=None,
                 model=self.acfg.code.model,
+                reasoning_effort=self.acfg.code.reasoning_effort,
                 temperature=self.acfg.code.temp,
             )
 
@@ -629,6 +630,7 @@ class Agent:
             user_message=None,
             func_spec=review_func_spec,
             model=self.acfg.feedback.model,
+            reasoning_effort=self.acfg.feedback.reasoning_effort,
             temperature=self.acfg.feedback.temp,
         )
         parsed_response = _parse_review_response(response)

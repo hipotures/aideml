@@ -462,19 +462,23 @@ def build_research_prompt(context: dict[str, Any]) -> str:
     )
 
 
-def _codex_profile_text(model: str, reasoning_effort: str) -> str:
-    return (
-        f'model = "{model}"\n'
-        f'model_reasoning_effort = "{reasoning_effort}"\n'
-        'approval_policy = "never"\n'
-        'sandbox_mode = "read-only"\n'
-        "# This profile is archival. The actual invocation uses --ignore-user-config\n"
-        "# plus explicit CLI overrides so no global MCP servers are loaded.\n"
+def _codex_profile_text(model: str, reasoning_effort: str | None) -> str:
+    lines = [f'model = "{model}"']
+    if reasoning_effort is not None:
+        lines.append(f'model_reasoning_effort = "{reasoning_effort}"')
+    lines.extend(
+        [
+            'approval_policy = "never"',
+            'sandbox_mode = "read-only"',
+            "# This profile is archival. The actual invocation uses --ignore-user-config",
+            "# plus explicit CLI overrides so no global MCP servers are loaded.",
+        ]
     )
+    return "\n".join(lines) + "\n"
 
 
 def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
-    return [
+    command = [
         "codex",
         "--search",
         "--ask-for-approval",
@@ -487,8 +491,6 @@ def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
         str(checkpoint_dir),
         "--model",
         cfg.research.model,
-        "-c",
-        f'model_reasoning_effort="{cfg.research.reasoning_effort}"',
         "--output-schema",
         "schema.json",
         "--output-last-message",
@@ -496,6 +498,12 @@ def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
         "--json",
         "-",
     ]
+    if cfg.research.reasoning_effort is not None:
+        command[command.index("--output-schema") : command.index("--output-schema")] = [
+            "-c",
+            f'model_reasoning_effort="{cfg.research.reasoning_effort}"',
+        ]
+    return command
 
 
 def _parse_response(raw_response: str) -> dict[str, Any] | None:

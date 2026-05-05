@@ -438,15 +438,15 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert "--ignore-user-config" in command
     assert "--search" in command
     assert command[command.index("--sandbox") + 1] == "read-only"
-    assert command[command.index("--model") + 1] == "gpt-5.5"
-    assert 'model_reasoning_effort="medium"' in command
+    assert command[command.index("--model") + 1] == "gpt-5.4-mini"
+    assert 'model_reasoning_effort="low"' in command
     assert seen["stdin"].startswith(RESEARCH_PROMPT_INTRO)
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (
         (checkpoint_dir / "codex_profile.toml")
         .read_text()
-        .startswith('model = "gpt-5.5"')
+        .startswith('model = "gpt-5.4-mini"')
     )
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["parsed_response"]["summary"] == "researched"

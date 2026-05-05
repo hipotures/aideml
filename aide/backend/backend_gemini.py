@@ -44,6 +44,7 @@ def query(
     """
     _setup_gemini_client()
     filtered_kwargs: dict = select_values(notnone, model_kwargs)
+    filtered_kwargs.pop("reasoning_effort", None)
 
     # Gemini doesn't allow not having user messages
     # if we only have system msg -> use it as user msg

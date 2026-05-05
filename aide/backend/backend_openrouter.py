@@ -39,6 +39,7 @@ def query(
 ) -> tuple[OutputType, float, int, int, dict]:
     _setup_openrouter_client()
     filtered_kwargs: dict = select_values(notnone, model_kwargs)  # type: ignore
+    filtered_kwargs.pop("reasoning_effort", None)
 
     if func_spec is not None:
         raise NotImplementedError(

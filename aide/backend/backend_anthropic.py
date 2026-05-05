@@ -42,6 +42,7 @@ def query(
     _setup_anthropic_client()
 
     filtered_kwargs: dict = select_values(notnone, model_kwargs)  # type: ignore
+    filtered_kwargs.pop("reasoning_effort", None)
     if "max_tokens" not in filtered_kwargs:
         filtered_kwargs["max_tokens"] = 4096  # default for Claude models
 

@@ -3,6 +3,7 @@
 import datetime as dt
 import json
 import shutil
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,6 +35,56 @@ logger.setLevel(logging.WARNING)
 class StageConfig:
     model: str
     temp: float | None
+    reasoning_effort: str | None = None
+
+
+@dataclass(frozen=True)
+class ResolvedModelConfig:
+    model: str
+    reasoning_effort: str | None
+
+
+VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
+
+
+def _split_model_effort(model: str) -> tuple[str, str | None]:
+    if ":" not in model:
+        return model, None
+    base, suffix = model.rsplit(":", 1)
+    if suffix not in VALID_REASONING_EFFORTS:
+        raise ValueError(
+            f"Invalid reasoning effort suffix in model {model!r}. "
+            f"Expected one of: {', '.join(sorted(VALID_REASONING_EFFORTS))}."
+        )
+    if not base:
+        raise ValueError(f"Invalid empty model name in {model!r}.")
+    return base, suffix
+
+
+def resolve_model_config(
+    model: str,
+    reasoning_effort: str | None,
+    *,
+    allow_suffix_override: bool = False,
+) -> ResolvedModelConfig:
+    base_model, suffix_effort = _split_model_effort(model)
+    if suffix_effort is not None:
+        if (
+            reasoning_effort is not None
+            and reasoning_effort != suffix_effort
+            and not allow_suffix_override
+        ):
+            raise ValueError(
+                "Model reasoning effort was provided twice with different values: "
+                f"{model!r} and reasoning_effort={reasoning_effort!r}."
+            )
+        reasoning_effort = suffix_effort
+    if reasoning_effort is not None and reasoning_effort not in VALID_REASONING_EFFORTS:
+        raise ValueError(
+            f"Invalid reasoning_effort {reasoning_effort!r}. "
+            f"Expected one of: {', '.join(sorted(VALID_REASONING_EFFORTS))}."
+        )
+    return ResolvedModelConfig(base_model, reasoning_effort)
 
 
 @dataclass
@@ -90,8 +141,8 @@ class ResearchConfig:
     top_k_worst: int = 5
     previous_summary_count: int = 5
     timeout: int = 900
-    model: str = "gpt-5.5"
-    reasoning_effort: str = "medium"
+    model: str = "gpt-5.4-mini"
+    reasoning_effort: str | None = "low"
 
 
 @dataclass
@@ -104,8 +155,8 @@ class SynthesisConfig:
     prediction_round_decimals: int = 5
     prediction_similarity_rmse_threshold: float = 0.015
     timeout: int = 900
-    model: str = "gpt-5.5"
-    reasoning_effort: str = "medium"
+    model: str = "gpt-5.4-mini"
+    reasoning_effort: str | None = "low"
 
 
 @dataclass
@@ -151,13 +202,65 @@ def _load_cfg(
 ) -> Config:
     cfg = OmegaConf.load(path)
     if use_cli_args:
-        cli_cfg = (
-            OmegaConf.from_dotlist(list(cli_args))
-            if cli_args is not None
-            else OmegaConf.from_cli()
-        )
+        raw_cli_args = list(sys.argv[1:] if cli_args is None else cli_args)
+        _validate_cli_model_effort_conflicts(raw_cli_args)
+        raw_cli_args = _normalize_model_effort_cli_overrides(raw_cli_args)
+        cli_cfg = OmegaConf.from_dotlist(raw_cli_args)
         cfg = OmegaConf.merge(cfg, cli_cfg)
     return cfg
+
+
+def _cli_value(arg: str) -> tuple[str, str] | None:
+    if "=" not in arg:
+        return None
+    key, value = arg.split("=", 1)
+    return key, value
+
+
+def _is_nullish(value: str) -> bool:
+    return value.strip().lower() in {"", "null", "none", "~"}
+
+
+def _validate_cli_model_effort_conflicts(cli_args: Sequence[str]) -> None:
+    values = dict(item for arg in cli_args if (item := _cli_value(arg)) is not None)
+    for model_key in _model_config_keys():
+        model = values.get(model_key)
+        if model is None:
+            continue
+        _base, suffix_effort = _split_model_effort(model)
+        if suffix_effort is None:
+            continue
+        effort_key = model_key.removesuffix(".model") + ".reasoning_effort"
+        explicit_effort = values.get(effort_key)
+        if explicit_effort is not None and not _is_nullish(explicit_effort):
+            raise ValueError(
+                f"{model_key} uses a model:reasoning_effort suffix, but "
+                f"{effort_key} is also set. Use only one form."
+            )
+
+
+def _model_config_keys() -> list[str]:
+    return [
+        "agent.code.model",
+        "agent.feedback.model",
+        "report.model",
+        "research.model",
+        "synthesis.model",
+    ]
+
+
+def _normalize_model_effort_cli_overrides(cli_args: Sequence[str]) -> list[str]:
+    normalized = list(cli_args)
+    values = dict(item for arg in cli_args if (item := _cli_value(arg)) is not None)
+    for model_key in _model_config_keys():
+        model = values.get(model_key)
+        if model is None:
+            continue
+        _base, suffix_effort = _split_model_effort(model)
+        effort_key = model_key.removesuffix(".model") + ".reasoning_effort"
+        if suffix_effort is None and effort_key not in values:
+            normalized.append(f"{effort_key}=null")
+    return normalized
 
 
 def load_cfg(
@@ -201,8 +304,37 @@ def prep_cfg(cfg: Config):
     # validate the config
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
+    _resolve_all_model_configs(cfg)
 
     return cast(Config, cfg)
+
+
+def _resolve_stage_config(stage: StageConfig) -> None:
+    resolved = resolve_model_config(
+        stage.model,
+        stage.reasoning_effort,
+        allow_suffix_override=True,
+    )
+    stage.model = resolved.model
+    stage.reasoning_effort = resolved.reasoning_effort
+
+
+def _resolve_model_attrs(section) -> None:
+    resolved = resolve_model_config(
+        section.model,
+        section.reasoning_effort,
+        allow_suffix_override=True,
+    )
+    section.model = resolved.model
+    section.reasoning_effort = resolved.reasoning_effort
+
+
+def _resolve_all_model_configs(cfg: Config) -> None:
+    _resolve_stage_config(cfg.agent.code)
+    _resolve_stage_config(cfg.agent.feedback)
+    _resolve_stage_config(cfg.report)
+    _resolve_model_attrs(cfg.research)
+    _resolve_model_attrs(cfg.synthesis)
 
 
 def print_cfg(cfg: Config) -> None:

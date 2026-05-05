@@ -26,6 +26,7 @@ def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
         system_message=system_prompt_dict,
         user_message=context_prompt,
         model=rcfg.model,
+        reasoning_effort=rcfg.reasoning_effort,
         temperature=rcfg.temp,
         max_tokens=4096,
     )

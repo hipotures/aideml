@@ -28,8 +28,9 @@ exec:
 generate_report: True
 # LLM settings for final report from journal
 report:
-  model: gpt-4.1
+  model: gpt-5.4-mini
   temp: 1.0
+  reasoning_effort: low
 
 # optional external Codex research advisor
 research:
@@ -39,8 +40,8 @@ research:
   top_k_worst: 5
   previous_summary_count: 5
   timeout: 900
-  model: gpt-5.5
-  reasoning_effort: medium
+  model: gpt-5.4-mini
+  reasoning_effort: low
 
 # optional external Codex solution synthesis
 synthesis:
@@ -52,8 +53,8 @@ synthesis:
   prediction_round_decimals: 5
   prediction_similarity_rmse_threshold: 0.015
   timeout: 900
-  model: gpt-5.5
-  reasoning_effort: medium
+  model: gpt-5.4-mini
+  reasoning_effort: low
 
 # agent hyperparams
 agent:
@@ -71,13 +72,15 @@ agent:
 
   # LLM settings for coding
   code:
-    model: o4-mini
+    model: gpt-5.4-mini
     temp: 0.5
+    reasoning_effort: low
 
   # LLM settings for evaluating program output / tracebacks
   feedback:
-    model: gpt-4.1-mini
+    model: gpt-5.4-mini
     temp: 0.5
+    reasoning_effort: low
 
   # hyperparameters for the tree search
   search:

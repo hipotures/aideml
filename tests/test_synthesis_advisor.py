@@ -383,8 +383,8 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     ]
     assert "--output-schema" not in command
     assert command[command.index("--sandbox") + 1] == "read-only"
-    assert command[command.index("--model") + 1] == "gpt-5.5"
-    assert 'model_reasoning_effort="medium"' in command
+    assert command[command.index("--model") + 1] == "gpt-5.4-mini"
+    assert 'model_reasoning_effort="low"' in command
     assert seen["stdin"].startswith(SYNTHESIS_PROMPT_INTRO)
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()

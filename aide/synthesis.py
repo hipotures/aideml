@@ -611,7 +611,7 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
 
 
 def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
-    return [
+    command = [
         "codex",
         "--search",
         "--ask-for-approval",
@@ -624,13 +624,19 @@ def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
         str(checkpoint_dir),
         "--model",
         cfg.synthesis.model,
-        "-c",
-        f'model_reasoning_effort="{cfg.synthesis.reasoning_effort}"',
         "--output-last-message",
         "response_raw.txt",
         "--json",
         "-",
     ]
+    if cfg.synthesis.reasoning_effort is not None:
+        command[command.index("--output-last-message") : command.index(
+            "--output-last-message"
+        )] = [
+            "-c",
+            f'model_reasoning_effort="{cfg.synthesis.reasoning_effort}"',
+        ]
+    return command
 
 
 def parse_synthesis_code(raw_response: str) -> str:

@@ -655,6 +655,32 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
     assert len(set(bar_columns)) == 1
 
 
+def test_run_data_shows_resolved_model_settings(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status="[green]Synthesis: ✓ 000015",
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            model_settings=[
+                ("code", "gemma-4-31B", None),
+                ("feedback", "gemma-4-31B", None),
+                ("report", "gemma-4-31B", None),
+                ("synthesis", "gpt-5.5", "low"),
+            ],
+        )
+    )
+
+    assert "Models" in output
+    assert "code" in output and "gemma-4-31B" in output and " - " in output
+    assert "synthesis" in output and "gpt-5.5" in output and "low" in output
+    assert output.index("Synthesis") < output.index("Models")
+    assert output.index("Models") < output.index("Base path")
+
+
 def test_run_data_hides_resources_when_code_is_not_executing(tmp_path):
     output = _render_text(
         build_run_data(

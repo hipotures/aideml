@@ -258,10 +258,12 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     )
 
     assert cfg.research.enabled is False
-    assert cfg.research.model == "gpt-5.5"
+    assert cfg.research.model == "gpt-5.4-mini"
+    assert cfg.research.reasoning_effort == "low"
     assert cfg.research.previous_summary_count == 5
     assert cfg.synthesis.enabled is False
-    assert cfg.synthesis.model == "gpt-5.5"
+    assert cfg.synthesis.model == "gpt-5.4-mini"
+    assert cfg.synthesis.reasoning_effort == "low"
     assert cfg.synthesis.every_scored_steps == 15
     assert cfg.exec.memory_limit_gb == 80.0
     assert cfg.agent.mode == "legacy"

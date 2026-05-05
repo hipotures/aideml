@@ -42,6 +42,9 @@ from .utils import serialize
 from .utils.config import (
     Config,
     _load_cfg,
+    _resolve_all_model_configs,
+    _normalize_model_effort_cli_overrides,
+    _validate_cli_model_effort_conflicts,
     load_task_desc,
     prep_agent_workspace,
     save_run,
@@ -179,6 +182,8 @@ def load_resume_state(
             f"Resume workspace must contain input/ and working/: {workspace_dir}"
         )
 
+    _validate_cli_model_effort_conflicts(cli_overrides)
+    cli_overrides = _normalize_model_effort_cli_overrides(cli_overrides)
     cfg = OmegaConf.load(config_path)
     if (
         _cli_sets_key(cli_overrides, "agent.autogluon.profile")
@@ -194,6 +199,7 @@ def load_resume_state(
     cfg.workspace_dir = workspace_dir
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
+    _resolve_all_model_configs(cfg)
     journal = serialize.load_json(journal_path, Journal)
     if enforce_journal_submission_contract(
         cfg,
@@ -829,6 +835,33 @@ def build_resource_summary(
     return Group(*lines)
 
 
+ModelSetting = tuple[str, str, str | None]
+
+
+def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | None:
+    if not model_settings:
+        return None
+    lines: list[Text] = [Text("Models", style="bold #c8c4ff")]
+    for label, model, effort in model_settings:
+        lines.append(Text(f"▶ {label:<9} {model} - {effort or '-'}", style="yellow"))
+    return Group(*lines)
+
+
+def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
+    settings: list[ModelSetting] = [
+        ("code", cfg.agent.code.model, cfg.agent.code.reasoning_effort),
+        ("feedback", cfg.agent.feedback.model, cfg.agent.feedback.reasoning_effort),
+        ("report", cfg.report.model, cfg.report.reasoning_effort),
+    ]
+    if cfg.research.enabled:
+        settings.append(("research", cfg.research.model, cfg.research.reasoning_effort))
+    if cfg.synthesis.enabled:
+        settings.append(
+            ("synthesis", cfg.synthesis.model, cfg.synthesis.reasoning_effort)
+        )
+    return settings
+
+
 def build_run_data(
     *,
     progress,
@@ -841,6 +874,7 @@ def build_run_data(
     resource_snapshot: ResourceSnapshot | None = None,
     resource_history: ResourceHistory | None = None,
     resource_active: bool = False,
+    model_settings: list[ModelSetting] | None = None,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -853,6 +887,9 @@ def build_run_data(
         if research_status is None:
             lines.append("")
         lines.append(synthesis_status)
+    model_summary = build_model_summary(model_settings)
+    if model_summary is not None:
+        lines.extend(["", model_summary])
     lines.extend(["", build_path_summary(log_dir, workspace_dir)])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     if resource_active:
@@ -1330,6 +1367,7 @@ def run(argv: list[str] | None = None):
                     workspace_dir=cfg.workspace_dir,
                     resource_history=resource_history,
                     resource_active=resource_active,
+                    model_settings=model_settings_for_run(cfg),
                 ),
                 (0, 1, 0, 1),
             ),
