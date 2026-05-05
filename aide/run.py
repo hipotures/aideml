@@ -12,7 +12,7 @@ import time
 import tty
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Callable, Literal, cast
 
 from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
@@ -1078,7 +1078,16 @@ def stage_status_message(active_stage: str | None, elapsed: float | None = None)
     return f"[green]Generating code...{elapsed_text}"
 
 
-def run_with_live_refresh(live: Live, render, func, tick=None):
+KeyboardInterruptAction = Literal["continue", "abort"]
+
+
+def run_with_live_refresh(
+    live: Live,
+    render,
+    func,
+    tick=None,
+    on_keyboard_interrupt: Callable[[], KeyboardInterruptAction] | None = None,
+):
     result_queue = queue.Queue(maxsize=1)
 
     def worker():
@@ -1090,13 +1099,23 @@ def run_with_live_refresh(live: Live, render, func, tick=None):
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
     while thread.is_alive():
+        try:
+            if tick is not None:
+                tick()
+            live.update(render(), refresh=True)
+            thread.join(timeout=0.25)
+        except KeyboardInterrupt:
+            if on_keyboard_interrupt is None:
+                raise
+            if on_keyboard_interrupt() == "abort":
+                raise ExecutionInterrupted("Execution interrupted by user.") from None
+    try:
         if tick is not None:
             tick()
         live.update(render(), refresh=True)
-        thread.join(timeout=0.25)
-    if tick is not None:
-        tick()
-    live.update(render(), refresh=True)
+    except KeyboardInterrupt:
+        if on_keyboard_interrupt is None or on_keyboard_interrupt() == "abort":
+            raise
 
     ok, result = result_queue.get()
     if ok:
@@ -1172,26 +1191,30 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
     stop_after_current_node = False
+    execution_interrupt_count = 0
     resource_history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
     resource_active = False
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
 
+    def request_execution_interrupt() -> KeyboardInterruptAction:
+        nonlocal execution_interrupt_count, status_override, stop_after_current_node
+        execution_interrupt_count += 1
+        if execution_interrupt_count == 1:
+            stop_after_current_node = True
+            status_override = (
+                "[yellow]Ctrl+C received. Waiting for current code to finish. "
+                "The node will be reviewed and saved, then the run will stop. "
+                "Press Ctrl+C again to stop now."
+            )
+            return "continue"
+        status_override = "[red]Stopping current code execution..."
+        interpreter.interrupt_execution()
+        return "abort"
+
     def exec_callback(*args, **kwargs):
         nonlocal status_override, stop_after_current_node, resource_active
-
-        def on_interrupt(interrupt_count: int):
-            nonlocal status_override, stop_after_current_node
-            if interrupt_count == 1:
-                stop_after_current_node = True
-                status_override = (
-                    "[yellow]Ctrl+C received. Waiting for current code to finish. "
-                    "The node will be reviewed and saved, then the run will stop. "
-                    "Press Ctrl+C again to stop now."
-                )
-            else:
-                status_override = "[red]Stopping current code execution..."
 
         def on_resource(snapshot: ResourceSnapshot):
             resource_history.add(snapshot)
@@ -1200,7 +1223,7 @@ def run(argv: list[str] | None = None):
             resource_active = True
             result = interpreter.run(
                 *args,
-                interrupt_callback=on_interrupt,
+                interrupt_callback=lambda _count: request_execution_interrupt(),
                 resource_callback=on_resource,
                 **kwargs,
             )
@@ -1367,7 +1390,15 @@ def run(argv: list[str] | None = None):
                         try:
                             exec_result = agent.execute_node(
                                 result_node,
-                                exec_callback,
+                                lambda *args, **kwargs: run_with_live_refresh(
+                                    live,
+                                    generate_live,
+                                    lambda: exec_callback(*args, **kwargs),
+                                    tick=lambda: drain_tree_navigation(
+                                        current_tree_view(blink_on=True)
+                                    ),
+                                    on_keyboard_interrupt=request_execution_interrupt,
+                                ),
                             )
                         finally:
                             restore_node_artifact_env(previous_artifact_env)
@@ -1389,7 +1420,7 @@ def run(argv: list[str] | None = None):
                     except ExecutionInterrupted:
                         interrupted = True
                         interrupt_message = (
-                            "Execution stopped by user. Current node was not saved; "
+                            "Execution stopped immediately by user. Current node was not saved; "
                             "previous journal state is preserved."
                         )
                         break

@@ -200,23 +200,49 @@ class Interpreter:
         )
         self.process.start()
 
+    def _signal_process_group(self, sig: signal.Signals) -> bool:
+        if self.process is None or self.process.pid is None:
+            return False
+        if not hasattr(os, "killpg") or not hasattr(os, "getpgid"):
+            return False
+        try:
+            os.killpg(os.getpgid(self.process.pid), sig)
+            return True
+        except ProcessLookupError:
+            return True
+        except OSError as e:
+            logger.debug(f"Failed to signal process group: {e}")
+            return False
+
+    def _signal_process(self, sig: signal.Signals) -> None:
+        if self.process is None:
+            return
+        if self._signal_process_group(sig):
+            return
+        try:
+            if sig == signal.SIGTERM:
+                self.process.terminate()
+            elif sig == signal.SIGKILL:
+                self.process.kill()
+            elif self.process.pid is not None:
+                os.kill(self.process.pid, sig)
+        except ProcessLookupError:
+            return
+
+    def interrupt_execution(self) -> None:
+        self.cleanup_session()
+
     def cleanup_session(self):
         if self.process is None:
             return
         try:
-            # Reduce grace period from 2 seconds to 0.5
-            self.process.terminate()
+            self._signal_process(signal.SIGTERM)
             self.process.join(timeout=0.5)
 
             if self.process.exitcode is None:
                 logger.warning("Process failed to terminate, killing immediately")
-                self.process.kill()
+                self._signal_process(signal.SIGKILL)
                 self.process.join(timeout=0.5)
-
-                if self.process.exitcode is None:
-                    logger.error("Process refuses to die, using SIGKILL")
-                    os.kill(self.process.pid, signal.SIGKILL)
-                    self.process.join(timeout=0.5)
         except Exception as e:
             logger.error(f"Error during process cleanup: {e}")
         finally:

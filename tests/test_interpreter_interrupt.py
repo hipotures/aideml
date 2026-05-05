@@ -1,5 +1,6 @@
 import os
 import resource
+import signal
 
 import pytest
 
@@ -138,7 +139,7 @@ def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeyp
 
 def test_cleanup_session_joins_after_sigkill_before_closing(tmp_path, monkeypatch):
     interpreter = Interpreter(tmp_path, timeout=60)
-    killed = []
+    sent_signals = []
 
     class StubbornProcess:
         pid = 12345
@@ -149,7 +150,7 @@ def test_cleanup_session_joins_after_sigkill_before_closing(tmp_path, monkeypatc
             pass
 
         def join(self, timeout=None):
-            if killed:
+            if signal.SIGKILL in sent_signals:
                 self.exitcode = -9
 
         def kill(self):
@@ -162,11 +163,15 @@ def test_cleanup_session_joins_after_sigkill_before_closing(tmp_path, monkeypatc
 
     process = StubbornProcess()
     interpreter.process = process
-    monkeypatch.setattr("aide.interpreter.os.kill", lambda pid, sig: killed.append(sig))
+    monkeypatch.setattr("aide.interpreter.os.getpgid", lambda pid: 12345)
+    monkeypatch.setattr(
+        "aide.interpreter.os.killpg",
+        lambda pgid, sig: sent_signals.append(sig),
+    )
 
     interpreter.cleanup_session()
 
-    assert killed == [9]
+    assert sent_signals == [signal.SIGTERM, signal.SIGKILL]
     assert process.closed is True
     assert interpreter.process is None
 

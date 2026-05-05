@@ -1,5 +1,7 @@
+import pytest
 from rich.console import Console
 
+from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
     build_path_summary,
@@ -720,3 +722,56 @@ def test_run_with_live_refresh_updates_while_worker_is_running():
     assert result == "done"
     assert len(live.updates) >= 2
     assert all(refresh for _, refresh in live.updates)
+
+
+def test_run_with_live_refresh_can_continue_after_first_keyboard_interrupt():
+    import time
+
+    class FakeLive:
+        def __init__(self):
+            self.updates = []
+            self.interrupted = False
+
+        def update(self, renderable, *, refresh=False):
+            self.updates.append((renderable, refresh))
+            if not self.interrupted:
+                self.interrupted = True
+                raise KeyboardInterrupt
+
+    live = FakeLive()
+    interrupts = []
+
+    def slow_work():
+        time.sleep(0.05)
+        return "done"
+
+    result = run_with_live_refresh(
+        live,
+        lambda: "rendered",
+        slow_work,
+        on_keyboard_interrupt=lambda: interrupts.append("interrupt") or "continue",
+    )
+
+    assert result == "done"
+    assert interrupts == ["interrupt"]
+    assert len(live.updates) >= 2
+
+
+def test_run_with_live_refresh_aborts_after_keyboard_interrupt_request():
+    import time
+
+    class FakeLive:
+        def update(self, renderable, *, refresh=False):
+            raise KeyboardInterrupt
+
+    def slow_work():
+        time.sleep(0.2)
+        return "done"
+
+    with pytest.raises(ExecutionInterrupted):
+        run_with_live_refresh(
+            FakeLive(),
+            lambda: "rendered",
+            slow_work,
+            on_keyboard_interrupt=lambda: "abort",
+        )
