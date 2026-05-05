@@ -9,6 +9,7 @@ from aide.journal import Journal, Node
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
 from aide.synthesis import (
     SYNTHESIS_PROMPT_INTRO,
+    SYNTHESIS_PREPROCESS_PROMPT_INTRO,
     SYNTHESIS_PLAN_PREFIX,
     SynthesisAdvisor,
     build_synthesis_prompt,
@@ -315,8 +316,15 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     )
     prompt = build_synthesis_prompt(context)
 
+    assert prompt.startswith(SYNTHESIS_PREPROCESS_PROMPT_INTRO)
+    assert not prompt.startswith(SYNTHESIS_PROMPT_INTRO)
     assert "def preprocess(df: pd.DataFrame)" in prompt
+    assert "Return only Python code defining exactly one top-level function" in prompt
+    assert "Do not include imports, helper functions, top-level constants" in prompt
+    assert "`pd` is already available from the fixed wrapper" in prompt
     assert "Do not read files, write files, train models" in prompt
+    assert "solution scripts" not in prompt
+    assert "live web search" not in prompt
     assert "TabularPredictor" not in prompt
     assert '"code": "def preprocess' in prompt
 

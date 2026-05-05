@@ -43,6 +43,13 @@ SYNTHESIS_PROMPT_INTRO = (
     "AIDE solution scripts, and produce one coherent Python solution that "
     "combines the best compatible ideas. Return only the Python code."
 )
+SYNTHESIS_PREPROCESS_PROMPT_INTRO = (
+    "You are a Kaggle grandmaster and senior machine learning engineer. Your "
+    "job is to study the strongest successful AIDE preprocess functions for a "
+    "fixed AutoGluon wrapper and produce one coherent, leakage-safe "
+    "preprocess(df) function that combines the best compatible feature ideas. "
+    "Return only the Python function code."
+)
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
 TARGET_LEAKAGE_PATTERNS = (
     "next_pitstop",
@@ -464,19 +471,20 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
     )
     if context.get("agent_mode") == AUTOGLUON_PREPROCESS_MODE:
         return (
-            f"{SYNTHESIS_PROMPT_INTRO}\n\n"
+            f"{SYNTHESIS_PREPROCESS_PROMPT_INTRO}\n\n"
             "# Synthesis task\n"
             "Create one coherent leakage-safe feature preprocessing function for "
             "a fixed AutoGluon training wrapper. Combine compatible high-performing "
             "feature engineering ideas from the provided successful preprocess "
-            "functions, but do not merely paste them together. You may use live web "
-            "search to check competition-specific or closely related feature ideas "
-            "before writing the function.\n\n"
+            "functions, but do not merely paste them together. Focus on efficient "
+            "feature engineering only; the wrapper handles all modeling.\n\n"
             "# Output contract\n"
             "Return only Python code defining exactly one top-level function: "
             "`def preprocess(df: pd.DataFrame) -> pd.DataFrame`. Do not include "
-            "markdown fences, prose, JSON, explanations, titles, or comments "
-            "outside the code. Do not read files, write files, train models, call "
+            "imports, helper functions, top-level constants, executable top-level "
+            "statements, markdown fences, prose, JSON, explanations, titles, or "
+            "comments outside the function. `pd` is already available from the "
+            "fixed wrapper. Do not read files, write files, train models, call "
             "AutoGluon, create validation splits, or save submissions. The fixed "
             "AIDE wrapper handles all model training, metric reporting, and "
             "submission generation.\n\n"
