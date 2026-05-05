@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from aide.backend import query
+from aide.backend import determine_provider, query
 from aide.backend import backend_openai
 from aide.backend.utils import log_llm_exchange
 
@@ -93,6 +93,12 @@ def test_backend_query_continues_llm_call_counter_from_existing_log(
 
     output = Path(tmp_path / "llm_communication.md").read_text()
     assert "llm_call=0011" in output
+
+
+def test_gpt_models_use_codex_provider_not_openai_api():
+    assert determine_provider("gpt-5.5") == "codex"
+    assert determine_provider("gpt-5.4-mini") == "codex"
+    assert determine_provider("o4-mini") == "codex"
 
 
 def test_openai_responses_api_receives_reasoning_effort(monkeypatch):

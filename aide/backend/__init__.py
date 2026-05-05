@@ -1,4 +1,10 @@
-from . import backend_anthropic, backend_openai, backend_openrouter, backend_gemini
+from . import (
+    backend_anthropic,
+    backend_codex,
+    backend_openai,
+    backend_openrouter,
+    backend_gemini,
+)
 from .utils import (
     FunctionSpec,
     OutputType,
@@ -43,7 +49,7 @@ def _next_llm_sequence_id() -> int:
 def determine_provider(model: str) -> str:
     # Check if model matches OpenAI patterns first
     if re.match(r"^(gpt-.*|o\d+(-.*)?|codex-mini-latest)$", model):
-        return "openai"
+        return "codex"
     elif model.startswith("claude-"):
         return "anthropic"
     elif model.startswith("gemini-"):
@@ -57,6 +63,7 @@ def determine_provider(model: str) -> str:
 
 
 provider_to_query_func = {
+    "codex": backend_codex.query,
     "openai": backend_openai.query,
     "anthropic": backend_anthropic.query,
     "openrouter": backend_openrouter.query,
