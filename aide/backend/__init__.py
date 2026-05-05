@@ -9,8 +9,11 @@ from .utils import (
     FunctionSpec,
     OutputType,
     PromptType,
+    append_provider_event,
     compile_prompt_to_md,
-    log_llm_exchange,
+    write_llm_error_files,
+    write_llm_request_files,
+    write_llm_response_files,
 )
 import re
 import logging
@@ -23,25 +26,9 @@ _llm_call_counter = 0
 _llm_call_counter_lock = threading.Lock()
 
 
-def _max_logged_llm_call(log_dir: str | None) -> int:
-    if not log_dir:
-        return 0
-    path = Path(log_dir) / "llm_communication.md"
-    if not path.exists():
-        return 0
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return 0
-    calls = [int(match.group(1)) for match in re.finditer(r"\bllm_call=(\d+)\b", text)]
-    return max(calls, default=0)
-
-
 def _next_llm_sequence_id() -> int:
     global _llm_call_counter
     with _llm_call_counter_lock:
-        if _llm_call_counter == 0:
-            _llm_call_counter = _max_logged_llm_call(os.getenv("AIDE_LOG_DIR"))
         _llm_call_counter += 1
         return _llm_call_counter
 
@@ -101,6 +88,9 @@ def query(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    llm_log_dir = model_kwargs.pop("llm_log_dir", None)
+    llm_log_prefix = model_kwargs.pop("llm_log_prefix", "")
+    llm_log_context = model_kwargs.pop("llm_log_context", None) or {}
 
     provider = determine_provider(model)
     query_func = provider_to_query_func[provider]
@@ -110,6 +100,14 @@ def query(
     compiled_user_message = compile_prompt_to_md(user_message) if user_message else None
 
     sequence_id = _next_llm_sequence_id()
+    log_dir = Path(llm_log_dir) if llm_log_dir is not None else None
+    log_context = {
+        "phase": llm_log_context.get("phase", llm_log_prefix or "llm"),
+        "provider": provider,
+        "model": model,
+        "sequence_id": sequence_id,
+        **llm_log_context,
+    }
 
     request_payload = {
         "model": model,
@@ -121,43 +119,81 @@ def query(
         "system_message": compiled_system_message,
         "user_message": compiled_user_message,
     }
-    log_llm_exchange(
-        phase="request",
-        provider=provider,
-        sequence_id=sequence_id,
-        payload=request_payload,
+    write_llm_request_files(
+        log_dir=log_dir,
+        prefix=llm_log_prefix,
+        context=log_context,
+        request_payload=request_payload,
+        system_message=compiled_system_message,
+        user_message=compiled_user_message,
     )
 
     try:
+        provider_kwargs = dict(model_kwargs)
+        if provider == "codex" and log_dir is not None:
+            provider_kwargs["llm_log_dir"] = str(log_dir)
+            provider_kwargs["llm_log_prefix"] = llm_log_prefix
         output, req_time, in_tok_count, out_tok_count, info = query_func(
             system_message=compiled_system_message,
             user_message=compiled_user_message,
             func_spec=func_spec,
-            **model_kwargs,
+            **provider_kwargs,
         )
     except BaseException as exc:
-        log_llm_exchange(
-            phase="error",
-            provider=provider,
-            sequence_id=sequence_id,
-            payload={
+        error_payload = {
+            "status": "failed",
+            "error": {
                 "type": exc.__class__.__name__,
                 "message": str(exc),
             },
+        }
+        write_llm_error_files(
+            log_dir=log_dir,
+            prefix=llm_log_prefix,
+            context=log_context,
+            error_payload=error_payload,
         )
+        if provider != "codex":
+            append_provider_event(
+                log_dir=log_dir,
+                prefix=llm_log_prefix,
+                event={
+                    "event": "error",
+                    "provider": provider,
+                    "sequence_id": sequence_id,
+                    "type": exc.__class__.__name__,
+                    "message": str(exc),
+                },
+            )
         raise
 
-    log_llm_exchange(
-        phase="response",
-        provider=provider,
-        sequence_id=sequence_id,
-        payload={
-            "output": output,
-            "request_time_seconds": req_time,
-            "input_tokens": in_tok_count,
-            "output_tokens": out_tok_count,
-            "info": info,
-        },
+    response_payload = {
+        "status": "completed",
+        "output": output,
+        "request_time_seconds": req_time,
+        "input_tokens": in_tok_count,
+        "output_tokens": out_tok_count,
+        "info": info,
+    }
+    write_llm_response_files(
+        log_dir=log_dir,
+        prefix=llm_log_prefix,
+        context=log_context,
+        response_payload=response_payload,
+        output=output,
     )
+    if provider != "codex":
+        append_provider_event(
+            log_dir=log_dir,
+            prefix=llm_log_prefix,
+            event={
+                "event": "completed",
+                "provider": provider,
+                "sequence_id": sequence_id,
+                "request_time_seconds": req_time,
+                "input_tokens": in_tok_count,
+                "output_tokens": out_tok_count,
+            },
+        )
 
     return output

@@ -349,6 +349,63 @@ def test_agent_autogluon_baseline_is_selected_for_expansion(tmp_path):
     assert agent.search_policy() is baseline
 
 
+def test_agent_generation_logs_code_response_to_preallocated_artifact(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    parent = Node(
+        code=build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg),
+        plan=f"{BASELINE_PLAN_PREFIX}: raw features",
+    )
+    parent.metric = MetricValue(0.95, maximize=True)
+    parent.is_buggy = False
+    journal.append(parent)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    query_func = agent.plan_and_code_query.__globals__["query"]
+
+    def fake_query_func(**kwargs):
+        return (
+            "Add a simple feature.\n"
+            "```python\n"
+            "def preprocess(df):\n"
+            "    df = df.copy()\n"
+            "    df['TyreLife_x2'] = df.get('TyreLife', 0) * 2\n"
+            "    return df\n"
+            "```",
+            0.1,
+            1,
+            1,
+            {"model": kwargs["model"]},
+        )
+
+    monkeypatch.setitem(
+        query_func.__globals__,
+        "determine_provider",
+        lambda _model: "openai",
+    )
+    monkeypatch.setitem(
+        query_func.__globals__["provider_to_query_func"],
+        "openai",
+        fake_query_func,
+    )
+
+    artifact_dir = tmp_path / "artifact"
+    node_ctime = 1778000000.0
+    node = agent.generate_node(
+        parent,
+        node_ctime=node_ctime,
+        llm_log_dir=artifact_dir,
+    )
+
+    assert node.ctime == node_ctime
+    assert "TyreLife_x2" in node.code
+    assert (artifact_dir / "request.md").exists()
+    assert "TyreLife_x2" in (artifact_dir / "response.py").read_text()
+    assert not (artifact_dir / "llm_communication.md").exists()
+
+
 def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):
     cfg = _cfg(tmp_path)
     parent = Node(

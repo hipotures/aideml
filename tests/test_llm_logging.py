@@ -1,37 +1,12 @@
-from pathlib import Path
 from types import SimpleNamespace
 
 from aide.backend import determine_provider, query
-from aide.backend import backend_openai
-from aide.backend.utils import log_llm_exchange
+from aide.backend import backend_codex, backend_openai
 
 
-def test_log_llm_exchange_writes_pretty_json_to_run_log(tmp_path, monkeypatch):
-    monkeypatch.setenv("AIDE_LOG_DIR", str(tmp_path))
-    monkeypatch.setenv("AIDE_RUN_ID", "2-test-run")
-
-    log_llm_exchange(
-        phase="request",
-        provider="openai",
-        sequence_id=7,
-        payload={
-            "model": "qwen35b",
-            "messages": [{"role": "user", "content": '{"a":1}'}],
-            "raw_json": '{"a":1}',
-            "response": {"nested": {"value": 1}},
-        },
-    )
-
-    output = (tmp_path / "llm_communication.md").read_text()
-
-    assert "REQUEST" in output
-    assert "run=2-test-run" in output
-    assert "llm_call=0007" in output
-    assert '"nested": {' in output
-    assert '{\n  "a": 1\n}' in output
-
-
-def test_backend_query_logs_request_and_response(tmp_path, monkeypatch):
+def test_backend_query_logs_request_and_response_to_artifact_files(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("AIDE_LOG_DIR", str(tmp_path))
     monkeypatch.setenv("AIDE_RUN_ID", "2-test-run")
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
@@ -56,30 +31,23 @@ def test_backend_query_logs_request_and_response(tmp_path, monkeypatch):
         user_message='{"input": true}',
         model="qwen35b",
         temperature=0.2,
+        llm_log_dir=tmp_path,
+        llm_log_context={"phase": "generate", "node_id": "node-1"},
     )
-
-    output = Path(tmp_path / "llm_communication.md").read_text()
 
     assert result == {"ok": True}
-    assert "REQUEST" in output
-    assert "RESPONSE" in output
-    assert "llm_call=" in output
-    assert "# Instructions" in output
-    assert '{\n  "input": true\n}' in output
-    assert '"ok": true' in output
+    assert not (tmp_path / "llm_communication.md").exists()
+    request_md = (tmp_path / "request.md").read_text()
+    assert "# Instructions" in request_md
+    assert '"input": true' in request_md
+    assert '"ok": true' in (tmp_path / "response.json").read_text()
+    assert (tmp_path / "status.json").read_text().count("completed") == 1
+    assert (tmp_path / "stderr.log").exists()
+    assert (tmp_path / "provider_events.jsonl").exists()
 
 
-def test_backend_query_continues_llm_call_counter_from_existing_log(
-    tmp_path, monkeypatch
-):
-    monkeypatch.setenv("AIDE_LOG_DIR", str(tmp_path))
-    monkeypatch.setenv("AIDE_RUN_ID", "2-test-run")
+def test_backend_query_uses_prefixed_review_files(tmp_path, monkeypatch):
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
-    monkeypatch.setitem(query.__globals__, "_llm_call_counter", 0)
-    (tmp_path / "llm_communication.md").write_text(
-        "## REQUEST | 2026-05-03T02:00:00 | run=2-test-run | llm_call=0010\n",
-        encoding="utf-8",
-    )
 
     def fake_query_func(**kwargs):
         return ("ok", 0.1, 1, 1, {"model": kwargs["model"]})
@@ -89,10 +57,40 @@ def test_backend_query_continues_llm_call_counter_from_existing_log(
         query.__globals__["provider_to_query_func"], "openai", fake_query_func
     )
 
-    query(system_message="system", user_message=None, model="qwen35b")
+    query(
+        system_message="system",
+        user_message=None,
+        model="qwen35b",
+        llm_log_dir=tmp_path,
+        llm_log_prefix="review",
+        llm_log_context={"phase": "review"},
+    )
 
-    output = Path(tmp_path / "llm_communication.md").read_text()
-    assert "llm_call=0011" in output
+    assert (tmp_path / "review_request.md").exists()
+    assert (tmp_path / "review_response_raw.txt").read_text() == "ok"
+    assert (tmp_path / "review_status.json").exists()
+
+
+def test_codex_backend_writes_codex_artifact_files(tmp_path, monkeypatch):
+    def fake_run(command, **kwargs):
+        output_path = tmp_path / "response_raw.txt"
+        output_path.write_text("answer", encoding="utf-8")
+        return SimpleNamespace(returncode=0, stdout='{"event":"done"}\n', stderr="")
+
+    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+
+    output, *_ = backend_codex.query(
+        system_message="system",
+        user_message=None,
+        model="gpt-5.5",
+        reasoning_effort="low",
+        llm_log_dir=tmp_path,
+    )
+
+    assert output == "answer"
+    assert (tmp_path / "codex_events.jsonl").read_text() == '{"event":"done"}\n'
+    assert (tmp_path / "stderr.log").read_text() == ""
+    assert 'model = "gpt-5.5"' in (tmp_path / "codex_profile.toml").read_text()
 
 
 def test_gpt_models_use_codex_provider_not_openai_api():
@@ -115,7 +113,11 @@ def test_openai_responses_api_receives_reasoning_effort(monkeypatch):
 
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.setattr(backend_openai, "_setup_openai_client", lambda: None)
-    monkeypatch.setattr(backend_openai, "_client", SimpleNamespace(responses=SimpleNamespace(create=object())))
+    monkeypatch.setattr(
+        backend_openai,
+        "_client",
+        SimpleNamespace(responses=SimpleNamespace(create=object())),
+    )
     monkeypatch.setattr(backend_openai, "backoff_create", fake_backoff_create)
 
     output, *_ = backend_openai.query(

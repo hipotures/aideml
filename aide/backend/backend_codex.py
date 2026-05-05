@@ -11,6 +11,10 @@ from funcy import notnone, select_values
 from .utils import FunctionSpec, OutputType
 
 
+def _prefixed(prefix: str | None, name: str) -> str:
+    return f"{prefix}_{name}" if prefix else name
+
+
 def _prompt_text(system_message: str | None, user_message: str | None) -> str:
     parts = []
     if system_message:
@@ -26,6 +30,8 @@ def _codex_command(
     reasoning_effort: str | None,
     work_dir: Path,
     output_schema: bool,
+    schema_file: str,
+    response_file: str,
 ) -> list[str]:
     command = [
         "codex",
@@ -43,9 +49,35 @@ def _codex_command(
     if reasoning_effort is not None:
         command.extend(["-c", f'model_reasoning_effort="{reasoning_effort}"'])
     if output_schema:
-        command.extend(["--output-schema", "schema.json"])
-    command.extend(["--output-last-message", "response_raw.txt", "--json", "-"])
+        command.extend(["--output-schema", schema_file])
+    command.extend(["--output-last-message", response_file, "--json", "-"])
     return command
+
+
+def _write_codex_profile(
+    *,
+    work_dir: Path,
+    prefix: str | None,
+    model: str,
+    reasoning_effort: str | None,
+    command: list[str],
+) -> None:
+    lines = [
+        f'model = "{model}"',
+        f'reasoning_effort = "{reasoning_effort or ""}"',
+        'sandbox = "read-only"',
+        'ask_for_approval = "never"',
+        'output_mode = "json"',
+        "",
+        "[command]",
+        "argv = [",
+    ]
+    lines.extend(f'  {json.dumps(part)},' for part in command)
+    lines.extend(["]", ""])
+    (work_dir / _prefixed(prefix, "codex_profile.toml")).write_text(
+        "\n".join(lines),
+        encoding="utf-8",
+    )
 
 
 def query(
@@ -57,12 +89,22 @@ def query(
     filtered_kwargs: dict = select_values(notnone, model_kwargs)
     model = filtered_kwargs["model"]
     reasoning_effort = filtered_kwargs.pop("reasoning_effort", None)
+    log_dir = filtered_kwargs.pop("llm_log_dir", None)
+    log_prefix = filtered_kwargs.pop("llm_log_prefix", "")
     prompt = _prompt_text(system_message, user_message)
 
-    with tempfile.TemporaryDirectory(prefix="aide-codex-query-") as tmp:
-        work_dir = Path(tmp)
+    temp_context = None
+    temp_path: str | None = None
+    if log_dir is None:
+        temp_context = tempfile.TemporaryDirectory(prefix="aide-codex-query-")
+        temp_path = temp_context.__enter__()
+    try:
+        work_dir = Path(log_dir) if log_dir is not None else Path(temp_path)  # type: ignore[arg-type]
+        work_dir.mkdir(parents=True, exist_ok=True)
+        schema_file = _prefixed(log_prefix, "schema.json")
+        response_file = _prefixed(log_prefix, "response_raw.txt")
         if func_spec is not None:
-            (work_dir / "schema.json").write_text(
+            (work_dir / schema_file).write_text(
                 json.dumps(func_spec.json_schema, indent=2),
                 encoding="utf-8",
             )
@@ -71,6 +113,15 @@ def query(
             reasoning_effort=reasoning_effort,
             work_dir=work_dir,
             output_schema=func_spec is not None,
+            schema_file=schema_file,
+            response_file=response_file,
+        )
+        _write_codex_profile(
+            work_dir=work_dir,
+            prefix=log_prefix,
+            model=model,
+            reasoning_effort=reasoning_effort,
+            command=command,
         )
         t0 = time.time()
         result = subprocess.run(
@@ -82,12 +133,23 @@ def query(
             check=False,
         )
         req_time = time.time() - t0
+        (work_dir / _prefixed(log_prefix, "codex_events.jsonl")).write_text(
+            result.stdout,
+            encoding="utf-8",
+        )
+        (work_dir / _prefixed(log_prefix, "stderr.log")).write_text(
+            result.stderr,
+            encoding="utf-8",
+        )
         if result.returncode != 0:
             raise RuntimeError(
                 f"Codex CLI failed with exit code {result.returncode}: "
                 f"{result.stderr.strip()}"
             )
-        raw_output = (work_dir / "response_raw.txt").read_text(encoding="utf-8")
+        raw_output = (work_dir / response_file).read_text(encoding="utf-8")
+    finally:
+        if temp_context is not None:
+            temp_context.__exit__(None, None, None)
 
     if func_spec is not None:
         output: OutputType = json.loads(raw_output)

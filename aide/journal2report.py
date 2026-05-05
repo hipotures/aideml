@@ -1,9 +1,16 @@
+from pathlib import Path
+
 from .backend import query
 from .journal import Journal
 from .utils.config import StageConfig
 
 
-def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
+def journal2report(
+    journal: Journal,
+    task_desc: dict,
+    rcfg: StageConfig,
+    log_dir: Path | None = None,
+):
     """
     Generate a report from a journal, the report will be in markdown format.
     """
@@ -29,4 +36,7 @@ def journal2report(journal: Journal, task_desc: dict, rcfg: StageConfig):
         reasoning_effort=rcfg.reasoning_effort,
         temperature=rcfg.temp,
         max_tokens=4096,
+        llm_log_dir=log_dir,
+        llm_log_prefix="report",
+        llm_log_context={"phase": "report"},
     )

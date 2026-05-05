@@ -1058,6 +1058,11 @@ def _node_artifact_dir(cfg, node: Node) -> Path:
     return Path(cfg.log_dir) / "artifacts" / timestamp
 
 
+def _node_artifact_dir_from_ctime(cfg, ctime: float) -> Path:
+    timestamp = dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
+    return Path(cfg.log_dir) / "artifacts" / timestamp
+
+
 def enforce_journal_submission_contract(
     cfg,
     journal: Journal,
@@ -1251,6 +1256,7 @@ def run(argv: list[str] | None = None):
     focused_tree_item_id = "header"
     tree_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
+    pending_artifact_dir: Path | None = None
 
     def request_execution_interrupt() -> KeyboardInterruptAction:
         nonlocal execution_interrupt_count, status_override, stop_after_current_node
@@ -1388,7 +1394,7 @@ def run(argv: list[str] | None = None):
                     active_artifact_dir=(
                         _node_artifact_dir(cfg, agent.active_node)
                         if agent.active_node is not None
-                        else None
+                        else pending_artifact_dir
                     ),
                 ),
                 (0, 1, 0, 1),
@@ -1435,16 +1441,27 @@ def run(argv: list[str] | None = None):
 
                         if synthesized is None:
                             parent_node = agent.prepare_step()
+                            node_ctime = time.time()
+                            pending_artifact_dir = _node_artifact_dir_from_ctime(
+                                cfg,
+                                node_ctime,
+                            )
+                            pending_artifact_dir.mkdir(parents=True, exist_ok=True)
                             result_node = run_with_live_refresh(
                                 live,
                                 generate_live,
-                                lambda: agent.generate_node(parent_node),
+                                lambda: agent.generate_node(
+                                    parent_node,
+                                    node_ctime=node_ctime,
+                                    llm_log_dir=pending_artifact_dir,
+                                ),
                                 tick=lambda: drain_tree_navigation(
                                     current_tree_view(blink_on=True)
                                 ),
                             )
                         else:
                             result_node = synthesized.node
+                        pending_artifact_dir = None
 
                         previous_artifact_env = prepare_node_artifact_env(result_node)
                         try:
@@ -1493,6 +1510,7 @@ def run(argv: list[str] | None = None):
                         break
                     finally:
                         agent.clear_active_step()
+                        pending_artifact_dir = None
                     save_run(
                         cfg,
                         journal,
@@ -1524,7 +1542,7 @@ def run(argv: list[str] | None = None):
 
     if cfg.generate_report:
         print("Generating final report from journal...")
-        report = journal2report(journal, task_desc, cfg.report)
+        report = journal2report(journal, task_desc, cfg.report, log_dir=cfg.log_dir)
         print(report)
         report_file_path = cfg.log_dir / "report.md"
         with open(report_file_path, "w") as f:

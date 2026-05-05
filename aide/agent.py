@@ -1,7 +1,9 @@
+import datetime as dt
 import logging
 import json
 import random
 import time
+from pathlib import Path
 from typing import Any, Callable
 
 import humanize
@@ -16,6 +18,7 @@ from .autogluon_preprocess import (
     validate_preprocess_source,
 )
 from .backend import FunctionSpec, query
+from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import format_research_hints_for_prompt, load_latest_research_hints
@@ -112,10 +115,50 @@ class Agent:
         self.active_node: Node | None = None
         self.active_stage: str | None = None
         self.active_stage_started_at: float | None = None
+        self._pending_node_ctime: float | None = None
+        self._pending_llm_log_dir: Path | None = None
 
     def set_active_stage(self, stage: str | None) -> None:
         self.active_stage = stage
         self.active_stage_started_at = time.monotonic() if stage is not None else None
+
+    def _node_artifact_dir(self, node: Node) -> Path:
+        timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+        return Path(self.cfg.log_dir) / "artifacts" / timestamp
+
+    def _new_node(
+        self,
+        *,
+        plan: str,
+        code: str,
+        parent: Node | None = None,
+    ) -> Node:
+        kwargs: dict[str, Any] = {"plan": plan, "code": code, "parent": parent}
+        if self._pending_node_ctime is not None:
+            kwargs["ctime"] = self._pending_node_ctime
+        return Node(**kwargs)
+
+    def _generation_log_context(self) -> dict[str, Any]:
+        parent = self.active_parent_node
+        return {
+            "phase": "generate",
+            "run_id": self.cfg.exp_name,
+            "parent_node_id": parent.id if parent is not None else None,
+            "parent_stage": parent.stage_name if parent is not None else None,
+            "agent_mode": self.acfg.mode,
+            "node_ctime": self._pending_node_ctime,
+        }
+
+    def _review_log_context(self, node: Node) -> dict[str, Any]:
+        return {
+            "phase": "review",
+            "run_id": self.cfg.exp_name,
+            "node_id": node.id,
+            "node_step": node.step,
+            "node_stage": node.stage_name,
+            "node_ctime": node.ctime,
+            "agent_mode": self.acfg.mode,
+        }
 
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
@@ -286,11 +329,11 @@ class Agent:
             wrapped_code = build_autogluon_wrapper(preprocess_source, self.cfg)
         except ValueError as exc:
             wrapped_code = f"raise ValueError({str(exc)!r})\n"
-        return Node(plan=plan, code=wrapped_code, parent=parent)
+        return self._new_node(plan=plan, code=wrapped_code, parent=parent)
 
     def _autogluon_raw_baseline(self) -> Node:
         code = build_autogluon_wrapper(baseline_preprocess_source(), self.cfg)
-        return Node(
+        return self._new_node(
             plan=(
                 f"{BASELINE_PLAN_PREFIX}: raw features with the configured "
                 "fixed AutoGluon runner."
@@ -314,12 +357,18 @@ class Agent:
                 model=self.acfg.code.model,
                 reasoning_effort=self.acfg.code.reasoning_effort,
                 temperature=self.acfg.code.temp,
+                llm_log_dir=self._pending_llm_log_dir,
+                llm_log_context=self._generation_log_context(),
             )
 
             code = extract_code(completion_text)
             nl_text = extract_text_up_to_code(completion_text)
 
             if code and nl_text:
+                write_llm_response_code(
+                    log_dir=self._pending_llm_log_dir,
+                    code=code,
+                )
                 # merge all code blocks into a single string
                 return nl_text, code
 
@@ -361,7 +410,7 @@ class Agent:
 
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return Node(plan=plan, code=code)
+        return self._new_node(plan=plan, code=code)
 
     def _draft_autogluon_preprocess(self) -> Node:
         prompt: Any = {
@@ -428,7 +477,7 @@ class Agent:
 
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return Node(
+        return self._new_node(
             plan=plan,
             code=code,
             parent=parent_node,
@@ -497,7 +546,7 @@ class Agent:
         self._add_autogluon_context(prompt)
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return Node(plan=plan, code=code, parent=parent_node)
+        return self._new_node(plan=plan, code=code, parent=parent_node)
 
     def _debug_autogluon_preprocess(self, parent_node: Node) -> Node:
         prompt: Any = {
@@ -547,21 +596,35 @@ class Agent:
         self.active_parent_node = parent_node
         return parent_node
 
-    def generate_node(self, parent_node: Node | None) -> Node:
+    def generate_node(
+        self,
+        parent_node: Node | None,
+        *,
+        node_ctime: float | None = None,
+        llm_log_dir: Path | None = None,
+    ) -> Node:
         self.set_active_stage("generating")
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
+        previous_ctime = self._pending_node_ctime
+        previous_log_dir = self._pending_llm_log_dir
+        self._pending_node_ctime = node_ctime
+        self._pending_llm_log_dir = llm_log_dir
 
-        if (
-            parent_node is None
-            and is_autogluon_preprocess_mode(self.cfg)
-            and not self.journal.nodes
-        ):
-            return self._autogluon_raw_baseline()
-        if parent_node is None:
-            return self._draft()
-        if parent_node.is_buggy:
-            return self._debug(parent_node)
-        return self._improve(parent_node)
+        try:
+            if (
+                parent_node is None
+                and is_autogluon_preprocess_mode(self.cfg)
+                and not self.journal.nodes
+            ):
+                return self._autogluon_raw_baseline()
+            if parent_node is None:
+                return self._draft()
+            if parent_node.is_buggy:
+                return self._debug(parent_node)
+            return self._improve(parent_node)
+        finally:
+            self._pending_node_ctime = previous_ctime
+            self._pending_llm_log_dir = previous_log_dir
 
     def execute_node(
         self, node: Node, exec_callback: ExecCallbackType
@@ -635,6 +698,9 @@ class Agent:
             model=self.acfg.feedback.model,
             reasoning_effort=self.acfg.feedback.reasoning_effort,
             temperature=self.acfg.feedback.temp,
+            llm_log_dir=self._node_artifact_dir(node),
+            llm_log_prefix="review",
+            llm_log_context=self._review_log_context(node),
         )
         parsed_response = _parse_review_response(response)
         if parsed_response is None:

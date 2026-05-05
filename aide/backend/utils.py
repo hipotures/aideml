@@ -1,6 +1,4 @@
-import datetime as dt
 import json
-import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,39 +70,169 @@ def _format_log_value(value) -> str:
     return str(value)
 
 
-def log_llm_exchange(
+def _prefixed(prefix: str | None, name: str) -> str:
+    return f"{prefix}_{name}" if prefix else name
+
+
+def _json_default(value):
+    if isinstance(value, Path):
+        return str(value)
+    return str(value)
+
+
+def _write_json(path: Path, payload: dict | list) -> None:
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default)
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _raw_response_text(output: OutputType) -> str:
+    if isinstance(output, str):
+        return output
+    return json.dumps(output, indent=2, ensure_ascii=False, default=_json_default)
+
+
+def request_markdown(
+    system_message: str | None,
+    user_message: str | None,
+) -> str:
+    parts = []
+    if system_message:
+        parts.append(f"# System message\n\n{system_message}")
+    if user_message:
+        parts.append(f"# User message\n\n{user_message}")
+    return "\n\n---\n\n".join(parts).rstrip() + "\n"
+
+
+def write_llm_request_files(
     *,
-    phase: str,
-    provider: str,
-    payload: dict,
-    sequence_id: int | None = None,
+    log_dir: Path | str | None,
+    prefix: str | None,
+    context: dict,
+    request_payload: dict,
+    system_message: str | None,
+    user_message: str | None,
 ) -> None:
-    log_dir = os.getenv("AIDE_LOG_DIR")
-    run_id = os.getenv("AIDE_RUN_ID")
-    if not log_dir:
+    if log_dir is None:
         return
-
-    path = Path(log_dir) / "llm_communication.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    timestamp = dt.datetime.now().isoformat(timespec="seconds")
-    title_parts = [phase.upper(), timestamp]
-    if run_id:
-        title_parts.append(f"run={run_id}")
-    if sequence_id is not None:
-        title_parts.append(f"llm_call={sequence_id:04d}")
-
-    lines = ["\n---\n", f"## {' | '.join(title_parts)}\n", f"provider: `{provider}`\n"]
-    for key, value in payload.items():
-        lines.append(f"\n### {key}\n")
-        formatted_value = _format_log_value(value)
-        if isinstance(value, (dict, list)) or formatted_value != value:
-            lines.append(f"```json\n{formatted_value}\n```\n")
-        else:
-            lines.append(f"```text\n{formatted_value}\n```\n")
-
+    path = Path(log_dir)
+    path.mkdir(parents=True, exist_ok=True)
     with _llm_log_lock:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write("".join(lines))
+        _write_json(path / _prefixed(prefix, "context.json"), context)
+        _write_json(path / _prefixed(prefix, "request.json"), request_payload)
+        (path / _prefixed(prefix, "request.md")).write_text(
+            request_markdown(system_message, user_message),
+            encoding="utf-8",
+        )
+        (path / _prefixed(prefix, "stderr.log")).touch()
+        _write_json(
+            path / _prefixed(prefix, "status.json"),
+            {
+                "status": "running",
+                "provider": context.get("provider"),
+                "model": context.get("model"),
+                "phase": context.get("phase"),
+                "sequence_id": context.get("sequence_id"),
+            },
+        )
+
+
+def write_llm_response_files(
+    *,
+    log_dir: Path | str | None,
+    prefix: str | None,
+    context: dict,
+    response_payload: dict,
+    output: OutputType,
+) -> None:
+    if log_dir is None:
+        return
+    path = Path(log_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    with _llm_log_lock:
+        (path / _prefixed(prefix, "response_raw.txt")).write_text(
+            _raw_response_text(output),
+            encoding="utf-8",
+        )
+        _write_json(path / _prefixed(prefix, "response.json"), response_payload)
+        _write_json(
+            path / _prefixed(prefix, "status.json"),
+            {
+                "status": "completed",
+                "provider": context.get("provider"),
+                "model": context.get("model"),
+                "phase": context.get("phase"),
+                "sequence_id": context.get("sequence_id"),
+                "request_time_seconds": response_payload.get("request_time_seconds"),
+            },
+        )
+
+
+def write_llm_error_files(
+    *,
+    log_dir: Path | str | None,
+    prefix: str | None,
+    context: dict,
+    error_payload: dict,
+) -> None:
+    if log_dir is None:
+        return
+    path = Path(log_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    with _llm_log_lock:
+        _write_json(path / _prefixed(prefix, "response.json"), error_payload)
+        (path / _prefixed(prefix, "response_raw.txt")).write_text(
+            str(error_payload.get("message", "")),
+            encoding="utf-8",
+        )
+        _write_json(
+            path / _prefixed(prefix, "status.json"),
+            {
+                "status": "failed",
+                "provider": context.get("provider"),
+                "model": context.get("model"),
+                "phase": context.get("phase"),
+                "sequence_id": context.get("sequence_id"),
+                "error": error_payload,
+            },
+        )
+
+
+def append_provider_event(
+    *,
+    log_dir: Path | str | None,
+    prefix: str | None,
+    event: dict,
+) -> None:
+    if log_dir is None:
+        return
+    path = Path(log_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(event, ensure_ascii=False, default=_json_default) + "\n"
+    with _llm_log_lock:
+        with open(path / _prefixed(prefix, "provider_events.jsonl"), "a", encoding="utf-8") as f:
+            f.write(line)
+
+
+def write_llm_response_code(
+    *,
+    log_dir: Path | str | None,
+    prefix: str | None = None,
+    code: str,
+) -> None:
+    if log_dir is None:
+        return
+    path = Path(log_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    with _llm_log_lock:
+        (path / _prefixed(prefix, "response.py")).write_text(code, encoding="utf-8")
+
+
+def log_llm_exchange(*args, **kwargs) -> None:
+    """Deprecated no-op. LLM communication is logged as artifact files."""
+    return None
 
 
 @dataclass
