@@ -899,10 +899,11 @@ def _failed_synthesis_node(checkpoint: Path) -> SynthesisNode | None:
     )
     node.metric = WorstMetricValue()
     node.is_buggy = True
+    node.status = "failed"
     node.analysis = error
-    node._term_out = [f"SynthesisError: {error}\n"]
+    node._term_out = [f"Failed: {error}\n"]
     node.exec_time = 0.0
-    node.exc_type = "SynthesisError"
+    node.exc_type = "Failed"
     node.exc_info = {"error": error}
     node.exc_stack = None
     return SynthesisNode(

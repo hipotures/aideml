@@ -50,6 +50,17 @@ def _submission_bug_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _failed_node(parent: Node | None = None) -> Node:
+    node = Node(code="# Failed checkpoint did not produce code.\n", plan="failed", parent=parent)
+    node.status = "failed"
+    node.metric = WorstMetricValue()
+    node.is_buggy = True
+    node.analysis = "failed"
+    node._term_out = ["Failed: checkpoint failed"]
+    node.exc_type = "Failed"
+    return node
+
+
 def test_search_policy_does_not_debug_invalid_submission_leaf(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 1.0
@@ -57,6 +68,21 @@ def test_search_policy_does_not_debug_invalid_submission_leaf(tmp_path):
     invalid = _submission_bug_node()
     normal_bug = _bug_node()
     journal.append(invalid)
+    journal.append(normal_bug)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is normal_bug
+
+
+def test_search_policy_does_not_debug_failed_leaf(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 1.0
+    journal = Journal()
+    failed = _failed_node()
+    normal_bug = _bug_node()
+    journal.append(failed)
     journal.append(normal_bug)
     agent = Agent(task_desc="task", cfg=cfg, journal=journal)
 

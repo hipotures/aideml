@@ -273,6 +273,8 @@ def journal_to_rich_tree(
         )
 
     def append_rec(node: Node, tree):
+        if node.is_terminal_failure:
+            return
         if (
             node.is_submission_contract_error
             and not show_invalid_submission_branches
@@ -334,6 +336,9 @@ def _visible_best_node(
 
 
 def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
+    if node.is_terminal_failure:
+        return Text("failed", style="red")
+
     synthesis_root = node.parent is None and str(node.plan or "").startswith(
         SYNTHESIS_PLAN_PREFIX
     )

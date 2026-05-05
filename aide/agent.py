@@ -179,6 +179,7 @@ class Agent:
                     n.is_leaf
                     and n.debug_depth < search_cfg.max_debug_depth
                     and not n.is_submission_contract_error
+                    and not n.is_terminal_failure
                 )
             ]
             if debuggable_nodes:

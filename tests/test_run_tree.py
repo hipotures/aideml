@@ -57,6 +57,17 @@ def _submission_bug_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _failed_node(parent: Node | None = None) -> Node:
+    node = Node(code="# Failed checkpoint did not produce code.\n", plan="failed", parent=parent)
+    node.status = "failed"
+    node.metric = MetricValue(None, maximize=True)
+    node.is_buggy = True
+    node._term_out = ["Failed: checkpoint failed"]
+    node.analysis = "checkpoint failed"
+    node.exc_type = "Failed"
+    return node
+
+
 def _render_text(tree) -> str:
     console = Console(record=True, width=100, color_system=None)
     console.print(tree)
@@ -118,6 +129,21 @@ def test_journal_tree_replaces_active_placeholder_with_final_bug_result():
     assert "[*]" not in output
     assert "[ ]" not in output
     assert "◍ bug" in output
+
+
+def test_journal_tree_hides_failed_nodes_by_default():
+    journal = Journal()
+    failed = _failed_node()
+    good = _good_node(0.9)
+    journal.append(failed)
+    journal.append(good)
+
+    tree = journal_to_rich_tree(journal)
+
+    output = _render_text(tree)
+
+    assert "failed" not in output.lower()
+    assert "0.90000" in output
 
 
 def test_journal_tree_hides_invalid_submission_branch_by_default():

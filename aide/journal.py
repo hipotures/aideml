@@ -47,6 +47,7 @@ class Node(DataClassJsonMixin):
     ctime: float = field(default_factory=lambda: time.time(), kw_only=True)
     parent: Optional["Node"] = field(default=None, kw_only=True)
     children: set["Node"] = field(default_factory=set, kw_only=True)
+    status: Literal["ok", "bug", "failed"] | None = field(default=None, kw_only=True)
 
     # ---- execution info ----
     _term_out: list[str] = field(default=None, kw_only=True)  # type: ignore
@@ -104,6 +105,14 @@ class Node(DataClassJsonMixin):
         return (
             self.exc_type == "SubmissionValidationError"
             or validation.get("status") == "error"
+        )
+
+    @property
+    def is_terminal_failure(self) -> bool:
+        return self.status == "failed" or (
+            self.status is None
+            and self.is_buggy
+            and str(self.code or "").lstrip().startswith("# Failed ")
         )
 
     @property

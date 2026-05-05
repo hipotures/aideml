@@ -567,7 +567,8 @@ def test_synthesis_advisor_returns_failed_checkpoint_as_bug_node(tmp_path):
     assert synthesized.node.parent is None
     assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000002"
     assert synthesized.node.is_buggy is True
-    assert synthesized.node.exc_type == "SynthesisError"
+    assert synthesized.node.status == "failed"
+    assert synthesized.node.exc_type == "Failed"
     assert "did not contain valid Python code" in "".join(synthesized.node._term_out)
 
     journal.append(synthesized.node)
@@ -622,7 +623,8 @@ def test_synthesis_advisor_rejects_existing_ready_checkpoint_with_leakage(tmp_pa
     assert synthesized is not None
     assert synthesized.ready_for_execution is False
     assert synthesized.node.is_buggy is True
-    assert synthesized.node.exc_type == "SynthesisError"
+    assert synthesized.node.status == "failed"
+    assert synthesized.node.exc_type == "Failed"
     assert synthesized.node.code == (
         "test['next_PitStop'] = test.groupby(['Race'])['PitStop'].shift(-1)"
     )
