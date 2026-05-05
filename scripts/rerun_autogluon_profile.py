@@ -181,7 +181,6 @@ def execute_code(
     env = os.environ.copy()
     env["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir.resolve())
     start_time = time.time()
-    stdout_path = artifact_dir / "autogluon_stdout.log"
 
     proc = subprocess.Popen(
         [sys.executable, str(runfile.name)],
@@ -226,8 +225,6 @@ def execute_code(
                     completed=min(time.time() - start_time, float(progress_time_limit)),
                     elapsed_text=_format_seconds(time.time() - start_time),
                 )
-            if stdout_path.exists():
-                output_text = stdout_path.read_text(errors="replace")
         exec_time = time.time() - start_time
     except subprocess.TimeoutExpired:
         os.killpg(proc.pid, signal.SIGINT)
@@ -236,8 +233,6 @@ def execute_code(
         except subprocess.TimeoutExpired:
             os.killpg(proc.pid, signal.SIGKILL)
             output_text, _ = proc.communicate()
-        if stdout_path.exists():
-            output_text = stdout_path.read_text(errors="replace")
         exec_time = float(timeout)
         return ExecutionResult(
             [output_text, f"TimeoutError: Execution exceeded the time limit of {timeout} seconds"],

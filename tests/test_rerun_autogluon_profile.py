@@ -285,6 +285,7 @@ def test_execute_code_uses_single_autogluon_log_file(tmp_path):
     )
 
     assert result.exc_type is None
+    assert "AIDE_RESULT_JSON:" in result.term_out[0]
     assert (artifact_dir / "autogluon_stdout.log").read_text() == "training log\n"
     assert not (artifact_dir / "process_stdout.log").exists()
 
