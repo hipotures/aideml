@@ -1463,37 +1463,49 @@ def run(argv: list[str] | None = None):
                             result_node = synthesized.node
                         pending_artifact_dir = None
 
-                        previous_artifact_env = prepare_node_artifact_env(result_node)
-                        try:
-                            exec_result = agent.execute_node(
-                                result_node,
-                                lambda *args, **kwargs: run_with_live_refresh(
-                                    live,
-                                    generate_live,
-                                    lambda: exec_callback(*args, **kwargs),
-                                    tick=lambda: drain_tree_navigation(
-                                        current_tree_view(blink_on=True)
-                                    ),
-                                    on_keyboard_interrupt=request_execution_interrupt,
-                                ),
-                            )
-                        finally:
-                            restore_node_artifact_env(previous_artifact_env)
-                        run_with_live_refresh(
-                            live,
-                            generate_live,
-                            lambda: agent.review_node(result_node, exec_result),
-                            tick=lambda: drain_tree_navigation(
-                                current_tree_view(blink_on=True)
-                            ),
-                        )
-                        enforce_submission_contract(cfg, result_node)
-                        journal.append(result_node)
-                        if synthesized is not None:
-                            synthesis_advisor.mark_injected(
+                        if (
+                            synthesized is not None
+                            and not synthesized.ready_for_execution
+                        ):
+                            journal.append(result_node)
+                            synthesis_advisor.mark_recorded(
                                 synthesized,
                                 node=result_node,
                             )
+                        else:
+                            previous_artifact_env = prepare_node_artifact_env(
+                                result_node
+                            )
+                            try:
+                                exec_result = agent.execute_node(
+                                    result_node,
+                                    lambda *args, **kwargs: run_with_live_refresh(
+                                        live,
+                                        generate_live,
+                                        lambda: exec_callback(*args, **kwargs),
+                                        tick=lambda: drain_tree_navigation(
+                                            current_tree_view(blink_on=True)
+                                        ),
+                                        on_keyboard_interrupt=request_execution_interrupt,
+                                    ),
+                                )
+                            finally:
+                                restore_node_artifact_env(previous_artifact_env)
+                            run_with_live_refresh(
+                                live,
+                                generate_live,
+                                lambda: agent.review_node(result_node, exec_result),
+                                tick=lambda: drain_tree_navigation(
+                                    current_tree_view(blink_on=True)
+                                ),
+                            )
+                            enforce_submission_contract(cfg, result_node)
+                            journal.append(result_node)
+                            if synthesized is not None:
+                                synthesis_advisor.mark_injected(
+                                    synthesized,
+                                    node=result_node,
+                                )
                     except ExecutionInterrupted:
                         interrupted = True
                         interrupt_message = (

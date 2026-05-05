@@ -509,6 +509,39 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
     assert "Synthesis: ✓ 000002" in advisor.status_text()
 
 
+def test_synthesis_advisor_returns_failed_checkpoint_as_bug_node(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.synthesis.every_scored_steps = 2
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')"))
+    journal.append(_node(0.8, code="print('ok2')"))
+
+    def fake_runner(cmd, **kwargs):
+        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
+        (checkpoint_dir / "response_raw.txt").write_text("not python at all\n")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=fake_runner)
+
+    synthesized = advisor.generate_node_if_due(journal=journal, completed_steps=2)
+
+    assert synthesized is not None
+    assert synthesized.ready_for_execution is False
+    assert synthesized.node.parent is None
+    assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000002"
+    assert synthesized.node.is_buggy is True
+    assert synthesized.node.exc_type == "SynthesisError"
+    assert "did not contain valid Python code" in "".join(synthesized.node._term_out)
+
+    journal.append(synthesized.node)
+    advisor.mark_recorded(synthesized, node=synthesized.node)
+
+    status = json.loads((synthesized.checkpoint_dir / "status.json").read_text())
+    assert status["status"] == "failed"
+    assert status["recorded_node_id"] == synthesized.node.id
+    assert advisor.generate_node_if_due(journal=journal, completed_steps=2) is None
+
+
 def test_synthesis_advisor_injects_existing_ready_checkpoint_even_after_count_moves_on(
     tmp_path,
 ):
@@ -546,6 +579,12 @@ def test_synthesis_advisor_rejects_existing_ready_checkpoint_with_leakage(tmp_pa
     synthesized = advisor.generate_node_if_due(journal=journal, completed_steps=23)
     status = json.loads((checkpoint / "status.json").read_text())
 
-    assert synthesized is None
+    assert synthesized is not None
+    assert synthesized.ready_for_execution is False
+    assert synthesized.node.is_buggy is True
+    assert synthesized.node.exc_type == "SynthesisError"
+    assert synthesized.node.code == (
+        "test['next_PitStop'] = test.groupby(['Race'])['PitStop'].shift(-1)"
+    )
     assert status["status"] == "failed"
     assert "target leakage" in status["error"]

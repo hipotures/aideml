@@ -34,6 +34,7 @@ from .research import (
 )
 from .utils import serialize
 from .utils.config import Config
+from .utils.metric import WorstMetricValue
 from .utils.prediction_similarity import submission_prediction_rmse
 from .utils.response import extract_code, is_valid_python_script
 
@@ -69,6 +70,7 @@ class SynthesisNode:
     node: Node
     completed_steps: int
     checkpoint_dir: Path
+    ready_for_execution: bool = True
 
 
 def checkpoint_dir_for(cfg: Config, completed_steps: int) -> Path:
@@ -822,6 +824,64 @@ def _mark_checkpoint_failed(checkpoint: Path, error: str) -> None:
     _write_json(checkpoint / "status.json", status)
 
 
+def _checkpoint_already_recorded(checkpoint: Path) -> bool:
+    status = _read_json(checkpoint / "status.json")
+    return isinstance(status, dict) and bool(status.get("recorded_node_id"))
+
+
+def _failed_checkpoint_error(checkpoint: Path) -> str:
+    status = _read_json(checkpoint / "status.json")
+    if isinstance(status, dict) and status.get("error"):
+        return str(status["error"])
+
+    response = _read_json(checkpoint / "response.json")
+    if isinstance(response, dict) and response.get("error"):
+        return str(response["error"])
+
+    return "Synthesis checkpoint failed before producing injectable code."
+
+
+def _failed_checkpoint_code(checkpoint: Path) -> str:
+    response_code = checkpoint / "response.py"
+    if response_code.exists():
+        code = response_code.read_text(encoding="utf-8").strip()
+        if code:
+            return code
+
+    raw_response = checkpoint / "response_raw.txt"
+    if raw_response.exists():
+        code = raw_response.read_text(encoding="utf-8").strip()
+        if code:
+            return code
+    return "# Failed synthesis checkpoint did not produce code.\n"
+
+
+def _failed_synthesis_node(checkpoint: Path) -> SynthesisNode | None:
+    if _checkpoint_already_recorded(checkpoint):
+        return None
+
+    checkpoint_step = _checkpoint_step(checkpoint)
+    error = _failed_checkpoint_error(checkpoint)
+    node = Node(
+        plan=f"{SYNTHESIS_PLAN_PREFIX} {checkpoint_step:06d}",
+        code=_failed_checkpoint_code(checkpoint),
+    )
+    node.metric = WorstMetricValue()
+    node.is_buggy = True
+    node.analysis = error
+    node._term_out = [f"SynthesisError: {error}\n"]
+    node.exec_time = 0.0
+    node.exc_type = "SynthesisError"
+    node.exc_info = {"error": error}
+    node.exc_stack = None
+    return SynthesisNode(
+        node=node,
+        completed_steps=checkpoint_step,
+        checkpoint_dir=checkpoint,
+        ready_for_execution=False,
+    )
+
+
 def _read_valid_ready_checkpoint_code(checkpoint: Path) -> str | None:
     code = (checkpoint / "response.py").read_text(encoding="utf-8")
     try:
@@ -867,7 +927,7 @@ class SynthesisAdvisor:
             checkpoint_step = _checkpoint_step(ready_checkpoint)
             code = _read_valid_ready_checkpoint_code(ready_checkpoint)
             if code is None:
-                return None
+                return _failed_synthesis_node(ready_checkpoint)
             return SynthesisNode(
                 node=Node(
                     plan=f"{SYNTHESIS_PLAN_PREFIX} {checkpoint_step:06d}",
@@ -882,12 +942,14 @@ class SynthesisAdvisor:
 
         checkpoint_dir = checkpoint_dir_for(self.cfg, completed_steps)
         status = _checkpoint_status(checkpoint_dir)
-        if status in {"injected", "failed"}:
+        if status == "injected":
             return None
+        if status == "failed":
+            return _failed_synthesis_node(checkpoint_dir)
         if status == "ready":
             code = _read_valid_ready_checkpoint_code(checkpoint_dir)
             if code is None:
-                return None
+                return _failed_synthesis_node(checkpoint_dir)
         elif status is None:
             self._active_checkpoint = completed_steps
             try:
@@ -905,7 +967,7 @@ class SynthesisAdvisor:
             finally:
                 self._active_checkpoint = None
             if result["status"] != "ready":
-                return None
+                return _failed_synthesis_node(Path(result["checkpoint_dir"]))
             code = result["response"]["code"]
         else:
             return None
@@ -918,6 +980,19 @@ class SynthesisAdvisor:
             completed_steps=completed_steps,
             checkpoint_dir=checkpoint_dir,
         )
+
+    def mark_recorded(self, synthesis_node: SynthesisNode, *, node: Node) -> None:
+        status = _read_json(synthesis_node.checkpoint_dir / "status.json")
+        if not isinstance(status, dict):
+            status = {}
+        status.update(
+            {
+                "recorded_at": dt.datetime.now().isoformat(timespec="seconds"),
+                "recorded_node_id": node.id,
+                "recorded_node_step": node.step,
+            }
+        )
+        _write_json(synthesis_node.checkpoint_dir / "status.json", status)
 
     def mark_injected(self, synthesis_node: SynthesisNode, *, node: Node) -> None:
         status = _read_json(synthesis_node.checkpoint_dir / "status.json")
