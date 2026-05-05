@@ -16,6 +16,7 @@ from aide.synthesis import (
     collect_synthesis_context,
     collect_top_synthesis_solutions,
     parse_synthesis_code,
+    parse_synthesis_response,
     run_synthesis_checkpoint,
 )
 from aide.utils import serialize
@@ -272,7 +273,8 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
     prompt = build_synthesis_prompt(context)
 
     assert prompt.startswith(SYNTHESIS_PROMPT_INTRO)
-    assert "Return only Python code" in prompt
+    assert "same two-part structure as ordinary AIDE code generation" in prompt
+    assert "short natural-language design paragraph" in prompt
     assert "strong time and memory efficiency" in prompt
     assert "avoid unnecessary full-data copies" in prompt
     assert "Do not use target leakage" in prompt
@@ -324,7 +326,8 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     assert "Avoid feature bloat" in prompt
     assert "F1 driver will pit on the next lap" in prompt
     assert "def preprocess(df: pd.DataFrame)" in prompt
-    assert "Return only Python code defining exactly one top-level function" in prompt
+    assert "same two-part structure as ordinary AIDE code generation" in prompt
+    assert "short natural-language design paragraph" in prompt
     assert "Do not include imports, helper functions, top-level constants" in prompt
     assert "`pd` is already available from the fixed wrapper" in prompt
     assert "Do not read files, write files, train models" in prompt
@@ -345,6 +348,22 @@ def test_parse_synthesis_code_accepts_raw_and_fenced_python():
         parse_synthesis_code("not python prose")
 
 
+def test_parse_synthesis_response_extracts_design_and_code():
+    raw = (
+        "I will merge the strongest tyre pressure features into one compact "
+        "preprocess function.\n\n"
+        "```python\n"
+        "def preprocess(df):\n"
+        "    return df\n"
+        "```\n"
+    )
+
+    plan, code = parse_synthesis_response(raw)
+
+    assert plan.startswith("I will merge")
+    assert code == "def preprocess(df):\n    return df\n"
+
+
 def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     cfg = _cfg(tmp_path)
     context = {
@@ -359,7 +378,14 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
         seen["cmd"] = cmd
         seen["stdin"] = kwargs["input"]
         checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text("value = 1\nprint(value)\n")
+        (checkpoint_dir / "response_raw.txt").write_text(
+            "I will synthesize a compact ensemble-style script from the best "
+            "working ideas.\n\n"
+            "```python\n"
+            "value = 1\n"
+            "print(value)\n"
+            "```\n"
+        )
         return subprocess.CompletedProcess(
             cmd, 0, stdout='{"event":"done"}\n', stderr=""
         )
@@ -391,6 +417,7 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     assert (checkpoint_dir / "response.py").read_text() == "value = 1\nprint(value)\n"
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["code"] == "value = 1\nprint(value)\n"
+    assert response["plan"].startswith("I will synthesize")
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "ready"
 
@@ -449,10 +476,13 @@ def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
     def fake_runner(cmd, **kwargs):
         checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
         (checkpoint_dir / "response_raw.txt").write_text(
+            "I will add a compact feature while preserving the wrapper contract.\n\n"
+            "```python\n"
             "def preprocess(df):\n"
             "    df = df.copy()\n"
             "    df['feature'] = 1\n"
             "    return df\n"
+            "```\n"
         )
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
@@ -471,6 +501,7 @@ def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
     assert "def preprocess(df):" in response_code
     assert "feature" in response_code
     assert response["code"] == response_code
+    assert response["plan"].startswith("I will add")
 
 
 def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
@@ -485,7 +516,13 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
     def fake_runner(cmd, **kwargs):
         calls.append(cmd)
         checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text("value = 2\nprint(value)\n")
+        (checkpoint_dir / "response_raw.txt").write_text(
+            "I will synthesize a fresh root from the strongest prior scripts.\n\n"
+            "```python\n"
+            "value = 2\n"
+            "print(value)\n"
+            "```\n"
+        )
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=fake_runner)
@@ -497,7 +534,7 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
 
     assert synthesized is not None
     assert synthesized.node.parent is None
-    assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000002"
+    assert synthesized.node.plan.startswith("I will synthesize a fresh root")
     assert synthesized.node.code == "value = 2\nprint(value)\n"
     assert len(calls) == 1
 
@@ -551,6 +588,9 @@ def test_synthesis_advisor_injects_existing_ready_checkpoint_even_after_count_mo
     checkpoint = Path(cfg.log_dir) / "synthesis" / "checkpoint-000010"
     checkpoint.mkdir(parents=True)
     (checkpoint / "status.json").write_text('{"status": "ready"}')
+    (checkpoint / "response.json").write_text(
+        '{"status": "ready", "plan": "I will reuse a ready synthesis design."}'
+    )
     (checkpoint / "response.py").write_text("value = 10\nprint(value)\n")
     advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
 
@@ -560,7 +600,7 @@ def test_synthesis_advisor_injects_existing_ready_checkpoint_even_after_count_mo
     assert synthesized.completed_steps == 10
     assert synthesized.checkpoint_dir == checkpoint
     assert synthesized.node.parent is None
-    assert synthesized.node.plan == f"{SYNTHESIS_PLAN_PREFIX} 000010"
+    assert synthesized.node.plan == "I will reuse a ready synthesis design."
     assert synthesized.node.code == "value = 10\nprint(value)\n"
 
 

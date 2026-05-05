@@ -29,10 +29,23 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
 
     summary = journal.generate_summary()
 
-    assert "Results: AutoGluon preprocess wrapper completed." in summary
+    assert "Results: AutoGluon preprocess wrapper completed." not in summary
     assert "Validation Metric: 0.95048" in summary
     assert "0.9504787907447247" not in summary
     assert "presets=medium_quality" not in summary
+
+
+def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="External Codex synthesis checkpoint 000027")
+    node.analysis = ""
+    node.metric = MetricValue(0.950327, maximize=True)
+    journal.append(node)
+
+    summary = journal.generate_summary()
+
+    assert "Design: External Codex synthesis generated a new root solution" in summary
+    assert "checkpoint 000027" not in summary
 
 
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(

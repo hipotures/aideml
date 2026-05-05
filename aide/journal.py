@@ -22,8 +22,15 @@ from .utils.response import trim_long_string
 def _summary_analysis_text(analysis: str | None) -> str:
     text = str(analysis or "")
     if text.startswith("AutoGluon preprocess wrapper completed"):
-        return "AutoGluon preprocess wrapper completed."
+        return ""
     return re.sub(r"\s+using presets=[^.]+", "", text)
+
+
+def _summary_plan_text(plan: str | None) -> str:
+    text = str(plan or "")
+    if text.startswith("External Codex synthesis checkpoint"):
+        return "External Codex synthesis generated a new root solution from top candidates."
+    return text
 
 
 @dataclass(eq=False)
@@ -209,10 +216,12 @@ class Journal(DataClassJsonMixin):
         """Generate a summary of the journal for the agent."""
         summary = []
         for n in self.good_nodes:
-            summary_part = f"Design: {n.plan}\n"
+            summary_part = f"Design: {_summary_plan_text(n.plan)}\n"
             if include_code:
                 summary_part += f"Code: {n.code}\n"
-            summary_part += f"Results: {_summary_analysis_text(n.analysis)}\n"
+            analysis_text = _summary_analysis_text(n.analysis)
+            if analysis_text:
+                summary_part += f"Results: {analysis_text}\n"
             summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)

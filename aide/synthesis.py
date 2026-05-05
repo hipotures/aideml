@@ -36,20 +36,19 @@ from .utils import serialize
 from .utils.config import Config
 from .utils.metric import WorstMetricValue
 from .utils.prediction_similarity import submission_prediction_rmse
-from .utils.response import extract_code, is_valid_python_script
+from .utils.response import extract_code, extract_text_up_to_code, is_valid_python_script
 
 SYNTHESIS_PROMPT_INTRO = (
     "You are a Kaggle grandmaster and senior machine learning engineer. Your "
     "job is to use live web search when useful, study the strongest successful "
     "AIDE solution scripts, and produce one coherent Python solution that "
-    "combines the best compatible ideas. Return only the Python code."
+    "combines the best compatible ideas."
 )
 SYNTHESIS_PREPROCESS_PROMPT_INTRO = (
     "You are a Kaggle grandmaster and senior machine learning engineer. Your "
     "job is to study the strongest successful AIDE preprocess functions for a "
     "fixed AutoGluon wrapper and produce one coherent, leakage-safe "
-    "preprocess(df) function that combines the best compatible feature ideas. "
-    "Return only the Python function code."
+    "preprocess(df) function that combines the best compatible feature ideas."
 )
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
 TARGET_LEAKAGE_PATTERNS = (
@@ -524,16 +523,21 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "categorical interactions or frequency encodings useful to "
             "AutoGluon.\n\n"
             "# Output contract\n"
-            "Return only Python code defining exactly one top-level function: "
+            "Return the same two-part structure as ordinary AIDE code generation: "
+            "first a short natural-language design paragraph, then exactly one "
+            "fenced Python code block. The design paragraph should be 2-4 "
+            "sentences describing the feature-engineering strategy and why it is "
+            "different from the source candidates. The code block must define "
+            "exactly one top-level function: "
             "`def preprocess(df: pd.DataFrame) -> pd.DataFrame`. Do not include "
             "imports, helper functions, top-level constants, executable top-level "
-            "statements, markdown fences, prose, JSON, explanations, titles, or "
-            "comments outside the function. `pd` is already available from the "
-            "fixed wrapper, and `np` is also available. Nested helper functions "
-            "inside preprocess are allowed only when they keep the implementation "
-            "clear and deterministic. Do not read files, write files, train "
-            "models, call AutoGluon, create validation splits, or save "
-            "submissions. The fixed AIDE wrapper handles all model training, "
+            "statements, JSON, extra explanations, titles, or comments outside "
+            "the design paragraph and code block. `pd` is already available from "
+            "the fixed wrapper, and `np` is also available. Nested helper "
+            "functions inside preprocess are allowed only when they keep the "
+            "implementation clear and deterministic. Do not read files, write "
+            "files, train models, call AutoGluon, create validation splits, or "
+            "save submissions. The fixed AIDE wrapper handles all model training, "
             "metric reporting, and submission generation.\n\n"
             "# Data contract\n"
             "`df` contains concatenated train features followed by Kaggle "
@@ -585,15 +589,20 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         "competition-specific or closely related modeling tactics before "
         "writing the script.\n\n"
         "# Output contract\n"
-        "Return only Python code. Do not include markdown fences, prose, JSON, "
-        "explanations, titles, or comments outside the code. The code must read "
-        "all inputs from ./input, print a hold-out or cross-validation metric, "
-        "and save the final test predictions as ./working/submission.csv when "
-        "test data exists. The script must be executable as a single file within "
-        "the configured AIDE timeout. Design the implementation for strong time "
-        "and memory efficiency: avoid unnecessary full-data copies, unbounded "
-        "feature explosions, oversized intermediate objects, and excessively "
-        "expensive model searches.\n\n"
+        "Return the same two-part structure as ordinary AIDE code generation: "
+        "first a short natural-language design paragraph, then exactly one "
+        "fenced Python code block. The design paragraph should be 2-4 sentences "
+        "describing the modeling strategy and why it is different from the source "
+        "candidates. The code block must contain a complete Python script. Do not "
+        "include JSON, extra explanations, titles, or comments outside the design "
+        "paragraph and code block. The code must read all inputs from ./input, "
+        "print a hold-out or cross-validation metric, and save the final test "
+        "predictions as ./working/submission.csv when test data exists. The "
+        "script must be executable as a single file within the configured AIDE "
+        "timeout. Design the implementation for strong time and memory "
+        "efficiency: avoid unnecessary full-data copies, unbounded feature "
+        "explosions, oversized intermediate objects, and excessively expensive "
+        "model searches.\n\n"
         "# Leakage rules\n"
         "Do not use target leakage. Do not use future PitStop values, next-lap "
         "PitStop reconstruction, shift(-1) on PitStop, next_PitStop-like "
@@ -652,6 +661,14 @@ def parse_synthesis_code(raw_response: str) -> str:
     raise ValueError("Codex synthesis response did not contain valid Python code.")
 
 
+def parse_synthesis_response(raw_response: str) -> tuple[str, str]:
+    code = parse_synthesis_code(raw_response)
+    plan = extract_text_up_to_code(raw_response).strip()
+    if not plan:
+        plan = "External Codex synthesis generated a new root solution."
+    return plan, code
+
+
 def run_synthesis_checkpoint(
     *,
     cfg: Config,
@@ -698,6 +715,7 @@ def run_synthesis_checkpoint(
     stdout = ""
     error: str | None = None
     code: str | None = None
+    plan: str | None = None
     try:
         completed = runner(
             command,
@@ -731,6 +749,9 @@ def run_synthesis_checkpoint(
     if error is None:
         try:
             if context.get("agent_mode") == AUTOGLUON_PREPROCESS_MODE:
+                plan = extract_text_up_to_code(raw_response).strip()
+                if not plan:
+                    plan = "External Codex synthesis generated a new preprocess root."
                 preprocess_source = extract_preprocess_source(raw_response)
                 columns = infer_sample_submission_columns(
                     Path(cfg.workspace_dir) / "input"
@@ -741,7 +762,7 @@ def run_synthesis_checkpoint(
                 )
                 code = build_autogluon_wrapper(preprocess_source, cfg)
             else:
-                code = parse_synthesis_code(raw_response)
+                plan, code = parse_synthesis_response(raw_response)
                 _validate_synthesis_code_for_injection(code)
             (checkpoint_dir / "response.py").write_text(code, encoding="utf-8")
         except ValueError as exc:
@@ -756,6 +777,7 @@ def run_synthesis_checkpoint(
         "exit_code": exit_code,
         "duration_seconds": duration,
         "raw_response": raw_response,
+        "plan": plan,
         "code": code,
         "stderr": stderr,
         "error": error,
@@ -856,6 +878,15 @@ def _failed_checkpoint_code(checkpoint: Path) -> str:
     return "# Failed synthesis checkpoint did not produce code.\n"
 
 
+def _checkpoint_plan(checkpoint: Path, *, fallback_step: int) -> str:
+    response = _read_json(checkpoint / "response.json")
+    if isinstance(response, dict):
+        plan = response.get("plan")
+        if isinstance(plan, str) and plan.strip():
+            return plan.strip()
+    return f"{SYNTHESIS_PLAN_PREFIX} {fallback_step:06d}"
+
+
 def _failed_synthesis_node(checkpoint: Path) -> SynthesisNode | None:
     if _checkpoint_already_recorded(checkpoint):
         return None
@@ -930,7 +961,10 @@ class SynthesisAdvisor:
                 return _failed_synthesis_node(ready_checkpoint)
             return SynthesisNode(
                 node=Node(
-                    plan=f"{SYNTHESIS_PLAN_PREFIX} {checkpoint_step:06d}",
+                    plan=_checkpoint_plan(
+                        ready_checkpoint,
+                        fallback_step=checkpoint_step,
+                    ),
                     code=code,
                 ),
                 completed_steps=checkpoint_step,
@@ -942,6 +976,7 @@ class SynthesisAdvisor:
 
         checkpoint_dir = checkpoint_dir_for(self.cfg, completed_steps)
         status = _checkpoint_status(checkpoint_dir)
+        plan: str | None = None
         if status == "injected":
             return None
         if status == "failed":
@@ -969,12 +1004,17 @@ class SynthesisAdvisor:
             if result["status"] != "ready":
                 return _failed_synthesis_node(Path(result["checkpoint_dir"]))
             code = result["response"]["code"]
+            plan = result["response"].get("plan")
         else:
             return None
 
         return SynthesisNode(
             node=Node(
-                plan=f"{SYNTHESIS_PLAN_PREFIX} {completed_steps:06d}",
+                plan=(
+                    plan.strip()
+                    if plan
+                    else _checkpoint_plan(checkpoint_dir, fallback_step=completed_steps)
+                ),
                 code=code,
             ),
             completed_steps=completed_steps,
