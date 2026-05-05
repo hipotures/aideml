@@ -120,9 +120,8 @@ agent:
         validation_strategy: holdout
         hyperparameters:
           GBM:
-            - device: cuda
-              ag_args_fit:
-                num_gpus: 1
+            - ag_args_fit:
+                num_gpus: 0
           CAT:
             - task_type: GPU
               devices: "0"

@@ -198,6 +198,26 @@ For the CUDA build described above, the AIDE profile must explicitly set:
 device: cuda
 ```
 
+However, for this F1 pit-stop task the CUDA backend is not a good default for
+LightGBM inside AutoGluon:
+
+- the full dataset with native pandas categorical columns can crash with:
+
+  ```text
+  [LightGBM] [Fatal] [CUDA] an illegal memory access was encountered
+  ```
+
+- this matches the upstream LightGBM CUDA bug report:
+  <https://github.com/lightgbm-org/LightGBM/issues/6512>
+- lowering `max_bin` enough to avoid the crash, for example to `15`, made the
+  standalone AutoGluon `GBM` smoke test train successfully, but with much worse
+  validation quality;
+- CPU LightGBM remains strong for this dataset, with observed AutoGluon
+  validation around `0.9501` for a CPU `LightGBM_r131_BAG_L2` run.
+
+So the practical AIDE profile should keep LightGBM on CPU while using GPU for
+CatBoost and XGBoost.
+
 The `full_boost_gpu` profile in `aide/utils/config.yaml` therefore uses:
 
 ```yaml
@@ -209,9 +229,8 @@ full_boost_gpu:
   validation_strategy: holdout
   hyperparameters:
     GBM:
-      - device: cuda
-        ag_args_fit:
-          num_gpus: 1
+      - ag_args_fit:
+          num_gpus: 0
     CAT:
       - task_type: GPU
         devices: "0"
@@ -229,17 +248,27 @@ full_boost_gpu:
     auto_stack: false
 ```
 
-The important part for LightGBM is:
+The important part for LightGBM in the production profile is:
+
+```yaml
+GBM:
+  - ag_args_fit:
+      num_gpus: 0
+```
+
+If you explicitly want to test the CUDA backend anyway, use:
 
 ```yaml
 GBM:
   - device: cuda
+    max_bin: 15
     ag_args_fit:
       num_gpus: 1
 ```
 
-Without `device: cuda`, AutoGluon would try `device: gpu`, which expects an
-OpenCL-enabled LightGBM build.
+Do not use that as the default quality profile unless it is revalidated on the
+target dataset, because it traded stability for a large score drop in the local
+smoke test.
 
 ## AutoGluon smoke test
 
