@@ -318,6 +318,11 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
 
     assert prompt.startswith(SYNTHESIS_PREPROCESS_PROMPT_INTRO)
     assert not prompt.startswith(SYNTHESIS_PROMPT_INTRO)
+    assert "Internal synthesis procedure" in prompt
+    assert "Reject trivial synthesis" in prompt
+    assert "kaggle_public_score as the strongest generalization signal" in prompt
+    assert "Avoid feature bloat" in prompt
+    assert "F1 driver will pit on the next lap" in prompt
     assert "def preprocess(df: pd.DataFrame)" in prompt
     assert "Return only Python code defining exactly one top-level function" in prompt
     assert "Do not include imports, helper functions, top-level constants" in prompt
