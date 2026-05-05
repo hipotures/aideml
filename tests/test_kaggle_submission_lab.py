@@ -364,3 +364,32 @@ def test_render_registry_table_includes_remote_only_submissions(tmp_path):
     assert "20260504" in output
     assert "submission_autogluon.csv" in output
     assert "Ensemble Weights" not in output
+
+
+def test_render_registry_table_parses_remote_only_aide_description(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+
+    class FakeRemote:
+        file_name = "sub_20260505T204454_step--1_node-profile-_sha-165e7caae1_cv-0.95100.csv"
+        description = (
+            "cv=0.95100 | run=2-remote-server-run | step=-1 | "
+            "aide_ts=20260505T204454 | node=profile- | sha=165e7caae1"
+        )
+        status = "COMPLETE"
+        public_score = "0.95072"
+        date = "2026-05-05T20:44:54Z"
+
+    console = kaggle_submission_lab.Console(record=True, width=180, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(console, registry, [FakeRemote()])
+
+    output = console.export_text()
+    assert "0.95100" in output
+    assert "0.95072" in output
+    assert "2-remote-server-run" in output
+    assert "20260505" in output
+    assert "165e7caae1" in output
+    assert "sub_20260505T204454" not in output

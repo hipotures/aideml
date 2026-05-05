@@ -142,7 +142,6 @@ agent:
         presets: best
         time_limit: 1800
         use_gpu: true
-        validation_strategy: holdout
         hyperparameters:
           GBM:
             - ag_args_fit:

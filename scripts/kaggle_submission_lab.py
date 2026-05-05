@@ -508,6 +508,8 @@ def _remote_display_rows(
     }
     rows = []
     for remote in remote_submissions:
+        description = smart._remote_attr(remote, "description")
+        parsed = smart.parse_submission_description(description)
         remote_ref, remote_timestamp, remote_file = _remote_identity(remote)
         if remote_ref is not None and remote_ref in known_refs:
             continue
@@ -518,15 +520,16 @@ def _remote_display_rows(
 
         rows.append(
             {
-                "local_score": None,
+                "local_score": smart._parse_public_score(parsed.get("cv")),
                 "public_score": smart._remote_attr(remote, "public_score"),
                 "remote_status": smart._status_to_string(
                     smart._remote_attr(remote, "status")
                 ),
-                "run": str(smart._remote_attr(remote, "file_name") or "-"),
-                "step": None,
-                "date": smart._remote_attr(remote, "date"),
-                "sha256": None,
+                "run": parsed.get("run")
+                or str(smart._remote_attr(remote, "file_name") or "-"),
+                "step": parsed.get("step"),
+                "date": parsed.get("timestamp") or smart._remote_attr(remote, "date"),
+                "sha256": parsed.get("sha"),
             }
         )
     return rows
