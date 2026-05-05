@@ -7,6 +7,7 @@ The journal is the core datastructure in AIDE that contains:
 ...
 """
 
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -16,6 +17,13 @@ from dataclasses_json import DataClassJsonMixin
 from .interpreter import ExecutionResult
 from .utils.metric import MetricValue
 from .utils.response import trim_long_string
+
+
+def _summary_analysis_text(analysis: str | None) -> str:
+    text = str(analysis or "")
+    if text.startswith("AutoGluon preprocess wrapper completed"):
+        return "AutoGluon preprocess wrapper completed."
+    return re.sub(r"\s+using presets=[^.]+", "", text)
 
 
 @dataclass(eq=False)
@@ -204,7 +212,7 @@ class Journal(DataClassJsonMixin):
             summary_part = f"Design: {n.plan}\n"
             if include_code:
                 summary_part += f"Code: {n.code}\n"
-            summary_part += f"Results: {n.analysis}\n"
+            summary_part += f"Results: {_summary_analysis_text(n.analysis)}\n"
             summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)

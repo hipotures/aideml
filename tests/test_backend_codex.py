@@ -18,6 +18,8 @@ def test_codex_backend_uses_cli_with_reasoning_effort(tmp_path, monkeypatch):
     def fake_run(cmd, **kwargs):
         seen["cmd"] = cmd
         seen["stdin"] = kwargs["input"]
+        response_path = cmd[cmd.index("--output-last-message") + 1]
+        assert response_path == str(tmp_path / "response_raw.txt")
         (tmp_path / "response_raw.txt").write_text("answer")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
@@ -56,6 +58,10 @@ def test_codex_backend_parses_schema_response(tmp_path, monkeypatch):
 
     def fake_run(cmd, **kwargs):
         assert "--output-schema" in cmd
+        assert cmd[cmd.index("--output-schema") + 1] == str(tmp_path / "schema.json")
+        assert cmd[cmd.index("--output-last-message") + 1] == str(
+            tmp_path / "response_raw.txt"
+        )
         (tmp_path / "response_raw.txt").write_text('{"is_bug": false, "metric": 0.9}')
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 

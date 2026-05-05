@@ -20,14 +20,19 @@ def _cfg(tmp_path: Path):
 def test_journal_summary_formats_validation_metric_to_five_decimals():
     journal = Journal()
     node = Node(code="print('ok')", plan="plan")
-    node.analysis = "AutoGluon preprocess wrapper completed"
+    node.analysis = (
+        "AutoGluon preprocess wrapper completed with roc_auc=0.950479 "
+        "using presets=medium_quality."
+    )
     node.metric = MetricValue(0.9504787907447247, maximize=True)
     journal.append(node)
 
     summary = journal.generate_summary()
 
+    assert "Results: AutoGluon preprocess wrapper completed." in summary
     assert "Validation Metric: 0.95048" in summary
     assert "0.9504787907447247" not in summary
+    assert "presets=medium_quality" not in summary
 
 
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(

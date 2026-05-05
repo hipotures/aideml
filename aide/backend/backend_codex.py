@@ -30,8 +30,8 @@ def _codex_command(
     reasoning_effort: str | None,
     work_dir: Path,
     output_schema: bool,
-    schema_file: str,
-    response_file: str,
+    schema_path: Path,
+    response_path: Path,
 ) -> list[str]:
     command = [
         "codex",
@@ -49,8 +49,8 @@ def _codex_command(
     if reasoning_effort is not None:
         command.extend(["-c", f'model_reasoning_effort="{reasoning_effort}"'])
     if output_schema:
-        command.extend(["--output-schema", schema_file])
-    command.extend(["--output-last-message", response_file, "--json", "-"])
+        command.extend(["--output-schema", str(schema_path)])
+    command.extend(["--output-last-message", str(response_path), "--json", "-"])
     return command
 
 
@@ -103,8 +103,10 @@ def query(
         work_dir.mkdir(parents=True, exist_ok=True)
         schema_file = _prefixed(log_prefix, "schema.json")
         response_file = _prefixed(log_prefix, "response_raw.txt")
+        schema_path = work_dir / schema_file
+        response_path = work_dir / response_file
         if func_spec is not None:
-            (work_dir / schema_file).write_text(
+            schema_path.write_text(
                 json.dumps(func_spec.json_schema, indent=2),
                 encoding="utf-8",
             )
@@ -113,8 +115,8 @@ def query(
             reasoning_effort=reasoning_effort,
             work_dir=work_dir,
             output_schema=func_spec is not None,
-            schema_file=schema_file,
-            response_file=response_file,
+            schema_path=schema_path,
+            response_path=response_path,
         )
         _write_codex_profile(
             work_dir=work_dir,
@@ -146,7 +148,7 @@ def query(
                 f"Codex CLI failed with exit code {result.returncode}: "
                 f"{result.stderr.strip()}"
             )
-        raw_output = (work_dir / response_file).read_text(encoding="utf-8")
+        raw_output = response_path.read_text(encoding="utf-8")
     finally:
         if temp_context is not None:
             temp_context.__exit__(None, None, None)

@@ -4,7 +4,6 @@ import ast
 import json
 import pprint
 import re
-import os
 from pathlib import Path
 from typing import Any
 
@@ -514,10 +513,7 @@ def main() -> None:
     if artifact_submission_path.resolve() != submission_path.resolve():
         print(f"AIDE AutoGluon: artifact submission saved to {{artifact_submission_path}}", flush=True)
 
-    summary = (
-        f"AutoGluon preprocess wrapper completed with {{eval_metric}}="
-        f"{{metric_value:.6f}} using presets={{AIDE_AG_CONFIG['presets']}}."
-    )
+    summary = "AutoGluon preprocess wrapper completed."
     print(f"Validation {{eval_metric}}: {{metric_value:.6f}}")
     print("Submission saved successfully.")
     print(RESULT_MARKER + " " + json.dumps({{
