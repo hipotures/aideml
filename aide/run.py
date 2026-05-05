@@ -1,5 +1,6 @@
 import atexit
 import datetime as dt
+import json
 import logging
 import os
 import queue
@@ -227,6 +228,7 @@ def journal_to_rich_tree(
     active_stage: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
+    synthesis_node_ids: set[str] | None = None,
 ):
     if show_invalid_submission_branches:
         best_node = journal.get_best_node()
@@ -263,6 +265,8 @@ def journal_to_rich_tree(
         )
 
     def is_synthesis_root(node: Node) -> bool:
+        if synthesis_node_ids and node.id in synthesis_node_ids:
+            return True
         return node.parent is None and str(node.plan or "").startswith(
             SYNTHESIS_PLAN_PREFIX
         )
@@ -335,12 +339,17 @@ def _visible_best_node(
     return max(visible_good_nodes, key=lambda node: node.metric, default=None)
 
 
-def _tree_node_label(node: Node, *, best_node: Node | None) -> Text:
+def _tree_node_label(
+    node: Node,
+    *,
+    best_node: Node | None,
+    synthesis_node_ids: set[str] | None = None,
+) -> Text:
     if node.is_terminal_failure:
         return Text("failed", style="red")
 
-    synthesis_root = node.parent is None and str(node.plan or "").startswith(
-        SYNTHESIS_PLAN_PREFIX
+    synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
+        node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
     )
     baseline_root = node.parent is None and str(node.plan or "").startswith(
         BASELINE_PLAN_PREFIX
@@ -388,6 +397,23 @@ def _tree_active_placeholder_line(
     return Text(indicator, style=style)
 
 
+def synthesis_injected_node_ids(log_dir: Path | str) -> set[str]:
+    synthesis_dir = Path(log_dir) / "synthesis"
+    if not synthesis_dir.exists():
+        return set()
+
+    node_ids: set[str] = set()
+    for status_path in synthesis_dir.glob("checkpoint-*/status.json"):
+        try:
+            status = json.loads(status_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        node_id = status.get("injected_node_id")
+        if isinstance(node_id, str) and node_id:
+            node_ids.add(node_id)
+    return node_ids
+
+
 def build_tree_view(
     journal: Journal,
     *,
@@ -395,6 +421,7 @@ def build_tree_view(
     active_stage: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
+    synthesis_node_ids: set[str] | None = None,
 ) -> TreeView:
     items: list[TreeViewItem] = [
         TreeViewItem(
@@ -459,7 +486,13 @@ def build_tree_view(
         )
         prefix += "└── " if is_last else "├── "
         line = Text(prefix)
-        line.append_text(_tree_node_label(node, best_node=best_node))
+        line.append_text(
+            _tree_node_label(
+                node,
+                best_node=best_node,
+                synthesis_node_ids=synthesis_node_ids,
+            )
+        )
         append_item(
             TreeViewItem(
                 node.id,
@@ -1349,6 +1382,7 @@ def run(argv: list[str] | None = None):
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
             ),
+            synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
         )
 
     def generate_live():

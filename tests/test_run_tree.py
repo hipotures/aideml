@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 
 import pytest
 from rich.console import Console
@@ -17,6 +18,7 @@ from aide.run import (
     render_tree_view,
     run_with_live_refresh,
     stage_status_message,
+    synthesis_injected_node_ids,
 )
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
@@ -226,6 +228,27 @@ def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
 
     assert "◆ 0.94600" in output
     assert "synthesis)" not in output
+    assert "* 0.94700" in output
+    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+
+
+def test_journal_tree_marks_status_recorded_synthesis_root_blue():
+    journal = Journal()
+    root = Node(
+        code="print('synth')",
+        plan="This synthesis keeps the strongest feature families.",
+    )
+    root.metric = MetricValue(0.946, maximize=True)
+    root.is_buggy = False
+    best = _good_node(0.947)
+    journal.append(root)
+    journal.append(best)
+
+    tree = journal_to_rich_tree(journal, synthesis_node_ids={root.id})
+    output = _render_text(tree)
+    ansi = _render_ansi(tree)
+
+    assert "◆ 0.94600" in output
     assert "* 0.94700" in output
     assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
 
@@ -465,6 +488,44 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
 
     assert "◎ 0.95000" in output
     assert "* 0.95100" in output
+
+
+def test_tree_view_marks_status_recorded_synthesis_root_blue():
+    journal = Journal()
+    root = Node(
+        code="print('synth')",
+        plan="This synthesis keeps the strongest feature families.",
+    )
+    root.metric = MetricValue(0.946, maximize=True)
+    root.is_buggy = False
+    best = _good_node(0.947)
+    journal.append(root)
+    journal.append(best)
+
+    view = build_tree_view(journal, synthesis_node_ids={root.id})
+    rendered = render_tree_view(
+        view,
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    )
+    output = _render_text(rendered)
+    ansi = _render_ansi(rendered)
+
+    assert "◆ 0.94600" in output
+    assert "* 0.94700" in output
+    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+
+
+def test_synthesis_injected_node_ids_reads_checkpoint_status(tmp_path):
+    checkpoint = tmp_path / "synthesis" / "checkpoint-000003"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text(
+        json.dumps({"injected_node_id": "node-123"}),
+        encoding="utf-8",
+    )
+
+    assert synthesis_injected_node_ids(tmp_path) == {"node-123"}
 
 
 def test_tree_view_renders_root_active_placeholder_as_tree_child():
