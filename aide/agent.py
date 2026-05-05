@@ -109,6 +109,7 @@ class Agent:
         self.journal = journal
         self.data_preview: str | None = None
         self.active_parent_node: Node | None = None
+        self.active_node: Node | None = None
         self.active_stage: str | None = None
         self.active_stage_started_at: float | None = None
 
@@ -565,6 +566,7 @@ class Agent:
     def execute_node(
         self, node: Node, exec_callback: ExecCallbackType
     ) -> ExecutionResult:
+        self.active_node = node
         self.set_active_stage("executing")
         return exec_callback(node.code, True)
 
@@ -577,6 +579,7 @@ class Agent:
 
     def clear_active_step(self) -> None:
         self.active_parent_node = None
+        self.active_node = None
         self.set_active_stage(None)
 
     def step(self, exec_callback: ExecCallbackType):

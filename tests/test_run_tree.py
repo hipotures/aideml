@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 from rich.console import Console
 
@@ -526,6 +528,37 @@ def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
 
     assert "Synthesis: ✓ 000015" in output
     assert "Agent workspace directory" in output
+
+
+def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):
+    active_node = Node(
+        code="print('running')",
+        plan="active",
+        ctime=dt.datetime(2026, 5, 5, 21, 18, 50).timestamp(),
+    )
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            active_artifact_dir=(
+                tmp_path / "logs" / "2-example-run" / "artifacts" / "20260505T211850"
+            ),
+        )
+    )
+
+    assert "Experiment log directory" in output
+    assert "Current artifact directory" in output
+    assert "▶ logs/2-example-run/artifacts/20260505T211850" in output
+    assert output.index("Experiment log directory") < output.index(
+        "Current artifact directory"
+    )
+    assert active_node.ctime
 
 
 def test_last_error_lines_uses_latest_bug_and_skips_execution_time():

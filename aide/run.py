@@ -637,11 +637,18 @@ def _relative_display_path(path: Path, base_path: Path) -> str:
     return str(relative_path)
 
 
-def build_path_summary(log_dir: Path, workspace_dir: Path) -> Group:
+def build_path_summary(
+    log_dir: Path,
+    workspace_dir: Path,
+    *,
+    active_artifact_dir: Path | None = None,
+) -> Group:
     path_entries = [
         ("Agent workspace directory", workspace_dir),
         ("Experiment log directory", log_dir),
     ]
+    if active_artifact_dir is not None:
+        path_entries.append(("Current artifact directory", active_artifact_dir))
     resolved_paths = [path.resolve() for _, path in path_entries]
     base_path = Path(os.path.commonpath([str(path) for path in resolved_paths]))
 
@@ -875,6 +882,7 @@ def build_run_data(
     resource_history: ResourceHistory | None = None,
     resource_active: bool = False,
     model_settings: list[ModelSetting] | None = None,
+    active_artifact_dir: Path | None = None,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -890,7 +898,16 @@ def build_run_data(
     model_summary = build_model_summary(model_settings)
     if model_summary is not None:
         lines.extend(["", model_summary])
-    lines.extend(["", build_path_summary(log_dir, workspace_dir)])
+    lines.extend(
+        [
+            "",
+            build_path_summary(
+                log_dir,
+                workspace_dir,
+                active_artifact_dir=active_artifact_dir,
+            ),
+        ]
+    )
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     if resource_active:
         lines.extend([Rule(style="dim"), build_resource_summary(resource_history)])
@@ -1368,6 +1385,11 @@ def run(argv: list[str] | None = None):
                     resource_history=resource_history,
                     resource_active=resource_active,
                     model_settings=model_settings_for_run(cfg),
+                    active_artifact_dir=(
+                        _node_artifact_dir(cfg, agent.active_node)
+                        if agent.active_node is not None
+                        else None
+                    ),
                 ),
                 (0, 1, 0, 1),
             ),
