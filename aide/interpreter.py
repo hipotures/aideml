@@ -124,6 +124,7 @@ class Interpreter:
         self.format_tb_ipython = format_tb_ipython
         self.agent_file_name = agent_file_name
         self.memory_limit_gb = memory_limit_gb
+        self.output_collection_timeout = 5.0
         self.process: Process = None  # type: ignore
 
     def _set_child_memory_limit(self) -> None:
@@ -369,15 +370,24 @@ class Interpreter:
         while not self.result_outq.empty() or not output or output[-1] != "<|EOF|>":
             try:
                 # Add 5-second timeout for output collection
-                if time.time() - start_collect > 5:
+                if time.time() - start_collect > self.output_collection_timeout:
                     logger.warning("Output collection timed out")
                     break
                 output.append(self.result_outq.get(timeout=1))
             except queue.Empty:
                 continue
-        output.pop()  # remove the EOF marker
+        received_eof = bool(output and output[-1] == "<|EOF|>")
+        if received_eof:
+            output.pop()  # remove the EOF marker
 
         e_cls_name, exc_info, exc_stack = state[1:]
+        if not received_eof:
+            msg = "REPL output stream ended before EOF marker"
+            output.append(f"RuntimeError: {msg}\n")
+            if e_cls_name is None:
+                e_cls_name = "RuntimeError"
+                exc_info = {"args": [msg]}
+                exc_stack = None
 
         if e_cls_name == "TimeoutError":
             output.append(

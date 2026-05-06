@@ -1,4 +1,5 @@
 import os
+import queue
 import resource
 import signal
 
@@ -35,6 +36,8 @@ class FakeResultQueue:
         return not self.results
 
     def get(self, timeout=None):
+        if not self.results:
+            raise queue.Empty
         return self.results.pop(0)
 
 
@@ -111,6 +114,24 @@ def test_resource_callback_receives_execution_process_snapshot(tmp_path, monkeyp
 
     assert result.exc_type is None
     assert snapshots == [snapshot]
+
+
+def test_missing_eof_marker_returns_execution_error(tmp_path):
+    interpreter = _interpreter_with_queues(
+        tmp_path,
+        [
+            ("state:ready",),
+            ("state:finished", None, None, None),
+        ],
+    )
+    interpreter.result_outq = FakeResultQueue([])
+    interpreter.output_collection_timeout = 0.0
+
+    result = interpreter.run("print('ok')", reset_session=False)
+
+    assert result.exc_type == "RuntimeError"
+    assert result.exc_info == {"args": ["REPL output stream ended before EOF marker"]}
+    assert "REPL output stream ended before EOF marker" in "".join(result.term_out)
 
 
 def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeypatch):
