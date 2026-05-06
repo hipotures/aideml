@@ -375,7 +375,7 @@ def _tree_node_label(
     else:
         label.append("● ", style="green")
 
-    metric_style = "bold green" if node is best_node else "green"
+    metric_style = "bold yellow" if node is best_node else "green"
     metric_text = f"{node.metric.value:.5f}"
     label.append(metric_text, style=metric_style)
     return label

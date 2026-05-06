@@ -490,6 +490,26 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
     assert "* 0.95100" in output
 
 
+def test_tree_view_colors_best_metric_yellow_like_star():
+    journal = Journal()
+    best = _good_node(0.951)
+    journal.append(_good_node(0.950))
+    journal.append(best)
+
+    tree = render_tree_view(
+        build_tree_view(journal),
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    )
+    output = _render_text(tree)
+    ansi = _render_ansi(tree)
+
+    assert "* 0.95100" in output
+    assert "\x1b[1;33m* " in ansi
+    assert "\x1b[1;33m0.95100" in ansi
+
+
 def test_tree_view_marks_status_recorded_synthesis_root_blue():
     journal = Journal()
     root = Node(
