@@ -207,18 +207,26 @@ def _completed_public_score_for_node(
 
 def _solution_payload(
     *,
+    cfg: Config,
     registry_entries: list[dict[str, Any]],
     run_id: str,
     node: Node,
     preprocess_only: bool = False,
 ) -> dict[str, Any]:
     code = node.code
-    if preprocess_only:
-        code = extract_preprocess_source(code)
+    source_metadata = _source_metadata_for_node(cfg=cfg, run_id=run_id, node=node)
     payload = {
+        **source_metadata,
         "local_cv_score": _prompt_score(_metric_value(node)),
-        "code": code,
     }
+    if preprocess_only:
+        payload["response"] = _preprocess_candidate_response(
+            cfg=cfg,
+            run_id=run_id,
+            node=node,
+        )
+    else:
+        payload["code"] = code
     public_score = _completed_public_score_for_node(
         registry_entries=registry_entries,
         run_id=run_id,
@@ -227,6 +235,124 @@ def _solution_payload(
     if public_score is not None:
         payload["kaggle_public_score"] = _prompt_score(public_score)
     return payload
+
+
+def _read_text_if_exists(path: Path) -> str | None:
+    try:
+        if path.exists():
+            text = path.read_text(encoding="utf-8")
+            return text if text.strip() else None
+    except OSError:
+        return None
+    return None
+
+
+def _node_timestamp(node: Node) -> str:
+    return _timestamp_from_ctime(node.ctime)
+
+
+def _synthesis_status_for_node(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+) -> tuple[Path, dict[str, Any]] | None:
+    synthesis_dir = Path(cfg.log_dir).resolve().parent / run_id / "synthesis"
+    if not synthesis_dir.exists():
+        return None
+
+    for status_path in sorted(synthesis_dir.glob("checkpoint-*/status.json")):
+        status = _read_json(status_path)
+        if not isinstance(status, dict):
+            continue
+        node_id_matches = node.id in {
+            status.get("recorded_node_id"),
+            status.get("injected_node_id"),
+        }
+        node_step_matches = node.step is not None and str(node.step) in {
+            str(status.get("recorded_node_step")),
+            str(status.get("injected_node_step")),
+        }
+        if not node_id_matches and not node_step_matches:
+            continue
+        return status_path, status
+    return None
+
+
+def _checkpoint_step_from_path(checkpoint_dir: Path) -> int | None:
+    match = re.search(r"checkpoint-(\d+)$", checkpoint_dir.name)
+    return int(match.group(1)) if match else None
+
+
+def _source_metadata_for_node(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    synthesis_status = _synthesis_status_for_node(cfg=cfg, run_id=run_id, node=node)
+    if synthesis_status is not None:
+        status_path, _status = synthesis_status
+        metadata["source_kind"] = "synthesis"
+        checkpoint_step = _checkpoint_step_from_path(status_path.parent)
+        if checkpoint_step is not None:
+            metadata["source_checkpoint_step"] = checkpoint_step
+    return metadata
+
+
+def _raw_synthesis_response_for_node(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+) -> str | None:
+    synthesis_status = _synthesis_status_for_node(cfg=cfg, run_id=run_id, node=node)
+    if synthesis_status is None:
+        return None
+    status_path, _status = synthesis_status
+    return _read_text_if_exists(status_path.parent / "response_raw.txt")
+
+
+def _raw_generation_response_for_node(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+) -> str | None:
+    raw_response_path = (
+        Path(cfg.log_dir).resolve().parent
+        / run_id
+        / "artifacts"
+        / _node_timestamp(node)
+        / "response_raw.txt"
+    )
+    return _read_text_if_exists(raw_response_path)
+
+
+def _preprocess_candidate_response(
+    *,
+    cfg: Config,
+    run_id: str,
+    node: Node,
+) -> str:
+    raw_response = _raw_synthesis_response_for_node(
+        cfg=cfg,
+        run_id=run_id,
+        node=node,
+    ) or _raw_generation_response_for_node(
+        cfg=cfg,
+        run_id=run_id,
+        node=node,
+    )
+    if raw_response is not None:
+        return raw_response
+
+    preprocess_source = extract_preprocess_source(node.code)
+    plan = str(node.plan or "").strip()
+    if not plan:
+        return f"```python\n{preprocess_source}\n```\n"
+    return f"{plan}\n\n```python\n{preprocess_source}\n```\n"
 
 
 def _rounded_score(node: Node, score_round_decimals: int) -> float | None:
@@ -421,6 +547,7 @@ def collect_top_synthesis_solutions(
     selected = _prefer_ancestor_for_related_predictions(cfg, selected)
     return [
         _solution_payload(
+            cfg=cfg,
             registry_entries=registry_entries,
             run_id=run_id,
             node=node,
@@ -594,10 +721,15 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "# Context field meanings\n"
             "best_working_solutions contains the highest-scoring preprocess "
             "functions that ran successfully through the fixed AutoGluon wrapper. "
+            "source_kind appears only when a candidate was created by an earlier "
+            "external synthesis checkpoint; use source_kind=synthesis to avoid "
+            "repeating the same prior synthesis strategy. source_checkpoint_step "
+            "identifies that earlier synthesis checkpoint. "
             "local_cv_score is the AutoGluon validation score. kaggle_public_score "
             "is included only when the local submission registry has a completed "
             "Kaggle public leaderboard score for that exact node. Each solution "
-            "also includes code containing only preprocess(df).\n\n"
+            "also includes response, containing the source candidate's design "
+            "paragraph plus a fenced preprocess(df) code block when available.\n\n"
             "# Compact AIDE synthesis context\n"
             f"```json\n{context_json}\n```\n"
         )
@@ -632,7 +764,10 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         "only as a normal current-row historical feature.\n\n"
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring scripts that ran "
-        "successfully. local_cv_score is the AIDE validation score. "
+        "successfully. source_kind appears only when a candidate was created by "
+        "an earlier external synthesis checkpoint. source_checkpoint_step "
+        "identifies that earlier synthesis checkpoint. local_cv_score is the "
+        "AIDE validation score. "
         "kaggle_public_score is included only when the local submission registry "
         "has a completed Kaggle public leaderboard score for that exact node. "
         "Each solution also includes code. Use these examples to identify strong "

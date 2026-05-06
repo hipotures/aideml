@@ -96,7 +96,9 @@ def test_collect_top_synthesis_solutions_uses_best_scored_nodes_across_runs(tmp_
         "print('current')",
         "print('weak')",
     ]
-    assert all(set(solution) == {"local_cv_score", "code"} for solution in solutions)
+    assert all("source_kind" not in solution for solution in solutions)
+    assert all("source_run_id" not in solution for solution in solutions)
+    assert all("source_step" not in solution for solution in solutions)
 
 
 def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_path):
@@ -146,6 +148,92 @@ def test_collect_top_synthesis_solutions_rounds_scores_for_prompt(tmp_path):
     assert solutions[0]["local_cv_score"] == 0.95075
 
 
+def test_collect_top_synthesis_solutions_uses_raw_preprocess_response_when_available(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    journal = Journal()
+    preprocess_source = "def preprocess(df):\n    df = df.copy()\n    return df\n"
+    node = _node(
+        0.91,
+        code=build_autogluon_wrapper(preprocess_source, cfg),
+    )
+    journal.append(node)
+    checkpoint_dir = Path(cfg.log_dir) / "synthesis" / "checkpoint-000015"
+    checkpoint_dir.mkdir(parents=True)
+    (checkpoint_dir / "status.json").write_text(
+        json.dumps(
+            {
+                "status": "injected",
+                "recorded_node_id": node.id,
+                "recorded_node_step": node.step,
+            }
+        )
+    )
+    raw_response = (
+        "This synthesis keeps the useful tyre-age features and prunes aliases.\n\n"
+        "```python\n"
+        f"{preprocess_source}"
+        "```\n"
+    )
+    (checkpoint_dir / "response_raw.txt").write_text(raw_response)
+    registry_path = Path(cfg.log_dir).parent / "submission_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "run": cfg.exp_name,
+                        "step": node.step,
+                        "timestamp": dt.datetime.fromtimestamp(node.ctime).strftime(
+                            "%Y%m%dT%H%M%S"
+                        ),
+                        "node_id": node.id,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.812344",
+                    }
+                ]
+            }
+        )
+    )
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert solutions == [
+        {
+            "source_kind": "synthesis",
+            "source_checkpoint_step": 15,
+            "local_cv_score": 0.91,
+            "kaggle_public_score": 0.81234,
+            "response": raw_response,
+        }
+    ]
+
+
+def test_collect_top_synthesis_solutions_marks_generated_preprocess_candidates(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    journal = Journal()
+    preprocess_source = "def preprocess(df):\n    return df.copy()\n"
+    node = _node(
+        0.88,
+        code=build_autogluon_wrapper(preprocess_source, cfg),
+    )
+    journal.append(node)
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
+
+    assert solutions == [
+        {
+            "local_cv_score": 0.88,
+            "response": f"plan\n\n```python\n{preprocess_source.strip()}\n```\n",
+        }
+    ]
+
+
 def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 5
@@ -162,7 +250,12 @@ def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
 
-    assert solutions == [{"local_cv_score": 0.8, "code": "print('included')"}]
+    assert solutions == [
+        {
+            "local_cv_score": 0.8,
+            "code": "print('included')",
+        }
+    ]
 
 
 def test_collect_top_synthesis_solutions_filters_similar_related_predictions(
@@ -257,7 +350,12 @@ def test_collect_top_synthesis_solutions_excludes_next_pitstop_leakage(tmp_path)
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
 
-    assert solutions == [{"local_cv_score": 0.9, "code": "print('clean model')\n"}]
+    assert solutions == [
+        {
+            "local_cv_score": 0.9,
+            "code": "print('clean model')\n",
+        }
+    ]
 
 
 def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
@@ -343,7 +441,7 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     assert "solution scripts" not in prompt
     assert "live web search" not in prompt
     assert "TabularPredictor" not in prompt
-    assert '"code": "def preprocess' in prompt
+    assert '"response": "plan\\n\\n```python\\ndef preprocess' in prompt
 
 
 def test_parse_synthesis_code_accepts_raw_and_fenced_python():
