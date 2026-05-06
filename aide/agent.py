@@ -15,6 +15,7 @@ from .autogluon_preprocess import (
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
     parse_result_marker,
+    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from .backend import FunctionSpec, query
@@ -278,13 +279,12 @@ class Agent:
             "AutoGluon preprocess mode contract": [
                 "You are writing only the feature preprocessing function for a fixed AutoGluon training wrapper.",
                 "Return a single markdown code block containing exactly one top-level function: def preprocess(df: pd.DataFrame) -> pd.DataFrame.",
-                "The df argument contains concatenated train features followed by Kaggle prediction/test features.",
-                "The target column, id column, and train/test split marker are intentionally not present in df.",
-                "No helper row-id column is exposed to preprocess(df); row order must be preserved.",
-                "Do not create, reference, infer, or use target, id, `__is_train__`, or `__aide_row_id__` as features.",
+                "The df argument contains concatenated train features followed by Kaggle prediction/test features, with only model feature columns present.",
+                "Use only columns visible in the sanitized feature overview or in previous preprocess functions.",
+                "Do not add defensive cleanup for hidden wrapper columns or columns that are not present in preprocess(df).",
                 "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
                 "Do not change row count or reorder rows.",
-                "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only non-target columns.",
+                "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
             ]
         }
 
@@ -295,24 +295,29 @@ class Agent:
         if hints is not None:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
 
+    def _autogluon_unavailable_columns(self) -> list[str]:
+        columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
+        if columns is None:
+            return []
+        return [column for column in columns if column]
+
     def _autogluon_target_column(self) -> str | None:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
         return columns[1] if columns is not None else None
 
+    def _autogluon_prompt_text(self, text: Any) -> str:
+        return sanitize_preprocess_prompt_text(
+            text,
+            unavailable_columns=self._autogluon_unavailable_columns(),
+        )
+
     def _add_autogluon_context(self, prompt: dict[str, Any]) -> None:
-        target_col = self._autogluon_target_column()
-        if target_col is not None:
-            prompt["Fixed AutoGluon wrapper context"] = {
-                "Target column": target_col,
-                "Important": (
-                    "The fixed wrapper removes this target before calling "
-                    "preprocess(df), keeps y_train internally, and adds it back "
-                    "only after preprocessing for AutoGluon training. It also "
-                    "removes the id column and does not expose a train/test marker. "
-                    "preprocess(df) must not reference or create target, id, or "
-                    "split-marker columns."
-                ),
-            }
+        prompt["Fixed AutoGluon wrapper context"] = (
+            "The fixed wrapper passes only model feature columns to preprocess(df). "
+            "Use only columns visible in the sanitized feature overview or in "
+            "previous preprocess functions. Do not add defensive cleanup for "
+            "columns that are not present in preprocess(df)."
+        )
 
     def _wrap_autogluon_preprocess_node(
         self,
@@ -421,7 +426,7 @@ class Agent:
                 "and submission generation. Your job is to design leakage-safe "
                 "feature preprocessing for that runner."
             ),
-            "Task description": self.task_desc,
+            "Task description": self._autogluon_prompt_text(self.task_desc),
             "Memory": self.journal.generate_summary(),
             "Instructions": {},
         }
@@ -437,7 +442,7 @@ class Agent:
         prompt["Instructions"] |= self._prompt_environment
 
         if self.acfg.data_preview:
-            prompt["Data Overview"] = self.data_preview
+            prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
         self._add_research_hints(prompt)
@@ -491,7 +496,7 @@ class Agent:
                 "fixed AutoGluon training wrapper. Keep the wrapper behavior "
                 "unchanged and make one atomic, leakage-safe feature improvement."
             ),
-            "Task description": self.task_desc,
+            "Task description": self._autogluon_prompt_text(self.task_desc),
             "Memory": self.journal.generate_summary(),
             "Previous preprocess function": wrap_code(
                 self._previous_preprocess_source(parent_node)
@@ -544,7 +549,6 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        self._add_autogluon_context(prompt)
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
         return self._new_node(plan=plan, code=code, parent=parent_node)
@@ -556,7 +560,7 @@ class Agent:
                 "fixed AutoGluon training wrapper. Revise only preprocess(df); "
                 "do not write a full model pipeline."
             ),
-            "Task description": self.task_desc,
+            "Task description": self._autogluon_prompt_text(self.task_desc),
             "Previous preprocess function": wrap_code(
                 self._previous_preprocess_source(parent_node)
             ),
@@ -574,8 +578,9 @@ class Agent:
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
 
         if self.acfg.data_preview:
-            prompt["Data Overview"] = self.data_preview
+            prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
+        self._add_autogluon_context(prompt)
         self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
         return self._wrap_autogluon_preprocess_node(

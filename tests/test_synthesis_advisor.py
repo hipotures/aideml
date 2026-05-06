@@ -296,6 +296,9 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
 def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.mode = AGENT_MODE
+    input_dir = Path(cfg.workspace_dir) / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    (input_dir / "sample_submission.csv").write_text("id,PitNextLap\n10,0.0\n")
     journal = Journal()
     journal.append(
         _node(
@@ -312,7 +315,7 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
 
     context = collect_synthesis_context(
         cfg=cfg,
-        task_desc="task",
+        task_desc="Predict `PitNextLap`. The identifier column is `id`.",
         journal=journal,
         completed_steps=15,
     )
@@ -331,6 +334,11 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     assert "Do not include imports, helper functions, top-level constants" in prompt
     assert "`pd` is already available from the fixed wrapper" in prompt
     assert "Do not read files, write files, train models" in prompt
+    assert "PitNextLap" not in prompt
+    assert "__is_train__" not in prompt
+    assert "__aide_row_id__" not in prompt
+    assert "identifier column" not in prompt
+    assert "`id`" not in prompt
     assert "solution scripts" not in prompt
     assert "live web search" not in prompt
     assert "TabularPredictor" not in prompt

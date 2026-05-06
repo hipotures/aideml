@@ -12,6 +12,7 @@ from aide.autogluon_preprocess import (
     parse_result_marker,
     resolve_autogluon_settings,
     resolve_autogluon_included_model_types,
+    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from aide.interpreter import ExecutionResult
@@ -77,6 +78,25 @@ def test_validate_preprocess_source_rejects_row_id_reference():
             "    return df\n",
             target_col="PitNextLap",
         )
+
+
+def test_sanitize_preprocess_prompt_text_removes_unavailable_columns():
+    text = (
+        "Goal: predict `PitNextLap`.\n"
+        "The identifier column is `id`.\n"
+        "TyreLife (float64) has useful signal.\n"
+        "__is_train__ is hidden.\n"
+    )
+
+    sanitized = sanitize_preprocess_prompt_text(
+        text,
+        unavailable_columns=["id", "PitNextLap", "__is_train__"],
+    )
+
+    assert "TyreLife" in sanitized
+    assert "PitNextLap" not in sanitized
+    assert "`id`" not in sanitized
+    assert "__is_train__" not in sanitized
 
 
 def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
@@ -294,7 +314,16 @@ def test_autogluon_unknown_profile_is_rejected(tmp_path):
 
 def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     cfg = _cfg(tmp_path)
-    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    agent = Agent(
+        task_desc="Predict `PitNextLap`. The identifier column is `id`.",
+        cfg=cfg,
+        journal=Journal(),
+    )
+    agent.data_preview = (
+        "PitNextLap (float64) has 2 unique values.\n"
+        "id (int64) has range 1 - 2.\n"
+        "TyreLife (float64) has useful signal.\n"
+    )
     captured = {}
 
     def fake_plan_and_code(prompt):
@@ -312,6 +341,12 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     node = agent._draft()
 
     assert "AutoGluon preprocess mode contract" in captured["prompt"]["Instructions"]
+    prompt_text = str(captured["prompt"])
+    assert "TyreLife" in prompt_text
+    assert "PitNextLap" not in prompt_text
+    assert "`id`" not in prompt_text
+    assert "__is_train__" not in prompt_text
+    assert "__aide_row_id__" not in prompt_text
     assert "TabularPredictor" in node.code
     assert "TyreLife_x2" in node.code
 

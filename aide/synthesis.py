@@ -17,6 +17,7 @@ from .autogluon_preprocess import (
     extract_preprocess_source,
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
+    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from .journal import Journal, Node
@@ -429,6 +430,14 @@ def collect_top_synthesis_solutions(
     ]
 
 
+def _preprocess_unavailable_columns(cfg: Config) -> list[str]:
+    for base_dir in (Path(cfg.workspace_dir) / "input", Path(cfg.data_dir)):
+        columns = infer_sample_submission_columns(base_dir)
+        if columns is not None:
+            return [column for column in columns if column]
+    return []
+
+
 def collect_synthesis_context(
     *,
     cfg: Config,
@@ -437,13 +446,25 @@ def collect_synthesis_context(
     completed_steps: int,
 ) -> dict[str, Any]:
     best_node = journal.get_best_node()
+    task_desc_for_prompt = task_desc
+    data_overview_for_prompt = build_data_overview(cfg)
+    if is_autogluon_preprocess_mode(cfg):
+        unavailable_columns = _preprocess_unavailable_columns(cfg)
+        task_desc_for_prompt = sanitize_preprocess_prompt_text(
+            task_desc,
+            unavailable_columns=unavailable_columns,
+        )
+        data_overview_for_prompt = sanitize_preprocess_prompt_text(
+            data_overview_for_prompt,
+            unavailable_columns=unavailable_columns,
+        )
     return {
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
         "created_at": dt.datetime.now().isoformat(timespec="seconds"),
         "agent_mode": getattr(cfg.agent, "mode", "legacy"),
-        "task_desc": task_desc,
-        "data_overview": build_data_overview(cfg),
+        "task_desc": task_desc_for_prompt,
+        "data_overview": data_overview_for_prompt,
         "metric_direction": (
             None
             if best_node is None or best_node.metric is None
@@ -496,7 +517,7 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "robust consensus ideas, merge similar ideas into canonical features, "
             "add divergent ideas only when they provide different signal, add new "
             "features only as deterministic transformations of available columns, "
-            "and drop duplicate aliases, row-order hacks, target-like features, "
+            "and drop duplicate aliases, row-order hacks, leakage-prone features, "
             "and pure cosmetic changes.\n\n"
             "# Reject trivial synthesis\n"
             "A valid synthesis must include a strategy-level change compared with "
@@ -541,17 +562,18 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "metric reporting, and submission generation.\n\n"
             "# Data contract\n"
             "`df` contains concatenated train features followed by Kaggle "
-            "prediction/test features. The target column, id column, and train/test "
-            "split marker are intentionally not present in df. No helper row-id "
-            "column is exposed to preprocess(df). Row order must be preserved. "
+            "prediction/test features, with only model feature columns present. "
+            "Use only columns visible in the sanitized feature overview or in "
+            "candidate preprocess functions. Do not add defensive cleanup for "
+            "hidden wrapper columns or columns that are not present in "
+            "preprocess(df). Row order must be preserved. "
             "Return a DataFrame with the same row count. Do not infer train/test "
-            "split from row counts, index ranges, ids, sorted order, or hidden "
+            "split from row counts, index ranges, sorted order, or hidden "
             "assumptions.\n\n"
             "# Leakage rules\n"
-            "Do not use target leakage. Do not use the target column to create "
-            "features, encodings, filters, groups, or labels, and do not create "
-            "the target column inside preprocess(df). Do not create, reference, "
-            "infer, or use id, `__is_train__`, or `__aide_row_id__` as features. "
+            "Use only deterministic transformations of model feature columns. "
+            "Do not create label-derived features, encodings, filters, groups, "
+            "or pseudo-labels inside preprocess(df). "
             "Do not use future PitStop values, next-lap PitStop reconstruction, shift(-1) on PitStop, "
             "next_PitStop-like features, or test PitStop values to overwrite "
             "predictions. Use PitStop only as a normal current-row historical "
