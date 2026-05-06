@@ -250,6 +250,27 @@ def test_autogluon_best_profile_uses_only_models_presets_and_time_limit(tmp_path
     assert 'if valid_data is not None:' in code
 
 
+def test_autogluon_best_boost_cpu_profiles_only_add_save_space(tmp_path):
+    expected_limits = {
+        "best_boost_1h": 3600,
+        "best_boost_2h": 7200,
+    }
+    for profile, time_limit in expected_limits.items():
+        cfg = _cfg(tmp_path)
+        cfg.agent.autogluon.profile = profile
+        cfg.agent.autogluon.included_model_types = None
+
+        settings = resolve_autogluon_settings(cfg)
+
+        assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+        assert settings["presets"] == "best"
+        assert settings["time_limit"] == time_limit
+        assert settings["use_gpu"] is False
+        assert settings["fit_args"] == {"save_space": True}
+        assert "validation_strategy" not in settings
+        assert "hyperparameters" not in settings
+
+
 def test_autogluon_profiles_are_not_restored_from_python_schema(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
