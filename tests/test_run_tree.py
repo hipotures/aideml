@@ -15,6 +15,7 @@ from aide.run import (
     journal_to_rich_tree,
     last_error_lines,
     move_tree_focus,
+    _mark_node_execution_crash,
     render_tree_view,
     run_with_live_refresh,
     stage_status_message,
@@ -957,3 +958,20 @@ def test_run_with_live_refresh_aborts_after_keyboard_interrupt_request():
             slow_work,
             on_keyboard_interrupt=lambda: "abort",
         )
+
+
+def test_mark_node_execution_crash_records_bug_result():
+    node = Node(code="print('crash')", plan="crash")
+
+    _mark_node_execution_crash(
+        node,
+        RuntimeError("REPL child process died unexpectedly"),
+    )
+
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert node.status == "bug"
+    assert node.exc_type == "RuntimeError"
+    assert node.exc_info == {"args": ["REPL child process died unexpectedly"]}
+    assert "REPL child process died unexpectedly" in node.term_out
+    assert "REPL child process died unexpectedly" in node.analysis

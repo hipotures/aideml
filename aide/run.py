@@ -1158,6 +1158,19 @@ def _mark_node_submission_bug(
     return True
 
 
+def _mark_node_execution_crash(node: Node, exc: RuntimeError) -> None:
+    message = str(exc) or exc.__class__.__name__
+    node._term_out = [f"{exc.__class__.__name__}: {message}\n"]
+    node.exec_time = 0.0
+    node.exc_type = exc.__class__.__name__
+    node.exc_info = {"args": [message]}
+    node.exc_stack = None
+    node.analysis = message
+    node.metric = WorstMetricValue()
+    node.is_buggy = True
+    node.status = "bug"
+
+
 def enforce_submission_contract(cfg, node: Node) -> bool:
     workspace_dir = Path(cfg.workspace_dir)
     sample_path = find_sample_submission(workspace_dir / "input")
@@ -1616,18 +1629,28 @@ def run(argv: list[str] | None = None):
                                 result_node
                             )
                             try:
-                                exec_result = agent.execute_node(
-                                    result_node,
-                                    lambda *args, **kwargs: run_with_live_refresh(
-                                        live,
-                                        generate_live,
-                                        lambda: exec_callback(*args, **kwargs),
-                                        tick=lambda: drain_tree_navigation(
-                                            current_tree_view(blink_on=True)
+                                try:
+                                    exec_result = agent.execute_node(
+                                        result_node,
+                                        lambda *args, **kwargs: run_with_live_refresh(
+                                            live,
+                                            generate_live,
+                                            lambda: exec_callback(*args, **kwargs),
+                                            tick=lambda: drain_tree_navigation(
+                                                current_tree_view(blink_on=True)
+                                            ),
+                                            on_keyboard_interrupt=request_execution_interrupt,
                                         ),
-                                        on_keyboard_interrupt=request_execution_interrupt,
-                                    ),
-                                )
+                                    )
+                                except RuntimeError as exc:
+                                    _mark_node_execution_crash(result_node, exc)
+                                    journal.append(result_node)
+                                    if synthesized is not None:
+                                        synthesis_advisor.mark_injected(
+                                            synthesized,
+                                            node=result_node,
+                                        )
+                                    continue
                             finally:
                                 restore_node_artifact_env(previous_artifact_env)
                             run_with_live_refresh(
