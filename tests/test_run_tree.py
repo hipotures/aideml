@@ -131,7 +131,7 @@ def test_journal_tree_replaces_active_placeholder_with_final_bug_result():
 
     assert "[*]" not in output
     assert "[ ]" not in output
-    assert "◍ bug" in output
+    assert "● bug" in output
 
 
 def test_journal_tree_hides_failed_nodes_by_default():
@@ -160,7 +160,7 @@ def test_journal_tree_hides_invalid_submission_branch_by_default():
 
     output = _render_text(tree)
 
-    assert "◍ bug" not in output
+    assert "● bug" not in output
     assert "0.99000" not in output
 
 
@@ -192,7 +192,7 @@ def test_journal_tree_can_show_invalid_submission_branch():
 
     output = _render_text(tree)
 
-    assert "◍ bug" in output
+    assert "● bug" in output
     assert "0.99000" in output
 
 
@@ -294,7 +294,7 @@ def test_journal_tree_treats_appended_node_without_metric_as_bug():
     output = _render_text(tree)
 
     assert "n/a" not in output
-    assert "◍ bug" in output
+    assert "● bug" in output
 
 
 def test_journal_tree_ignores_unappended_active_child_node():

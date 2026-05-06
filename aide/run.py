@@ -291,7 +291,7 @@ def journal_to_rich_tree(
         ):
             s = "[bold blue]◆[/bold blue] [red]bug[/red]"
         elif node.is_buggy or node.metric is None or node.metric.value is None:
-            s = "[red]◍ bug"
+            s = "[red]● bug"
         else:
             style = "bold " if node is best_node else ""
             metric_text = f"{node.metric.value:.5f}"
@@ -362,7 +362,7 @@ def _tree_node_label(
         label.append(" bug", style="red")
         return label
     if node.is_buggy or node.metric is None or node.metric.value is None:
-        return Text("◍ bug", style="red")
+        return Text("● bug", style="red")
 
     label = Text()
     if node is best_node:
