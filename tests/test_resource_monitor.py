@@ -2,6 +2,7 @@ from aide.utils.resource_monitor import (
     ProcessResourceMonitor,
     ResourceHistory,
     ResourceSnapshot,
+    _parse_nvidia_smi_gpu_stats,
     downsample_max,
 )
 
@@ -37,7 +38,7 @@ class FakeProcess:
 def test_process_resource_monitor_sums_process_tree_and_tracks_peak():
     child = FakeProcess(rss=2 * 1024**3, user=4.0, system=1.0)
     root = FakeProcess(rss=1 * 1024**3, user=10.0, system=2.0, children=[child])
-    monitor = ProcessResourceMonitor.from_process(root)
+    monitor = ProcessResourceMonitor.from_process(root, gpu_sampler=lambda: None)
     monitor._clock = lambda: 100.0
     first = monitor.sample()
 
@@ -94,6 +95,47 @@ def test_resource_history_keeps_sliding_window_and_latest_values():
     assert history.ram_gib_values == [2.0, 3.0]
     assert history.peak_ram_gib_values == [2.0, 4.0]
     assert history.process_count_values == [2.0, 3.0]
+
+
+def test_resource_history_exposes_gpu_values_when_available():
+    history = ResourceHistory(window_seconds=5, interval_seconds=1)
+
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=100.0,
+            ram_bytes=1 * 1024**3,
+            peak_ram_bytes=1 * 1024**3,
+            process_count=1,
+            gpu_percent=37.0,
+            gpu_memory_used_bytes=7 * 1024**3,
+            gpu_memory_total_bytes=24 * 1024**3,
+            gpu_power_draw_watts=122.5,
+            gpu_power_limit_watts=450.0,
+            gpu_temperature_celsius=61.0,
+        )
+    )
+
+    assert history.gpu_percent_values == [37.0]
+    assert history.gpu_memory_used_gib_values == [7.0]
+    assert history.gpu_power_draw_watts_values == [122.5]
+    assert history.gpu_temperature_celsius_values == [61.0]
+
+
+def test_parse_nvidia_smi_gpu_stats_uses_busiest_nvidia_gpu():
+    output = (
+        "0, NVIDIA GeForce RTX 4090, 12, 2048, 24564, 80.25, 450.00, 45\n"
+        "1, NVIDIA RTX A6000, 76, 32768, 49140, 241.80, 300.00, 67\n"
+    )
+
+    stats = _parse_nvidia_smi_gpu_stats(output)
+
+    assert stats is not None
+    assert stats.gpu_percent == 76.0
+    assert stats.gpu_memory_used_bytes == 32768 * 1024**2
+    assert stats.gpu_memory_total_bytes == 49140 * 1024**2
+    assert stats.gpu_power_draw_watts == 241.8
+    assert stats.gpu_power_limit_watts == 300.0
+    assert stats.gpu_temperature_celsius == 67.0
 
 
 def test_downsample_max_preserves_spikes_when_compressing_series():

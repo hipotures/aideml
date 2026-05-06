@@ -732,6 +732,12 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
             ram_bytes=int(10.0 * 1024**3),
             peak_ram_bytes=int(10.0 * 1024**3),
             process_count=4,
+            gpu_percent=25.0,
+            gpu_memory_used_bytes=int(6.0 * 1024**3),
+            gpu_memory_total_bytes=int(24.0 * 1024**3),
+            gpu_power_draw_watts=120.0,
+            gpu_power_limit_watts=450.0,
+            gpu_temperature_celsius=52.0,
         )
     )
     history.add(
@@ -740,6 +746,12 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
             ram_bytes=int(18.4 * 1024**3),
             peak_ram_bytes=int(22.1 * 1024**3),
             process_count=9,
+            gpu_percent=91.0,
+            gpu_memory_used_bytes=int(15.5 * 1024**3),
+            gpu_memory_total_bytes=int(24.0 * 1024**3),
+            gpu_power_draw_watts=321.0,
+            gpu_power_limit_watts=450.0,
+            gpu_temperature_celsius=68.0,
         )
     )
 
@@ -763,14 +775,18 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
     assert "CPU" in output and "640%" in output
     assert "RAM" in output and "18.4G" in output
     assert "peak" in output and "22.1G" in output
-    assert "proc" in output and "9" in output
+    assert "GPU" in output and "91%" in output
+    assert "VRAM" in output and "15.5G" in output
+    assert "PWR" in output and "321W" in output
+    assert "TEMP" in output and "68C" in output
+    assert "proc" not in output
     assert "█" in output
     assert "▁" in output or "▂" in output or "▃" in output
 
     resource_lines = [
         line for line in output.splitlines() if line.startswith("▶ ") and "█" in line
     ]
-    assert len(resource_lines) == 4
+    assert len(resource_lines) == 7
     bar_columns = [line.index("█") for line in resource_lines]
     assert len(set(bar_columns)) == 1
 

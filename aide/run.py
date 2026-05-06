@@ -792,6 +792,22 @@ def _format_gib(value: int) -> str:
     return f"{value / 1024**3:.1f}G"
 
 
+def _format_gib_float(value: float) -> str:
+    return f"{value:.1f}G"
+
+
+def _format_watts(value: float) -> str:
+    if value == 0 or value >= 10:
+        return f"{value:.0f}W"
+    return f"{value:.1f}W"
+
+
+def _format_celsius(value: float) -> str:
+    if value == 0 or value >= 10:
+        return f"{value:.0f}C"
+    return f"{value:.1f}C"
+
+
 RESOURCE_SPARKLINE_LEVELS = "▁▂▃▄▅▆▇█"
 
 
@@ -814,6 +830,25 @@ def _hbar(value: float, *, ceiling: float, width: int = 10) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
+def _resource_row(
+    label: str,
+    value: float | None,
+    *,
+    formatted_value: str,
+    history_values: list[float],
+    ceiling: float,
+    graph_width: int,
+) -> tuple[str, str, str, str]:
+    if value is None:
+        return (label, "n/a", _hbar(0.0, ceiling=ceiling), " " * graph_width)
+    return (
+        label,
+        formatted_value,
+        _hbar(value, ceiling=ceiling),
+        _sparkline(history_values, width=graph_width, ceiling=ceiling),
+    )
+
+
 def build_resource_summary(
     resource_history: ResourceHistory | None,
     *,
@@ -830,7 +865,34 @@ def build_resource_summary(
             1.0,
             max(resource_history.ram_gib_values + resource_history.peak_ram_gib_values) * 1.2,
         )
-        proc_ceiling = max(4.0, max(resource_history.process_count_values) * 1.25)
+        gpu_percent_values = resource_history.gpu_percent_values
+        gpu_memory_used_gib_values = resource_history.gpu_memory_used_gib_values
+        gpu_power_draw_watts_values = resource_history.gpu_power_draw_watts_values
+        gpu_temperature_celsius_values = resource_history.gpu_temperature_celsius_values
+        gpu_memory_used_gib = (
+            snapshot.gpu_memory_used_bytes / 1024**3
+            if snapshot.gpu_memory_used_bytes is not None
+            else None
+        )
+        gpu_memory_total_gib = (
+            snapshot.gpu_memory_total_bytes / 1024**3
+            if snapshot.gpu_memory_total_bytes is not None
+            else None
+        )
+        gpu_memory_ceiling = max(
+            1.0,
+            gpu_memory_total_gib or 0.0,
+            max(gpu_memory_used_gib_values, default=0.0) * 1.2,
+        )
+        gpu_power_ceiling = max(
+            1.0,
+            snapshot.gpu_power_limit_watts or 0.0,
+            max(gpu_power_draw_watts_values, default=0.0) * 1.2,
+        )
+        gpu_temperature_ceiling = max(
+            100.0,
+            max(gpu_temperature_celsius_values, default=0.0) * 1.2,
+        )
         values = [
             (
                 "CPU",
@@ -862,15 +924,53 @@ def build_resource_summary(
                     ceiling=memory_ceiling,
                 ),
             ),
-            (
-                "proc",
-                str(snapshot.process_count),
-                _hbar(snapshot.process_count, ceiling=proc_ceiling),
-                _sparkline(
-                    resource_history.process_count_values,
-                    width=graph_width,
-                    ceiling=proc_ceiling,
+            _resource_row(
+                "GPU",
+                snapshot.gpu_percent,
+                formatted_value=(
+                    _format_percent(snapshot.gpu_percent)
+                    if snapshot.gpu_percent is not None
+                    else "n/a"
                 ),
+                history_values=gpu_percent_values,
+                ceiling=100.0,
+                graph_width=graph_width,
+            ),
+            _resource_row(
+                "VRAM",
+                gpu_memory_used_gib,
+                formatted_value=(
+                    _format_gib_float(gpu_memory_used_gib)
+                    if gpu_memory_used_gib is not None
+                    else "n/a"
+                ),
+                history_values=gpu_memory_used_gib_values,
+                ceiling=gpu_memory_ceiling,
+                graph_width=graph_width,
+            ),
+            _resource_row(
+                "PWR",
+                snapshot.gpu_power_draw_watts,
+                formatted_value=(
+                    _format_watts(snapshot.gpu_power_draw_watts)
+                    if snapshot.gpu_power_draw_watts is not None
+                    else "n/a"
+                ),
+                history_values=gpu_power_draw_watts_values,
+                ceiling=gpu_power_ceiling,
+                graph_width=graph_width,
+            ),
+            _resource_row(
+                "TEMP",
+                snapshot.gpu_temperature_celsius,
+                formatted_value=(
+                    _format_celsius(snapshot.gpu_temperature_celsius)
+                    if snapshot.gpu_temperature_celsius is not None
+                    else "n/a"
+                ),
+                history_values=gpu_temperature_celsius_values,
+                ceiling=gpu_temperature_ceiling,
+                graph_width=graph_width,
             ),
         ]
     lines.extend(
