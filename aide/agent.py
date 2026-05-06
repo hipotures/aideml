@@ -53,7 +53,7 @@ review_func_spec = FunctionSpec(
                 "description": "if there is a bug, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
             },
             "metric": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "If the code ran successfully, report the value of the validation metric. Otherwise, leave it null.",
             },
             "lower_is_better": {
@@ -62,6 +62,7 @@ review_func_spec = FunctionSpec(
             },
         },
         "required": ["is_bug", "summary", "metric", "lower_is_better"],
+        "additionalProperties": False,
     },
     description="Submit a review evaluating the output of the training script.",
 )

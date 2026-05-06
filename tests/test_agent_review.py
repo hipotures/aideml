@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from aide.agent import Agent
+from aide.agent import Agent, review_func_spec
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.utils.config import _load_cfg, prep_cfg
@@ -15,6 +15,14 @@ def _cfg(tmp_path: Path):
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "review-test"
     return prep_cfg(cfg)
+
+
+def test_review_schema_is_valid_for_codex_structured_output():
+    assert review_func_spec.json_schema["additionalProperties"] is False
+    assert review_func_spec.json_schema["properties"]["metric"]["type"] == [
+        "number",
+        "null",
+    ]
 
 
 def test_journal_summary_formats_validation_metric_to_five_decimals():
