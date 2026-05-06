@@ -1,6 +1,7 @@
 import datetime as dt
 import logging
 import json
+import math
 import random
 import time
 from pathlib import Path
@@ -23,7 +24,6 @@ from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import format_research_hints_for_prompt, load_latest_research_hints
-from .synthesis import SYNTHESIS_PLAN_PREFIX
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
@@ -96,8 +96,32 @@ def _mark_invalid_review_response(node: Node, response: Any) -> None:
     node.metric = WorstMetricValue()
 
 
-def _is_synthesis_node(node: Node) -> bool:
-    return str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
+def _metric_for_search(node: Node) -> float:
+    assert node.metric is not None and node.metric.value is not None
+    value = float(node.metric.value)
+    return -value if node.metric.maximize is False else value
+
+
+def _normalized_metric_scores(nodes: list[Node]) -> dict[Node, float]:
+    metric_values = {node: _metric_for_search(node) for node in nodes}
+    low = min(metric_values.values())
+    high = max(metric_values.values())
+    span = high - low
+    if span <= 0:
+        return {node: 1.0 for node in nodes}
+    return {node: (value - low) / span for node, value in metric_values.items()}
+
+
+def _search_exploration_score(
+    node: Node,
+    *,
+    normalized_metric: float,
+    total_good_nodes: int,
+    exploration_weight: float,
+) -> float:
+    child_count = len(node.children)
+    exploration = math.sqrt(math.log(total_good_nodes + 1) / (child_count + 1))
+    return normalized_metric + exploration_weight * exploration
 
 
 class Agent:
@@ -199,19 +223,24 @@ class Agent:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return None
 
-        synthesis_leaf_nodes = [
-            n
-            for n in good_nodes
-            if n.is_leaf and _is_synthesis_node(n)
-        ]
-        if synthesis_leaf_nodes:
-            logger.debug("[search policy] improving synthesis leaf")
-            return max(synthesis_leaf_nodes, key=lambda n: n.metric)
+        exploration_weight = float(getattr(search_cfg, "exploration_weight", 0.0))
+        if exploration_weight <= 0:
+            greedy_node = max(good_nodes, key=lambda n: n.metric)
+            logger.debug("[search policy] greedy node selected")
+            return greedy_node
 
-        # greedy
-        greedy_node = max(good_nodes, key=lambda n: n.metric)
-        logger.debug("[search policy] greedy node selected")
-        return greedy_node
+        normalized_scores = _normalized_metric_scores(good_nodes)
+        selected_node = max(
+            good_nodes,
+            key=lambda node: _search_exploration_score(
+                node,
+                normalized_metric=normalized_scores[node],
+                total_good_nodes=len(good_nodes),
+                exploration_weight=exploration_weight,
+            ),
+        )
+        logger.debug("[search policy] exploration node selected")
+        return selected_node
 
     @property
     def _prompt_environment(self):

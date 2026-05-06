@@ -93,6 +93,7 @@ class SearchConfig:
     max_debug_depth: int
     debug_prob: float
     num_drafts: int
+    exploration_weight: float = 0.05
 
 
 @dataclass

@@ -42,6 +42,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.research.reasoning_effort == "low"
     assert cfg.synthesis.model == "gpt-5.4-mini"
     assert cfg.synthesis.reasoning_effort == "low"
+    assert cfg.agent.search.exploration_weight == 0.05
 
 
 def test_prep_cfg_resolves_cli_model_suffix(tmp_path):

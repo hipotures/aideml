@@ -87,6 +87,7 @@ agent:
     max_debug_depth: 3
     debug_prob: 0.5
     num_drafts: 5
+    exploration_weight: 0.05
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.

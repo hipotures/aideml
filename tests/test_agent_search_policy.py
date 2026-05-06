@@ -128,9 +128,10 @@ def test_search_policy_does_not_debug_past_configured_max_depth(tmp_path):
     assert selected is None
 
 
-def test_search_policy_gives_good_synthesis_leaf_a_followup_improvement(tmp_path):
+def test_search_policy_does_not_prioritize_synthesis_leaf_over_better_node(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
     journal = Journal()
     best = _good_node(0.95)
     synthesis_leaf = _good_node(0.94)
@@ -141,4 +142,62 @@ def test_search_policy_gives_good_synthesis_leaf_a_followup_improvement(tmp_path
 
     selected = agent.search_policy()
 
-    assert selected is synthesis_leaf
+    assert selected is best
+
+
+def test_search_policy_explores_underexpanded_good_node(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.05
+    journal = Journal()
+    saturated_best = _good_node(0.95110)
+    underexpanded = _good_node(0.951095)
+    journal.append(saturated_best)
+    journal.append(underexpanded)
+    for _ in range(30):
+        journal.append(_good_node(0.95090, parent=saturated_best))
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is underexpanded
+
+
+def test_search_policy_zero_exploration_keeps_greedy_selection(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    saturated_best = _good_node(0.95110)
+    underexpanded = _good_node(0.951095)
+    journal.append(saturated_best)
+    journal.append(underexpanded)
+    for _ in range(30):
+        journal.append(_good_node(0.95090, parent=saturated_best))
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is saturated_best
+
+
+def test_search_policy_exploration_respects_minimization_metrics(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.05
+    journal = Journal()
+    saturated_best = _good_node(0.100)
+    saturated_best.metric = MetricValue(0.100, maximize=False)
+    underexpanded = _good_node(0.100005)
+    underexpanded.metric = MetricValue(0.100005, maximize=False)
+    journal.append(saturated_best)
+    journal.append(underexpanded)
+    for _ in range(30):
+        child = _good_node(0.102, parent=saturated_best)
+        child.metric = MetricValue(0.102, maximize=False)
+        journal.append(child)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is underexpanded
