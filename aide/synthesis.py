@@ -1061,14 +1061,24 @@ class SynthesisAdvisor:
         status = _read_json(synthesis_node.checkpoint_dir / "status.json")
         if not isinstance(status, dict):
             status = {}
+        injected_failed = node.is_buggy is True or node.status == "failed"
         status.update(
             {
-                "status": "injected",
+                "status": "failed" if injected_failed else "injected",
                 "injected_at": dt.datetime.now().isoformat(timespec="seconds"),
                 "injected_node_id": node.id,
                 "injected_node_step": node.step,
+                "recorded_node_id": node.id,
+                "recorded_node_step": node.step,
             }
         )
+        if injected_failed:
+            status["failed_at"] = dt.datetime.now().isoformat(timespec="seconds")
+            status["error"] = (
+                node.analysis
+                or "".join(node.term_out).strip()
+                or "Injected synthesis node failed during execution or review."
+            )
         _write_json(synthesis_node.checkpoint_dir / "status.json", status)
 
     def status_text(self) -> str:

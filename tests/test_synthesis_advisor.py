@@ -12,6 +12,7 @@ from aide.synthesis import (
     SYNTHESIS_PREPROCESS_PROMPT_INTRO,
     SYNTHESIS_PLAN_PREFIX,
     SynthesisAdvisor,
+    SynthesisNode,
     build_synthesis_prompt,
     collect_synthesis_context,
     collect_top_synthesis_solutions,
@@ -552,6 +553,32 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
     assert advisor.generate_node_if_due(journal=journal, completed_steps=2) is None
     assert len(calls) == 1
     assert "Synthesis: ✓ 000002" in advisor.status_text()
+
+
+def test_synthesis_advisor_marks_buggy_injected_node_as_failed(tmp_path):
+    cfg = _cfg(tmp_path)
+    checkpoint = Path(cfg.log_dir) / "synthesis" / "checkpoint-000024"
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "status.json").write_text('{"status": "ready"}')
+    advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
+    node = _node(None, code="raise ValueError('cannot convert NA to integer')")
+    node.analysis = "cannot convert NA to integer"
+
+    advisor.mark_injected(
+        SynthesisNode(
+            node=node,
+            completed_steps=24,
+            checkpoint_dir=checkpoint,
+        ),
+        node=node,
+    )
+
+    status = json.loads((checkpoint / "status.json").read_text())
+    assert status["status"] == "failed"
+    assert status["recorded_node_id"] == node.id
+    assert status["injected_node_id"] == node.id
+    assert "cannot convert NA to integer" in status["error"]
+    assert "Synthesis: ✗ 000024" in advisor.status_text()
 
 
 def test_synthesis_advisor_returns_failed_checkpoint_as_bug_node(tmp_path):
