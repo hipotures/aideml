@@ -96,6 +96,12 @@ class TreeView:
     children_by_id: dict[str, list[str]]
 
 
+@dataclass(frozen=True)
+class LastErrorRecord:
+    node: Node
+    lines: list[str]
+
+
 def parse_runtime_args(
     argv: list[str],
 ) -> tuple[ResumeRequest, RuntimeOptions, list[str]]:
@@ -747,7 +753,11 @@ def _exception_lines(node: Node) -> list[str]:
     return [str(node.exc_type)]
 
 
-def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
+def last_error_record(
+    journal: Journal,
+    *,
+    max_lines: int = 2,
+) -> LastErrorRecord | None:
     for node in reversed(journal.buggy_nodes):
         term_lines = []
         if node._term_out:
@@ -756,11 +766,11 @@ def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
         if term_lines and _terminal_output_has_error(term_lines):
             lines = _clean_error_lines(term_lines, max_lines=max_lines)
             if lines:
-                return lines
+                return LastErrorRecord(node=node, lines=lines)
 
         lines = _clean_error_lines(_exception_lines(node), max_lines=max_lines)
         if lines:
-            return lines
+            return LastErrorRecord(node=node, lines=lines)
 
         if node.analysis:
             lines = _clean_error_lines(
@@ -768,13 +778,27 @@ def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
                 max_lines=max_lines,
             )
             if lines:
-                return lines
-    return []
+                return LastErrorRecord(node=node, lines=lines)
+    return None
+
+
+def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
+    record = last_error_record(journal, max_lines=max_lines)
+    return record.lines if record is not None else []
+
+
+def _last_error_title(record: LastErrorRecord | None) -> str:
+    if record is None:
+        return "Last Error"
+    step = record.node.step if record.node.step is not None else "?"
+    timestamp = dt.datetime.fromtimestamp(record.node.ctime).strftime("%H:%M:%S")
+    return f"Last Error · {step}@{timestamp}"
 
 
 def build_last_error_summary(journal: Journal) -> Group:
-    lines: list[Text] = [Text("Last Error", style="bold red")]
-    error_lines = last_error_lines(journal)
+    record = last_error_record(journal)
+    lines: list[Text] = [Text(_last_error_title(record), style="bold red")]
+    error_lines = record.lines if record is not None else []
     if not error_lines:
         lines.append(Text("-", style="dim"))
     else:

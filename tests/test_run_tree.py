@@ -774,6 +774,27 @@ def test_run_data_shows_last_error_below_separator(tmp_path):
     assert "Execution time:" not in output
 
 
+def test_run_data_shows_last_error_step_and_time(tmp_path):
+    journal = Journal()
+    node = _bug_node()
+    node.ctime = dt.datetime(2026, 5, 7, 12, 23, 44).timestamp()
+    journal.append(node)
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Executing code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=journal,
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "Last Error · 0@12:23:44" in output
+
+
 def test_run_data_shows_resources_below_last_error(tmp_path):
     history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
     history.add(
