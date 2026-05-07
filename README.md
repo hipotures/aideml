@@ -43,7 +43,7 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 </div>
 
 <div align="center">
-<img src="docs/artifacts/tree-terminal-failures.png" width="60%" alt="AIDE solution tree with terminal failure branches">
+<img src="docs/artifacts/tree-terminal-failures.png" width="80%" alt="AIDE solution tree with terminal failure branches">
 </div>
 
 <details>
