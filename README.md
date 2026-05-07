@@ -42,6 +42,10 @@ LLM‑driven agent that writes, evaluates & improves machine‑learning code.
 <img src="https://github.com/user-attachments/assets/a48aa65e-360d-4d91-b4ad-98b0fe2585d4" width="80%">
 </div>
 
+<div align="center">
+<img src="docs/artifacts/tree-terminal-failures.png" width="60%" alt="AIDE solution tree with terminal failure branches">
+</div>
+
 <details>
 <summary>Utility features provided by this repo</summary>
 
