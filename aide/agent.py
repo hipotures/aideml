@@ -119,7 +119,7 @@ def _search_exploration_score(
     total_good_nodes: int,
     exploration_weight: float,
 ) -> float:
-    child_count = len(node.children)
+    child_count = sum(1 for child in node.children if not child.is_terminal_failure)
     exploration = math.sqrt(math.log(total_good_nodes + 1) / (child_count + 1))
     return normalized_metric + exploration_weight * exploration
 
