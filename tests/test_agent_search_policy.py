@@ -212,6 +212,28 @@ def test_search_policy_ignores_terminal_failure_children_for_exploration(tmp_pat
     assert selected is active_best
 
 
+def test_search_policy_blocks_parent_after_three_oom_children_but_keeps_good_child_active(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    blocked_parent = _good_node(0.95110)
+    good_child = _good_node(0.95109, parent=blocked_parent)
+    fallback = _good_node(0.95090)
+    journal.append(blocked_parent)
+    journal.append(good_child)
+    journal.append(fallback)
+    for _ in range(3):
+        journal.append(_oom_bug_node(parent=blocked_parent))
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is good_child
+
+
 def test_search_policy_zero_exploration_keeps_greedy_selection(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0

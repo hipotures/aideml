@@ -19,6 +19,9 @@ from .utils.metric import MetricValue
 from .utils.response import trim_long_string
 
 
+OOM_FAILURE_PARENT_LIMIT = 3
+
+
 def _summary_analysis_text(analysis: str | None) -> str:
     text = str(analysis or "")
     if text.startswith("AutoGluon preprocess wrapper completed"):
@@ -108,17 +111,28 @@ class Node(DataClassJsonMixin):
         )
 
     @property
-    def is_terminal_failure(self) -> bool:
+    def is_oom_failure(self) -> bool:
         text = f"{self.analysis or ''}\n{''.join(self._term_out or [])}"
-        is_catboost_gpu_oom = (
+        return (
             "CatBoost GPU ran out of memory" in text
             or "CUDA error 2: out of memory" in text
         )
-        return self.status == "failed" or is_catboost_gpu_oom or (
+
+    @property
+    def is_terminal_failure(self) -> bool:
+        return self.status == "failed" or self.is_oom_failure or (
             self.status is None
             and self.is_buggy
             and str(self.code or "").lstrip().startswith("# Failed ")
         )
+
+    @property
+    def oom_failure_child_count(self) -> int:
+        return sum(1 for child in self.children if child.is_oom_failure)
+
+    @property
+    def is_oom_blocked_parent(self) -> bool:
+        return self.oom_failure_child_count >= OOM_FAILURE_PARENT_LIMIT
 
     @property
     def is_in_submission_contract_error_branch(self) -> bool:

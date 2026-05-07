@@ -243,6 +243,7 @@ def journal_to_rich_tree(
             node
             for node in journal.good_nodes
             if not node.is_in_submission_contract_error_branch
+            and not node.is_oom_blocked_parent
         ]
         best_node = max(visible_good_nodes, key=lambda node: node.metric, default=None)
     journal_nodes = set(journal.nodes)
@@ -299,17 +300,22 @@ def journal_to_rich_tree(
         elif node.is_buggy or node.metric is None or node.metric.value is None:
             s = "[red]● bug"
         else:
-            style = "bold " if node is best_node else ""
             metric_text = f"{node.metric.value:.5f}"
 
-            if node is best_node:
+            if node.is_oom_blocked_parent:
+                s = f"[bright_black]✕ {metric_text}"
+            elif node is best_node:
+                style = "bold "
                 s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}"
             elif is_baseline_root(node):
+                style = "bold " if node is best_node else ""
                 s = f"[bright_magenta]◎[/bright_magenta] [{style}green]{metric_text}"
             elif synthesis_root:
+                style = "bold " if node is best_node else ""
                 metric_style = f"{style}green"
                 s = f"[blue]◆[/blue] [{metric_style}]{metric_text}"
             else:
+                style = "bold " if node is best_node else ""
                 s = f"[{style}green]● {metric_text}"
 
         subtree = tree.add(s)
@@ -341,6 +347,7 @@ def _visible_best_node(
         node
         for node in journal.good_nodes
         if not node.is_in_submission_contract_error_branch
+        and not node.is_oom_blocked_parent
     ]
     return max(visible_good_nodes, key=lambda node: node.metric, default=None)
 
@@ -369,6 +376,9 @@ def _tree_node_label(
         return label
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text("● bug", style="red")
+
+    if node.is_oom_blocked_parent:
+        return Text(f"✕ {node.metric.value:.5f}", style="bright_black")
 
     label = Text()
     if node is best_node:
@@ -483,6 +493,8 @@ def build_tree_view(
         ancestor_has_next: list[bool],
         is_last: bool,
     ) -> None:
+        if node.is_terminal_failure:
+            return
         if node.is_submission_contract_error and not show_invalid_submission_branches:
             return
 
@@ -516,8 +528,11 @@ def build_tree_view(
         visible_children = [
             child
             for child in children
-            if show_invalid_submission_branches
-            or not child.is_submission_contract_error
+            if not child.is_terminal_failure
+            and (
+                show_invalid_submission_branches
+                or not child.is_submission_contract_error
+            )
         ]
         next_ancestors = [*ancestor_has_next, not is_last]
         has_active_child = node is active_parent_node
@@ -531,7 +546,15 @@ def build_tree_view(
         if node is active_parent_node:
             append_active(node.id, next_ancestors)
 
-    roots = list(journal.draft_nodes)
+    roots = [
+        node
+        for node in journal.draft_nodes
+        if not node.is_terminal_failure
+        and (
+            show_invalid_submission_branches
+            or not node.is_submission_contract_error
+        )
+    ]
     has_root_active = active_parent_node is None and active_stage is not None
     for index, node in enumerate(roots):
         append_rec(node, "header", [], index == len(roots) - 1 and not has_root_active)
