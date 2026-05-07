@@ -1217,7 +1217,7 @@ def _mark_node_execution_crash(
     node.analysis = message
     node.metric = WorstMetricValue()
     node.is_buggy = True
-    node.status = "bug"
+    node.status = "failed" if diagnostic is not None else "bug"
 
 
 def enforce_submission_contract(cfg, node: Node) -> bool:

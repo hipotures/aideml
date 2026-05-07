@@ -109,7 +109,12 @@ class Node(DataClassJsonMixin):
 
     @property
     def is_terminal_failure(self) -> bool:
-        return self.status == "failed" or (
+        text = f"{self.analysis or ''}\n{''.join(self._term_out or [])}"
+        is_catboost_gpu_oom = (
+            "CatBoost GPU ran out of memory" in text
+            or "CUDA error 2: out of memory" in text
+        )
+        return self.status == "failed" or is_catboost_gpu_oom or (
             self.status is None
             and self.is_buggy
             and str(self.code or "").lstrip().startswith("# Failed ")

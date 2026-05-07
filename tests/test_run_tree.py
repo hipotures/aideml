@@ -71,6 +71,20 @@ def _failed_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _oom_bug_node(parent: Node | None = None) -> Node:
+    node = _bug_node(parent=parent)
+    node.status = "bug"
+    node.analysis = (
+        "REPL child process died unexpectedly\n\n"
+        "CatBoost GPU ran out of memory while the REPL child process was executing."
+    )
+    node._term_out = [
+        "RuntimeError: REPL child process died unexpectedly\n"
+        "CatBoost GPU ran out of memory while the REPL child process was executing."
+    ]
+    return node
+
+
 def _render_text(tree) -> str:
     console = Console(record=True, width=100, color_system=None)
     console.print(tree)
@@ -146,6 +160,21 @@ def test_journal_tree_hides_failed_nodes_by_default():
     output = _render_text(tree)
 
     assert "failed" not in output.lower()
+    assert "0.90000" in output
+
+
+def test_journal_tree_hides_catboost_gpu_oom_nodes_by_default():
+    journal = Journal()
+    oom = _oom_bug_node()
+    good = _good_node(0.9)
+    journal.append(oom)
+    journal.append(good)
+
+    tree = journal_to_rich_tree(journal)
+
+    output = _render_text(tree)
+
+    assert "bug" not in output.lower()
     assert "0.90000" in output
 
 
@@ -996,3 +1025,5 @@ def test_mark_node_execution_crash_reports_autogluon_gpu_oom(tmp_path):
     assert "CatBoost GPU ran out of memory" in node.analysis
     assert "CUDA error 2: out of memory" in node.analysis
     assert "CatBoost GPU ran out of memory" in node.term_out
+    assert node.status == "failed"
+    assert node.is_terminal_failure is True
