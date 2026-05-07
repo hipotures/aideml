@@ -234,6 +234,7 @@ def journal_to_rich_tree(
     active_stage: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
+    disable_oom_saturated_parents: bool = False,
     synthesis_node_ids: set[str] | None = None,
 ):
     if show_invalid_submission_branches:
@@ -243,7 +244,10 @@ def journal_to_rich_tree(
             node
             for node in journal.good_nodes
             if not node.is_in_submission_contract_error_branch
-            and not node.is_oom_blocked_parent
+            and (
+                not disable_oom_saturated_parents
+                or not node.is_oom_blocked_parent
+            )
         ]
         best_node = max(visible_good_nodes, key=lambda node: node.metric, default=None)
     journal_nodes = set(journal.nodes)
@@ -302,7 +306,7 @@ def journal_to_rich_tree(
         else:
             metric_text = f"{node.metric.value:.5f}"
 
-            if node.is_oom_blocked_parent:
+            if disable_oom_saturated_parents and node.is_oom_blocked_parent:
                 s = f"[bright_black]✕ {metric_text}"
             elif node is best_node:
                 style = "bold "
@@ -339,6 +343,7 @@ def _visible_best_node(
     journal: Journal,
     *,
     show_invalid_submission_branches: bool,
+    disable_oom_saturated_parents: bool = False,
 ) -> Node | None:
     if show_invalid_submission_branches:
         return journal.get_best_node()
@@ -347,7 +352,10 @@ def _visible_best_node(
         node
         for node in journal.good_nodes
         if not node.is_in_submission_contract_error_branch
-        and not node.is_oom_blocked_parent
+        and (
+            not disable_oom_saturated_parents
+            or not node.is_oom_blocked_parent
+        )
     ]
     return max(visible_good_nodes, key=lambda node: node.metric, default=None)
 
@@ -356,6 +364,7 @@ def _tree_node_label(
     node: Node,
     *,
     best_node: Node | None,
+    disable_oom_saturated_parents: bool = False,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     if node.is_terminal_failure:
@@ -377,7 +386,7 @@ def _tree_node_label(
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text("● bug", style="red")
 
-    if node.is_oom_blocked_parent:
+    if disable_oom_saturated_parents and node.is_oom_blocked_parent:
         return Text(f"✕ {node.metric.value:.5f}", style="bright_black")
 
     label = Text()
@@ -437,6 +446,7 @@ def build_tree_view(
     active_stage: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
+    disable_oom_saturated_parents: bool = False,
     synthesis_node_ids: set[str] | None = None,
 ) -> TreeView:
     items: list[TreeViewItem] = [
@@ -453,6 +463,7 @@ def build_tree_view(
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
+        disable_oom_saturated_parents=disable_oom_saturated_parents,
     )
 
     def node_order_key(node: Node):
@@ -508,6 +519,7 @@ def build_tree_view(
             _tree_node_label(
                 node,
                 best_node=best_node,
+                disable_oom_saturated_parents=disable_oom_saturated_parents,
                 synthesis_node_ids=synthesis_node_ids,
             )
         )
@@ -1590,6 +1602,9 @@ def run(argv: list[str] | None = None):
             blink_on=blink_on,
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
+            ),
+            disable_oom_saturated_parents=(
+                cfg.agent.search.disable_oom_saturated_parents
             ),
             synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
         )

@@ -520,7 +520,7 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
     assert "* 0.95100" in output
 
 
-def test_tree_view_marks_oom_blocked_parent_gray_and_hides_failed_children():
+def test_tree_view_keeps_oom_saturated_parent_active_by_default():
     journal = Journal()
     parent = _good_node(0.951)
     good_child = _good_node(0.950, parent=parent)
@@ -531,6 +531,29 @@ def test_tree_view_marks_oom_blocked_parent_gray_and_hides_failed_children():
 
     tree = render_tree_view(
         build_tree_view(journal),
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    )
+    output = _render_text(tree)
+
+    assert "* 0.95100" in output
+    assert "✕ 0.95100" not in output
+    assert "failed" not in output.lower()
+    assert "0.95000" in output
+
+
+def test_tree_view_marks_oom_blocked_parent_gray_when_enabled():
+    journal = Journal()
+    parent = _good_node(0.951)
+    good_child = _good_node(0.950, parent=parent)
+    journal.append(parent)
+    journal.append(good_child)
+    for _ in range(3):
+        journal.append(_oom_bug_node(parent=parent))
+
+    tree = render_tree_view(
+        build_tree_view(journal, disable_oom_saturated_parents=True),
         focused_item_id="header",
         scroll_top=0,
         viewport_height=10,

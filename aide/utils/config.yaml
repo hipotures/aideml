@@ -88,6 +88,7 @@ agent:
     debug_prob: 0.5
     num_drafts: 5
     exploration_weight: 0.05
+    disable_oom_saturated_parents: false
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.
@@ -126,6 +127,7 @@ agent:
           CAT:
             - task_type: GPU
               devices: "0"
+              gpu_ram_part: 0.8
               ag_args_fit:
                 num_gpus: 1
           XGB:
@@ -150,6 +152,7 @@ agent:
           CAT:
             - task_type: GPU
               devices: "0"
+              gpu_ram_part: 0.8
               ag_args_fit:
                 num_gpus: 1
           XGB:
@@ -192,6 +195,7 @@ agent:
           CAT:
             - task_type: GPU
               devices: "0"
+              gpu_ram_part: 0.8
               ag_args_fit:
                 num_gpus: 1
           XGB:

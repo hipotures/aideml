@@ -94,6 +94,7 @@ class SearchConfig:
     debug_prob: float
     num_drafts: int
     exploration_weight: float = 0.05
+    disable_oom_saturated_parents: bool = False
 
 
 @dataclass

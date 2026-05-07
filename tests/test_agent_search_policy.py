@@ -212,12 +212,35 @@ def test_search_policy_ignores_terminal_failure_children_for_exploration(tmp_pat
     assert selected is active_best
 
 
-def test_search_policy_blocks_parent_after_three_oom_children_but_keeps_good_child_active(
+def test_search_policy_keeps_oom_saturated_parent_active_by_default(
     tmp_path,
 ):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
     cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    saturated_parent = _good_node(0.95110)
+    good_child = _good_node(0.95109, parent=saturated_parent)
+    fallback = _good_node(0.95090)
+    journal.append(saturated_parent)
+    journal.append(good_child)
+    journal.append(fallback)
+    for _ in range(3):
+        journal.append(_oom_bug_node(parent=saturated_parent))
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is saturated_parent
+
+
+def test_search_policy_blocks_parent_after_three_oom_children_when_enabled(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.disable_oom_saturated_parents = True
     journal = Journal()
     blocked_parent = _good_node(0.95110)
     good_child = _good_node(0.95109, parent=blocked_parent)

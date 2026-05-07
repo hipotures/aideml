@@ -306,6 +306,7 @@ def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
             {
                 "task_type": "GPU",
                 "devices": "0",
+                "gpu_ram_part": 0.8,
                 "ag_args_fit": {"num_gpus": 1},
             }
         ],

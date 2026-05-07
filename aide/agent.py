@@ -218,7 +218,10 @@ class Agent:
             n
             for n in self.journal.good_nodes
             if not n.is_in_submission_contract_error_branch
-            and not n.is_oom_blocked_parent
+            and (
+                not search_cfg.disable_oom_saturated_parents
+                or not n.is_oom_blocked_parent
+            )
         ]
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
