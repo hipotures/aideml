@@ -975,3 +975,24 @@ def test_mark_node_execution_crash_records_bug_result():
     assert node.exc_info == {"args": ["REPL child process died unexpectedly"]}
     assert "REPL child process died unexpectedly" in node.term_out
     assert "REPL child process died unexpectedly" in node.analysis
+
+
+def test_mark_node_execution_crash_reports_autogluon_gpu_oom(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    (artifact_dir / "autogluon_stdout.log").write_text(
+        "Fitting model: CatBoost ...\n"
+        "catboost/cuda/cuda_lib/cuda_base.h:177: CUDA error 2: out of memory\n",
+        encoding="utf-8",
+    )
+    node = Node(code="print('crash')", plan="crash")
+
+    _mark_node_execution_crash(
+        node,
+        RuntimeError("REPL child process died unexpectedly"),
+        artifact_dir=artifact_dir,
+    )
+
+    assert "CatBoost GPU ran out of memory" in node.analysis
+    assert "CUDA error 2: out of memory" in node.analysis
+    assert "CatBoost GPU ran out of memory" in node.term_out

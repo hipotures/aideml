@@ -1158,8 +1158,57 @@ def _mark_node_submission_bug(
     return True
 
 
-def _mark_node_execution_crash(node: Node, exc: RuntimeError) -> None:
+def _execution_crash_log_diagnostic(artifact_dir: Path | None) -> str | None:
+    if artifact_dir is None:
+        return None
+
+    for log_name in ("autogluon_stdout.log", "process_stdout.log"):
+        log_path = artifact_dir / log_name
+        if not log_path.exists():
+            continue
+        try:
+            log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        lower_log = log_text.lower()
+        is_cuda_oom = "cuda error 2: out of memory" in lower_log
+        is_catboost_cuda_oom = (
+            "catboost" in lower_log
+            and "cuda" in lower_log
+            and "out of memory" in lower_log
+        )
+        if not is_cuda_oom and not is_catboost_cuda_oom:
+            continue
+
+        evidence = ""
+        for line in log_text.splitlines():
+            lower_line = line.lower()
+            if "cuda error" in lower_line or "out of memory" in lower_line:
+                evidence = line.strip()
+                break
+
+        diagnostic = (
+            "CatBoost GPU ran out of memory while the REPL child process was "
+            f"executing. Evidence from {log_name}"
+        )
+        if evidence:
+            diagnostic += f": {evidence}"
+        return diagnostic
+
+    return None
+
+
+def _mark_node_execution_crash(
+    node: Node,
+    exc: RuntimeError,
+    *,
+    artifact_dir: Path | None = None,
+) -> None:
     message = str(exc) or exc.__class__.__name__
+    diagnostic = _execution_crash_log_diagnostic(artifact_dir)
+    if diagnostic is not None:
+        message = f"{message}\n\n{diagnostic}"
     node._term_out = [f"{exc.__class__.__name__}: {message}\n"]
     node.exec_time = 0.0
     node.exc_type = exc.__class__.__name__
@@ -1643,7 +1692,14 @@ def run(argv: list[str] | None = None):
                                         ),
                                     )
                                 except RuntimeError as exc:
-                                    _mark_node_execution_crash(result_node, exc)
+                                    _mark_node_execution_crash(
+                                        result_node,
+                                        exc,
+                                        artifact_dir=_node_artifact_dir(
+                                            cfg,
+                                            result_node,
+                                        ),
+                                    )
                                     journal.append(result_node)
                                     if synthesized is not None:
                                         synthesis_advisor.mark_injected(
