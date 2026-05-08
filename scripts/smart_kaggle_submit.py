@@ -15,7 +15,9 @@ from aide.utils.submission_validation import (
 )
 from aide.utils.prediction_similarity import (
     DEFAULT_PREDICTION_ROUND_DECIMALS,
+    DEFAULT_PREDICTION_SIMILARITY_MIN_COMMON_SAMPLE_SIZE,
     DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD,
+    DEFAULT_PREDICTION_SIMILARITY_SAMPLE_SIZE,
     DEFAULT_SCORE_ROUND_DECIMALS,
     submission_prediction_rmse,
 )
@@ -368,12 +370,16 @@ def _has_similar_predictions(
     right: Candidate,
     *,
     prediction_round_decimals: int,
+    prediction_similarity_sample_size: int,
+    prediction_similarity_min_common_sample_size: int,
     prediction_similarity_rmse_threshold: float,
 ) -> bool:
     rmse = submission_prediction_rmse(
         left.submission_path,
         right.submission_path,
         prediction_round_decimals=prediction_round_decimals,
+        sample_size=prediction_similarity_sample_size,
+        min_common_sample_size=prediction_similarity_min_common_sample_size,
     )
     return rmse is not None and rmse <= prediction_similarity_rmse_threshold
 
@@ -384,6 +390,8 @@ def _should_collapse_related_candidate(
     *,
     score_round_decimals: int,
     prediction_round_decimals: int,
+    prediction_similarity_sample_size: int,
+    prediction_similarity_min_common_sample_size: int,
     prediction_similarity_rmse_threshold: float,
 ) -> bool:
     if _has_ancestor_relation(candidate, selected_candidate):
@@ -409,6 +417,10 @@ def _should_collapse_related_candidate(
         candidate,
         selected_candidate,
         prediction_round_decimals=prediction_round_decimals,
+        prediction_similarity_sample_size=prediction_similarity_sample_size,
+        prediction_similarity_min_common_sample_size=(
+            prediction_similarity_min_common_sample_size
+        ),
         prediction_similarity_rmse_threshold=prediction_similarity_rmse_threshold,
     )
 
@@ -418,6 +430,8 @@ def _prefer_ancestor_for_duplicate_related(
     *,
     score_round_decimals: int,
     prediction_round_decimals: int,
+    prediction_similarity_sample_size: int,
+    prediction_similarity_min_common_sample_size: int,
     prediction_similarity_rmse_threshold: float,
     progress: Any | None = None,
 ) -> list[Candidate]:
@@ -439,6 +453,10 @@ def _prefer_ancestor_for_duplicate_related(
                     selected_candidate,
                     score_round_decimals=score_round_decimals,
                     prediction_round_decimals=prediction_round_decimals,
+                    prediction_similarity_sample_size=prediction_similarity_sample_size,
+                    prediction_similarity_min_common_sample_size=(
+                        prediction_similarity_min_common_sample_size
+                    ),
                     prediction_similarity_rmse_threshold=(
                         prediction_similarity_rmse_threshold
                     ),
@@ -481,6 +499,12 @@ def select_top_unsent_ready(
     include_related: bool = False,
     score_round_decimals: int = DEFAULT_SCORE_ROUND_DECIMALS,
     prediction_round_decimals: int = DEFAULT_PREDICTION_ROUND_DECIMALS,
+    prediction_similarity_sample_size: int = (
+        DEFAULT_PREDICTION_SIMILARITY_SAMPLE_SIZE
+    ),
+    prediction_similarity_min_common_sample_size: int = (
+        DEFAULT_PREDICTION_SIMILARITY_MIN_COMMON_SAMPLE_SIZE
+    ),
     prediction_similarity_rmse_threshold: float = (
         DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD
     ),
@@ -500,6 +524,10 @@ def select_top_unsent_ready(
             ready,
             score_round_decimals=score_round_decimals,
             prediction_round_decimals=prediction_round_decimals,
+            prediction_similarity_sample_size=prediction_similarity_sample_size,
+            prediction_similarity_min_common_sample_size=(
+                prediction_similarity_min_common_sample_size
+            ),
             prediction_similarity_rmse_threshold=prediction_similarity_rmse_threshold,
             progress=progress,
         )
@@ -1037,6 +1065,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Decimal places used before comparing submission predictions.",
     )
     parser.add_argument(
+        "--prediction-similarity-sample-size",
+        type=int,
+        default=DEFAULT_PREDICTION_SIMILARITY_SAMPLE_SIZE,
+        help="Number of leading submission rows sampled for prediction similarity.",
+    )
+    parser.add_argument(
+        "--prediction-similarity-min-common-sample-size",
+        type=int,
+        default=DEFAULT_PREDICTION_SIMILARITY_MIN_COMMON_SAMPLE_SIZE,
+        help="Minimum common ids required in the sampled rows before using RMSE.",
+    )
+    parser.add_argument(
         "--prediction-similarity-rmse-threshold",
         type=float,
         default=DEFAULT_PREDICTION_SIMILARITY_RMSE_THRESHOLD,
@@ -1121,6 +1161,12 @@ def main(argv: list[str] | None = None) -> int:
                 include_related=args.include_related,
                 score_round_decimals=args.score_round_decimals,
                 prediction_round_decimals=args.prediction_round_decimals,
+                prediction_similarity_sample_size=(
+                    args.prediction_similarity_sample_size
+                ),
+                prediction_similarity_min_common_sample_size=(
+                    args.prediction_similarity_min_common_sample_size
+                ),
                 prediction_similarity_rmse_threshold=(
                     args.prediction_similarity_rmse_threshold
                 ),

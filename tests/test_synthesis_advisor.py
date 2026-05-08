@@ -263,6 +263,7 @@ def test_collect_top_synthesis_solutions_filters_similar_related_predictions(
 ):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 5
+    cfg.synthesis.prediction_similarity_min_common_sample_size = 2
     journal = Journal()
     parent = _node(0.948596, code="print('parent')", ctime=1777716000.0)
     child = _node(

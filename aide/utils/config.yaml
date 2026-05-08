@@ -51,6 +51,8 @@ synthesis:
   source_runs: []
   score_round_decimals: 5
   prediction_round_decimals: 5
+  prediction_similarity_sample_size: 200
+  prediction_similarity_min_common_sample_size: 100
   prediction_similarity_rmse_threshold: 0.015
   timeout: 900
   model: gpt-5.4-mini

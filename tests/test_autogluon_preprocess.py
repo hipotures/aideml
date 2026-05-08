@@ -50,6 +50,25 @@ def test_extract_preprocess_source_from_markdown_code_block():
     assert "return df" in source
 
 
+def test_extract_preprocess_source_from_raw_code_does_not_format(monkeypatch):
+    import aide.utils.response as response
+
+    def fail_format(*args, **kwargs):
+        raise AssertionError("raw preprocess extraction should not call Black")
+
+    monkeypatch.setattr(response.black, "format_str", fail_format)
+
+    source = extract_preprocess_source(
+        "import pandas as pd\n\n"
+        "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n"
+        "    out = df.copy()\n"
+        "    return out\n"
+    )
+
+    assert source.startswith("def preprocess")
+    assert "return out" in source
+
+
 def test_validate_preprocess_source_rejects_target_reference():
     with pytest.raises(ValueError, match="forbidden column"):
         validate_preprocess_source(
@@ -172,6 +191,30 @@ def test_generated_save_submission_copies_to_artifact_dir(tmp_path, monkeypatch)
     assert (working_dir / "submission.csv").read_text() == (
         artifact_dir / "submission.csv"
     ).read_text()
+
+
+def test_generated_make_submission_maps_predictions_by_id_and_sorts(tmp_path):
+    cfg = _cfg(tmp_path)
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    sample_submission = namespace["pd"].DataFrame(
+        {"id": [3, 1, 2], "PitNextLap": [0.0, 0.0, 0.0]}
+    )
+    test_ids = namespace["pd"].Series([1, 2, 3])
+    test_pred = namespace["pd"].Series([0.1, 0.2, 0.3])
+
+    submission = namespace["_make_submission"](
+        sample_submission,
+        id_col="id",
+        target_col="PitNextLap",
+        test_ids=test_ids,
+        test_pred=test_pred,
+    )
+
+    assert submission["id"].to_list() == [1, 2, 3]
+    assert submission["PitNextLap"].to_list() == [0.1, 0.2, 0.3]
 
 
 def test_autogluon_fast_boost_profile_excludes_catboost(tmp_path):

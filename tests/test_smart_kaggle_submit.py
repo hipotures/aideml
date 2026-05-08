@@ -448,6 +448,7 @@ def test_select_top_unsent_ready_filters_similar_related_predictions(
         registry=SubmissionRegistry(tmp_path / "registry.json"),
         competition="playground-series-s6e5",
         limit=5,
+        prediction_similarity_min_common_sample_size=2,
     )
     selected_with_related = select_top_unsent_ready(
         candidates,

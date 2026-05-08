@@ -10,7 +10,6 @@ from typing import Any
 from omegaconf import OmegaConf
 
 from .utils.config import Config
-from .utils.response import extract_code
 
 AGENT_MODE = "autogluon_preprocess"
 RESULT_MARKER = "AIDE_RESULT_JSON:"
@@ -71,14 +70,17 @@ def _source_for_first_preprocess_function(source: str) -> str | None:
     return None
 
 
-def extract_preprocess_source(text: str) -> str:
-    candidates = []
-    code = extract_code(text)
-    if code:
-        candidates.append(code)
-    candidates.append(text)
+def _python_code_block_candidates(text: str) -> list[str]:
+    matches = re.findall(r"```(?:python)?\n*(.*?)\n*```", text, re.DOTALL)
+    return [match for match in matches if match.strip()]
 
-    for candidate in candidates:
+
+def extract_preprocess_source(text: str) -> str:
+    source = _source_for_first_preprocess_function(text)
+    if source:
+        return source.strip()
+
+    for candidate in _python_code_block_candidates(text):
         source = _source_for_first_preprocess_function(candidate)
         if source:
             return source.strip()
@@ -358,6 +360,36 @@ def _save_submission(submission: pd.DataFrame, working_dir: Path) -> Path:
     return submission_path
 
 
+def _make_submission(
+    sample_submission: pd.DataFrame,
+    *,
+    id_col: str,
+    target_col: str,
+    test_ids: pd.Series,
+    test_pred: pd.Series,
+) -> pd.DataFrame:
+    prediction_frame = pd.DataFrame({{
+        id_col: pd.Series(test_ids).reset_index(drop=True),
+        target_col: pd.Series(test_pred).reset_index(drop=True),
+    }})
+    if prediction_frame[id_col].duplicated().any():
+        raise ValueError(f"test data contains duplicate {{id_col}} values")
+
+    submission = sample_submission.copy()
+    mapped = submission[[id_col]].merge(
+        prediction_frame,
+        on=id_col,
+        how="left",
+        validate="one_to_one",
+    )[target_col]
+    if mapped.isna().any():
+        missing = int(mapped.isna().sum())
+        raise ValueError(f"missing predictions for {{missing}} sample_submission ids")
+
+    submission[target_col] = mapped.to_numpy()
+    return submission.sort_values(id_col, kind="mergesort").reset_index(drop=True)
+
+
 @contextlib.contextmanager
 def _quiet_model_output(working_dir: Path):
     artifact_dir = _artifact_dir(working_dir)
@@ -527,8 +559,13 @@ def main() -> None:
             lower_is_better = False
 
         test_pred = _positive_probability(predictor, test_model)
-    submission = sample_submission.copy()
-    submission[target_col] = test_pred.to_numpy()
+    submission = _make_submission(
+        sample_submission,
+        id_col=id_col,
+        target_col=target_col,
+        test_ids=test_df[id_col],
+        test_pred=test_pred,
+    )
     submission_path = _save_submission(submission, working_dir)
     artifact_submission_path = _artifact_dir(working_dir) / "submission.csv"
     print("AIDE AutoGluon: finished validation and prediction", flush=True)

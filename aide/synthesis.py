@@ -434,6 +434,8 @@ def _has_similar_submission_predictions(
         _submission_path_for_node(cfg, left_run_id, left),
         _submission_path_for_node(cfg, right_run_id, right),
         prediction_round_decimals=cfg.synthesis.prediction_round_decimals,
+        sample_size=cfg.synthesis.prediction_similarity_sample_size,
+        min_common_sample_size=cfg.synthesis.prediction_similarity_min_common_sample_size,
     )
     return (
         rmse is not None
