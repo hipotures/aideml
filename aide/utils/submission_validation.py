@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import csv
+import gzip
+import math
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-
-import pandas as pd
 
 
 def file_signature(path: Path) -> dict[str, int]:
@@ -21,40 +24,140 @@ def find_sample_submission(input_dir: Path) -> Path | None:
     return None
 
 
+@dataclass(frozen=True)
+class SampleSubmissionContract:
+    columns: tuple[str, ...]
+    id_col: str
+    target_col: str
+    row_count: int
+    ids: frozenset[str]
+
+
+def _open_csv_text(path: Path):
+    if path.suffix == ".gz":
+        return gzip.open(path, "rt", encoding="utf-8", newline="")
+    return path.open("r", encoding="utf-8", newline="")
+
+
+def _normalize_id(value: str) -> str:
+    return str(value)
+
+
+def _is_numeric_submission_value(value: str) -> bool:
+    text = str(value).strip()
+    if text == "":
+        return False
+    try:
+        number = float(text)
+    except ValueError:
+        return False
+    return not math.isnan(number)
+
+
+def _row_value(row: list[str], index: int) -> str:
+    return row[index] if index < len(row) else ""
+
+
+@lru_cache(maxsize=8)
+def _sample_contract_cached(
+    path: str,
+    size: int,
+    mtime_ns: int,
+) -> SampleSubmissionContract | str:
+    del size, mtime_ns
+    sample_path = Path(path)
+    with _open_csv_text(sample_path) as f:
+        reader = csv.reader(f)
+        try:
+            columns = tuple(next(reader))
+        except StopIteration:
+            columns = ()
+
+        if len(columns) < 2:
+            return "sample_submission must contain id and target columns"
+
+        id_col = columns[0]
+        target_col = columns[1]
+        id_index = 0
+        ids: set[str] = set()
+        row_count = 0
+        for row in reader:
+            row_count += 1
+            ids.add(_normalize_id(_row_value(row, id_index)))
+
+    return SampleSubmissionContract(
+        columns=columns,
+        id_col=id_col,
+        target_col=target_col,
+        row_count=row_count,
+        ids=frozenset(ids),
+    )
+
+
+def _sample_contract(path: Path) -> SampleSubmissionContract | str:
+    signature = file_signature(path)
+    return _sample_contract_cached(
+        str(path.resolve()),
+        signature["size"],
+        signature["mtime_ns"],
+    )
+
+
 def validate_submission_file(
     submission_path: Path,
     sample_submission_path: Path,
 ) -> str | None:
     try:
-        submission = pd.read_csv(submission_path)
-        sample = pd.read_csv(sample_submission_path)
+        sample_contract = _sample_contract(sample_submission_path)
+        if isinstance(sample_contract, str):
+            return sample_contract
+
+        with _open_csv_text(submission_path) as f:
+            reader = csv.reader(f)
+            try:
+                submission_columns = tuple(next(reader))
+            except StopIteration:
+                submission_columns = ()
+
+            if list(submission_columns) != list(sample_contract.columns):
+                return (
+                    f"columns {list(submission_columns)} != expected "
+                    f"{list(sample_contract.columns)}"
+                )
+
+            id_index = submission_columns.index(sample_contract.id_col)
+            target_index = submission_columns.index(sample_contract.target_col)
+            seen_ids: set[str] = set()
+            duplicate_count = 0
+            extra_ids = 0
+            invalid_prediction = False
+            row_count = 0
+            for row in reader:
+                row_count += 1
+                row_id = _normalize_id(_row_value(row, id_index))
+                if row_id in seen_ids:
+                    duplicate_count += 1
+                else:
+                    seen_ids.add(row_id)
+                if row_id not in sample_contract.ids:
+                    extra_ids += 1
+                if not _is_numeric_submission_value(_row_value(row, target_index)):
+                    invalid_prediction = True
     except Exception as exc:
         return f"cannot read submission/sample: {type(exc).__name__}: {exc}"
 
-    if list(submission.columns) != list(sample.columns):
-        return f"columns {list(submission.columns)} != expected {list(sample.columns)}"
+    if row_count != sample_contract.row_count:
+        return f"row count {row_count} != expected {sample_contract.row_count}"
 
-    if len(sample.columns) < 2:
-        return "sample_submission must contain id and target columns"
-
-    id_col = sample.columns[0]
-    target_col = sample.columns[1]
-
-    if len(submission) != len(sample):
-        return f"row count {len(submission)} != expected {len(sample)}"
-
-    duplicate_count = int(submission[id_col].duplicated().sum())
     if duplicate_count:
-        return f"duplicate {id_col} rows: {duplicate_count}"
+        return f"duplicate {sample_contract.id_col} rows: {duplicate_count}"
 
-    missing_ids = len(set(sample[id_col]) - set(submission[id_col]))
-    extra_ids = len(set(submission[id_col]) - set(sample[id_col]))
+    missing_ids = len(sample_contract.ids - seen_ids)
     if missing_ids or extra_ids:
         return f"id mismatch: missing={missing_ids}, extra={extra_ids}"
 
-    predictions = pd.to_numeric(submission[target_col], errors="coerce")
-    if predictions.isna().any():
-        return f"{target_col} contains non-numeric or null values"
+    if invalid_prediction:
+        return f"{sample_contract.target_col} contains non-numeric or null values"
 
     return None
 

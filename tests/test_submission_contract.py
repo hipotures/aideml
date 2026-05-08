@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+import gzip
 from pathlib import Path
 
 from aide.journal import Journal, Node
 import aide.run as run_module
+import aide.utils.submission_validation as submission_validation
 from aide.run import enforce_journal_submission_contract, enforce_submission_contract
 from aide.utils.metric import MetricValue
 from aide.utils.submission_validation import validate_workspace_submission
@@ -34,6 +36,26 @@ def test_validate_workspace_submission_rejects_duplicate_ids(tmp_path):
     error = validate_workspace_submission(workspace_dir)
 
     assert error == "duplicate id rows: 1"
+
+
+def test_validate_workspace_submission_streams_without_pandas(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    _write_sample(workspace_dir)
+    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n2,0.9\n")
+
+    assert not hasattr(submission_validation, "pd")
+    assert validate_workspace_submission(workspace_dir) is None
+
+
+def test_validate_workspace_submission_supports_gzipped_sample(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    input_dir = workspace_dir / "input"
+    input_dir.mkdir(parents=True)
+    with gzip.open(input_dir / "sample_submission.csv.gz", "wt", encoding="utf-8") as f:
+        f.write("id,PitNextLap\n1,0.0\n2,0.0\n")
+    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n2,0.9\n")
+
+    assert validate_workspace_submission(workspace_dir) is None
 
 
 def test_enforce_submission_contract_marks_invalid_successful_node_as_bug(tmp_path):
