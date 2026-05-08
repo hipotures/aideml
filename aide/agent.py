@@ -24,6 +24,7 @@ from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import format_research_hints_for_prompt, load_latest_research_hints
+from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
@@ -692,7 +693,11 @@ class Agent:
             result_node = self.generate_node(parent_node)
             exec_result = self.execute_node(result_node, exec_callback)
             self.review_node(result_node, exec_result)
-            self.journal.append(result_node)
+            append_node_with_best_score_notification(
+                journal=self.journal,
+                node=result_node,
+                experiment_id=self.cfg.exp_name,
+            )
         finally:
             self.clear_active_step()
 

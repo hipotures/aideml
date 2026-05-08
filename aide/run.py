@@ -22,6 +22,10 @@ from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import ResearchAdvisor, count_scored_working_nodes
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
+from .telegram_notifications import (
+    append_node_with_best_score_notification,
+    send_telegram_test_message,
+)
 from .autogluon_preprocess import BASELINE_PLAN_PREFIX
 from omegaconf import OmegaConf
 from rich.console import Group
@@ -78,6 +82,7 @@ class ResumeRequest:
 class RuntimeOptions:
     show_invalid_submission_branches: bool = False
     force_check_submissions: bool = False
+    telegram_test_message: bool = False
 
 
 @dataclass(frozen=True)
@@ -141,11 +146,19 @@ def parse_runtime_args(
             runtime = RuntimeOptions(
                 show_invalid_submission_branches=True,
                 force_check_submissions=runtime.force_check_submissions,
+                telegram_test_message=runtime.telegram_test_message,
             )
         elif arg == "--force-check-submissions":
             runtime = RuntimeOptions(
                 show_invalid_submission_branches=runtime.show_invalid_submission_branches,
                 force_check_submissions=True,
+                telegram_test_message=runtime.telegram_test_message,
+            )
+        elif arg == "--telegram-test-message":
+            runtime = RuntimeOptions(
+                show_invalid_submission_branches=runtime.show_invalid_submission_branches,
+                force_check_submissions=runtime.force_check_submissions,
+                telegram_test_message=True,
             )
         else:
             remaining.append(arg)
@@ -1667,6 +1680,8 @@ def run_with_live_refresh(
 def run(argv: list[str] | None = None):
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     resume_request, runtime_options, cli_args = parse_runtime_args(raw_argv)
+    if runtime_options.telegram_test_message:
+        send_telegram_test_message()
 
     if resume_request.requested:
         base_cfg = _load_cfg(cli_args=cli_args)
@@ -1953,7 +1968,11 @@ def run(argv: list[str] | None = None):
                             synthesized is not None
                             and not synthesized.ready_for_execution
                         ):
-                            journal.append(result_node)
+                            append_node_with_best_score_notification(
+                                journal=journal,
+                                node=result_node,
+                                experiment_id=cfg.exp_name,
+                            )
                             synthesis_advisor.mark_recorded(
                                 synthesized,
                                 node=result_node,
@@ -1985,7 +2004,11 @@ def run(argv: list[str] | None = None):
                                             result_node,
                                         ),
                                     )
-                                    journal.append(result_node)
+                                    append_node_with_best_score_notification(
+                                        journal=journal,
+                                        node=result_node,
+                                        experiment_id=cfg.exp_name,
+                                    )
                                     if synthesized is not None:
                                         synthesis_advisor.mark_injected(
                                             synthesized,
@@ -2003,7 +2026,11 @@ def run(argv: list[str] | None = None):
                                 ),
                             )
                             enforce_submission_contract(cfg, result_node)
-                            journal.append(result_node)
+                            append_node_with_best_score_notification(
+                                journal=journal,
+                                node=result_node,
+                                experiment_id=cfg.exp_name,
+                            )
                             if synthesized is not None:
                                 synthesis_advisor.mark_injected(
                                     synthesized,

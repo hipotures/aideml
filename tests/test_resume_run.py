@@ -81,6 +81,7 @@ def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides()
             "2-example-run",
             "--show-invalid-submission-branches",
             "--force-check-submissions",
+            "--telegram-test-message",
             "agent.steps=200",
         ]
     )
@@ -88,6 +89,7 @@ def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides()
     assert resume.run_id == "2-example-run"
     assert runtime.show_invalid_submission_branches is True
     assert runtime.force_check_submissions is True
+    assert runtime.telegram_test_message is True
     assert remaining == ["agent.steps=200"]
 
 
