@@ -27,8 +27,13 @@ from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
 
 
-def _good_node(score: float, parent: Node | None = None) -> Node:
-    node = Node(code="print('ok')", plan="ok", parent=parent)
+def _good_node(
+    score: float,
+    parent: Node | None = None,
+    ctime: float | None = None,
+) -> Node:
+    kwargs = {"ctime": ctime} if ctime is not None else {}
+    node = Node(code="print('ok')", plan="ok", parent=parent, **kwargs)
     node.metric = MetricValue(score, maximize=True)
     node.is_buggy = False
     return node
@@ -677,7 +682,7 @@ def test_run_data_shows_research_status_when_enabled(tmp_path):
         )
     )
 
-    assert "Research: ▶ 000010" in output
+    assert "◇ Research   · 010 ▶" in output
     assert "Agent workspace directory" in output
 
 
@@ -710,8 +715,75 @@ def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
         )
     )
 
-    assert "Synthesis: ✓ 000015" in output
+    assert "◆ Synthesis  · 015 ✓" in output
     assert "Agent workspace directory" in output
+
+
+def test_run_data_shows_checkpoint_and_best_score_statuses_with_times(tmp_path):
+    journal = Journal()
+    old_best = _good_node(0.950, ctime=dt.datetime(2026, 5, 8, 2, 10, 0).timestamp())
+    new_best = _good_node(0.95108, ctime=dt.datetime(2026, 5, 8, 2, 11, 25).timestamp())
+    journal.append(old_best)
+    journal.append(new_best)
+    log_dir = tmp_path / "logs" / "2-example-run"
+    research_checkpoint = log_dir / "research" / "checkpoint-000098"
+    research_checkpoint.mkdir(parents=True)
+    (research_checkpoint / "status.json").write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "checkpoint_step": 98,
+                "completed_at": "2026-05-08T02:08:34",
+            }
+        ),
+        encoding="utf-8",
+    )
+    synthesis_checkpoint = log_dir / "synthesis" / "checkpoint-000098"
+    synthesis_checkpoint.mkdir(parents=True)
+    (synthesis_checkpoint / "status.json").write_text(
+        json.dumps(
+            {
+                "status": "injected",
+                "checkpoint_step": 98,
+                "injected_at": "2026-05-08T02:09:15",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status="[green]Research: ✓ 000098",
+            synthesis_status="[green]Synthesis: ✓ 000098",
+            journal=journal,
+            log_dir=log_dir,
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            model_settings=[("code", "gpt-5.5", "medium")],
+        )
+    )
+
+    assert "◇ Research   · 098 @ 02:08:34 ✓" in output
+    assert "◆ Synthesis  · 098 @ 02:09:15 ✓" in output
+    assert "★ Best Score · 001 @ 02:11:25 0.95108" in output
+    assert output.index("◇ Research") < output.index("◆ Synthesis")
+    assert output.index("◆ Synthesis") < output.index("★ Best Score")
+    assert output.index("★ Best Score") < output.index("Models")
+
+    ansi = _render_ansi(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status="[green]Research: ✓ 000098",
+            synthesis_status="[green]Synthesis: ✓ 000098",
+            journal=journal,
+            log_dir=log_dir,
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+    assert "\x1b[32m★ Best Score" in ansi
+    assert "\x1b[1;33m★ Best Score" not in ansi
 
 
 def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):

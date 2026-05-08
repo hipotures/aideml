@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import queue
+import re
 import select
 import shutil
 import sys
@@ -100,6 +101,13 @@ class TreeView:
 class LastErrorRecord:
     node: Node
     lines: list[str]
+
+
+@dataclass(frozen=True)
+class CheckpointStatusRecord:
+    label: str
+    status: str | None
+    timestamp: str | None
 
 
 def parse_runtime_args(
@@ -841,6 +849,204 @@ def build_last_error_summary(journal: Journal) -> Group:
     return Group(*lines)
 
 
+STATUS_TIMESTAMP_KEYS: dict[str, tuple[str, ...]] = {
+    "completed": ("completed_at", "started_at", "queued_at"),
+    "injected": ("injected_at", "recorded_at", "completed_at", "started_at"),
+    "ready": ("completed_at", "started_at", "queued_at"),
+    "failed": ("failed_at", "completed_at", "started_at", "queued_at"),
+    "running": ("started_at", "queued_at"),
+    "queued": ("queued_at", "started_at"),
+}
+
+STATUS_SYMBOLS = {
+    "completed": "✓",
+    "injected": "✓",
+    "ready": "…",
+    "running": "▶",
+    "queued": "…",
+    "failed": "✗",
+}
+RUN_STATUS_LABEL_WIDTH = len("★ Best Score")
+RUN_STATUS_STEP_WIDTH = 3
+
+
+def _parse_status_time(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = dt.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return parsed.strftime("%H:%M:%S")
+
+
+def _status_timestamp(status_data: dict) -> str | None:
+    status = str(status_data.get("status") or "")
+    keys = STATUS_TIMESTAMP_KEYS.get(
+        status,
+        (
+            "completed_at",
+            "injected_at",
+            "recorded_at",
+            "failed_at",
+            "started_at",
+            "queued_at",
+        ),
+    )
+    for key in keys:
+        parsed = _parse_status_time(status_data.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _latest_checkpoint_status(
+    *,
+    log_dir: Path | str,
+    kind: Literal["research", "synthesis"],
+) -> CheckpointStatusRecord | None:
+    checkpoint_dir = Path(log_dir) / kind
+    if not checkpoint_dir.exists():
+        return None
+
+    records: list[CheckpointStatusRecord] = []
+    for status_path in sorted(checkpoint_dir.glob("checkpoint-*/status.json")):
+        try:
+            status_data = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(status_data, dict):
+            continue
+        status = status_data.get("status")
+        label = status_path.parent.name.removeprefix("checkpoint-")
+        records.append(
+            CheckpointStatusRecord(
+                label=label,
+                status=str(status) if status is not None else None,
+                timestamp=_status_timestamp(status_data),
+            )
+        )
+    return records[-1] if records else None
+
+
+def _status_style(status: str | None, fallback_status: str | None) -> str:
+    if status in {"completed", "injected"}:
+        return "green"
+    if status in {"running", "queued"}:
+        return "cyan"
+    if status == "failed":
+        return "red"
+    if status in {"ready"}:
+        return "yellow"
+
+    fallback = fallback_status or ""
+    for markup, style in (
+        ("[green]", "green"),
+        ("[cyan]", "cyan"),
+        ("[red]", "red"),
+        ("[yellow]", "yellow"),
+        ("[dim]", "dim"),
+    ):
+        if fallback.startswith(markup):
+            return style
+    return "yellow"
+
+
+def _fallback_status_symbol(status_text: str | None) -> str:
+    if not status_text:
+        return "?"
+    for symbol in ("✓", "▶", "…", "✗", "?", "○"):
+        if symbol in status_text:
+            return symbol
+    return "?"
+
+
+def _fallback_checkpoint_label(status_text: str | None) -> str | None:
+    if not status_text:
+        return None
+    match = re.search(r"\b(\d{6})\b", status_text)
+    return match.group(1) if match else None
+
+
+def _compact_step_label(label: str | None) -> str | None:
+    if label is None:
+        return None
+    stripped = label.strip()
+    if stripped.isdigit():
+        return str(int(stripped))
+    return stripped
+
+
+def _format_run_status_step(step: object) -> str:
+    text = str(step).strip()
+    if text.isdigit():
+        value = int(text)
+        if value <= 999:
+            return f"{value:03d}"
+        return str(value)
+    return text.rjust(RUN_STATUS_STEP_WIDTH)
+
+
+def _run_status_label(icon: str, title: str) -> str:
+    return f"{icon} {title}".ljust(RUN_STATUS_LABEL_WIDTH)
+
+
+def build_checkpoint_status_line(
+    *,
+    title: str,
+    icon: str,
+    status_text: str | None,
+    record: CheckpointStatusRecord | None,
+) -> Text | None:
+    if status_text is None:
+        return None
+
+    label = _compact_step_label(
+        record.label if record is not None else _fallback_checkpoint_label(status_text)
+    )
+    symbol = (
+        STATUS_SYMBOLS.get(record.status or "", "?")
+        if record is not None
+        else _fallback_status_symbol(status_text)
+    )
+    style = _status_style(record.status if record is not None else None, status_text)
+
+    line = Text(f"{_run_status_label(icon, title)} ·", style=style)
+    if label is None:
+        line.append(f" {symbol}", style=style)
+        return line
+
+    line.append(f" {_format_run_status_step(label)}", style=style)
+    if record is not None and record.timestamp is not None:
+        line.append(f" @ {record.timestamp}", style=style)
+    line.append(f" {symbol}", style=style)
+    return line
+
+
+def _best_scored_node(journal: Journal) -> Node | None:
+    candidates = [
+        node
+        for node in journal.good_nodes
+        if not node.is_in_submission_contract_error_branch
+        and node.metric is not None
+        and node.metric.value is not None
+    ]
+    return max(candidates, key=lambda node: node.metric, default=None)
+
+
+def build_best_score_status(journal: Journal) -> Text | None:
+    node = _best_scored_node(journal)
+    if node is None:
+        return None
+    step = node.step if node.step is not None else "?"
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
+    return Text(
+        f"{_run_status_label('★', 'Best Score')} · "
+        f"{_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}",
+        style="green",
+    )
+
+
 def _format_percent(value: float) -> str:
     if value == 0 or value >= 10:
         return f"{value:.0f}%"
@@ -1085,13 +1291,30 @@ def build_run_data(
         resource_history = ResourceHistory()
         resource_history.add(resource_snapshot)
     lines = [progress, status]
-    if research_status is not None:
+    research_line = build_checkpoint_status_line(
+        title="Research",
+        icon="◇",
+        status_text=research_status,
+        record=_latest_checkpoint_status(log_dir=log_dir, kind="research"),
+    )
+    synthesis_line = build_checkpoint_status_line(
+        title="Synthesis",
+        icon="◆",
+        status_text=synthesis_status,
+        record=_latest_checkpoint_status(log_dir=log_dir, kind="synthesis"),
+    )
+    best_score_status = build_best_score_status(journal)
+    if research_line is not None:
         lines.append("")
-        lines.append(research_status)
-    if synthesis_status is not None:
-        if research_status is None:
+        lines.append(research_line)
+    if synthesis_line is not None:
+        if research_line is None:
             lines.append("")
-        lines.append(synthesis_status)
+        lines.append(synthesis_line)
+    if best_score_status is not None:
+        if research_line is None and synthesis_line is None:
+            lines.append("")
+        lines.append(best_score_status)
     model_summary = build_model_summary(model_settings)
     if model_summary is not None:
         lines.extend(["", model_summary])
