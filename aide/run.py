@@ -1631,6 +1631,7 @@ def stage_status_message(active_stage: str | None, elapsed: float | None = None)
 
 
 KeyboardInterruptAction = Literal["continue", "abort"]
+LIVE_REFRESH_INTERVAL_SECONDS = 1.0
 
 
 def run_with_live_refresh(
@@ -1655,7 +1656,7 @@ def run_with_live_refresh(
             if tick is not None:
                 tick()
             live.update(render(), refresh=True)
-            thread.join(timeout=0.25)
+            thread.join(timeout=LIVE_REFRESH_INTERVAL_SECONDS)
         except KeyboardInterrupt:
             if on_keyboard_interrupt is None:
                 raise
