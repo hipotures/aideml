@@ -257,6 +257,30 @@ def test_main_reruns_same_source_even_when_successful_eval_exists(tmp_path, monk
     assert len(calls) == 1
 
 
+def test_main_reports_unknown_profile_without_traceback(tmp_path, capsys):
+    index_path = tmp_path / "submission_index.json"
+    index_path.write_text(json.dumps({"records": []}))
+
+    exit_code = rerun_autogluon_profile.main(
+        [
+            "--execute",
+            "--profile",
+            "best_boost_gpu_30msss",
+            "--index",
+            str(index_path),
+            "--sha256",
+            "5469962e4f",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 2
+    assert "Unknown AutoGluon profile: best_boost_gpu_30msss" in output
+    assert "Did you mean: best_boost_gpu_30m" in output
+    assert "Available profiles:" in output
+    assert "Traceback" not in output
+
+
 def test_resolve_process_timeout_defaults_to_profile_time_limit_plus_margin():
     assert rerun_autogluon_profile.resolve_process_timeout(None, 1800) == 2700
     assert rerun_autogluon_profile.resolve_process_timeout(None, 60) == 1200

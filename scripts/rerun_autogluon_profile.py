@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import difflib
 import json
 import os
 import resource
@@ -95,6 +96,27 @@ def source_input_dir(*, logs_dir: Path, run: str) -> Path:
     return path
 
 
+def available_autogluon_profiles() -> list[str]:
+    cfg = _load_cfg(use_cli_args=False)
+    return sorted(cfg.agent.autogluon.profiles)
+
+
+def format_unknown_profile_error(profile: str, known_profiles: list[str]) -> str:
+    lines = [f"Unknown AutoGluon profile: {profile}"]
+    matches = difflib.get_close_matches(profile, known_profiles, n=1)
+    if matches:
+        lines.append(f"Did you mean: {matches[0]}")
+    lines.append("Available profiles:")
+    lines.extend(f"  - {known}" for known in known_profiles)
+    return "\n".join(lines)
+
+
+def validate_autogluon_profile(profile: str) -> None:
+    known_profiles = available_autogluon_profiles()
+    if profile not in known_profiles:
+        raise ValueError(format_unknown_profile_error(profile, known_profiles))
+
+
 def build_profile_config(
     *,
     source_record: dict[str, Any],
@@ -110,8 +132,7 @@ def build_profile_config(
 
     profiles = cfg.agent.autogluon.profiles
     if profile not in profiles:
-        known = ", ".join(sorted(profiles))
-        raise ValueError(f"Unknown AutoGluon profile {profile!r}. Expected one of: {known}")
+        raise ValueError(format_unknown_profile_error(profile, sorted(profiles)))
     profile_settings = OmegaConf.to_container(profiles[profile], resolve=True)
     if isinstance(profile_settings, list):
         profile_settings = {"included_model_types": profile_settings}
@@ -611,6 +632,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         fit_args = parse_fit_args_json(args.fit_args_json)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 2
+    try:
+        validate_autogluon_profile(args.profile)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         return 2
