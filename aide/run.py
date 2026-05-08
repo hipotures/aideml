@@ -58,7 +58,11 @@ from .utils.config import (
 )
 from .utils.memory_debug import MemoryDebugLogger
 from .utils.metric import MetricValue, WorstMetricValue
-from .utils.resource_monitor import ResourceHistory, ResourceSnapshot, downsample_max
+from .utils.resource_monitor import (
+    DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
+    ResourceHistory,
+    ResourceSnapshot,
+)
 from .utils.submission_validation import (
     file_signature,
     find_sample_submission,
@@ -1082,7 +1086,9 @@ RESOURCE_SPARKLINE_LEVELS = "▁▂▃▄▅▆▇█"
 
 
 def _sparkline(values: list[float], *, width: int, ceiling: float) -> str:
-    sampled = downsample_max(values, width)
+    if width <= 0:
+        return ""
+    sampled = values[-width:]
     if not sampled:
         return " " * width
 
@@ -1811,7 +1817,10 @@ def run(argv: list[str] | None = None):
     status_override: str | None = None
     stop_after_current_node = False
     execution_interrupt_count = 0
-    resource_history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    resource_history = ResourceHistory(
+        window_seconds=DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
+        interval_seconds=1,
+    )
     resource_active = False
     focused_tree_item_id = "header"
     tree_scroll_top = 0

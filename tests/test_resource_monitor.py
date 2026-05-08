@@ -97,6 +97,24 @@ def test_resource_history_keeps_sliding_window_and_latest_values():
     assert history.process_count_values == [2.0, 3.0]
 
 
+def test_resource_history_default_window_matches_short_lived_executions():
+    history = ResourceHistory()
+
+    for index in range(301):
+        history.add(
+            ResourceSnapshot(
+                cpu_percent=float(index),
+                ram_bytes=index,
+                peak_ram_bytes=index,
+                process_count=1,
+            )
+        )
+
+    assert len(history.snapshots) == 300
+    assert history.cpu_percent_values[0] == 1.0
+    assert history.cpu_percent_values[-1] == 300.0
+
+
 def test_resource_history_exposes_gpu_values_when_available():
     history = ResourceHistory(window_seconds=5, interval_seconds=1)
 

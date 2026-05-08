@@ -14,6 +14,9 @@ from typing import Any
 import psutil
 
 
+DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS = 5 * 60
+
+
 @dataclass(frozen=True)
 class ResourceSnapshot:
     cpu_percent: float
@@ -125,7 +128,12 @@ def downsample_max(values: list[float], width: int) -> list[float]:
 
 
 class ResourceHistory:
-    def __init__(self, *, window_seconds: int = 30 * 60, interval_seconds: int = 1):
+    def __init__(
+        self,
+        *,
+        window_seconds: int = DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
+        interval_seconds: int = 1,
+    ):
         maxlen = max(1, int(window_seconds / max(interval_seconds, 1)))
         self.snapshots: deque[ResourceSnapshot] = deque(maxlen=maxlen)
 

@@ -7,6 +7,7 @@ from rich.console import Console
 from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
+    _sparkline,
     build_path_summary,
     build_run_data,
     ResourceSnapshot,
@@ -25,6 +26,10 @@ from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
 from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
+
+
+def test_resource_sparkline_uses_latest_samples_without_rebinning_history():
+    assert _sparkline([100.0, 0.0, 0.0, 0.0], width=3, ceiling=100.0) == "▁▁▁"
 
 
 def _good_node(
