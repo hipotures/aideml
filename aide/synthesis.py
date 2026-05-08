@@ -837,10 +837,15 @@ def run_synthesis_checkpoint(
     completed_steps = int(context["checkpoint_step"])
     checkpoint_dir = checkpoint_dir_for(cfg, completed_steps)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    started_at = time.monotonic()
+    timings_seconds: dict[str, float] = dict(context.get("timings_seconds", {}))
+
+    phase_started = time.monotonic()
     prompt = build_synthesis_prompt(context)
     command = _codex_command(cfg, checkpoint_dir)
-    started_at = time.monotonic()
+    timings_seconds["build_prompt"] = time.monotonic() - phase_started
 
+    phase_started = time.monotonic()
     _write_json(
         checkpoint_dir / "status.json",
         {
@@ -868,6 +873,7 @@ def run_synthesis_checkpoint(
         _codex_profile_text(cfg.synthesis.model, cfg.synthesis.reasoning_effort),
         encoding="utf-8",
     )
+    timings_seconds["write_inputs"] = time.monotonic() - phase_started
 
     exit_code: int | None = None
     stderr = ""
@@ -875,6 +881,7 @@ def run_synthesis_checkpoint(
     error: str | None = None
     code: str | None = None
     plan: str | None = None
+    phase_started = time.monotonic()
     try:
         completed = runner(
             command,
@@ -893,7 +900,9 @@ def run_synthesis_checkpoint(
         stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
     except Exception as exc:  # noqa: BLE001 - external tool failure must not stop AIDE
         error = f"{exc.__class__.__name__}: {exc}"
+    timings_seconds["codex_subprocess"] = time.monotonic() - phase_started
 
+    phase_started = time.monotonic()
     (checkpoint_dir / "codex_events.jsonl").write_text(stdout, encoding="utf-8")
     (checkpoint_dir / "stderr.log").write_text(stderr, encoding="utf-8")
     raw_response_path = checkpoint_dir / "response_raw.txt"
@@ -902,7 +911,9 @@ def run_synthesis_checkpoint(
         if raw_response_path.exists()
         else ""
     )
+    timings_seconds["read_response"] = time.monotonic() - phase_started
 
+    phase_started = time.monotonic()
     if error is None and exit_code not in (None, 0):
         error = f"Codex exited with status {exit_code}."
     if error is None:
@@ -926,15 +937,18 @@ def run_synthesis_checkpoint(
             (checkpoint_dir / "response.py").write_text(code, encoding="utf-8")
         except ValueError as exc:
             error = str(exc)
+    timings_seconds["parse_response"] = time.monotonic() - phase_started
 
     status = "ready" if error is None and code is not None else "failed"
     duration = time.monotonic() - started_at
+    timings_seconds["total"] = duration
     response_payload = {
         "status": status,
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
         "exit_code": exit_code,
         "duration_seconds": duration,
+        "timings_seconds": timings_seconds,
         "raw_response": raw_response,
         "plan": plan,
         "code": code,
@@ -950,6 +964,7 @@ def run_synthesis_checkpoint(
             "checkpoint_step": completed_steps,
             "completed_at": dt.datetime.now().isoformat(timespec="seconds"),
             "duration_seconds": duration,
+            "timings_seconds": timings_seconds,
             "exit_code": exit_code,
             "error": error,
         },
@@ -1148,12 +1163,16 @@ class SynthesisAdvisor:
         elif status is None:
             self._active_checkpoint = completed_steps
             try:
+                context_started = time.monotonic()
                 context = collect_synthesis_context(
                     cfg=self.cfg,
                     task_desc=self.task_desc,
                     journal=journal,
                     completed_steps=completed_steps,
                 )
+                context["timings_seconds"] = {
+                    "collect_context": time.monotonic() - context_started
+                }
                 result = run_synthesis_checkpoint(
                     cfg=self.cfg,
                     context=context,

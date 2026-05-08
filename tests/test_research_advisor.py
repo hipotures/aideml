@@ -451,6 +451,15 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["parsed_response"]["summary"] == "researched"
     assert response["raw_response"].startswith('{"summary":')
+    assert set(response["timings_seconds"]) >= {
+        "build_prompt",
+        "write_inputs",
+        "codex_subprocess",
+        "read_response",
+        "parse_response",
+        "total",
+    }
+    assert all(value >= 0 for value in response["timings_seconds"].values())
     readable_response = (checkpoint_dir / "response_raw.txt").read_text()
     assert readable_response.startswith(
         "Use these external Codex research hints only when relevant."
@@ -462,6 +471,7 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert response["exit_code"] == 0
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "completed"
+    assert status["timings_seconds"] == response["timings_seconds"]
 
 
 def test_research_advisor_does_not_duplicate_existing_checkpoint(tmp_path):

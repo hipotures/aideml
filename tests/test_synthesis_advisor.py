@@ -526,8 +526,18 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["code"] == "value = 1\nprint(value)\n"
     assert response["plan"].startswith("I will synthesize")
+    assert set(response["timings_seconds"]) >= {
+        "build_prompt",
+        "write_inputs",
+        "codex_subprocess",
+        "read_response",
+        "parse_response",
+        "total",
+    }
+    assert all(value >= 0 for value in response["timings_seconds"].values())
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "ready"
+    assert status["timings_seconds"] == response["timings_seconds"]
 
 
 def test_run_synthesis_checkpoint_rejects_generated_next_pitstop_leakage(tmp_path):
