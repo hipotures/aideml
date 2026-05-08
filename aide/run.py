@@ -12,7 +12,7 @@ import termios
 import threading
 import time
 import tty
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Literal, cast
 
@@ -56,6 +56,7 @@ from .utils.config import (
     save_run,
     load_cfg,
 )
+from .utils.memory_debug import MemoryDebugLogger
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.resource_monitor import ResourceHistory, ResourceSnapshot, downsample_max
 from .utils.submission_validation import (
@@ -83,6 +84,7 @@ class RuntimeOptions:
     show_invalid_submission_branches: bool = False
     force_check_submissions: bool = False
     telegram_test_message: bool = False
+    debug: bool = False
 
 
 @dataclass(frozen=True)
@@ -143,23 +145,13 @@ def parse_runtime_args(
             run_id = arg.split("=", 1)[1] or None
             resume = ResumeRequest(requested=True, run_id=run_id)
         elif arg == "--show-invalid-submission-branches":
-            runtime = RuntimeOptions(
-                show_invalid_submission_branches=True,
-                force_check_submissions=runtime.force_check_submissions,
-                telegram_test_message=runtime.telegram_test_message,
-            )
+            runtime = replace(runtime, show_invalid_submission_branches=True)
         elif arg == "--force-check-submissions":
-            runtime = RuntimeOptions(
-                show_invalid_submission_branches=runtime.show_invalid_submission_branches,
-                force_check_submissions=True,
-                telegram_test_message=runtime.telegram_test_message,
-            )
+            runtime = replace(runtime, force_check_submissions=True)
         elif arg == "--telegram-test-message":
-            runtime = RuntimeOptions(
-                show_invalid_submission_branches=runtime.show_invalid_submission_branches,
-                force_check_submissions=runtime.force_check_submissions,
-                telegram_test_message=True,
-            )
+            runtime = replace(runtime, telegram_test_message=True)
+        elif arg == "--debug":
+            runtime = replace(runtime, debug=True)
         else:
             remaining.append(arg)
         i += 1
@@ -1711,6 +1703,21 @@ def run(argv: list[str] | None = None):
     logger.info(f'Starting run "{cfg.exp_name}"')
     os.environ["AIDE_RUN_ID"] = cfg.exp_name
     os.environ["AIDE_LOG_DIR"] = str(cfg.log_dir)
+    debug_logger = MemoryDebugLogger(
+        enabled=runtime_options.debug,
+        run_id=cfg.exp_name,
+    )
+    debug_logger.log(
+        "run_start",
+        phase="startup",
+        extra={
+            "resume": is_resume,
+            "run_id": cfg.exp_name,
+            "log_dir": str(cfg.log_dir),
+            "workspace_dir": str(cfg.workspace_dir),
+            "cli_overrides": cli_args,
+        },
+    )
 
     task_desc = load_task_desc(cfg)
 
@@ -1735,6 +1742,62 @@ def run(argv: list[str] | None = None):
         cfg.workspace_dir,
         **OmegaConf.to_container(cfg.exec),  # type: ignore
     )
+
+    def _node_debug_payload(node: Node | None) -> dict | None:
+        if node is None:
+            return None
+        metric = getattr(node, "metric", None)
+        return {
+            "id": node.id,
+            "step": node.step,
+            "status": node.status,
+            "is_buggy": node.is_buggy,
+            "metric": getattr(metric, "value", None),
+            "metric_maximize": getattr(metric, "maximize", None),
+            "parent_id": node.parent.id if node.parent is not None else None,
+            "parent_step": node.parent.step if node.parent is not None else None,
+            "ctime": node.ctime,
+        }
+
+    def _resource_snapshot_payload(snapshot: ResourceSnapshot) -> dict:
+        return {
+            "cpu_percent": snapshot.cpu_percent,
+            "ram_bytes": snapshot.ram_bytes,
+            "peak_ram_bytes": snapshot.peak_ram_bytes,
+            "process_count": snapshot.process_count,
+            "gpu_percent": snapshot.gpu_percent,
+            "gpu_memory_used_bytes": snapshot.gpu_memory_used_bytes,
+            "gpu_memory_total_bytes": snapshot.gpu_memory_total_bytes,
+            "gpu_power_draw_watts": snapshot.gpu_power_draw_watts,
+            "gpu_power_limit_watts": snapshot.gpu_power_limit_watts,
+            "gpu_temperature_celsius": snapshot.gpu_temperature_celsius,
+        }
+
+    def debug_log(
+        event: str,
+        *,
+        phase: str | None = None,
+        node: Node | None = None,
+        extra: dict | None = None,
+    ) -> None:
+        payload = dict(extra or {})
+        node_payload = _node_debug_payload(node)
+        if node_payload is not None:
+            payload["node"] = node_payload
+        process = getattr(interpreter, "process", None)
+        if process is not None:
+            try:
+                is_alive = process.is_alive() if getattr(process, "pid", None) else None
+            except Exception:  # noqa: BLE001 - debug logging must not stop the run
+                is_alive = None
+            payload["interpreter_process"] = {
+                "pid": getattr(process, "pid", None),
+                "exitcode": getattr(process, "exitcode", None),
+                "is_alive": is_alive,
+            }
+        debug_logger.log(event, phase=phase, extra=payload)
+
+    debug_log("interpreter_ready", phase="startup")
 
     global_step = len(journal)
     prog = Progress(
@@ -1775,7 +1838,14 @@ def run(argv: list[str] | None = None):
 
         def on_resource(snapshot: ResourceSnapshot):
             resource_history.add(snapshot)
+            debug_log(
+                "execution_resource_sample",
+                phase="execute",
+                node=agent.active_node,
+                extra={"resource_snapshot": _resource_snapshot_payload(snapshot)},
+            )
 
+        debug_log("before_interpreter_run", phase="execute", node=agent.active_node)
         try:
             resource_active = True
             result = interpreter.run(
@@ -1784,7 +1854,28 @@ def run(argv: list[str] | None = None):
                 resource_callback=on_resource,
                 **kwargs,
             )
+            debug_log(
+                "after_interpreter_run",
+                phase="execute",
+                node=agent.active_node,
+                extra={
+                    "exec_time": result.exec_time,
+                    "exc_type": result.exc_type,
+                    "term_out_parts": len(result.term_out or []),
+                },
+            )
             return result
+        except BaseException as exc:
+            debug_log(
+                "interpreter_run_exception",
+                phase="execute",
+                node=agent.active_node,
+                extra={
+                    "exception_type": exc.__class__.__name__,
+                    "exception": str(exc),
+                },
+            )
+            raise
         finally:
             resource_active = False
             if not stop_after_current_node:
@@ -1926,13 +2017,62 @@ def run(argv: list[str] | None = None):
                         if cfg.synthesis.enabled:
                             agent.active_parent_node = None
                             agent.set_active_stage("generating")
+
+                            def maybe_generate_synthesis() -> SynthesisNode | None:
+                                debug_log(
+                                    "before_synthesis_generate",
+                                    phase="generate",
+                                    extra={
+                                        "completed_steps": count_scored_working_nodes(
+                                            journal
+                                        )
+                                    },
+                                )
+                                try:
+                                    result = synthesis_advisor.generate_node_if_due(
+                                        journal=journal,
+                                        completed_steps=count_scored_working_nodes(
+                                            journal
+                                        ),
+                                    )
+                                except BaseException as exc:
+                                    debug_log(
+                                        "synthesis_generate_exception",
+                                        phase="generate",
+                                        extra={
+                                            "exception_type": exc.__class__.__name__,
+                                            "exception": str(exc),
+                                        },
+                                    )
+                                    raise
+                                debug_log(
+                                    "after_synthesis_generate",
+                                    phase="generate",
+                                    node=result.node if result is not None else None,
+                                    extra={
+                                        "completed_steps": (
+                                            result.completed_steps
+                                            if result is not None
+                                            else None
+                                        ),
+                                        "checkpoint_dir": (
+                                            str(result.checkpoint_dir)
+                                            if result is not None
+                                            else None
+                                        ),
+                                        "ready_for_execution": (
+                                            result.ready_for_execution
+                                            if result is not None
+                                            else None
+                                        ),
+                                    },
+                                )
+                                return result
+
                             synthesized = run_with_live_refresh(
                                 live,
                                 generate_live,
-                                lambda: synthesis_advisor.generate_node_if_due(
-                                    journal=journal,
-                                    completed_steps=count_scored_working_nodes(journal),
-                                ),
+                                maybe_generate_synthesis,
                                 tick=lambda: drain_tree_navigation(
                                     current_tree_view(blink_on=True)
                                 ),
@@ -1941,21 +2081,64 @@ def run(argv: list[str] | None = None):
                                 agent.clear_active_step()
 
                         if synthesized is None:
+                            debug_log(
+                                "before_prepare_step",
+                                phase="generate",
+                                extra={"global_step": global_step},
+                            )
                             parent_node = agent.prepare_step()
+                            debug_log(
+                                "after_prepare_step",
+                                phase="generate",
+                                node=parent_node,
+                                extra={"global_step": global_step},
+                            )
                             node_ctime = time.time()
                             pending_artifact_dir = _node_artifact_dir_from_ctime(
                                 cfg,
                                 node_ctime,
                             )
                             pending_artifact_dir.mkdir(parents=True, exist_ok=True)
+
+                            def generate_current_node() -> Node:
+                                debug_log(
+                                    "before_generate_node",
+                                    phase="generate",
+                                    node=parent_node,
+                                    extra={
+                                        "node_ctime": node_ctime,
+                                        "llm_log_dir": str(pending_artifact_dir),
+                                    },
+                                )
+                                try:
+                                    node = agent.generate_node(
+                                        parent_node,
+                                        node_ctime=node_ctime,
+                                        llm_log_dir=pending_artifact_dir,
+                                    )
+                                except BaseException as exc:
+                                    debug_log(
+                                        "generate_node_exception",
+                                        phase="generate",
+                                        node=parent_node,
+                                        extra={
+                                            "exception_type": exc.__class__.__name__,
+                                            "exception": str(exc),
+                                        },
+                                    )
+                                    raise
+                                debug_log(
+                                    "after_generate_node",
+                                    phase="generate",
+                                    node=node,
+                                    extra={"llm_log_dir": str(pending_artifact_dir)},
+                                )
+                                return node
+
                             result_node = run_with_live_refresh(
                                 live,
                                 generate_live,
-                                lambda: agent.generate_node(
-                                    parent_node,
-                                    node_ctime=node_ctime,
-                                    llm_log_dir=pending_artifact_dir,
-                                ),
+                                generate_current_node,
                                 tick=lambda: drain_tree_navigation(
                                     current_tree_view(blink_on=True)
                                 ),
@@ -1968,10 +2151,20 @@ def run(argv: list[str] | None = None):
                             synthesized is not None
                             and not synthesized.ready_for_execution
                         ):
+                            debug_log(
+                                "before_append_nonexecuted_synthesis_node",
+                                phase="journal",
+                                node=result_node,
+                            )
                             append_node_with_best_score_notification(
                                 journal=journal,
                                 node=result_node,
                                 experiment_id=cfg.exp_name,
+                            )
+                            debug_log(
+                                "after_append_nonexecuted_synthesis_node",
+                                phase="journal",
+                                node=result_node,
                             )
                             synthesis_advisor.mark_recorded(
                                 synthesized,
@@ -1983,6 +2176,11 @@ def run(argv: list[str] | None = None):
                             )
                             try:
                                 try:
+                                    debug_log(
+                                        "before_execute_node",
+                                        phase="execute",
+                                        node=result_node,
+                                    )
                                     exec_result = agent.execute_node(
                                         result_node,
                                         lambda *args, **kwargs: run_with_live_refresh(
@@ -1995,7 +2193,25 @@ def run(argv: list[str] | None = None):
                                             on_keyboard_interrupt=request_execution_interrupt,
                                         ),
                                     )
+                                    debug_log(
+                                        "after_execute_node",
+                                        phase="execute",
+                                        node=result_node,
+                                        extra={
+                                            "exec_time": exec_result.exec_time,
+                                            "exc_type": exec_result.exc_type,
+                                        },
+                                    )
                                 except RuntimeError as exc:
+                                    debug_log(
+                                        "execute_node_runtime_error",
+                                        phase="execute",
+                                        node=result_node,
+                                        extra={
+                                            "exception_type": exc.__class__.__name__,
+                                            "exception": str(exc),
+                                        },
+                                    )
                                     _mark_node_execution_crash(
                                         result_node,
                                         exc,
@@ -2004,10 +2220,25 @@ def run(argv: list[str] | None = None):
                                             result_node,
                                         ),
                                     )
+                                    debug_log(
+                                        "after_mark_execution_crash",
+                                        phase="execute",
+                                        node=result_node,
+                                    )
+                                    debug_log(
+                                        "before_append_crashed_node",
+                                        phase="journal",
+                                        node=result_node,
+                                    )
                                     append_node_with_best_score_notification(
                                         journal=journal,
                                         node=result_node,
                                         experiment_id=cfg.exp_name,
+                                    )
+                                    debug_log(
+                                        "after_append_crashed_node",
+                                        phase="journal",
+                                        node=result_node,
                                     )
                                     if synthesized is not None:
                                         synthesis_advisor.mark_injected(
@@ -2017,19 +2248,73 @@ def run(argv: list[str] | None = None):
                                     continue
                             finally:
                                 restore_node_artifact_env(previous_artifact_env)
+
+                            def review_current_node() -> None:
+                                debug_log(
+                                    "before_review_node",
+                                    phase="review",
+                                    node=result_node,
+                                )
+                                try:
+                                    agent.review_node(result_node, exec_result)
+                                except BaseException as exc:
+                                    debug_log(
+                                        "review_node_exception",
+                                        phase="review",
+                                        node=result_node,
+                                        extra={
+                                            "exception_type": exc.__class__.__name__,
+                                            "exception": str(exc),
+                                        },
+                                    )
+                                    raise
+                                debug_log(
+                                    "after_review_node",
+                                    phase="review",
+                                    node=result_node,
+                                    extra={
+                                        "exc_type": result_node.exc_type,
+                                        "is_buggy": result_node.is_buggy,
+                                    },
+                                )
+
                             run_with_live_refresh(
                                 live,
                                 generate_live,
-                                lambda: agent.review_node(result_node, exec_result),
+                                review_current_node,
                                 tick=lambda: drain_tree_navigation(
                                     current_tree_view(blink_on=True)
                                 ),
                             )
-                            enforce_submission_contract(cfg, result_node)
+                            debug_log(
+                                "before_submission_validation",
+                                phase="submission_validation",
+                                node=result_node,
+                            )
+                            submission_changed = enforce_submission_contract(
+                                cfg,
+                                result_node,
+                            )
+                            debug_log(
+                                "after_submission_validation",
+                                phase="submission_validation",
+                                node=result_node,
+                                extra={"changed": submission_changed},
+                            )
+                            debug_log(
+                                "before_append_node",
+                                phase="journal",
+                                node=result_node,
+                            )
                             append_node_with_best_score_notification(
                                 journal=journal,
                                 node=result_node,
                                 experiment_id=cfg.exp_name,
+                            )
+                            debug_log(
+                                "after_append_node",
+                                phase="journal",
+                                node=result_node,
                             )
                             if synthesized is not None:
                                 synthesis_advisor.mark_injected(
@@ -2053,6 +2338,12 @@ def run(argv: list[str] | None = None):
                     finally:
                         agent.clear_active_step()
                         pending_artifact_dir = None
+                    debug_log(
+                        "before_save_run",
+                        phase="save",
+                        node=journal[-1],
+                        extra={"global_step": global_step, "journal_size": len(journal)},
+                    )
                     save_run(
                         cfg,
                         journal,
@@ -2062,6 +2353,12 @@ def run(argv: list[str] | None = None):
                             live,
                         ),
                     )
+                    debug_log(
+                        "after_save_run",
+                        phase="save",
+                        node=journal[-1],
+                        extra={"global_step": global_step, "journal_size": len(journal)},
+                    )
                     status_override = None
                     global_step = len(journal)
                     if stop_after_current_node:
@@ -2070,13 +2367,28 @@ def run(argv: list[str] | None = None):
                             "Execution stopped by user after saving current node."
                         )
                         break
-                    research_advisor.maybe_start(
+                    debug_log(
+                        "before_research_maybe_start",
+                        phase="research",
+                        extra={"completed_steps": count_scored_working_nodes(journal)},
+                    )
+                    research_started = research_advisor.maybe_start(
                         journal=journal,
                         completed_steps=count_scored_working_nodes(journal),
                     )
+                    debug_log(
+                        "after_research_maybe_start",
+                        phase="research",
+                        extra={
+                            "completed_steps": count_scored_working_nodes(journal),
+                            "started": research_started,
+                        },
+                    )
                 live.update(generate_live(), refresh=True)
     finally:
+        debug_log("before_cleanup_session", phase="cleanup")
         interpreter.cleanup_session()
+        debug_log("after_cleanup_session", phase="cleanup")
 
     if interrupted:
         print(interrupt_message)
