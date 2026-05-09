@@ -635,6 +635,8 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     assert any("CUDA-capable NVIDIA GPU" in line for line in gpu_guidelines)
     assert any('task_type="GPU"' in line for line in gpu_guidelines)
     assert any('device="cuda"' in line for line in gpu_guidelines)
+    assert any('device_type="gpu"' in line for line in gpu_guidelines)
+    assert any('device_type="cuda"' in line for line in gpu_guidelines)
 
 
 def test_agent_includes_latest_research_hints_in_debug_prompt(tmp_path):
