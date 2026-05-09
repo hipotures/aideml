@@ -1256,6 +1256,69 @@ def build_resource_summary(
     return Group(*lines)
 
 
+RUN_LOG_FILE_NAMES = ("process_stdout.log", "autogluon_stdout.log", "autogluon.log")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def active_run_log_path(active_artifact_dir: Path | None) -> Path | None:
+    if active_artifact_dir is None:
+        return None
+    for name in RUN_LOG_FILE_NAMES:
+        path = active_artifact_dir / name
+        if path.exists():
+            return path
+    return None
+
+
+def _tail_log_lines(path: Path, *, max_lines: int, max_bytes: int = 65536) -> list[str]:
+    if max_lines <= 0:
+        return []
+    try:
+        with path.open("rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - max_bytes))
+            data = f.read()
+    except OSError:
+        return []
+    text = data.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    if len(lines) > max_lines:
+        lines = lines[-max_lines:]
+    return lines
+
+
+def _clip_log_line(line: str, *, max_width: int) -> str:
+    clean = ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+    if max_width <= 1:
+        return clean[:max_width]
+    if len(clean) <= max_width:
+        return clean
+    return clean[: max_width - 1].rstrip() + "…"
+
+
+def build_run_log_summary(
+    active_artifact_dir: Path | None,
+    *,
+    max_lines: int,
+    max_width: int,
+) -> Group:
+    log_path = active_run_log_path(active_artifact_dir)
+    if log_path is None:
+        return Group(Text("waiting for process log", style="dim"))
+
+    log_lines = _tail_log_lines(log_path, max_lines=max_lines)
+    if not log_lines:
+        return Group(Text(f"{log_path.name} is empty", style="dim"))
+
+    return Group(
+        *(
+            Text(_clip_log_line(line, max_width=max_width), style="dim")
+            for line in log_lines
+        )
+    )
+
+
 ModelSetting = tuple[str, str, str | None]
 
 
@@ -1912,6 +1975,15 @@ def run(argv: list[str] | None = None):
     def tree_viewport_height() -> int:
         return max(1, shutil.get_terminal_size((120, 40)).lines - 4)
 
+    def run_log_dimensions() -> tuple[int, int]:
+        terminal_size = shutil.get_terminal_size((120, 40))
+        right_column_width = max(20, int(terminal_size.columns * 2 / 5))
+        right_column_height = max(6, terminal_size.lines - 2)
+        log_panel_height = max(3, right_column_height // 3)
+        content_height = max(1, log_panel_height - 2)
+        content_width = max(10, right_column_width - 4)
+        return content_height, content_width
+
     def drain_tree_navigation(view: TreeView) -> None:
         nonlocal focused_tree_item_id, tree_scroll_top
         if focused_tree_item_id not in view.index_by_id:
@@ -1968,6 +2040,11 @@ def run(argv: list[str] | None = None):
         status.update(
             status_override or stage_status_message(agent.active_stage, elapsed)
         )
+        active_artifact_dir = (
+            _node_artifact_dir(cfg, agent.active_node)
+            if agent.active_node is not None
+            else pending_artifact_dir
+        )
 
         tree_panel = Panel(
             Padding(tree, (0, 1, 0, 1)),
@@ -1993,21 +2070,34 @@ def run(argv: list[str] | None = None):
                     resource_history=resource_history,
                     resource_active=resource_active,
                     model_settings=model_settings_for_run(cfg),
-                    active_artifact_dir=(
-                        _node_artifact_dir(cfg, agent.active_node)
-                        if agent.active_node is not None
-                        else pending_artifact_dir
-                    ),
+                    active_artifact_dir=active_artifact_dir,
                 ),
                 (0, 1, 0, 1),
             ),
             title="[b]Run data",
         )
+        log_line_count, log_width = run_log_dimensions()
+        log_panel = Panel(
+            Padding(
+                build_run_log_summary(
+                    active_artifact_dir,
+                    max_lines=log_line_count,
+                    max_width=log_width,
+                ),
+                (0, 1, 0, 1),
+            ),
+            title="[b]Logs",
+        )
 
         layout = Layout()
+        data_layout = Layout(name="data", ratio=2)
+        data_layout.split_column(
+            Layout(data_panel, name="run_data", ratio=2),
+            Layout(log_panel, name="logs", ratio=1),
+        )
         layout.split_row(
             Layout(tree_panel, name="tree", ratio=3),
-            Layout(data_panel, name="data", ratio=2),
+            data_layout,
         )
         return layout
 
@@ -2018,7 +2108,7 @@ def run(argv: list[str] | None = None):
             key_reader = reader
             with Live(
                 get_renderable=generate_live,
-                refresh_per_second=16,
+                refresh_per_second=1,
                 screen=True,
             ) as live:
                 while global_step < cfg.agent.steps:

@@ -8,7 +8,9 @@ from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
     _sparkline,
+    active_run_log_path,
     build_path_summary,
+    build_run_log_summary,
     build_run_data,
     ResourceSnapshot,
     build_tree_view,
@@ -1047,6 +1049,40 @@ def test_run_data_shows_waiting_resources_during_execution_before_first_sample(
 
     assert "Resources" in output
     assert "▶ waiting for code execution sample" in output
+
+
+def test_active_run_log_path_prefers_legacy_process_stdout(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    process_log = artifact_dir / "process_stdout.log"
+    process_log.write_text("legacy log\n", encoding="utf-8")
+    (artifact_dir / "autogluon_stdout.log").write_text("ag log\n", encoding="utf-8")
+
+    assert active_run_log_path(artifact_dir) == process_log
+
+
+def test_run_log_summary_uses_latest_lines_and_clips_width(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    (artifact_dir / "autogluon_stdout.log").write_text(
+        "\n".join(
+            [
+                "old line",
+                "Fold 1 ROC AUC - XGB: 0.948123, CatBoost: 0.948953, best local blend w_xgb=0.35: 0.949320",
+                "Fold 2 ROC AUC - XGB: 0.949261, CatBoost: 0.949760, best local blend w_xgb=0.40: 0.950258",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output = _render_text(
+        build_run_log_summary(artifact_dir, max_lines=2, max_width=48)
+    )
+
+    assert "old line" not in output
+    assert "Fold 1 ROC AUC - XGB: 0.948123, CatBoost: 0.948…" in output
+    assert "Fold 2 ROC AUC - XGB: 0.949261, CatBoost: 0.949…" in output
 
 
 def test_stage_status_message_names_review_stage():
