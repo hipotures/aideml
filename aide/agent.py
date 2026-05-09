@@ -47,11 +47,11 @@ review_func_spec = FunctionSpec(
         "properties": {
             "is_bug": {
                 "type": "boolean",
-                "description": "true if the output log shows that the execution failed or has some bug, otherwise false.",
+                "description": "true only if the output log shows a technical execution failure, missing/invalid result, unusable metric, or another issue that makes the run result invalid. Do not set this for methodological concerns such as possible leakage, overfitting, weak validation, or risky feature engineering when the code ran and reported a valid metric.",
             },
             "summary": {
                 "type": "string",
-                "description": "if there is a bug, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
+                "description": "If there is a technical bug, propose a fix. Otherwise, write a short summary (2-3 sentences) describing the empirical findings.",
             },
             "metric": {
                 "type": ["number", "null"],
@@ -61,8 +61,18 @@ review_func_spec = FunctionSpec(
                 "type": "boolean",
                 "description": "true if the metric should be minimized (i.e. a lower metric value is better, such as with MSE), false if the metric should be maximized (i.e. a higher metric value is better, such as with accuracy).",
             },
+            "validity_warning": {
+                "type": ["string", "null"],
+                "description": "Use this for non-fatal methodological concerns such as possible leakage, overfitting, non-grouped validation, questionable feature availability, or other reasons the reported metric may not generalize. Leave null when there is no such concern. A validity warning is not a technical bug by itself.",
+            },
         },
-        "required": ["is_bug", "summary", "metric", "lower_is_better"],
+        "required": [
+            "is_bug",
+            "summary",
+            "metric",
+            "lower_is_better",
+            "validity_warning",
+        ],
         "additionalProperties": False,
     },
     description="Submit a review evaluating the output of the training script.",
@@ -95,6 +105,15 @@ def _mark_invalid_review_response(node: Node, response: Any) -> None:
     )
     node.is_buggy = True
     node.metric = WorstMetricValue()
+
+
+def _review_validity_warning(response: dict[str, Any], *, summary: str) -> str | None:
+    warning = response.get("validity_warning")
+    if isinstance(warning, str) and warning.strip():
+        return warning.strip()
+    if bool(response.get("is_bug")):
+        return summary.strip() or "Feedback model flagged a non-fatal validity concern."
+    return None
 
 
 def _metric_for_search(node: Node) -> float:
@@ -722,10 +741,14 @@ class Agent:
             if not isinstance(metric, (float, int)) or isinstance(metric, bool):
                 metric = None
             node.analysis = str(marker_response.get("summary", ""))
+            node.validity_warning = _review_validity_warning(
+                marker_response,
+                summary=node.analysis,
+            )
             node.is_buggy = (
-                bool(marker_response.get("is_bug"))
-                or node.exc_type is not None
+                node.exc_type is not None
                 or metric is None
+                or (bool(marker_response.get("is_bug")) and metric is None)
             )
             if node.is_buggy:
                 node.metric = WorstMetricValue()
@@ -740,7 +763,9 @@ class Agent:
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
                 "You have written code to solve this task and now need to evaluate the output of the code execution. "
-                "You should determine if there were any bugs as well as report the empirical findings."
+                "You should determine if there were any technical bugs as well as report the empirical findings. "
+                "Use is_bug only for technical failures that make the result invalid. "
+                "For non-fatal methodological concerns, such as possible leakage or weak validation, keep is_bug false when a valid metric was reported and put the concern in validity_warning."
             ),
             "Task description": self.task_desc,
             "Implementation": wrap_code(node.code),
@@ -774,10 +799,14 @@ class Agent:
             metric = None
 
         node.analysis = str(parsed_response["summary"])
+        node.validity_warning = _review_validity_warning(
+            parsed_response,
+            summary=node.analysis,
+        )
         node.is_buggy = (
-            bool(parsed_response["is_bug"])
-            or node.exc_type is not None
+            node.exc_type is not None
             or metric is None
+            or (bool(parsed_response["is_bug"]) and metric is None)
         )
 
         if node.is_buggy:

@@ -154,6 +154,7 @@ def build_node_artifact_manifest(
             "origin": node_origin(node),
             "plan": node.plan,
             "analysis": node.analysis,
+            "validity_warning": node.validity_warning,
             "is_buggy": bool(node.is_buggy),
             "metric": metric,
             "submission_validation": node.submission_validation,
@@ -210,6 +211,7 @@ def _node_from_manifest(manifest: dict[str, Any], artifact_dir: Path) -> Node:
     node.step = node_payload.get("step")
     node.status = node_payload.get("status")
     node.analysis = node_payload.get("analysis")
+    node.validity_warning = node_payload.get("validity_warning")
     node.is_buggy = bool(node_payload.get("is_buggy"))
     node.metric = MetricValue(
         metric_payload_.get("value"),

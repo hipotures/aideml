@@ -62,6 +62,7 @@ class Node(DataClassJsonMixin):
     # ---- evaluation ----
     # post-execution result analysis (findings/feedback)
     analysis: str = field(default=None, kw_only=True)  # type: ignore
+    validity_warning: str | None = field(default=None, kw_only=True)
     metric: MetricValue = field(default=None, kw_only=True)  # type: ignore
     # whether the agent decided that the code is buggy
     # -> always True if exc_type is not None or no valid metric
@@ -250,6 +251,8 @@ class Journal(DataClassJsonMixin):
             analysis_text = _summary_analysis_text(n.analysis)
             if analysis_text:
                 summary_part += f"Results: {analysis_text}\n"
+            if n.validity_warning:
+                summary_part += f"Validity warning: {n.validity_warning}\n"
             summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)

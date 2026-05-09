@@ -19,6 +19,11 @@ def _cfg(tmp_path: Path):
 
 def test_review_schema_is_valid_for_codex_structured_output():
     assert review_func_spec.json_schema["additionalProperties"] is False
+    assert "validity_warning" in review_func_spec.json_schema["required"]
+    assert review_func_spec.json_schema["properties"]["validity_warning"]["type"] == [
+        "string",
+        "null",
+    ]
     assert review_func_spec.json_schema["properties"]["metric"]["type"] == [
         "number",
         "null",
@@ -32,6 +37,7 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
         "AutoGluon preprocess wrapper completed with roc_auc=0.950479 "
         "using presets=medium_quality."
     )
+    node.validity_warning = "Possible leakage in grouped features."
     node.metric = MetricValue(0.9504787907447247, maximize=True)
     journal.append(node)
 
@@ -39,6 +45,7 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
 
     assert "Results: AutoGluon preprocess wrapper completed." not in summary
     assert "Validation Metric: 0.95048" in summary
+    assert "Validity warning: Possible leakage in grouped features." in summary
     assert "0.9504787907447247" not in summary
     assert "presets=medium_quality" not in summary
 
@@ -101,3 +108,34 @@ def test_parse_exec_result_accepts_json_string_review_response(tmp_path, monkeyp
     assert node.metric.value == 0.9
     assert node.metric.maximize is True
     assert node.analysis == "good run"
+
+
+def test_parse_exec_result_keeps_metric_when_review_reports_validity_warning(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    exec_result = ExecutionResult(
+        term_out=["OOF blended ROC AUC: 0.949967\nSaved submission\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": True,
+            "summary": "Run completed, but same-lap aggregates may leak.",
+            "metric": 0.949967,
+            "lower_is_better": False,
+            "validity_warning": "Possible leakage from same-lap aggregate features.",
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.is_buggy is False
+    assert node.metric.value == 0.949967
+    assert node.metric.maximize is True
+    assert node.validity_warning == "Possible leakage from same-lap aggregate features."

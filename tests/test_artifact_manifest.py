@@ -33,6 +33,7 @@ def test_build_node_artifact_manifest_for_successful_node(tmp_path):
     node.is_buggy = False
     node.exec_time = 12.5
     node.analysis = "AutoGluon preprocess wrapper completed."
+    node.validity_warning = "Possible leakage in race-lap aggregate features."
     node.submission_validation = {"status": "ok"}
 
     manifest = build_node_artifact_manifest(
@@ -53,6 +54,10 @@ def test_build_node_artifact_manifest_for_successful_node(tmp_path):
     assert manifest["time_limit"] == 300
     assert manifest["node"]["id"] == node.id
     assert manifest["node"]["step"] == 7
+    assert (
+        manifest["node"]["validity_warning"]
+        == "Possible leakage in race-lap aggregate features."
+    )
     assert manifest["node"]["metric"] == {"value": 0.95098, "maximize": True}
     assert manifest["execution"]["exec_time"] == 12.5
     assert manifest["files"]["submission"]["path"] == "submission.csv"
@@ -119,6 +124,7 @@ def test_reconstruct_journal_from_artifact_manifests(tmp_path):
     parent.metric = MetricValue(0.9, maximize=True)
     parent.is_buggy = False
     parent.analysis = "parent analysis"
+    parent.validity_warning = "parent warning"
     child = Node(
         code="print('child')",
         plan="child plan",
@@ -162,6 +168,7 @@ def test_reconstruct_journal_from_artifact_manifests(tmp_path):
     assert restored_parent.plan == "parent plan"
     assert restored_parent.metric.value == 0.9
     assert restored_parent.is_buggy is False
+    assert restored_parent.validity_warning == "parent warning"
     assert restored_child.id == child.id
     assert restored_child.parent is restored_parent
     assert restored_child in restored_parent.children
