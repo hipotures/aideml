@@ -109,6 +109,7 @@ def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     assert record["local_score"] == 0.95098
     assert record["sha256"] == submission_sha
     assert record["profile"] == "full_boost_gpu"
+    assert record["algo"] == "AG"
     assert record["artifact_dir"] == str(artifact)
 
 
@@ -167,6 +168,58 @@ def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     assert record["sha256"] == submission_sha
     assert record["profile"] == "full_boost_gpu"
     assert record["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert record["algo"] == "AG"
+
+
+def test_refresh_index_marks_non_autogluon_artifacts_as_legacy(tmp_path):
+    logs_dir = tmp_path / "logs"
+    artifact = _write_artifact(
+        logs_dir,
+        "legacy-run",
+        "20260506T130000",
+        code="print('legacy model')\n",
+        submission="id,target\n1,0.9\n",
+    )
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "source_node",
+                "run": "legacy-run",
+                "timestamp": "20260506T130000",
+                "status": "ok",
+                "local_score": 0.94000,
+                "metric_maximize": True,
+                "is_buggy": False,
+                "sha256": submission_sha,
+                "node": {
+                    "id": "node-legacy",
+                    "step": 3,
+                    "metric": {"value": 0.94000, "maximize": True},
+                    "is_buggy": False,
+                },
+                "execution": {},
+                "autogluon": {
+                    "profile": None,
+                    "presets": None,
+                    "included_model_types": None,
+                    "time_limit": None,
+                    "resolved_settings": {},
+                },
+                "source": {},
+            }
+        )
+    )
+
+    index = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=logs_dir / "submission_index.json",
+        competition="playground-series-s6e5",
+        reindex=True,
+    )
+
+    assert index["records"][0]["algo"] == "Leg"
 
 
 def test_refresh_index_skips_unchanged_runs_without_reindex(tmp_path, monkeypatch):
@@ -267,7 +320,7 @@ def test_select_top_records_deduplicates_same_submission_hash(tmp_path):
 
 
 def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
-    console = kaggle_submission_lab.Console(record=True, width=160, color_system=None)
+    console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
     records = [
         {
             "kind": "source_node",
@@ -278,6 +331,7 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
             "profile": "full_boost",
             "included_model_types": ["XGB", "GBM", "CAT"],
             "sha256": "13bc36ab26abcdef",
+            "algo": "AG",
         }
     ]
 
@@ -286,7 +340,29 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     output = console.export_text()
     assert "src" not in output
     assert "prof" not in output
+    assert "Algo" in output
+    assert "AG" in output
     assert "20260504" in output
+
+
+def test_render_table_derives_legacy_algo_for_old_index_records(tmp_path):
+    console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
+    records = [
+        {
+            "kind": "source_node",
+            "run": "2-legacy-run",
+            "step": 9,
+            "timestamp": "20260504T134159",
+            "local_score": 0.94000,
+            "sha256": "13bc36ab26abcdef",
+        }
+    ]
+
+    kaggle_submission_lab.render_table(console, records)
+
+    output = console.export_text()
+    assert "Algo" in output
+    assert "Leg" in output
 
 
 def test_render_table_shows_profile_only_in_full_view(tmp_path):
@@ -322,6 +398,7 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
                 "competition": "playground-series-s6e5",
                 "run": "run-a",
                 "step": 1,
+                "algo": "Leg",
                 "timestamp": "20260504T100000",
                 "local_score": 0.95,
                 "sha256": "aaaabbbbcccc",
@@ -332,6 +409,7 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
                 "competition": "playground-series-s6e5",
                 "run": "run-b",
                 "step": 2,
+                "algo": "AG",
                 "timestamp": "20260504T110000",
                 "local_score": 0.96,
                 "sha256": "dddd11112222",
@@ -346,9 +424,128 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
 
     output = console.export_text()
     assert "Submission registry" in output
+    assert "Algo" in output
+    assert "AG" in output
+    assert "Leg" in output
     assert "0.90123" in output
     assert "COMPLETE" in output
     assert "ERROR" in output
+
+
+def test_render_registry_table_backfills_algo_from_local_records(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-b",
+                "step": 2,
+                "timestamp": "20260504T110000",
+                "local_score": 0.94,
+                "sha256": "dddd11112222",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90111",
+            },
+        ],
+    )
+    records = [
+        {
+            "kind": "source_node",
+            "run": "run-a",
+            "step": 1,
+            "timestamp": "20260504T100000",
+            "sha256": "aaaabbbbcccc",
+            "artifact_dir": str(tmp_path / "logs" / "run-a" / "artifacts" / "20260504T100000"),
+            "profile": "full_boost",
+            "included_model_types": ["XGB", "GBM", "CAT"],
+        },
+        {
+            "kind": "source_node",
+            "run": "run-b",
+            "step": 2,
+            "timestamp": "20260504T110000",
+            "sha256": "dddd11112222",
+            "artifact_dir": str(tmp_path / "logs" / "run-b" / "artifacts" / "20260504T110000"),
+        },
+    ]
+    console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(
+        console,
+        registry,
+        records=records,
+        full_view=True,
+    )
+
+    output = console.export_text()
+    assert "AG" in output
+    assert "Leg" in output
+    assert "artifact" in output
+    assert str(tmp_path / "logs" / "run-a" / "artifacts" / "20260504T100000") in output
+    assert "?" not in output
+
+
+def test_render_registry_table_full_view_uses_registry_submission_path(tmp_path):
+    submission_path = tmp_path / "logs" / "run-a" / "artifacts" / "20260504T100000" / "submission.csv"
+    submission_path.parent.mkdir(parents=True)
+    submission_path.write_text("id,target\n1,0.8\n")
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+                "submission_path": str(submission_path),
+            },
+        ],
+    )
+    console = kaggle_submission_lab.Console(record=True, width=180, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(console, registry, full_view=True)
+
+    output = console.export_text()
+    assert "artifact" in output
+    assert str(submission_path.parent) in output
+
+
+def test_record_to_candidate_preserves_algo_for_kaggle_message_and_registry(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,target\n1,0.8\n")
+    record = {
+        "kind": "source_node",
+        "competition": "playground-series-s6e5",
+        "run": "2-ag-run",
+        "step": 12,
+        "node_id": "node-ag",
+        "timestamp": "20260504T134159",
+        "local_score": 0.95026,
+        "metric_maximize": True,
+        "is_buggy": False,
+        "submission_path": str(submission_path),
+        "sha256": "13bc36ab26abcdef",
+        "profile": "full_boost",
+        "included_model_types": ["XGB", "GBM", "CAT"],
+    }
+
+    candidate = kaggle_submission_lab._record_to_candidate(record)
+
+    assert candidate.algo == "AG"
 
 
 def test_sync_registry_from_kaggle_updates_public_score(tmp_path, monkeypatch):

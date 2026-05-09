@@ -2,6 +2,7 @@ import datetime as dt
 import importlib.util
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -738,6 +739,10 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
         competition="playground-series-s6e5",
         limit=2,
     )
+    selected = [
+        replace(selected[0], algo="AG"),
+        replace(selected[1], algo="Leg"),
+    ]
     registry = SubmissionRegistry(tmp_path / "registry.json")
     client = FakeKaggleClient()
 
@@ -757,6 +762,8 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
     assert "cv=0.90000" in client.calls[0]["message"]
     assert "run=run-a" in client.calls[0]["message"]
     assert "step=1" in client.calls[0]["message"]
+    assert "algo=AG" in client.calls[0]["message"]
+    assert submitted[0]["algo"] == "AG"
     assert submitted[0]["uploaded_filename"] == (
         "sub_20260502T101000_step-1_node-fedcba98_sha-142e531fbf_cv-0.90000.csv"
     )

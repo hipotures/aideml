@@ -136,6 +136,48 @@ def _record_sort_key(record: dict[str, Any]) -> tuple[float, str]:
     return normalized, str(record.get("timestamp") or "")
 
 
+def _autogluon_payload_has_settings(payload: dict[str, Any]) -> bool:
+    return (
+        payload.get("profile") is not None
+        or payload.get("presets") is not None
+        or payload.get("included_model_types") is not None
+        or payload.get("time_limit") is not None
+        or bool(payload.get("resolved_settings"))
+    )
+
+
+def _record_looks_autogluon(record: dict[str, Any]) -> bool:
+    explicit = record.get("algo")
+    if isinstance(explicit, str):
+        normalized = explicit.strip().lower()
+        if normalized in {"ag", "autogluon"}:
+            return True
+        if normalized in {"leg", "legacy"}:
+            return False
+    return (
+        record.get("kind") == "profile_eval"
+        or record.get("profile") is not None
+        or record.get("autogluon_presets") is not None
+        or record.get("included_model_types") is not None
+        or record.get("time_limit") is not None
+    )
+
+
+def _format_algo(record: dict[str, Any], *, unknown_if_missing: bool = False) -> str:
+    explicit = record.get("algo")
+    if isinstance(explicit, str):
+        normalized = explicit.strip().lower()
+        if normalized in {"ag", "autogluon"}:
+            return "AG"
+        if normalized in {"leg", "legacy"}:
+            return "Leg"
+    if _record_looks_autogluon(record):
+        return "AG"
+    if unknown_if_missing and "kind" not in record:
+        return "?"
+    return "Leg"
+
+
 def deduplicate_records_by_sha256(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     best_by_sha: dict[str, dict[str, Any]] = {}
     for record in records:
@@ -223,6 +265,13 @@ def build_manifest_records(
                 "is_buggy": bool(manifest.get("is_buggy") or status != "ok"),
                 "exec_time": (manifest.get("execution") or {}).get("exec_time"),
                 "status": status,
+                "algo": (
+                    "AG"
+                    if _autogluon_payload_has_settings(autogluon)
+                    or _record_looks_autogluon(base)
+                    or manifest.get("kind") == "profile_eval"
+                    else "Leg"
+                ),
                 "profile": manifest.get("profile")
                 or autogluon.get("profile")
                 or base.get("profile"),
@@ -469,6 +518,7 @@ def render_table(
         table.add_column("prof", no_wrap=True)
     table.add_column("m", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
     table.add_column("sha", no_wrap=True)
@@ -490,6 +540,7 @@ def render_table(
             [
                 models,
                 _short_run(record.get("run")),
+                _format_algo(record),
                 _format_step(record.get("step")),
                 _timestamp_date(record.get("timestamp")),
                 str(record.get("sha256") or "")[:10],
@@ -553,6 +604,7 @@ def _remote_display_rows(
                 "remote_status": smart._status_to_string(
                     smart._remote_attr(remote, "status")
                 ),
+                "algo": parsed.get("algo"),
                 "run": parsed.get("run")
                 or str(smart._remote_attr(remote, "file_name") or "-"),
                 "step": parsed.get("step"),
@@ -563,10 +615,80 @@ def _remote_display_rows(
     return rows
 
 
+def _registry_record_lookup(
+    records: list[dict[str, Any]] | None,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in records or []:
+        data = {
+            "algo": _format_algo(record),
+            "artifact_dir": record.get("artifact_dir"),
+            "submission_path": record.get("submission_path"),
+        }
+        sha = str(record.get("sha256") or "")
+        if sha:
+            lookup[("sha", sha)] = data
+        run = str(record.get("run") or "")
+        step = str(record.get("step") if record.get("step") is not None else "")
+        timestamp = str(record.get("timestamp") or "")
+        if run and step and timestamp:
+            lookup[("node", f"{run}|{step}|{timestamp}")] = data
+    return lookup
+
+
+def _registry_lookup_record(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> dict[str, Any] | None:
+    sha = str(entry.get("sha256") or "")
+    if sha and ("sha", sha) in lookup:
+        return lookup[("sha", sha)]
+
+    run = str(entry.get("run") or "")
+    step = str(entry.get("step") if entry.get("step") is not None else "")
+    timestamp = str(entry.get("timestamp") or "")
+    if run and step and timestamp:
+        return lookup.get(("node", f"{run}|{step}|{timestamp}"))
+    return None
+
+
+def _registry_entry_algo(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("algo")
+    if explicit:
+        return _format_algo({"algo": explicit})
+
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None:
+        return str(record.get("algo") or "") or None
+
+    return None
+
+
+def _registry_entry_artifact_dir(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str:
+    record = _registry_lookup_record(entry, lookup) or {}
+    for key in ("artifact_dir", "submission_path", "upload_path"):
+        value = record.get(key) if key in record else entry.get(key)
+        if not value:
+            continue
+        path = Path(str(value))
+        if key in {"submission_path", "upload_path"}:
+            path = path.parent
+        return str(path)
+    return "-"
+
+
 def render_registry_table(
     console: Console,
     registry: smart.SubmissionRegistry,
     remote_submissions: list[Any] | None = None,
+    records: list[dict[str, Any]] | None = None,
+    full_view: bool = False,
 ) -> None:
     table = Table(title="Submission registry", expand=True, padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
@@ -574,15 +696,21 @@ def render_registry_table(
     table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
     table.add_column("sha", no_wrap=True)
+    if full_view:
+        table.add_column("artifact", no_wrap=True, overflow="fold")
 
+    record_lookup = _registry_record_lookup(records)
     rows = [
         {
             "local_score": entry.get("local_score"),
             "public_score": entry.get("public_score"),
             "remote_status": entry.get("remote_status"),
+            "algo": _registry_entry_algo(entry, record_lookup),
+            "artifact_dir": _registry_entry_artifact_dir(entry, record_lookup),
             "run": entry.get("run"),
             "step": entry.get("step"),
             "date": entry.get("timestamp"),
@@ -600,16 +728,24 @@ def render_registry_table(
             display_rank = str(complete_rank)
         else:
             display_rank = "-"
-        table.add_row(
+        row = [
             display_rank,
             _format_score(entry.get("local_score")),
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
-            _format_step(entry.get("step")),
-            _display_date(entry.get("date")),
-            str(entry.get("sha256") or "")[:10] or "-",
+        ]
+        row.extend(
+            [
+                _format_algo(entry, unknown_if_missing=True),
+                _format_step(entry.get("step")),
+                _display_date(entry.get("date")),
+                str(entry.get("sha256") or "")[:10] or "-",
+            ]
         )
+        if full_view:
+            row.append(str(entry.get("artifact_dir") or "-"))
+        table.add_row(*row)
     console.print(table)
 
 
@@ -652,6 +788,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         submission_path=Path(record.get("submission_path")),
         sha256=record.get("sha256"),
         validation_error=None,
+        algo=_format_algo(record),
     )
 
 
@@ -771,7 +908,13 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
         render_table(console, selected, full_view=args.full_view)
-        render_registry_table(console, registry, remote_submissions)
+        render_registry_table(
+            console,
+            registry,
+            remote_submissions,
+            records=records,
+            full_view=args.full_view,
+        )
         if remote_submissions is not None:
             console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
     return 0

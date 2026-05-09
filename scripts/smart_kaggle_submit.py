@@ -56,6 +56,7 @@ class Candidate:
     plan: str | None = None
     analysis: str | None = None
     validation_error: str | None = None
+    algo: str | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -640,9 +641,11 @@ def require_explicit_submit_ready_candidates(
 def build_kaggle_message(candidate: Candidate) -> str:
     score = "nan" if candidate.local_score is None else f"{candidate.local_score:.5f}"
     node = candidate.node_id[:8] if candidate.node_id else "unknown"
+    algo = f" | algo={candidate.algo}" if candidate.algo else ""
     return (
         f"cv={score} | run={candidate.run} | step={candidate.step} | "
-        f"aide_ts={candidate.timestamp} | node={node} | sha={(candidate.sha256 or '')[:10]}"
+        f"aide_ts={candidate.timestamp} | node={node} | "
+        f"sha={(candidate.sha256 or '')[:10]}{algo}"
     )
 
 
@@ -706,6 +709,7 @@ def submit_candidates(
             "upload_path": str(upload_path),
             "uploaded_filename": upload_path.name,
             "sha256": candidate.sha256,
+            "algo": candidate.algo,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "response": _response_to_jsonable(response),
