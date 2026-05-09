@@ -299,6 +299,7 @@ class Agent:
             "No parts of the code should be skipped, don't terminate the before finishing the script.",
             "Your response should only contain a single code block.",
             f"Be aware of the running time of the code, it should complete within {humanize.naturaldelta(self.cfg.exec.timeout)}.",
+            'If you run a post-CV blend-weight search with many independent AUC/ROC-AUC evaluations, do not evaluate thousands of `roc_auc_score` calls serially. Use `joblib.Parallel` with `n_jobs=min(10, os.cpu_count() or 1)` and `prefer="threads"` to avoid copying large OOF arrays; print "Evaluating N blend candidates with M workers" before starting. Keep candidate grids bounded, and fall back to a simple 1D blend if joblib is unavailable.',
             'All the provided input data is stored in "./input" directory.',
             '**If there is test data provided for this task, please save the test predictions in a `submission.csv` file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
             'You can also use the "./working" directory to store any temporary files that your code needs to create.',
