@@ -175,12 +175,17 @@ class Interpreter:
     ) -> None:
         self.child_proc_setup(result_outq)
 
-        global_scope: dict = {}
+        global_scope: dict = {
+            "__name__": "__main__",
+            "__file__": self.agent_file_name,
+        }
         while True:
             code = code_inq.get()
             os.chdir(str(self.working_dir))
             with open(self.agent_file_name, "w") as f:
                 f.write(code)
+            global_scope["__name__"] = "__main__"
+            global_scope["__file__"] = self.agent_file_name
 
             event_outq.put(("state:ready",))
             try:

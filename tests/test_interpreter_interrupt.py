@@ -57,6 +57,23 @@ def _interpreter_with_queues(tmp_path, events):
     return interpreter
 
 
+def test_interpreter_executes_main_guard_like_script(tmp_path):
+    interpreter = Interpreter(tmp_path, timeout=10, memory_limit_gb=None)
+    try:
+        result = interpreter.run(
+            "def main():\n"
+            "    print('main ran')\n"
+            "\n"
+            "if __name__ == '__main__':\n"
+            "    main()\n"
+        )
+    finally:
+        interpreter.cleanup_session()
+
+    assert result.exc_type is None
+    assert "main ran" in "".join(result.term_out)
+
+
 def test_first_keyboard_interrupt_waits_for_execution_to_finish(tmp_path):
     interpreter = _interpreter_with_queues(
         tmp_path,
