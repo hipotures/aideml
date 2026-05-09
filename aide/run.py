@@ -1371,6 +1371,7 @@ def build_run_data(
     resource_snapshot: ResourceSnapshot | None = None,
     resource_history: ResourceHistory | None = None,
     resource_active: bool = False,
+    resource_graph_width: int = 24,
     model_settings: list[ModelSetting] | None = None,
     active_artifact_dir: Path | None = None,
 ) -> Group:
@@ -1417,7 +1418,15 @@ def build_run_data(
     )
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     if resource_active:
-        lines.extend([Rule(style="dim"), build_resource_summary(resource_history)])
+        lines.extend(
+            [
+                Rule(style="dim"),
+                build_resource_summary(
+                    resource_history,
+                    graph_width=resource_graph_width,
+                ),
+            ]
+        )
     return Group(*lines)
 
 
@@ -2002,6 +2011,14 @@ def run(argv: list[str] | None = None):
         content_width = max(10, right_column_width - 4)
         return content_height, content_width
 
+    def resource_graph_width() -> int:
+        terminal_size = shutil.get_terminal_size((120, 40))
+        right_column_width = max(20, int(terminal_size.columns * 2 / 5))
+        content_width = max(10, right_column_width - 4)
+        fixed_width_before_spark = 26
+        right_margin = 2
+        return max(0, content_width - fixed_width_before_spark - right_margin)
+
     def drain_tree_navigation(view: TreeView) -> None:
         nonlocal focused_tree_item_id, tree_scroll_top
         if focused_tree_item_id not in view.index_by_id:
@@ -2087,6 +2104,7 @@ def run(argv: list[str] | None = None):
                     workspace_dir=cfg.workspace_dir,
                     resource_history=resource_history,
                     resource_active=resource_active,
+                    resource_graph_width=resource_graph_width(),
                     model_settings=model_settings_for_run(cfg),
                     active_artifact_dir=active_artifact_dir,
                 ),

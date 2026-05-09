@@ -989,6 +989,43 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
     assert len(set(bar_columns)) == 1
 
 
+def test_run_data_uses_configured_resource_graph_width(tmp_path):
+    history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    for index in range(50):
+        history.add(
+            ResourceSnapshot(
+                cpu_percent=float(index),
+                ram_bytes=int((1.0 + index / 100) * 1024**3),
+                peak_ram_bytes=int((1.5 + index / 100) * 1024**3),
+                process_count=1,
+                gpu_percent=float(index % 100),
+                gpu_memory_used_bytes=int((index / 10) * 1024**3),
+                gpu_memory_total_bytes=int(24.0 * 1024**3),
+                gpu_power_draw_watts=float(index),
+                gpu_power_limit_watts=450.0,
+                gpu_temperature_celsius=40.0 + float(index % 10),
+            )
+        )
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Executing code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            resource_history=history,
+            resource_active=True,
+            resource_graph_width=40,
+        )
+    )
+
+    cpu_line = next(line for line in output.splitlines() if line.startswith("▶ CPU"))
+    assert len(cpu_line.rsplit(" ", 1)[-1]) == 40
+
+
 def test_resource_summary_marks_only_busy_gpu_percent_red():
     history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
     history.add(
