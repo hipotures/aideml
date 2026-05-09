@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -13,6 +15,7 @@ from .journal import Journal, Node
 logger = logging.getLogger("aide")
 
 TELEGRAM_API_BASE_URL = "https://api.telegram.org"
+DEFAULT_TELEGRAM_LOG_PATH = Path("/tmp/aideml/telegram.log")
 
 
 def _best_scored_node(journal: Journal) -> Node | None:
@@ -67,27 +70,69 @@ def _telegram_credentials() -> tuple[str, str] | None:
     return token, chat_id
 
 
+def _telegram_log_path() -> Path:
+    return Path(os.getenv("AIDE_TELEGRAM_LOG_PATH", str(DEFAULT_TELEGRAM_LOG_PATH)))
+
+
+def _log_telegram_status(status: str, detail: str = "") -> None:
+    try:
+        path = _telegram_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            line = f"{timestamp} {status}"
+            if detail:
+                line += f" {detail}"
+            f.write(line + "\n")
+    except OSError:
+        return
+
+
 def send_telegram_message(
     text: str,
     *,
     http_post: Callable[..., Any] = requests.post,
-) -> None:
+    attempts: int = 3,
+) -> bool:
     credentials = _telegram_credentials()
     if credentials is None:
-        return
+        _log_telegram_status("skipped", "missing_credentials")
+        return False
 
     token, chat_id = credentials
+    attempts = max(1, int(attempts))
+    for attempt in range(1, attempts + 1):
+        try:
+            response = http_post(
+                f"{TELEGRAM_API_BASE_URL}/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": text},
+                timeout=10,
+            )
+            response.raise_for_status()
+            _log_telegram_status("sent", f"attempt={attempt}")
+            return True
+        except Exception as exc:  # noqa: BLE001 - notification failure is recoverable
+            detail = f"attempt={attempt} error={exc.__class__.__name__}: {exc}"
+            _log_telegram_status("failed", detail)
+            logger.warning("Telegram notification failed: %s", detail)
+            if attempt < attempts:
+                time.sleep(min(2, attempt))
+
+    return False
+
+
+def _send_message(
+    send_message: Callable[[str], Any],
+    text: str,
+) -> None:
     try:
-        response = http_post(
-            f"{TELEGRAM_API_BASE_URL}/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text},
-            timeout=10,
-        )
-        response.raise_for_status()
-    except Exception as exc:  # noqa: BLE001 - notification failure is recoverable
+        send_message(text)
+    except Exception as exc:  # noqa: BLE001 - notifications must not stop runs
+        detail = f"error={exc.__class__.__name__}: {exc}"
+        _log_telegram_status("failed", detail)
         logger.warning(
-            "Telegram notification failed: %s",
-            exc.__class__.__name__,
+            "Telegram notification callback failed: %s",
+            detail,
         )
 
 
@@ -95,7 +140,7 @@ def send_telegram_test_message(
     *,
     send_message: Callable[[str], None] = send_telegram_message,
 ) -> None:
-    send_message("AIDE Telegram OK")
+    _send_message(send_message, "AIDE Telegram OK")
 
 
 def notify_new_best_score(
@@ -109,12 +154,13 @@ def notify_new_best_score(
         return
     if previous_best is not None and not node.metric > previous_best.metric:
         return
-    send_message(
+    _send_message(
+        send_message,
         _best_score_message(
             node=node,
             previous_best=previous_best,
             experiment_id=experiment_id,
-        )
+        ),
     )
 
 
