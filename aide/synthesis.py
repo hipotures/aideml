@@ -120,12 +120,55 @@ def _journal_for_run(
     return _load_journal(Path(cfg.log_dir).resolve().parent / run_id / "journal.json")
 
 
+def _run_agent_mode(cfg: Config, run_id: str) -> str | None:
+    if run_id == cfg.exp_name:
+        return str(getattr(cfg.agent, "mode", "legacy"))
+    config_path = Path(cfg.log_dir).resolve().parent / run_id / "config.yaml"
+    if not config_path.exists():
+        return None
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"(?m)^agent:\n(?:^[ \t].*\n)*?^[ \t]{2}mode:\s*([^\s#]+)", text)
+    if match is None:
+        return "legacy"
+    return match.group(1).strip("'\"")
+
+
+def _candidate_matches_agent_mode(cfg: Config, run_id: str, node: Node) -> bool:
+    target_mode = str(getattr(cfg.agent, "mode", "legacy"))
+    source_mode = _run_agent_mode(cfg, run_id)
+    if source_mode is not None and source_mode != target_mode:
+        return False
+
+    if target_mode == AUTOGLUON_PREPROCESS_MODE:
+        try:
+            extract_preprocess_source(node.code)
+        except ValueError:
+            return False
+        return True
+
+    return not _looks_like_autogluon_solution(node.code)
+
+
 def _working_nodes_with_metrics(journal: Journal) -> list[Node]:
     return [
         node
         for node in journal.good_nodes
         if node.metric is not None and _metric_value(node) is not None
     ]
+
+
+def _looks_like_autogluon_solution(code: str) -> bool:
+    lowered = code.lower()
+    return (
+        "tabularpredictor" in code
+        or "autogluon.tabular" in lowered
+        or "aide_ag_config" in lowered
+        or "autogluon_stdout.log" in lowered
+        or "autogluon_model" in lowered
+    )
 
 
 def _timestamp_from_ctime(ctime: float) -> str:
@@ -547,11 +590,8 @@ def collect_top_synthesis_solutions(
         for node in _working_nodes_with_metrics(source_journal):
             if _has_target_leakage_pattern(node.code):
                 continue
-            if preprocess_only:
-                try:
-                    extract_preprocess_source(node.code)
-                except ValueError:
-                    continue
+            if not _candidate_matches_agent_mode(cfg, run_id, node):
+                continue
             selected.append((run_id, node))
 
     selected.sort(key=lambda item: item[1].metric, reverse=True)

@@ -122,6 +122,79 @@ def test_collect_top_synthesis_solutions_can_use_best_scored_nodes_across_runs(
     assert all("source_step" not in solution for solution in solutions)
 
 
+def test_collect_top_synthesis_solutions_all_scope_keeps_legacy_mode_only(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.synthesis.top_k = 5
+    cfg.synthesis.source_scope = "all"
+    current = Journal()
+    current.append(_node(0.90, code="print('current legacy')"))
+
+    legacy = Journal()
+    legacy.append(_node(0.94, code="print('other legacy')"))
+    _write_journal(Path(cfg.log_dir).parent, "1-legacy-run", legacy)
+    (Path(cfg.log_dir).parent / "1-legacy-run" / "config.yaml").write_text(
+        "agent:\n  mode: legacy\n",
+        encoding="utf-8",
+    )
+
+    autogluon = Journal()
+    autogluon.append(
+        _node(
+            0.99,
+            code="from autogluon.tabular import TabularPredictor\n"
+            "def preprocess(df):\n    return df\n",
+        )
+    )
+    _write_journal(Path(cfg.log_dir).parent, "2-ag-run", autogluon)
+    (Path(cfg.log_dir).parent / "2-ag-run" / "config.yaml").write_text(
+        "agent:\n  mode: autogluon_preprocess\n",
+        encoding="utf-8",
+    )
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
+
+    assert [solution["code"] for solution in solutions] == [
+        "print('other legacy')",
+        "print('current legacy')",
+    ]
+
+
+def test_collect_top_synthesis_solutions_all_scope_keeps_autogluon_mode_only(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    cfg.synthesis.top_k = 5
+    cfg.synthesis.source_scope = "all"
+    preprocess_source = "def preprocess(df):\n    return df.copy()\n"
+    current = Journal()
+    current.append(
+        _node(0.91, code=build_autogluon_wrapper(preprocess_source, cfg))
+    )
+
+    legacy = Journal()
+    legacy.append(_node(0.99, code="print('legacy')"))
+    _write_journal(Path(cfg.log_dir).parent, "1-legacy-run", legacy)
+    (Path(cfg.log_dir).parent / "1-legacy-run" / "config.yaml").write_text(
+        "agent:\n  mode: legacy\n",
+        encoding="utf-8",
+    )
+
+    other_preprocess = "def preprocess(df):\n    df = df.copy()\n    return df\n"
+    autogluon = Journal()
+    autogluon.append(
+        _node(0.95, code=build_autogluon_wrapper(other_preprocess, cfg))
+    )
+    _write_journal(Path(cfg.log_dir).parent, "2-ag-run", autogluon)
+    (Path(cfg.log_dir).parent / "2-ag-run" / "config.yaml").write_text(
+        "agent:\n  mode: autogluon_preprocess\n",
+        encoding="utf-8",
+    )
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
+
+    assert [solution["local_cv_score"] for solution in solutions] == [0.95, 0.91]
+    assert all("def preprocess" in solution["response"] for solution in solutions)
+
+
 def test_collect_top_synthesis_solutions_adds_completed_kaggle_public_score(tmp_path):
     cfg = _cfg(tmp_path)
     journal = Journal()
