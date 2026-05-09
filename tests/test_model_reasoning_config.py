@@ -43,6 +43,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.synthesis.model == "gpt-5.4-mini"
     assert cfg.synthesis.reasoning_effort == "low"
     assert cfg.agent.search.exploration_weight == 0.05
+    assert cfg.agent.gpu is False
 
 
 def test_prep_cfg_resolves_cli_model_suffix(tmp_path):
@@ -70,3 +71,19 @@ def test_cli_plain_model_override_clears_default_reasoning_effort(tmp_path):
 
     assert cfg.agent.code.model == "gemma-4-31B"
     assert cfg.agent.code.reasoning_effort is None
+
+
+def test_cli_agent_gpu_override_is_loaded(tmp_path):
+    cfg = _load_cfg(
+        cli_args=[
+            f"data_dir={tmp_path}",
+            "goal=test",
+            f"log_dir={tmp_path / 'logs'}",
+            f"workspace_dir={tmp_path / 'workspaces'}",
+            "agent.gpu=true",
+        ]
+    )
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.gpu is True

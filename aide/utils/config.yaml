@@ -71,6 +71,8 @@ agent:
   expose_prediction: False
   # whether to provide the agent with a preview of the data
   data_preview: True
+  # whether legacy full-script prompts should prefer CUDA/GPU-capable tabular models
+  gpu: false
 
   # LLM settings for coding
   code:

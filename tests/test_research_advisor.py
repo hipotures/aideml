@@ -607,6 +607,36 @@ def test_agent_includes_latest_research_hints_in_draft_prompt(tmp_path):
     assert "Use tire-age feature" in captured["prompt"]["External research hints"]
 
 
+def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    default_guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
+    assert not any("CUDA-capable NVIDIA GPU" in line for line in default_guidelines)
+
+    cfg.agent.gpu = True
+    captured.clear()
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    gpu_guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
+    assert any("CUDA-capable NVIDIA GPU" in line for line in gpu_guidelines)
+    assert any('task_type="GPU"' in line for line in gpu_guidelines)
+    assert any('device="cuda"' in line for line in gpu_guidelines)
+
+
 def test_agent_includes_latest_research_hints_in_debug_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False

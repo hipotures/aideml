@@ -296,6 +296,16 @@ class Agent:
                 f"The evaluation should be based on {self.acfg.k_fold_validation}-fold cross-validation but only if that's an appropriate evaluation for the task at hand."
             )
 
+        if self.acfg.gpu:
+            impl_guideline.extend(
+                [
+                    "A CUDA-capable NVIDIA GPU is available. Prefer GPU-enabled training for tabular tree models when the chosen library supports it.",
+                    'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
+                    'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
+                    "If a GPU-specific implementation fails, the next debug attempt may fall back to CPU.",
+                ]
+            )
+
         return {"Implementation guideline": impl_guideline}
 
     @property

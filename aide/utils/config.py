@@ -124,6 +124,7 @@ class AgentConfig:
     feedback: StageConfig
 
     search: SearchConfig
+    gpu: bool = False
     mode: str = "legacy"
     autogluon: AutoGluonConfig = field(default_factory=AutoGluonConfig)
 
