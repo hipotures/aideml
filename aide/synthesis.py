@@ -93,6 +93,15 @@ def _candidate_run_ids(cfg: Config) -> list[str]:
     if source_runs:
         return source_runs
 
+    source_scope = str(getattr(cfg.synthesis, "source_scope", "current"))
+    if source_scope == "current":
+        return [cfg.exp_name]
+    if source_scope != "all":
+        raise ValueError(
+            f"Unsupported synthesis.source_scope={source_scope!r}; "
+            "expected 'current' or 'all'"
+        )
+
     top_log_dir = Path(cfg.log_dir).resolve().parent
     if not top_log_dir.exists():
         return [cfg.exp_name]

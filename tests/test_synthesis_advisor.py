@@ -76,9 +76,30 @@ def _write_submission(cfg, node: Node, body: str, *, run_id: str | None = None) 
     (artifact_dir / "submission.csv").write_text(body)
 
 
-def test_collect_top_synthesis_solutions_uses_best_scored_nodes_across_runs(tmp_path):
+def test_collect_top_synthesis_solutions_defaults_to_current_run(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 3
+    current = Journal()
+    current.append(_node(0.90, code="print('current')"))
+    current.append(_node(None, code="raise RuntimeError('bug')"))
+
+    other = Journal()
+    other.append(_node(0.95, code="print('best')"))
+    other.append(_node(0.70, code="print('weak')"))
+    _write_journal(Path(cfg.log_dir).parent, "1-other-run", other)
+
+    solutions = collect_top_synthesis_solutions(cfg=cfg, journal=current)
+
+    assert [solution["local_cv_score"] for solution in solutions] == [0.9]
+    assert [solution["code"] for solution in solutions] == ["print('current')"]
+
+
+def test_collect_top_synthesis_solutions_can_use_best_scored_nodes_across_runs(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.synthesis.top_k = 3
+    cfg.synthesis.source_scope = "all"
     current = Journal()
     current.append(_node(0.90, code="print('current')"))
     current.append(_node(None, code="raise RuntimeError('bug')"))
@@ -237,6 +258,7 @@ def test_collect_top_synthesis_solutions_marks_generated_preprocess_candidates(
 def test_collect_top_synthesis_solutions_honors_explicit_source_runs(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 5
+    cfg.synthesis.source_scope = "current"
     cfg.synthesis.source_runs = ["2-included-run"]
     current = Journal()
     current.append(_node(0.99, code="print('current')"))

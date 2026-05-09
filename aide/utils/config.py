@@ -154,6 +154,7 @@ class SynthesisConfig:
     enabled: bool = False
     every_scored_steps: int = 15
     top_k: int = 5
+    source_scope: str = "current"
     source_runs: list[str] = field(default_factory=list)
     score_round_decimals: int = 5
     prediction_round_decimals: int = 5

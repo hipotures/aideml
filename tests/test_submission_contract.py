@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import gzip
+import os
 from pathlib import Path
 
 from aide.journal import Journal, Node
@@ -61,8 +62,8 @@ def test_validate_workspace_submission_supports_gzipped_sample(tmp_path):
 def test_enforce_submission_contract_marks_invalid_successful_node_as_bug(tmp_path):
     workspace_dir = tmp_path / "workspace"
     _write_sample(workspace_dir)
-    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n1,0.9\n")
     node = Node(code="print('ok')", plan="ok")
+    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n1,0.9\n")
     node.metric = MetricValue(0.99, maximize=True)
     node.is_buggy = False
     node._term_out = ["CV AUC: 0.99\n"]
@@ -83,8 +84,8 @@ def test_enforce_submission_contract_marks_invalid_successful_node_as_bug(tmp_pa
 def test_enforce_submission_contract_accepts_valid_submission(tmp_path):
     workspace_dir = tmp_path / "workspace"
     _write_sample(workspace_dir)
-    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n2,0.9\n")
     node = Node(code="print('ok')", plan="ok")
+    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n2,0.9\n")
     node.metric = MetricValue(0.99, maximize=True)
     node.is_buggy = False
     node._term_out = ["CV AUC: 0.99\n"]
@@ -99,6 +100,28 @@ def test_enforce_submission_contract_accepts_valid_submission(tmp_path):
     assert node.metric.value == 0.99
     assert node.exc_type is None
     assert node.submission_validation["status"] == "ok"
+
+
+def test_enforce_submission_contract_rejects_stale_workspace_submission(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    _write_sample(workspace_dir)
+    _write_submission(workspace_dir, "id,PitNextLap\n1,0.8\n2,0.9\n")
+    submission_path = workspace_dir / "working" / "submission.csv"
+    node = Node(code="print('no output')", plan="bad", ctime=1778290000.0)
+    os.utime(submission_path, (node.ctime - 10, node.ctime - 10))
+    node.metric = MetricValue(None, maximize=True)
+    node.is_buggy = True
+    node._term_out = []
+    node.exec_time = 0.25
+    node.analysis = "no result marker"
+
+    changed = enforce_submission_contract(DummyConfig(workspace_dir=workspace_dir), node)
+
+    assert changed is True
+    assert node.is_buggy is True
+    assert node.exc_type == "SubmissionValidationError"
+    assert node.submission_validation is None
+    assert "stale working/submission.csv" in "".join(node._term_out)
 
 
 def test_enforce_journal_submission_contract_marks_saved_invalid_artifact(tmp_path):

@@ -10,6 +10,7 @@ from aide.run import (
     _sparkline,
     active_run_log_path,
     build_path_summary,
+    build_resource_summary,
     build_run_log_summary,
     build_run_data,
     ResourceSnapshot,
@@ -986,6 +987,53 @@ def test_run_data_shows_resources_below_last_error(tmp_path):
     assert len(resource_lines) == 7
     bar_columns = [line.index("█") for line in resource_lines]
     assert len(set(bar_columns)) == 1
+
+
+def test_resource_summary_marks_only_busy_gpu_percent_red():
+    history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=120.0,
+            ram_bytes=int(4.0 * 1024**3),
+            peak_ram_bytes=int(5.2 * 1024**3),
+            process_count=2,
+            gpu_percent=78.0,
+            gpu_memory_used_bytes=int(18.9 * 1024**3),
+            gpu_memory_total_bytes=int(24.0 * 1024**3),
+            gpu_power_draw_watts=186.0,
+            gpu_power_limit_watts=450.0,
+            gpu_temperature_celsius=46.0,
+        )
+    )
+
+    output = _render_ansi(build_resource_summary(history, graph_width=0))
+
+    assert "GPU" in output
+    assert "\x1b[31m    78%\x1b[0m" in output
+    assert "\x1b[31mGPU\x1b[0m" not in output
+
+
+def test_resource_summary_keeps_idle_gpu_percent_yellow():
+    history = ResourceHistory(window_seconds=30 * 60, interval_seconds=1)
+    history.add(
+        ResourceSnapshot(
+            cpu_percent=120.0,
+            ram_bytes=int(4.0 * 1024**3),
+            peak_ram_bytes=int(5.2 * 1024**3),
+            process_count=2,
+            gpu_percent=10.0,
+            gpu_memory_used_bytes=int(0.5 * 1024**3),
+            gpu_memory_total_bytes=int(24.0 * 1024**3),
+            gpu_power_draw_watts=91.0,
+            gpu_power_limit_watts=450.0,
+            gpu_temperature_celsius=40.0,
+        )
+    )
+
+    output = _render_ansi(build_resource_summary(history, graph_width=0))
+
+    assert "10%" in output
+    assert "\x1b[31m    10%\x1b[0m" not in output
 
 
 def test_run_data_shows_resolved_model_settings(tmp_path):

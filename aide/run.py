@@ -1125,6 +1125,22 @@ def _resource_row(
     )
 
 
+def _resource_text(label: str, value: str, bar: str, spark: str) -> Text:
+    prefix = f"▶ {label:<4} "
+    padded_value = f"{value:>7}"
+    if label == "GPU" and value.endswith("%"):
+        try:
+            gpu_percent = float(value.rstrip("%"))
+        except ValueError:
+            gpu_percent = 0.0
+        if gpu_percent > 10.0:
+            line = Text(prefix, style="yellow")
+            line.append(padded_value, style="red")
+            line.append(f" {bar} {spark}", style="yellow")
+            return line
+    return Text(f"{prefix}{padded_value} {bar} {spark}", style="yellow")
+
+
 def build_resource_summary(
     resource_history: ResourceHistory | None,
     *,
@@ -1249,10 +1265,7 @@ def build_resource_summary(
                 graph_width=graph_width,
             ),
         ]
-    lines.extend(
-        Text(f"▶ {label:<4} {value:>7} {bar} {spark}", style="yellow")
-        for label, value, bar, spark in values
-    )
+    lines.extend(_resource_text(label, value, bar, spark) for label, value, bar, spark in values)
     return Group(*lines)
 
 
@@ -1587,6 +1600,11 @@ def enforce_submission_contract(cfg, node: Node) -> bool:
         return _mark_node_submission_bug(
             node,
             "missing working/submission.csv while sample_submission exists",
+        )
+    if submission_path.stat().st_mtime < node.ctime:
+        return _mark_node_submission_bug(
+            node,
+            "stale working/submission.csv from before this node execution",
         )
 
     error = validate_workspace_submission(workspace_dir)

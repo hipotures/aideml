@@ -48,6 +48,9 @@ synthesis:
   enabled: False
   every_scored_steps: 15
   top_k: 5
+  # current = use only this run; all = scan sibling log runs. Explicit
+  # source_runs below overrides this scope.
+  source_scope: current
   source_runs: []
   score_round_decimals: 5
   prediction_round_decimals: 5
