@@ -510,14 +510,14 @@ def render_table(
     full_view: bool = False,
 ) -> None:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
-    table = Table(title="Top unsent submit-ready candidates", expand=True, padding=(0, 1))
+    table = Table(title="Top unsent submit-ready candidates", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
     table.add_column("k", no_wrap=True)
     if full_view:
         table.add_column("prof", no_wrap=True)
     table.add_column("m", no_wrap=True)
-    table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
@@ -574,6 +574,7 @@ def _registry_display_sort_key(row: dict[str, Any]) -> tuple[bool, float, str]:
 def _remote_display_rows(
     registry: smart.SubmissionRegistry,
     remote_submissions: list[Any] | None,
+    record_lookup: dict[tuple[str, str], dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     if remote_submissions is None:
         return []
@@ -597,22 +598,36 @@ def _remote_display_rows(
         if remote_file and remote_file in known_files:
             continue
 
-        rows.append(
-            {
-                "local_score": smart._parse_public_score(parsed.get("cv")),
-                "public_score": smart._remote_attr(remote, "public_score"),
-                "remote_status": smart._status_to_string(
-                    smart._remote_attr(remote, "status")
-                ),
-                "algo": parsed.get("algo"),
-                "run": parsed.get("run")
-                or str(smart._remote_attr(remote, "file_name") or "-"),
-                "step": parsed.get("step"),
-                "date": parsed.get("timestamp") or smart._remote_attr(remote, "date"),
-                "sha256": parsed.get("sha"),
-            }
-        )
+        row = {
+            "local_score": smart._parse_public_score(parsed.get("cv")),
+            "public_score": smart._remote_attr(remote, "public_score"),
+            "remote_status": smart._status_to_string(
+                smart._remote_attr(remote, "status")
+            ),
+            "algo": parsed.get("algo"),
+            "run": parsed.get("run")
+            or str(smart._remote_attr(remote, "file_name") or "-"),
+            "step": parsed.get("step"),
+            "date": parsed.get("timestamp") or smart._remote_attr(remote, "date"),
+            "sha256": parsed.get("sha"),
+        }
+        if record_lookup is not None:
+            row["algo"] = row.get("algo") or _registry_entry_algo(row, record_lookup)
+            row["artifact_dir"] = _registry_entry_artifact_dir(row, record_lookup)
+        rows.append(row)
     return rows
+
+
+def _put_lookup_record(
+    lookup: dict[tuple[str, str], dict[str, Any]],
+    key: tuple[str, str],
+    data: dict[str, Any],
+) -> None:
+    existing = lookup.get(key)
+    if existing is None:
+        lookup[key] = data
+    elif existing != data:
+        lookup[key] = {}
 
 
 def _registry_record_lookup(
@@ -627,12 +642,14 @@ def _registry_record_lookup(
         }
         sha = str(record.get("sha256") or "")
         if sha:
-            lookup[("sha", sha)] = data
+            _put_lookup_record(lookup, ("sha", sha), data)
+            if len(sha) >= 10:
+                _put_lookup_record(lookup, ("sha", sha[:10]), data)
         run = str(record.get("run") or "")
         step = str(record.get("step") if record.get("step") is not None else "")
         timestamp = str(record.get("timestamp") or "")
         if run and step and timestamp:
-            lookup[("node", f"{run}|{step}|{timestamp}")] = data
+            _put_lookup_record(lookup, ("node", f"{run}|{step}|{timestamp}"), data)
     return lookup
 
 
@@ -664,6 +681,18 @@ def _registry_entry_algo(
     if record is not None:
         return str(record.get("algo") or "") or None
 
+    artifact_dir = _registry_entry_artifact_dir(entry, lookup)
+    if artifact_dir != "-":
+        solution_path = Path(artifact_dir) / "solution.py"
+        if solution_path.exists():
+            try:
+                code = solution_path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                code = ""
+            if parse_autogluon_config(code) is not None:
+                return "AG"
+            return "Leg"
+
     return None
 
 
@@ -690,12 +719,12 @@ def render_registry_table(
     records: list[dict[str, Any]] | None = None,
     full_view: bool = False,
 ) -> None:
-    table = Table(title="Submission registry", expand=True, padding=(0, 1))
+    table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
     table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
-    table.add_column("run", no_wrap=True, overflow="ellipsis", ratio=1)
+    table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
@@ -718,7 +747,7 @@ def render_registry_table(
         }
         for entry in registry.entries
     ]
-    rows.extend(_remote_display_rows(registry, remote_submissions))
+    rows.extend(_remote_display_rows(registry, remote_submissions, record_lookup))
 
     complete_rank = 0
     for entry in sorted(rows, key=_registry_display_sort_key, reverse=True):

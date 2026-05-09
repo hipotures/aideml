@@ -499,6 +499,10 @@ def test_render_registry_table_full_view_uses_registry_submission_path(tmp_path)
     submission_path = tmp_path / "logs" / "run-a" / "artifacts" / "20260504T100000" / "submission.csv"
     submission_path.parent.mkdir(parents=True)
     submission_path.write_text("id,target\n1,0.8\n")
+    (submission_path.parent / "solution.py").write_text(
+        "AIDE_AG_CONFIG = {'included_model_types': ['XGB', 'GBM', 'CAT']}\n",
+        encoding="utf-8",
+    )
     registry = kaggle_submission_lab.smart.SubmissionRegistry(
         tmp_path / "registry.json",
         entries=[
@@ -521,7 +525,8 @@ def test_render_registry_table_full_view_uses_registry_submission_path(tmp_path)
 
     output = console.export_text()
     assert "artifact" in output
-    assert str(submission_path.parent) in output
+    assert "logs/run-a/artifacts" in output
+    assert "AG" in output
 
 
 def test_record_to_candidate_preserves_algo_for_kaggle_message_and_registry(tmp_path):
@@ -652,3 +657,46 @@ def test_render_registry_table_parses_remote_only_aide_description(tmp_path):
     assert "20260505" in output
     assert "165e7caae1" in output
     assert "sub_20260505T204454" not in output
+
+
+def test_render_registry_table_backfills_remote_only_rows_from_sha_prefix(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+    artifact_dir = tmp_path / "logs" / "2-remote-server-run" / "artifacts" / "20260505T204454"
+
+    class FakeRemote:
+        file_name = "sub_20260505T204454_step--1_node-profile-_sha-165e7caae1_cv-0.95100.csv"
+        description = (
+            "cv=0.95100 | run=2-remote-server-run | step=-1 | "
+            "aide_ts=20260505T204454 | node=profile- | sha=165e7caae1"
+        )
+        status = "COMPLETE"
+        public_score = "0.95072"
+        date = "2026-05-05T20:44:54Z"
+
+    records = [
+        {
+            "kind": "profile_eval",
+            "run": "2-remote-server-run",
+            "step": None,
+            "timestamp": "20260505T204454",
+            "sha256": "165e7caae1abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "algo": "AG",
+            "artifact_dir": str(artifact_dir),
+        }
+    ]
+    console = kaggle_submission_lab.Console(record=True, width=220, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(
+        console,
+        registry,
+        [FakeRemote()],
+        records=records,
+        full_view=True,
+    )
+
+    output = console.export_text()
+    assert "AG" in output
+    assert str(artifact_dir) in output
