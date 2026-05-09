@@ -82,15 +82,23 @@ def exception_summary(e, working_dir, exec_file_name, format_tb_ipython):
 
 
 class RedirectQueue:
-    def __init__(self, queue, timeout=5):
+    def __init__(self, queue, timeout=5, log_path: Path | None = None):
         self.queue = queue
         self.timeout = timeout
+        self.log_path = log_path
 
     def write(self, msg):
         try:
             self.queue.put(msg, timeout=self.timeout)
         except queue.Full:
             logger.warning("Queue write timed out")
+        if self.log_path is not None and msg:
+            try:
+                with self.log_path.open("a", encoding="utf-8") as f:
+                    f.write(msg)
+                    f.flush()
+            except OSError as exc:
+                logger.debug(f"Failed to write process output log: {exc}")
 
     def flush(self):
         pass
@@ -148,9 +156,19 @@ class Interpreter:
         # a .py file should be able to import modules from the cwd anyway
         sys.path.append(str(self.working_dir))
 
+        log_path = None
+        artifact_dir = os.environ.get("AIDE_NODE_ARTIFACT_DIR")
+        if artifact_dir:
+            try:
+                log_dir = Path(artifact_dir)
+                log_dir.mkdir(parents=True, exist_ok=True)
+                log_path = log_dir / "process_stdout.log"
+            except OSError as exc:
+                logger.debug(f"Failed to initialize process output log: {exc}")
+
         # capture stdout and stderr
         # trunk-ignore(mypy/assignment)
-        sys.stdout = sys.stderr = RedirectQueue(result_outq)
+        sys.stdout = sys.stderr = RedirectQueue(result_outq, log_path=log_path)
 
     def _run_session(
         self, code_inq: Queue, result_outq: Queue, event_outq: Queue

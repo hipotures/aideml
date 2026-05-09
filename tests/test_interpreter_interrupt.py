@@ -239,3 +239,17 @@ def test_parent_process_memory_limit_is_not_changed_by_child_limit(tmp_path):
 
     assert result.exc_type is None
     assert resource.getrlimit(resource.RLIMIT_AS) == before
+
+
+def test_child_process_streams_output_to_artifact_log(tmp_path, monkeypatch):
+    artifact_dir = tmp_path / "artifact"
+    monkeypatch.setenv("AIDE_NODE_ARTIFACT_DIR", str(artifact_dir))
+    interpreter = Interpreter(tmp_path, timeout=10)
+
+    result = interpreter.run("print('legacy progress', flush=True)")
+    interpreter.cleanup_session()
+
+    assert result.exc_type is None
+    log_path = artifact_dir / "process_stdout.log"
+    assert log_path.exists()
+    assert "legacy progress" in log_path.read_text(encoding="utf-8")
