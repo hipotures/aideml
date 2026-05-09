@@ -95,6 +95,27 @@ def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides()
     assert remaining == ["agent.steps=200"]
 
 
+def test_parse_runtime_args_extracts_seed_options():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--seed-from-sha",
+            "abcdef12",
+            "--seed-source-run=2-source-run",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.requested is False
+    assert runtime.seed_sha_prefix == "abcdef12"
+    assert runtime.seed_source_run == "2-source-run"
+    assert remaining == ["agent.steps=200"]
+
+
+def test_parse_runtime_args_rejects_resume_with_seed():
+    with pytest.raises(ValueError, match="cannot be combined"):
+        parse_runtime_args(["--resume", "--seed-from-sha=abcdef12"])
+
+
 def test_find_latest_run_id_uses_newest_journal_mtime(tmp_path):
     _write_run(tmp_path, "1-old-run", steps=10, mtime=time.time() - 100)
     _write_run(tmp_path, "2-new-run", steps=20, mtime=time.time())

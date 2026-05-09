@@ -14,6 +14,7 @@ from .metric import MetricValue
 RESULT_MANIFEST_NAME = "aide_result.json"
 RESULT_SCHEMA_VERSION = 1
 BASELINE_PLAN_PREFIX = "AutoGluon raw baseline"
+SEEDED_BASE_PLAN_PREFIX = "Seeded base artifact"
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
 
 
@@ -86,6 +87,8 @@ def node_origin(node: Node) -> str:
     plan = str(node.plan or "")
     if plan.startswith(BASELINE_PLAN_PREFIX):
         return "baseline"
+    if plan.startswith(SEEDED_BASE_PLAN_PREFIX):
+        return "seeded_base"
     if plan.startswith(SYNTHESIS_PLAN_PREFIX):
         return "synthesis"
     if node.status == "failed":

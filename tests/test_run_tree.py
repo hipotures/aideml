@@ -27,6 +27,7 @@ from aide.run import (
 )
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
+from aide.utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
 from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
 
@@ -517,6 +518,29 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
     baseline.is_buggy = False
     best = _good_node(0.951)
     journal.append(baseline)
+    journal.append(best)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "◎ 0.95000" in output
+    assert "* 0.95100" in output
+
+
+def test_tree_view_marks_seeded_base_bullseye_when_not_best():
+    journal = Journal()
+    seeded = Node(code="print('seed')", plan=f"{SEEDED_BASE_PLAN_PREFIX}: source")
+    seeded.metric = MetricValue(0.950, maximize=True)
+    seeded.is_buggy = False
+    best = _good_node(0.951)
+    journal.append(seeded)
     journal.append(best)
 
     view = build_tree_view(journal)

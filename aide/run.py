@@ -27,6 +27,13 @@ from .telegram_notifications import (
     send_telegram_test_message,
 )
 from .autogluon_preprocess import BASELINE_PLAN_PREFIX
+from .utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
+from .utils.seed_artifact import (
+    SeedArtifactSource,
+    find_seed_artifact,
+    seed_journal_from_artifact,
+    source_is_autogluon,
+)
 from omegaconf import OmegaConf
 from rich.console import Group
 from rich.layout import Layout
@@ -89,6 +96,8 @@ class RuntimeOptions:
     force_check_submissions: bool = False
     telegram_test_message: bool = False
     debug: bool = False
+    seed_sha_prefix: str | None = None
+    seed_source_run: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +133,12 @@ class CheckpointStatusRecord:
 def parse_runtime_args(
     argv: list[str],
 ) -> tuple[ResumeRequest, RuntimeOptions, list[str]]:
+    def require_option_value(name: str, index: int) -> tuple[str, int]:
+        next_index = index + 1
+        if next_index >= len(argv) or argv[next_index].startswith("-"):
+            raise ValueError(f"`{name}` requires a value.")
+        return argv[next_index], next_index
+
     remaining: list[str] = []
     resume = ResumeRequest()
     runtime = RuntimeOptions()
@@ -156,9 +171,31 @@ def parse_runtime_args(
             runtime = replace(runtime, telegram_test_message=True)
         elif arg == "--debug":
             runtime = replace(runtime, debug=True)
+        elif arg == "--seed-from-sha":
+            if runtime.seed_sha_prefix is not None:
+                raise ValueError("`--seed-from-sha` can only be provided once.")
+            value, i = require_option_value("--seed-from-sha", i)
+            runtime = replace(runtime, seed_sha_prefix=value)
+        elif arg.startswith("--seed-from-sha="):
+            if runtime.seed_sha_prefix is not None:
+                raise ValueError("`--seed-from-sha` can only be provided once.")
+            runtime = replace(runtime, seed_sha_prefix=arg.split("=", 1)[1])
+        elif arg == "--seed-source-run":
+            if runtime.seed_source_run is not None:
+                raise ValueError("`--seed-source-run` can only be provided once.")
+            value, i = require_option_value("--seed-source-run", i)
+            runtime = replace(runtime, seed_source_run=value)
+        elif arg.startswith("--seed-source-run="):
+            if runtime.seed_source_run is not None:
+                raise ValueError("`--seed-source-run` can only be provided once.")
+            runtime = replace(runtime, seed_source_run=arg.split("=", 1)[1] or None)
         else:
             remaining.append(arg)
         i += 1
+    if resume.requested and runtime.seed_sha_prefix is not None:
+        raise ValueError("`--seed-from-sha` cannot be combined with `--resume`.")
+    if runtime.seed_source_run is not None and runtime.seed_sha_prefix is None:
+        raise ValueError("`--seed-source-run` requires `--seed-from-sha`.")
     return resume, runtime, remaining
 
 
@@ -177,6 +214,15 @@ def find_latest_run_id(top_log_dir: Path) -> str:
 def _cli_sets_key(cli_overrides: list[str], key: str) -> bool:
     prefix = f"{key}="
     return any(arg == key or arg.startswith(prefix) for arg in cli_overrides)
+
+
+def _is_base_root(node: Node) -> bool:
+    if node.parent is not None:
+        return False
+    plan = str(node.plan or "")
+    return plan.startswith(BASELINE_PLAN_PREFIX) or plan.startswith(
+        SEEDED_BASE_PLAN_PREFIX
+    )
 
 
 def load_resume_state(
@@ -299,11 +345,6 @@ def journal_to_rich_tree(
             SYNTHESIS_PLAN_PREFIX
         )
 
-    def is_baseline_root(node: Node) -> bool:
-        return node.parent is None and str(node.plan or "").startswith(
-            BASELINE_PLAN_PREFIX
-        )
-
     def append_rec(node: Node, tree):
         if node.is_terminal_failure:
             return
@@ -328,7 +369,7 @@ def journal_to_rich_tree(
             elif node is best_node:
                 style = "bold "
                 s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}"
-            elif is_baseline_root(node):
+            elif _is_base_root(node):
                 style = "bold " if node is best_node else ""
                 s = f"[bright_magenta]◎[/bright_magenta] [{style}green]{metric_text}"
             elif synthesis_root:
@@ -390,9 +431,7 @@ def _tree_node_label(
     synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
         node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
     )
-    baseline_root = node.parent is None and str(node.plan or "").startswith(
-        BASELINE_PLAN_PREFIX
-    )
+    baseline_root = _is_base_root(node)
     if synthesis_root and (
         node.is_buggy or node.metric is None or node.metric.value is None
     ):
@@ -1772,6 +1811,7 @@ def run(argv: list[str] | None = None):
     if runtime_options.telegram_test_message:
         send_telegram_test_message()
 
+    seed_source: SeedArtifactSource | None = None
     if resume_request.requested:
         base_cfg = _load_cfg(cli_args=cli_args)
         top_log_dir = Path(base_cfg.log_dir).resolve()
@@ -1794,6 +1834,19 @@ def run(argv: list[str] | None = None):
         is_resume = True
     else:
         cfg = load_cfg(cli_args=cli_args)
+        if runtime_options.seed_sha_prefix is not None:
+            seed_source = find_seed_artifact(
+                Path(cfg.log_dir).parent,
+                runtime_options.seed_sha_prefix,
+                source_run=runtime_options.seed_source_run,
+            )
+            if not _cli_sets_key(cli_args, "agent.search.num_drafts"):
+                cfg.agent.search.num_drafts = 1
+            if source_is_autogluon(seed_source) and not _cli_sets_key(
+                cli_args,
+                "agent.mode",
+            ):
+                cfg.agent.mode = "autogluon_preprocess"
         journal = Journal()
         is_resume = False
 
@@ -1821,6 +1874,13 @@ def run(argv: list[str] | None = None):
     if not is_resume:
         with Status("Preparing agent workspace (copying and extracting files) ..."):
             prep_agent_workspace(cfg)
+        if seed_source is not None:
+            with Status("Seeding run from existing artifact ..."):
+                journal, _seed_node, _seed_artifact_dir = seed_journal_from_artifact(
+                    cfg,
+                    seed_source,
+                )
+                save_run(cfg, journal)
 
     def cleanup():
         if not is_resume and global_step == 0:
