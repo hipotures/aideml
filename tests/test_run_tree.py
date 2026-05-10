@@ -14,7 +14,10 @@ from aide.run import (
     build_run_log_summary,
     build_run_data,
     ResourceSnapshot,
+    active_tree_item_id,
+    best_tree_item_id,
     build_tree_view,
+    center_tree_viewport,
     clamp_tree_viewport,
     journal_to_rich_tree,
     last_error_lines,
@@ -443,6 +446,56 @@ def test_tree_viewport_keeps_focus_visible_without_empty_bottom():
         )
         == 15
     )
+
+
+def test_center_tree_viewport_places_focus_near_middle_and_clamps_edges():
+    assert (
+        center_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=10,
+        )
+        == 8
+    )
+    assert (
+        center_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=1,
+        )
+        == 0
+    )
+    assert (
+        center_tree_viewport(
+            total_lines=20,
+            viewport_height=5,
+            focus_index=19,
+        )
+        == 15
+    )
+
+
+def test_tree_best_and_active_focus_targets():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.95, parent=root)
+    journal.append(root)
+    journal.append(child)
+    view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+    )
+
+    assert (
+        best_tree_item_id(
+            view,
+            journal,
+            show_invalid_submission_branches=False,
+        )
+        == child.id
+    )
+    assert active_tree_item_id(view) == "active"
 
 
 def test_render_tree_view_highlights_focused_line_and_slices_viewport():

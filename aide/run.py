@@ -681,6 +681,39 @@ def clamp_tree_viewport(
     return min(max(0, scroll), max_scroll)
 
 
+def center_tree_viewport(
+    *,
+    total_lines: int,
+    viewport_height: int,
+    focus_index: int,
+) -> int:
+    viewport_height = max(1, viewport_height)
+    max_scroll = max(0, total_lines - viewport_height)
+    scroll = focus_index - viewport_height // 2
+    return min(max(0, scroll), max_scroll)
+
+
+def best_tree_item_id(
+    view: TreeView,
+    journal: Journal,
+    *,
+    show_invalid_submission_branches: bool,
+    disable_oom_saturated_parents: bool = False,
+) -> str | None:
+    best_node = _visible_best_node(
+        journal,
+        show_invalid_submission_branches=show_invalid_submission_branches,
+        disable_oom_saturated_parents=disable_oom_saturated_parents,
+    )
+    if best_node is None or best_node.id not in view.index_by_id:
+        return None
+    return best_node.id
+
+
+def active_tree_item_id(view: TreeView) -> str | None:
+    return "active" if "active" in view.index_by_id else None
+
+
 def render_tree_view(
     view: TreeView,
     *,
@@ -709,6 +742,12 @@ class ArrowKeyReader:
         b"\x1bOB": "down",
         b"\x1bOC": "right",
         b"\x1bOD": "left",
+    }
+    CHAR_KEY_MAP = {
+        b"a": "active",
+        b"A": "active",
+        b"b": "best",
+        b"B": "best",
     }
 
     def __init__(self):
@@ -742,7 +781,7 @@ class ArrowKeyReader:
                 return None
             first = os.read(self.fd, 1)
             if first != b"\x1b":
-                return None
+                return self.CHAR_KEY_MAP.get(first)
 
             data = bytearray(first)
             deadline = time.monotonic() + 0.05
@@ -2088,14 +2127,39 @@ def run(argv: list[str] | None = None):
         if focused_tree_item_id not in view.index_by_id:
             focused_tree_item_id = "header"
         while key_reader is not None:
-            direction = key_reader.read_key()
-            if direction is None:
+            key = key_reader.read_key()
+            if key is None:
                 break
-            focused_tree_item_id = move_tree_focus(
-                view,
-                focused_tree_item_id,
-                direction,
-            )
+            if key == "best":
+                target_id = best_tree_item_id(
+                    view,
+                    journal,
+                    show_invalid_submission_branches=(
+                        runtime_options.show_invalid_submission_branches
+                    ),
+                    disable_oom_saturated_parents=(
+                        cfg.agent.search.disable_oom_saturated_parents
+                    ),
+                )
+                if target_id is not None:
+                    focused_tree_item_id = target_id
+                    tree_scroll_top = center_tree_viewport(
+                        total_lines=len(view.items),
+                        viewport_height=tree_viewport_height(),
+                        focus_index=view.index_by_id[target_id],
+                    )
+                continue
+            if key == "active":
+                target_id = active_tree_item_id(view)
+                if target_id is not None:
+                    focused_tree_item_id = target_id
+                    tree_scroll_top = center_tree_viewport(
+                        total_lines=len(view.items),
+                        viewport_height=tree_viewport_height(),
+                        focus_index=view.index_by_id[target_id],
+                    )
+                continue
+            focused_tree_item_id = move_tree_focus(view, focused_tree_item_id, key)
         focus_index = view.index_by_id.get(focused_tree_item_id, 0)
         tree_scroll_top = clamp_tree_viewport(
             total_lines=len(view.items),
@@ -2148,7 +2212,7 @@ def run(argv: list[str] | None = None):
         tree_panel = Panel(
             Padding(tree, (0, 1, 0, 1)),
             title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
-            subtitle="↑/↓ move  ← parent  → child  Ctrl+C stop",
+            subtitle="↑/↓ move  ← parent  → child  b best  a active  Ctrl+C stop",
         )
         data_panel = Panel(
             Padding(
