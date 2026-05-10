@@ -80,6 +80,26 @@ def _write_codex_profile(
     )
 
 
+def _codex_failure_message(stderr: str, stdout: str) -> str:
+    stderr = stderr.strip()
+    if stderr:
+        return stderr
+
+    messages: list[str] = []
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event.get("message"), str):
+            messages.append(event["message"])
+        error = event.get("error")
+        if isinstance(error, dict) and isinstance(error.get("message"), str):
+            messages.append(error["message"])
+
+    return messages[-1] if messages else ""
+
+
 def query(
     system_message: str | None,
     user_message: str | None,
@@ -144,9 +164,10 @@ def query(
             encoding="utf-8",
         )
         if result.returncode != 0:
+            message = _codex_failure_message(result.stderr, result.stdout)
             raise RuntimeError(
                 f"Codex CLI failed with exit code {result.returncode}: "
-                f"{result.stderr.strip()}"
+                f"{message}"
             )
         raw_output = response_path.read_text(encoding="utf-8")
     finally:

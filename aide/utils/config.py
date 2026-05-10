@@ -47,6 +47,7 @@ class ResolvedModelConfig:
 
 VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
 AGENT_MODE_ALIASES = {"autogluon": "autogluon_preprocess"}
+DEPRECATED_CONFIG_KEYS = ("agent.search.seeded_base_max_children",)
 
 
 def _split_model_effort(model: str) -> tuple[str, str | None]:
@@ -311,11 +312,25 @@ def prep_cfg(cfg: Config):
 
     # validate the config
     cfg_schema: Config = OmegaConf.structured(Config)
+    _drop_deprecated_config_keys(cfg)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     _normalize_agent_mode_aliases(cfg)
     _resolve_all_model_configs(cfg)
 
     return cast(Config, cfg)
+
+
+def _drop_deprecated_config_keys(cfg: Config) -> None:
+    for key_path in DEPRECATED_CONFIG_KEYS:
+        node = cfg
+        parts = key_path.split(".")
+        for part in parts[:-1]:
+            if part not in node:
+                node = None
+                break
+            node = node[part]
+        if node is not None and parts[-1] in node:
+            del node[parts[-1]]
 
 
 def _normalize_agent_mode_aliases(cfg: Config) -> None:

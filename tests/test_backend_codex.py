@@ -1,6 +1,8 @@
 import json
 import subprocess
 
+import pytest
+
 from aide.backend import backend_codex
 from aide.backend.utils import FunctionSpec
 
@@ -89,3 +91,51 @@ def test_codex_backend_parses_schema_response(tmp_path, monkeypatch):
 
     assert output == {"is_bug": False, "metric": 0.9}
     assert json.loads((tmp_path / "schema.json").read_text()) == spec.json_schema
+
+
+def test_codex_backend_reports_json_event_error_when_stderr_is_empty(
+    tmp_path, monkeypatch
+):
+    class FakeTmp:
+        def __enter__(self):
+            return str(tmp_path)
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_run(cmd, **kwargs):
+        stdout = "\n".join(
+            [
+                json.dumps({"type": "thread.started", "thread_id": "abc"}),
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "You've hit your usage limit for GPT-5.3-Codex-Spark.",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "turn.failed",
+                        "error": {
+                            "message": "Switch to another model now, or try again later."
+                        },
+                    }
+                ),
+            ]
+        )
+        return subprocess.CompletedProcess(cmd, 1, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
+    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        backend_codex.query(
+            system_message="system",
+            user_message=None,
+            model="gpt-5.3-codex-spark",
+        )
+
+    message = str(exc_info.value)
+    assert "Codex CLI failed with exit code 1" in message
+    assert "Switch to another model now" in message
+    assert "codex_events.jsonl" not in message

@@ -54,6 +54,7 @@ from rich.tree import Tree
 from .utils import serialize
 from .utils.config import (
     Config,
+    _drop_deprecated_config_keys,
     _load_cfg,
     _normalize_agent_mode_aliases,
     _resolve_all_model_configs,
@@ -269,6 +270,7 @@ def load_resume_state(
     cfg.log_dir = log_dir
     cfg.workspace_dir = workspace_dir
     cfg_schema: Config = OmegaConf.structured(Config)
+    _drop_deprecated_config_keys(cfg)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     _normalize_agent_mode_aliases(cfg)
     _resolve_all_model_configs(cfg)
