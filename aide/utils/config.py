@@ -46,6 +46,7 @@ class ResolvedModelConfig:
 
 
 VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
+AGENT_MODE_ALIASES = {"autogluon": "autogluon_preprocess"}
 
 
 def _split_model_effort(model: str) -> tuple[str, str | None]:
@@ -311,9 +312,16 @@ def prep_cfg(cfg: Config):
     # validate the config
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
+    _normalize_agent_mode_aliases(cfg)
     _resolve_all_model_configs(cfg)
 
     return cast(Config, cfg)
+
+
+def _normalize_agent_mode_aliases(cfg: Config) -> None:
+    mode = getattr(cfg.agent, "mode", None)
+    if isinstance(mode, str) and mode in AGENT_MODE_ALIASES:
+        cfg.agent.mode = AGENT_MODE_ALIASES[mode]
 
 
 def _resolve_stage_config(stage: StageConfig) -> None:

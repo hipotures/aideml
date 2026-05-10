@@ -87,3 +87,12 @@ def test_cli_agent_gpu_override_is_loaded(tmp_path):
     cfg = prep_cfg(cfg)
 
     assert cfg.agent.gpu is True
+
+
+def test_agent_mode_autogluon_alias_resolves_to_preprocess_mode(tmp_path):
+    cfg = _base_cfg(tmp_path)
+    cfg.agent.mode = "autogluon"
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.mode == "autogluon_preprocess"

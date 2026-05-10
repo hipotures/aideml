@@ -15,12 +15,14 @@ from aide.utils.seed_artifact import (
     seed_journal_from_artifact,
     source_is_autogluon,
 )
+from aide.utils.tree_export import cfg_to_tree_struct
 
 
 @dataclass
 class DummyConfig:
     log_dir: Path
     workspace_dir: Path
+    exp_name: str = "test-exp"
 
 
 def _write_source_artifact(
@@ -32,12 +34,15 @@ def _write_source_artifact(
     score: float,
     step: int,
     submission: str = "id,target\n1,0.9\n",
+    log_text: str | None = None,
 ) -> Path:
     log_dir = top_log_dir / run_id
     artifact_dir = log_dir / "artifacts" / timestamp
     artifact_dir.mkdir(parents=True)
     (artifact_dir / "solution.py").write_text(code, encoding="utf-8")
     (artifact_dir / "submission.csv").write_text(submission, encoding="utf-8")
+    if log_text is not None:
+        (artifact_dir / "autogluon_stdout.log").write_text(log_text, encoding="utf-8")
     (artifact_dir / "notes.txt").write_text("copied marker\n", encoding="utf-8")
     cfg = DummyConfig(log_dir=log_dir, workspace_dir=top_log_dir / "work")
     node = Node(code=code, plan="original plan", ctime=1778061600.0)
@@ -125,6 +130,7 @@ def test_seed_journal_from_artifact_copies_artifact_and_rewrites_manifest(tmp_pa
         code="print('seed')\n",
         score=0.95,
         step=11,
+        log_text="seed execution log\n",
     )
     source = find_seed_artifact(top_log_dir, sha256_file(source_artifact / "submission.csv")[:12])
     cfg = DummyConfig(
@@ -143,6 +149,7 @@ def test_seed_journal_from_artifact_copies_artifact_and_rewrites_manifest(tmp_pa
     assert node.step == 0
     assert node.metric.value == 0.95
     assert node.analysis == "original analysis"
+    assert node.term_out == "seed execution log\n"
     assert node.validity_warning == "possible warning"
     assert node.plan.startswith(SEEDED_BASE_PLAN_PREFIX)
     assert (artifact_dir / "notes.txt").read_text(encoding="utf-8") == "copied marker\n"
@@ -159,6 +166,29 @@ def test_seed_journal_from_artifact_copies_artifact_and_rewrites_manifest(tmp_pa
     assert manifest["files"]["solution"]["sha256"] == sha256_file(artifact_dir / "solution.py")
 
 
+def test_seeded_single_node_can_be_exported_to_tree_struct(tmp_path):
+    top_log_dir = tmp_path / "logs"
+    source_artifact = _write_source_artifact(
+        top_log_dir,
+        "1-source-run",
+        "20260506T120000",
+        code="print('seed')\n",
+        score=0.95,
+        step=11,
+    )
+    source = find_seed_artifact(top_log_dir, sha256_file(source_artifact / "submission.csv")[:12])
+    cfg = DummyConfig(
+        log_dir=top_log_dir / "2-new-run",
+        workspace_dir=tmp_path / "workspaces" / "2-new-run",
+    )
+    journal, _, _ = seed_journal_from_artifact(cfg, source, ctime=1778065200.0)
+
+    tree = cfg_to_tree_struct(cfg, journal)
+
+    assert tree["layout"] == [[0.5, 1.0]]
+    assert tree["term_out"] == [""]
+
+
 def test_seed_source_is_autogluon_when_solution_has_ag_config(tmp_path):
     top_log_dir = tmp_path / "logs"
     source_artifact = _write_source_artifact(
@@ -172,4 +202,36 @@ def test_seed_source_is_autogluon_when_solution_has_ag_config(tmp_path):
     source = find_seed_artifact(top_log_dir, sha256_file(source_artifact / "solution.py")[:12])
 
     assert source.matched_kind == "solution"
+    assert source_is_autogluon(source) is True
+
+
+def test_find_seed_artifact_accepts_profile_eval_manifest(tmp_path):
+    top_log_dir = tmp_path / "logs"
+    artifact_dir = _write_source_artifact(
+        top_log_dir,
+        "1-source-run",
+        "20260506T120000",
+        code="AIDE_AG_CONFIG = {'profile': 'best_boost_2h'}\nprint('ag')\n",
+        score=0.95224,
+        step=-1,
+        submission="id,target\n1,0.1\n",
+    )
+    manifest_path = artifact_dir / RESULT_MANIFEST_NAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["kind"] = "profile_eval"
+    manifest["profile"] = "best_boost_2h"
+    manifest["node"]["origin"] = "profile_eval"
+    manifest["node"]["id"] = None
+    manifest["node"]["step"] = None
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    source = find_seed_artifact(
+        top_log_dir,
+        sha256_file(artifact_dir / "submission.csv")[:10],
+        source_run="1-source-run",
+    )
+
+    assert source.artifact_dir == artifact_dir
+    assert source.manifest["kind"] == "profile_eval"
+    assert source.source_step is None
     assert source_is_autogluon(source) is True

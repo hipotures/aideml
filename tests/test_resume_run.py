@@ -295,3 +295,16 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     assert cfg.agent.autogluon.profile == "full_boost"
     assert cfg.agent.autogluon.time_limit == 600
     assert cfg.agent.autogluon.included_model_types is None
+
+
+def test_load_resume_state_normalizes_autogluon_mode_alias(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.mode=autogluon"],
+    )
+
+    assert cfg.agent.mode == "autogluon_preprocess"

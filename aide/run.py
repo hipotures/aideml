@@ -55,6 +55,7 @@ from .utils import serialize
 from .utils.config import (
     Config,
     _load_cfg,
+    _normalize_agent_mode_aliases,
     _resolve_all_model_configs,
     _normalize_model_effort_cli_overrides,
     _validate_cli_model_effort_conflicts,
@@ -269,6 +270,7 @@ def load_resume_state(
     cfg.workspace_dir = workspace_dir
     cfg_schema: Config = OmegaConf.structured(Config)
     cfg = OmegaConf.merge(cfg_schema, cfg)
+    _normalize_agent_mode_aliases(cfg)
     _resolve_all_model_configs(cfg)
     journal = serialize.load_json(journal_path, Journal)
     if enforce_journal_submission_contract(

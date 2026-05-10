@@ -25,6 +25,7 @@ from .artifact_manifest import (
 from .metric import MetricValue
 
 SHA_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{6,64}$")
+SEEDABLE_MANIFEST_KINDS = {"source_node", "profile_eval"}
 
 
 @dataclass(frozen=True)
@@ -109,7 +110,7 @@ def find_seed_artifact(
     candidates: list[SeedArtifactSource] = []
     for manifest_path in sorted(top_log_dir.glob(f"*/artifacts/*/{RESULT_MANIFEST_NAME}")):
         manifest = load_json(manifest_path)
-        if manifest.get("kind") != "source_node":
+        if manifest.get("kind") not in SEEDABLE_MANIFEST_KINDS:
             continue
         artifact_dir = manifest_path.parent
         run_id = str(manifest.get("run") or artifact_dir.parents[1].name)
@@ -142,6 +143,8 @@ def find_seed_artifact(
 
 
 def source_is_autogluon(source: SeedArtifactSource) -> bool:
+    if source.manifest.get("profile") is not None:
+        return True
     if isinstance(source.manifest.get("autogluon"), dict):
         autogluon = source.manifest["autogluon"]
         if autogluon.get("profile") is not None or bool(
@@ -189,6 +192,17 @@ def _metric_from_source(source: SeedArtifactSource) -> MetricValue:
     )
 
 
+def _term_out_from_source(source: SeedArtifactSource) -> list[str]:
+    for log_name in ("process_stdout.log", "autogluon_stdout.log", "autogluon.log"):
+        log_path = source.artifact_dir / log_name
+        if log_path.exists():
+            try:
+                return [log_path.read_text(encoding="utf-8", errors="replace")]
+            except OSError:
+                return []
+    return []
+
+
 def _seed_node_from_source(source: SeedArtifactSource, *, ctime: float) -> Node:
     solution_path = source.artifact_dir / "solution.py"
     if not solution_path.exists():
@@ -199,6 +213,7 @@ def _seed_node_from_source(source: SeedArtifactSource, *, ctime: float) -> Node:
         code=solution_path.read_text(encoding="utf-8"),
         plan=_seed_plan(source),
         ctime=ctime,
+        _term_out=_term_out_from_source(source),
     )
     node.status = node_payload.get("status") or source.manifest.get("status")
     node.analysis = node_payload.get("analysis")
