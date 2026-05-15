@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
-
-from aide.utils.ai_run_export import export_run_for_ai
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -33,6 +32,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    from aide.utils.ai_run_export import export_run_for_ai
+
     try:
         result = export_run_for_ai(
             args.log_dir,
@@ -45,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
     except Exception as exc:
-        print(f"Export failed: {exc}")
+        print(f"Export failed: {exc}", file=sys.stderr)
         return 1
     print(f"Export directory: {result.export_dir}")
     print(f"Metadata: {result.meta_path}")

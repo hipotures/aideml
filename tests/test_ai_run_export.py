@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from aide.journal import Journal, Node
@@ -525,9 +527,6 @@ def test_export_run_for_ai_cli_writes_export(tmp_path):
     log_dir = _write_run(tmp_path)
     output_dir = tmp_path / "exports"
 
-    import subprocess
-    import sys
-
     result = subprocess.run(
         [
             sys.executable,
@@ -545,7 +544,38 @@ def test_export_run_for_ai_cli_writes_export(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert "run_export.nodes.jsonl" in result.stdout
+    assert result.stderr == ""
     export_dirs = list(output_dir.iterdir())
     assert len(export_dirs) == 1
     assert (export_dirs[0] / "run_export.meta.json").exists()
     assert (export_dirs[0] / "run_export.nodes.jsonl").exists()
+
+
+def test_export_run_for_ai_cli_help_uses_stdout_only():
+    result = subprocess.run(
+        [sys.executable, "scripts/export_run_for_ai.py", "--help"],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Export a complete AIDE run tree for external AI review." in result.stdout
+    assert result.stderr == ""
+
+
+def test_export_run_for_ai_cli_errors_use_stderr(tmp_path):
+    missing_log_dir = tmp_path / "missing"
+
+    result = subprocess.run(
+        [sys.executable, "scripts/export_run_for_ai.py", str(missing_log_dir)],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert "Export failed:" in result.stderr
