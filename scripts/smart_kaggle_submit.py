@@ -110,7 +110,7 @@ class SubmissionRegistry:
         for entry in self.entries:
             if entry.get("competition") != competition:
                 continue
-            if sha256 is not None and entry.get("sha256") == sha256:
+            if sha256 is not None and _sha256_matches(entry.get("sha256"), sha256):
                 return True
             if (
                 entry.get("run") == run
@@ -119,6 +119,18 @@ class SubmissionRegistry:
             ):
                 return True
         return False
+
+
+def _sha256_matches(left: Any, right: Any, *, min_prefix_len: int = 10) -> bool:
+    left_text = str(left or "").strip().lower()
+    right_text = str(right or "").strip().lower()
+    if not left_text or not right_text:
+        return False
+    if left_text == right_text:
+        return True
+    if min(len(left_text), len(right_text)) < min_prefix_len:
+        return False
+    return left_text.startswith(right_text) or right_text.startswith(left_text)
 
 
 def _timestamp_from_ctime(ctime: float) -> str:
@@ -688,6 +700,14 @@ def submit_candidates(
     submitted: list[dict[str, Any]] = []
     for candidate in candidates:
         if candidate.validation_error is not None:
+            continue
+        if registry.is_submitted(
+            competition=competition,
+            sha256=candidate.sha256,
+            run=candidate.run,
+            step=candidate.step,
+            timestamp=candidate.timestamp,
+        ):
             continue
         message = build_kaggle_message(candidate)
         upload_path = prepare_upload_file(candidate)

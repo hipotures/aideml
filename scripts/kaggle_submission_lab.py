@@ -581,6 +581,11 @@ def _remote_display_rows(
 
     known_refs = {smart._entry_ref(entry) for entry in registry.entries}
     known_timestamps = {str(entry.get("timestamp") or "") for entry in registry.entries}
+    known_hashes = [
+        str(entry.get("sha256") or "")
+        for entry in registry.entries
+        if entry.get("sha256")
+    ]
     known_files = {
         str(entry.get("remote_filename") or "")
         for entry in registry.entries
@@ -591,9 +596,14 @@ def _remote_display_rows(
         description = smart._remote_attr(remote, "description")
         parsed = smart.parse_submission_description(description)
         remote_ref, remote_timestamp, remote_file = _remote_identity(remote)
+        remote_sha = parsed.get("sha")
         if remote_ref is not None and remote_ref in known_refs:
             continue
         if remote_timestamp and remote_timestamp in known_timestamps:
+            continue
+        if remote_sha and any(
+            smart._sha256_matches(known_sha, remote_sha) for known_sha in known_hashes
+        ):
             continue
         if remote_file and remote_file in known_files:
             continue
@@ -609,7 +619,7 @@ def _remote_display_rows(
             or str(smart._remote_attr(remote, "file_name") or "-"),
             "step": parsed.get("step"),
             "date": parsed.get("timestamp") or smart._remote_attr(remote, "date"),
-            "sha256": parsed.get("sha"),
+            "sha256": remote_sha,
         }
         if record_lookup is not None:
             row["algo"] = row.get("algo") or _registry_entry_algo(row, record_lookup)

@@ -334,6 +334,58 @@ def test_require_explicit_submit_ready_candidates_rejects_registry_duplicates(tm
         )
 
 
+def test_registry_duplicate_check_matches_sha_prefix_across_runs():
+    full_sha = "0aa5d277ee10f54230913379457b7695150ba7d9ec61df650f1b11d381187bd9"
+    registry = SubmissionRegistry(
+        Path("registry.json"),
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "run": "seeded-run",
+                "step": 0,
+                "timestamp": "20260510T021544",
+                "sha256": full_sha,
+            }
+        ],
+    )
+
+    assert registry.is_submitted(
+        competition="playground-series-s6e5",
+        sha256=full_sha[:10],
+        run="source-run",
+        step=-1,
+        timestamp="20260506T094019",
+    )
+
+
+def test_submit_candidates_skips_batch_duplicate_sha_prefix(tmp_path):
+    full_sha = "0aa5d277ee10f54230913379457b7695150ba7d9ec61df650f1b11d381187bd9"
+    first = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(1, full_sha),
+        submission_path=tmp_path / "first.csv",
+    )
+    second = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(2, full_sha[:10]),
+        run="seeded-run",
+        submission_path=tmp_path / "second.csv",
+    )
+    first.submission_path.write_text("id,target\n1,0.1\n")
+    second.submission_path.write_text("id,target\n1,0.1\n")
+    registry = SubmissionRegistry(tmp_path / "registry.json")
+    client = FakeKaggleClient()
+
+    submitted = submit_candidates(
+        [first, second],
+        registry=registry,
+        client=client,
+        competition="playground-series-s6e5",
+    )
+
+    assert len(submitted) == 1
+    assert len(client.calls) == 1
+    assert submitted[0]["sha256"] == full_sha
+
+
 def test_require_explicit_submit_ready_candidates_rejects_not_ready_candidate():
     candidate = smart_kaggle_submit._replace_candidate(
         _candidate_for_sha(1, "aaaa1111bbbb"),

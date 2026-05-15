@@ -700,3 +700,40 @@ def test_render_registry_table_backfills_remote_only_rows_from_sha_prefix(tmp_pa
     output = console.export_text()
     assert "AG" in output
     assert str(artifact_dir) in output
+
+
+def test_render_registry_table_hides_remote_only_duplicate_by_sha_prefix(tmp_path):
+    full_sha = "0aa5d277ee10f54230913379457b7695150ba7d9ec61df650f1b11d381187bd9"
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "2-nuthatch-of-lucky-tact",
+                "step": 0,
+                "timestamp": "20260510T021544",
+                "sha256": full_sha,
+                "local_score": 0.95224,
+                "public_score": "0.95168",
+                "remote_status": "COMPLETE",
+            }
+        ],
+    )
+
+    class FakeRemote:
+        file_name = "sub_20260506T094019_step--1_node-profile-_sha-0aa5d277ee_cv-0.95224.csv"
+        description = (
+            "cv=0.95224 | run=2-enthusiastic-crane-of-completion | step=-1 | "
+            "aide_ts=20260506T094019 | node=profile- | sha=0aa5d277ee"
+        )
+        status = "COMPLETE"
+        public_score = "0.95168"
+        date = "2026-05-06T09:40:19Z"
+
+    console = kaggle_submission_lab.Console(record=True, width=180, color_system=None)
+
+    kaggle_submission_lab.render_registry_table(console, registry, [FakeRemote()])
+
+    output = console.export_text()
+    assert "2-nuthatch-of-lucky-tact" in output
+    assert "2-enthusiastic-crane-of-completion" not in output
