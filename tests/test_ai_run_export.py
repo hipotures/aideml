@@ -286,6 +286,47 @@ def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_p
     assert nodes[1]["duplicate"]["exact_submission_role"] == "canonical"
 
 
+def test_export_normalizes_code_line_endings_for_exact_duplicates(tmp_path):
+    log_dir = tmp_path / "logs" / "run-line-endings"
+    log_dir.mkdir(parents=True)
+    root = Node(
+        code="print('same')\nprint('code')\n",
+        plan="root plan",
+        id="node-root",
+        ctime=1770000000.0,
+        metric=MetricValue(0.9, maximize=True),
+        is_buggy=False,
+        analysis="root analysis",
+    )
+    child = Node(
+        code="print('same')\r\nprint('code')\r\n",
+        plan="child plan",
+        id="node-child",
+        ctime=1770000060.0,
+        parent=root,
+        metric=MetricValue(0.91, maximize=True),
+        is_buggy=False,
+        analysis="child analysis",
+    )
+    journal = Journal()
+    journal.append(root)
+    journal.append(child)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+
+    assert [node["node_id"] for node in nodes] == ["node-root", "node-child"]
+    assert (
+        nodes[0]["duplicate"]["exact_code_group"]
+        == nodes[1]["duplicate"]["exact_code_group"]
+    )
+    assert nodes[0]["duplicate"]["exact_code_role"] == "duplicate"
+    assert nodes[0]["duplicate"]["exact_code_canonical_node_id"] == "node-child"
+    assert nodes[1]["duplicate"]["exact_code_role"] == "canonical"
+    assert nodes[1]["duplicate"]["exact_code_canonical_node_id"] == "node-child"
+
+
 def test_export_public_scores_follow_minimizing_metric_semantics(tmp_path):
     log_dir = tmp_path / "logs" / "run-min-public"
     log_dir.mkdir(parents=True)
