@@ -66,6 +66,72 @@ def _public_score_rank(score: float, maximize: bool | None) -> float:
     return score if maximize is not False else -score
 
 
+def _score_sort_value(record: dict[str, Any]) -> tuple[float, int]:
+    score = record.get("local_cv_score")
+    if score is None:
+        normalized = float("-inf")
+    else:
+        normalized = _public_score_rank(float(score), record.get("metric_maximize"))
+    step = int(record["step"]) if record.get("step") is not None else 10**12
+    return normalized, -step
+
+
+def _canonical_by_best_score(records: list[dict[str, Any]]) -> dict[str, Any]:
+    return max(records, key=_score_sort_value)
+
+
+def _group_records(
+    node_records: list[dict[str, Any]],
+    *,
+    key: str,
+) -> dict[str, list[dict[str, Any]]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for record in node_records:
+        value = record.get(key)
+        if value:
+            groups.setdefault(str(value), []).append(record)
+    return groups
+
+
+def annotate_exact_duplicates(node_records: list[dict[str, Any]]) -> None:
+    for record in node_records:
+        record["duplicate"] = {
+            "exact_code_group": f"code:{record['code_sha256']}",
+            "exact_code_role": "canonical",
+            "exact_code_canonical_node_id": record["node_id"],
+            "exact_submission_group": None,
+            "exact_submission_role": None,
+            "exact_submission_canonical_node_id": None,
+            "near_submission_canonical_node_id": None,
+            "near_submission_rmse": None,
+        }
+
+    for code_hash, group in _group_records(node_records, key="code_sha256").items():
+        canonical = _canonical_by_best_score(group)
+        for record in group:
+            record["duplicate"]["exact_code_group"] = f"code:{code_hash}"
+            record["duplicate"]["exact_code_role"] = (
+                "canonical" if record is canonical else "duplicate"
+            )
+            record["duplicate"]["exact_code_canonical_node_id"] = canonical["node_id"]
+
+    for submission_hash, group in _group_records(
+        node_records,
+        key="submission_sha256",
+    ).items():
+        canonical = _canonical_by_best_score(group)
+        for record in group:
+            record["duplicate"]["exact_submission_group"] = (
+                f"submission:{submission_hash}"
+            )
+            record["duplicate"]["exact_submission_role"] = (
+                "canonical" if record is canonical else "duplicate"
+            )
+            record["duplicate"]["exact_submission_canonical_node_id"] = canonical[
+                "node_id"
+            ]
+
+
 def _created_at(node: Node) -> str:
     return dt.datetime.fromtimestamp(node.ctime).astimezone().isoformat()
 
@@ -244,6 +310,7 @@ def export_run_for_ai(
         _node_record(log_dir, node, registry_entries)
         for node in sorted(journal.nodes, key=lambda n: n.step)
     ]
+    annotate_exact_duplicates(nodes)
     with nodes_path.open("w", encoding="utf-8") as f:
         for record in nodes:
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")

@@ -247,6 +247,31 @@ def test_export_maps_public_score_by_sha_prefix(tmp_path):
     assert nodes[0]["kaggle_public_score"] == 0.92345
 
 
+def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_path):
+    log_dir = _write_run(tmp_path)
+    root_timestamp = artifact_timestamp_from_ctime(1770000000.0)
+    child_timestamp = artifact_timestamp_from_ctime(1770000060.0)
+    root_artifact = log_dir / "artifacts" / root_timestamp
+    child_artifact = log_dir / "artifacts" / child_timestamp
+    root_artifact.mkdir(parents=True)
+    child_artifact.mkdir(parents=True)
+    body = "id,PitNextLap\n1,0.8\n2,0.2\n"
+    (root_artifact / "submission.csv").write_text(body)
+    (child_artifact / "submission.csv").write_text(body)
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+
+    assert len(nodes) == 3
+    assert nodes[0]["duplicate"]["exact_code_role"] == "canonical"
+    assert nodes[1]["duplicate"]["exact_code_role"] == "canonical"
+    assert nodes[0]["duplicate"]["exact_submission_role"] == "duplicate"
+    assert (
+        nodes[0]["duplicate"]["exact_submission_canonical_node_id"] == "node-child"
+    )
+    assert nodes[1]["duplicate"]["exact_submission_role"] == "canonical"
+
+
 def test_export_public_scores_follow_minimizing_metric_semantics(tmp_path):
     log_dir = tmp_path / "logs" / "run-min-public"
     log_dir.mkdir(parents=True)
