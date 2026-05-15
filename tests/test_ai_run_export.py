@@ -73,3 +73,101 @@ def test_export_preserves_tree_and_full_code(tmp_path):
     assert nodes[2]["error"]["exc_type"] == "RuntimeError"
     assert nodes[0]["code"] == "print('root')\n"
     assert nodes[1]["local_cv_score"] == 0.91
+
+
+def test_export_handles_invalid_metric_value(tmp_path):
+    log_dir = tmp_path / "logs" / "run-invalid-metric"
+    log_dir.mkdir(parents=True)
+    bug = Node(
+        code="raise RuntimeError('bad')\n",
+        plan="bug plan",
+        id="node-bug",
+        ctime=1770000000.0,
+        status="failed",
+        metric=MetricValue(None, maximize=True),
+        is_buggy=True,
+        analysis="bug analysis",
+        exc_type="RuntimeError",
+    )
+    journal = Journal()
+    journal.append(bug)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+
+    meta = json.loads(result.meta_path.read_text())
+    nodes = _read_jsonl(result.nodes_path)
+
+    assert meta["scored_node_count"] == 0
+    assert meta["best_local"] is None
+    assert nodes[0]["local_cv_score"] is None
+    assert nodes[0]["metric_maximize"] is True
+
+
+def test_export_best_local_uses_minimizing_metric_semantics(tmp_path):
+    log_dir = tmp_path / "logs" / "run-minimize"
+    log_dir.mkdir(parents=True)
+    worse = Node(
+        code="print('worse')\n",
+        plan="worse plan",
+        id="node-worse",
+        ctime=1770000000.0,
+        metric=MetricValue(0.2, maximize=False),
+        is_buggy=False,
+        analysis="worse analysis",
+    )
+    better = Node(
+        code="print('better')\n",
+        plan="better plan",
+        id="node-better",
+        ctime=1770000060.0,
+        metric=MetricValue(0.1, maximize=False),
+        is_buggy=False,
+        analysis="better analysis",
+    )
+    journal = Journal()
+    journal.append(worse)
+    journal.append(better)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+
+    meta = json.loads(result.meta_path.read_text())
+
+    assert meta["best_local"]["node_id"] == "node-better"
+    assert meta["best_local"]["local_cv_score"] == 0.1
+
+
+def test_export_best_local_keeps_zero_score_as_valid(tmp_path):
+    log_dir = tmp_path / "logs" / "run-zero"
+    log_dir.mkdir(parents=True)
+    worse = Node(
+        code="print('worse')\n",
+        plan="worse plan",
+        id="node-worse",
+        ctime=1770000000.0,
+        metric=MetricValue(-1.0, maximize=True),
+        is_buggy=False,
+        analysis="worse analysis",
+    )
+    better = Node(
+        code="print('better')\n",
+        plan="better plan",
+        id="node-better",
+        ctime=1770000060.0,
+        metric=MetricValue(0.0, maximize=True),
+        is_buggy=False,
+        analysis="better analysis",
+    )
+    journal = Journal()
+    journal.append(worse)
+    journal.append(better)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+
+    meta = json.loads(result.meta_path.read_text())
+
+    assert meta["scored_node_count"] == 2
+    assert meta["best_local"]["node_id"] == "node-better"
+    assert meta["best_local"]["local_cv_score"] == 0.0

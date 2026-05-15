@@ -24,7 +24,9 @@ def _sha256_text(text: str) -> str:
 
 
 def _metric_value(node: Node) -> float | None:
-    return None if node.metric is None else float(node.metric.value)
+    if node.metric is None or node.metric.value is None:
+        return None
+    return float(node.metric.value)
 
 
 def _metric_maximize(node: Node) -> bool | None:
@@ -85,7 +87,7 @@ def _node_record(log_dir: Path, node: Node) -> dict[str, Any]:
 
 def _meta_record(log_dir: Path, journal: Journal, export_dir: Path) -> dict[str, Any]:
     scored = [node for node in journal.nodes if _metric_value(node) is not None]
-    best = max(scored, key=lambda node: _metric_value(node) or float("-inf"), default=None)
+    best = max(scored, key=lambda node: node.metric, default=None)
     return {
         "schema_version": 1,
         "run": log_dir.name,
