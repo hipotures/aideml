@@ -249,6 +249,9 @@ def test_export_maps_public_score_by_sha_prefix(tmp_path):
 
 def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_path):
     log_dir = _write_run(tmp_path)
+    journal = serialize.load_json(log_dir / "journal.json", Journal)
+    journal.nodes[1].code = journal.nodes[0].code
+    serialize.dump_json(journal, log_dir / "journal.json")
     root_timestamp = artifact_timestamp_from_ctime(1770000000.0)
     child_timestamp = artifact_timestamp_from_ctime(1770000060.0)
     root_artifact = log_dir / "artifacts" / root_timestamp
@@ -263,8 +266,19 @@ def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_p
     nodes = _read_jsonl(result.nodes_path)
 
     assert len(nodes) == 3
-    assert nodes[0]["duplicate"]["exact_code_role"] == "canonical"
+    assert [node["node_id"] for node in nodes] == [
+        "node-root",
+        "node-child",
+        "node-bug",
+    ]
+    assert (
+        nodes[0]["duplicate"]["exact_code_group"]
+        == nodes[1]["duplicate"]["exact_code_group"]
+    )
+    assert nodes[0]["duplicate"]["exact_code_role"] == "duplicate"
+    assert nodes[0]["duplicate"]["exact_code_canonical_node_id"] == "node-child"
     assert nodes[1]["duplicate"]["exact_code_role"] == "canonical"
+    assert nodes[1]["duplicate"]["exact_code_canonical_node_id"] == "node-child"
     assert nodes[0]["duplicate"]["exact_submission_role"] == "duplicate"
     assert (
         nodes[0]["duplicate"]["exact_submission_canonical_node_id"] == "node-child"
