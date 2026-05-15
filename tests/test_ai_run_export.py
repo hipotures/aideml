@@ -4,6 +4,7 @@ from pathlib import Path
 from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.ai_run_export import export_run_for_ai
+from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
 from aide.utils.metric import MetricValue
 
 
@@ -171,3 +172,76 @@ def test_export_best_local_keeps_zero_score_as_valid(tmp_path):
     assert meta["scored_node_count"] == 2
     assert meta["best_local"]["node_id"] == "node-better"
     assert meta["best_local"]["local_cv_score"] == 0.0
+
+
+def test_export_includes_submission_hash_and_public_score_by_node_id(tmp_path):
+    log_dir = _write_run(tmp_path)
+    timestamp = artifact_timestamp_from_ctime(1770000000.0)
+    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir.mkdir(parents=True)
+    submission = artifact_dir / "submission.csv"
+    submission.write_text("id,PitNextLap\n1,0.8\n")
+    registry = log_dir.parent / "submission_registry.json"
+    registry.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-a",
+                        "step": 0,
+                        "node_id": "node-root",
+                        "timestamp": timestamp,
+                        "sha256": "placeholder",
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.91234",
+                    }
+                ]
+            }
+        )
+    )
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+    meta = json.loads(result.meta_path.read_text())
+
+    assert nodes[0]["submission_sha256"] is not None
+    assert nodes[0]["kaggle_public_score"] == 0.91234
+    assert meta["best_public"]["node_id"] == "node-root"
+    assert meta["best_public"]["kaggle_public_score"] == 0.91234
+
+
+def test_export_maps_public_score_by_sha_prefix(tmp_path):
+    log_dir = _write_run(tmp_path)
+    timestamp = artifact_timestamp_from_ctime(1770000000.0)
+    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir.mkdir(parents=True)
+    submission = artifact_dir / "submission.csv"
+    submission.write_text("id,PitNextLap\n1,0.8\n")
+    from aide.utils.ai_run_export import _sha256_file
+
+    full_sha = _sha256_file(submission)
+    registry = log_dir.parent / "submission_registry.json"
+    registry.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "other-seeded-run",
+                        "step": 0,
+                        "timestamp": "20260510T021544",
+                        "sha256": full_sha[:10],
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.92345",
+                    }
+                ]
+            }
+        )
+    )
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+
+    assert nodes[0]["submission_sha256"] == full_sha
+    assert nodes[0]["kaggle_public_score"] == 0.92345

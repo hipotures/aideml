@@ -10,6 +10,7 @@ from typing import Any
 from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
+from scripts.smart_kaggle_submit import _parse_public_score, _sha256_matches
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,34 @@ class ExportResult:
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_registry(log_dir: Path) -> list[dict[str, Any]]:
+    registry_path = log_dir.parent / "submission_registry.json"
+    if not registry_path.exists():
+        return []
+
+    data = json.loads(registry_path.read_text())
+    if isinstance(data, dict):
+        entries = data.get("submissions", [])
+    elif isinstance(data, list):
+        entries = data
+    else:
+        raise ValueError(f"Malformed submission registry: {registry_path}")
+
+    if not isinstance(entries, list):
+        raise ValueError(f"Malformed submission registry entries: {registry_path}")
+    if not all(isinstance(entry, dict) for entry in entries):
+        raise ValueError(f"Malformed submission registry entry: {registry_path}")
+    return entries
 
 
 def _metric_value(node: Node) -> float | None:
@@ -37,6 +66,10 @@ def _created_at(node: Node) -> str:
     return dt.datetime.fromtimestamp(node.ctime).astimezone().isoformat()
 
 
+def _timestamp_from_node(node: Node) -> str:
+    return artifact_timestamp_from_ctime(node.ctime)
+
+
 def _node_depth(node: Node) -> int:
     depth = 0
     parent = node.parent
@@ -49,11 +82,55 @@ def _node_depth(node: Node) -> int:
 
 
 def _artifact_dir(log_dir: Path, node: Node) -> Path:
-    return log_dir / "artifacts" / artifact_timestamp_from_ctime(node.ctime)
+    return log_dir / "artifacts" / _timestamp_from_node(node)
 
 
-def _node_record(log_dir: Path, node: Node) -> dict[str, Any]:
+def _public_score_for_node(
+    registry_entries: list[dict[str, Any]],
+    run_id: str,
+    node: Node,
+    submission_sha256: str | None,
+) -> float | None:
+    timestamp = _timestamp_from_node(node)
+    scores = []
+    for entry in registry_entries:
+        if str(entry.get("remote_status") or "").upper() != "COMPLETE":
+            continue
+
+        score = _parse_public_score(entry.get("public_score"))
+        if score is None:
+            continue
+
+        node_id_matches = entry.get("node_id") == node.id
+        run_step_timestamp_matches = (
+            entry.get("run") == run_id
+            and entry.get("step") == node.step
+            and entry.get("timestamp") == timestamp
+        )
+        sha_matches = (
+            submission_sha256 is not None
+            and _sha256_matches(entry.get("sha256"), submission_sha256)
+        )
+        if node_id_matches or run_step_timestamp_matches or sha_matches:
+            scores.append(score)
+
+    return max(scores, default=None)
+
+
+def _node_record(
+    log_dir: Path,
+    node: Node,
+    registry_entries: list[dict[str, Any]],
+) -> dict[str, Any]:
     artifact_dir = _artifact_dir(log_dir, node)
+    submission_path = artifact_dir / "submission.csv"
+    submission_sha256 = _sha256_file(submission_path) if submission_path.exists() else None
+    public_score = _public_score_for_node(
+        registry_entries,
+        log_dir.name,
+        node,
+        submission_sha256,
+    )
     children = sorted(node.children, key=lambda child: child.step)
     return {
         "step": node.step,
@@ -66,13 +143,13 @@ def _node_record(log_dir: Path, node: Node) -> dict[str, Any]:
         "is_terminal_failure": bool(node.is_terminal_failure),
         "origin": "source_node",
         "local_cv_score": _metric_value(node),
-        "kaggle_public_score": None,
+        "kaggle_public_score": public_score,
         "metric_maximize": _metric_maximize(node),
         "created_at": _created_at(node),
         "exec_time": node.exec_time,
         "artifact_dir": str(artifact_dir) if artifact_dir.exists() else None,
         "code_sha256": _sha256_text(node.code or ""),
-        "submission_sha256": None,
+        "submission_sha256": submission_sha256,
         "duplicate": {},
         "plan": node.plan,
         "analysis": node.analysis,
@@ -85,9 +162,23 @@ def _node_record(log_dir: Path, node: Node) -> dict[str, Any]:
     }
 
 
-def _meta_record(log_dir: Path, journal: Journal, export_dir: Path) -> dict[str, Any]:
+def _meta_record(
+    log_dir: Path,
+    journal: Journal,
+    node_records: list[dict[str, Any]],
+) -> dict[str, Any]:
     scored = [node for node in journal.nodes if _metric_value(node) is not None]
     best = max(scored, key=lambda node: node.metric, default=None)
+    public_scored = [
+        record
+        for record in node_records
+        if record.get("kaggle_public_score") is not None
+    ]
+    best_public = max(
+        public_scored,
+        key=lambda record: record["kaggle_public_score"],
+        default=None,
+    )
     return {
         "schema_version": 1,
         "run": log_dir.name,
@@ -101,7 +192,14 @@ def _meta_record(log_dir: Path, journal: Journal, export_dir: Path) -> dict[str,
             "node_id": best.id,
             "local_cv_score": _metric_value(best),
         },
-        "best_public": None,
+        "best_public": None
+        if best_public is None
+        else {
+            "step": best_public["step"],
+            "node_id": best_public["node_id"],
+            "kaggle_public_score": best_public["kaggle_public_score"],
+            "submission_sha256": best_public["submission_sha256"],
+        },
         "config": {},
         "notes_for_ai": (
             "This is a complete AIDE tree export. Nodes are ordered by step and "
@@ -130,13 +228,17 @@ def export_run_for_ai(
     meta_path = export_dir / "run_export.meta.json"
     nodes_path = export_dir / "run_export.nodes.jsonl"
 
-    nodes = [_node_record(log_dir, node) for node in sorted(journal.nodes, key=lambda n: n.step)]
+    registry_entries = _load_registry(log_dir)
+    nodes = [
+        _node_record(log_dir, node, registry_entries)
+        for node in sorted(journal.nodes, key=lambda n: n.step)
+    ]
     with nodes_path.open("w", encoding="utf-8") as f:
         for record in nodes:
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
     meta_path.write_text(
-        json.dumps(_meta_record(log_dir, journal, export_dir), indent=2, sort_keys=True)
+        json.dumps(_meta_record(log_dir, journal, nodes), indent=2, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
