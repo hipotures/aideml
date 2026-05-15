@@ -10,6 +10,7 @@ from typing import Any
 from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
+from aide.utils.prediction_similarity import submission_prediction_rmse
 from scripts.smart_kaggle_submit import _parse_public_score, _sha256_matches
 
 
@@ -133,6 +134,40 @@ def annotate_exact_duplicates(node_records: list[dict[str, Any]]) -> None:
             ]
 
 
+def annotate_near_submission_duplicates(
+    node_records: list[dict[str, Any]],
+    *,
+    threshold: float,
+    sample_size: int,
+    min_common_sample_size: int,
+) -> None:
+    candidates = [
+        record for record in node_records if record.get("submission_path") is not None
+    ]
+    canonicals: list[dict[str, Any]] = []
+    for record in sorted(candidates, key=_score_sort_value, reverse=True):
+        if record["duplicate"].get("exact_submission_role") == "duplicate":
+            continue
+        matched = None
+        matched_rmse = None
+        for canonical in canonicals:
+            rmse = submission_prediction_rmse(
+                Path(record["submission_path"]),
+                Path(canonical["submission_path"]),
+                sample_size=sample_size,
+                min_common_sample_size=min_common_sample_size,
+            )
+            if rmse is not None and rmse <= threshold:
+                matched = canonical
+                matched_rmse = rmse
+                break
+        if matched is None:
+            canonicals.append(record)
+            continue
+        record["duplicate"]["near_submission_canonical_node_id"] = matched["node_id"]
+        record["duplicate"]["near_submission_rmse"] = matched_rmse
+
+
 def _created_at(node: Node) -> str:
     return dt.datetime.fromtimestamp(node.ctime).astimezone().isoformat()
 
@@ -224,6 +259,7 @@ def _node_record(
         "exec_time": node.exec_time,
         "artifact_dir": str(artifact_dir) if artifact_dir.exists() else None,
         "code_sha256": _sha256_text(node.code or ""),
+        "submission_path": str(submission_path) if submission_path.exists() else None,
         "submission_sha256": submission_sha256,
         "duplicate": {},
         "plan": node.plan,
@@ -312,6 +348,13 @@ def export_run_for_ai(
         for node in sorted(journal.nodes, key=lambda n: n.step)
     ]
     annotate_exact_duplicates(nodes)
+    if near_duplicates:
+        annotate_near_submission_duplicates(
+            nodes,
+            threshold=near_submission_rmse_threshold,
+            sample_size=prediction_similarity_sample_size,
+            min_common_sample_size=prediction_similarity_min_common_sample_size,
+        )
     with nodes_path.open("w", encoding="utf-8") as f:
         for record in nodes:
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")

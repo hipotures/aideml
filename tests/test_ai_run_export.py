@@ -286,6 +286,35 @@ def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_p
     assert nodes[1]["duplicate"]["exact_submission_role"] == "canonical"
 
 
+def test_export_marks_near_submission_duplicate_hint(tmp_path):
+    log_dir = _write_run(tmp_path)
+    root_timestamp = artifact_timestamp_from_ctime(1770000000.0)
+    child_timestamp = artifact_timestamp_from_ctime(1770000060.0)
+    root_artifact = log_dir / "artifacts" / root_timestamp
+    child_artifact = log_dir / "artifacts" / child_timestamp
+    root_artifact.mkdir(parents=True)
+    child_artifact.mkdir(parents=True)
+    (root_artifact / "submission.csv").write_text(
+        "id,PitNextLap\n1,0.80000\n2,0.20000\n"
+    )
+    (child_artifact / "submission.csv").write_text(
+        "id,PitNextLap\n1,0.80001\n2,0.20001\n"
+    )
+
+    result = export_run_for_ai(
+        log_dir,
+        output_dir=tmp_path / "exports",
+        near_submission_rmse_threshold=0.0001,
+        prediction_similarity_sample_size=2,
+        prediction_similarity_min_common_sample_size=2,
+    )
+    nodes = _read_jsonl(result.nodes_path)
+
+    assert nodes[0]["duplicate"]["near_submission_canonical_node_id"] == "node-child"
+    assert nodes[0]["duplicate"]["near_submission_rmse"] is not None
+    assert nodes[1]["duplicate"]["near_submission_canonical_node_id"] is None
+
+
 def test_export_normalizes_code_line_endings_for_exact_duplicates(tmp_path):
     log_dir = tmp_path / "logs" / "run-line-endings"
     log_dir.mkdir(parents=True)
