@@ -27,7 +27,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=100,
     )
-    parser.add_argument("--no-near-duplicates", action="store_true")
+    parser.add_argument(
+        "--skip-near-duplicate-check",
+        action="store_true",
+        dest="skip_near_duplicate_check",
+        help="Skip the expensive near-duplicate submission similarity check.",
+    )
+    parser.add_argument(
+        "--no-near-duplicates",
+        action="store_true",
+        dest="skip_near_duplicate_check",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args(argv)
 
 
@@ -40,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         result = export_run_for_ai(
             args.log_dir,
             output_dir=args.output_dir,
-            near_duplicates=not args.no_near_duplicates,
+            near_duplicates=not args.skip_near_duplicate_check,
             near_submission_rmse_threshold=args.near_submission_rmse_threshold,
             prediction_similarity_sample_size=args.prediction_similarity_sample_size,
             prediction_similarity_min_common_sample_size=(

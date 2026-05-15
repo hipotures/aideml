@@ -556,7 +556,7 @@ def test_export_run_for_ai_cli_writes_export(tmp_path):
             str(log_dir),
             "--output-dir",
             str(output_dir),
-            "--no-near-duplicates",
+            "--skip-near-duplicate-check",
         ],
         cwd=Path(__file__).resolve().parents[1],
         text=True,
@@ -573,6 +573,29 @@ def test_export_run_for_ai_cli_writes_export(tmp_path):
     assert (export_dirs[0] / "run_export.nodes.jsonl").exists()
 
 
+def test_export_run_for_ai_cli_keeps_legacy_near_duplicate_flag(tmp_path):
+    log_dir = _write_run(tmp_path)
+    output_dir = tmp_path / "exports"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/export_run_for_ai.py",
+            str(log_dir),
+            "--output-dir",
+            str(output_dir),
+            "--no-near-duplicates",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "run_export.nodes.jsonl" in result.stdout
+
+
 def test_export_run_for_ai_cli_help_uses_stdout_only():
     result = subprocess.run(
         [sys.executable, "scripts/export_run_for_ai.py", "--help"],
@@ -584,6 +607,8 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
 
     assert result.returncode == 0, result.stderr
     assert "Export a complete AIDE run tree for external AI review." in result.stdout
+    assert "--skip-near-duplicate-check" in result.stdout
+    assert "--no-near-duplicates" not in result.stdout
     assert result.stderr == ""
 
 
