@@ -5,6 +5,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 from aide.journal import Journal, Node
@@ -19,6 +20,19 @@ class ExportResult:
     export_dir: Path
     meta_path: Path
     nodes_path: Path
+
+
+ProgressCallback = Callable[[str, int, int | None], None]
+
+
+def _report_progress(
+    progress_callback: ProgressCallback | None,
+    stage: str,
+    completed: int,
+    total: int | None = None,
+) -> None:
+    if progress_callback is not None:
+        progress_callback(stage, completed, total)
 
 
 def _sha256_text(text: str) -> str:
@@ -147,13 +161,27 @@ def annotate_near_submission_duplicates(
     threshold: float,
     sample_size: int,
     min_common_sample_size: int,
+    progress_callback: ProgressCallback | None = None,
 ) -> None:
     candidates = [
         record for record in node_records if record.get("submission_path") is not None
     ]
     canonicals: list[dict[str, Any]] = []
-    for record in sorted(candidates, key=_score_sort_value, reverse=True):
+    sorted_candidates = sorted(candidates, key=_score_sort_value, reverse=True)
+    _report_progress(
+        progress_callback,
+        "Checking near duplicates",
+        0,
+        len(sorted_candidates),
+    )
+    for index, record in enumerate(sorted_candidates, start=1):
         if record["duplicate"].get("exact_submission_role") == "duplicate":
+            _report_progress(
+                progress_callback,
+                "Checking near duplicates",
+                index,
+                len(sorted_candidates),
+            )
             continue
         matched = None
         matched_rmse = None
@@ -170,9 +198,21 @@ def annotate_near_submission_duplicates(
                 break
         if matched is None:
             canonicals.append(record)
+            _report_progress(
+                progress_callback,
+                "Checking near duplicates",
+                index,
+                len(sorted_candidates),
+            )
             continue
         record["duplicate"]["near_submission_canonical_node_id"] = matched["node_id"]
         record["duplicate"]["near_submission_rmse"] = matched_rmse
+        _report_progress(
+            progress_callback,
+            "Checking near duplicates",
+            index,
+            len(sorted_candidates),
+        )
 
 
 def _created_at(node: Node) -> str:
@@ -338,11 +378,14 @@ def export_run_for_ai(
     near_submission_rmse_threshold: float = 1e-6,
     prediction_similarity_sample_size: int = 200,
     prediction_similarity_min_common_sample_size: int = 100,
+    progress_callback: ProgressCallback | None = None,
 ) -> ExportResult:
     if not (log_dir / "journal.json").exists():
         raise FileNotFoundError(f"Missing journal.json in {log_dir}")
 
+    _report_progress(progress_callback, "Loading journal", 0)
     journal = serialize.load_json(log_dir / "journal.json", Journal)
+    _report_progress(progress_callback, "Loading journal", 1, 1)
     timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     export_dir = output_dir / f"{log_dir.name}-{timestamp}"
     export_dir.mkdir(parents=True, exist_ok=False)
@@ -350,18 +393,34 @@ def export_run_for_ai(
     nodes_path = export_dir / "run_export.nodes.jsonl"
 
     registry_entries = _load_registry(log_dir)
-    nodes = [
-        _node_record(log_dir, node, registry_entries)
-        for node in sorted(journal.nodes, key=lambda n: n.step)
-    ]
+    sorted_nodes = sorted(journal.nodes, key=lambda n: n.step)
+    _report_progress(
+        progress_callback,
+        "Building node records",
+        0,
+        len(sorted_nodes),
+    )
+    nodes = []
+    for index, node in enumerate(sorted_nodes, start=1):
+        nodes.append(_node_record(log_dir, node, registry_entries))
+        _report_progress(
+            progress_callback,
+            "Building node records",
+            index,
+            len(sorted_nodes),
+        )
+    _report_progress(progress_callback, "Annotating exact duplicates", 0)
     annotate_exact_duplicates(nodes)
+    _report_progress(progress_callback, "Annotating exact duplicates", 1, 1)
     if near_duplicates:
         annotate_near_submission_duplicates(
             nodes,
             threshold=near_submission_rmse_threshold,
             sample_size=prediction_similarity_sample_size,
             min_common_sample_size=prediction_similarity_min_common_sample_size,
+            progress_callback=progress_callback,
         )
+    _report_progress(progress_callback, "Writing export", 0)
     with nodes_path.open("w", encoding="utf-8") as f:
         for record in nodes:
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -371,4 +430,5 @@ def export_run_for_ai(
         + "\n",
         encoding="utf-8",
     )
+    _report_progress(progress_callback, "Writing export", 1, 1)
     return ExportResult(export_dir=export_dir, meta_path=meta_path, nodes_path=nodes_path)

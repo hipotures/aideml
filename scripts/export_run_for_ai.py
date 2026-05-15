@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -34,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     from aide.utils.ai_run_export import export_run_for_ai
 
+    progress_callback = _progress_callback() if sys.stderr.isatty() else None
     try:
         result = export_run_for_ai(
             args.log_dir,
@@ -44,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
             prediction_similarity_min_common_sample_size=(
                 args.prediction_similarity_min_common_sample_size
             ),
+            progress_callback=progress_callback,
         )
     except Exception as exc:
         print(f"Export failed: {exc}", file=sys.stderr)
@@ -52,6 +55,54 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Metadata: {result.meta_path}")
     print(f"Nodes: {result.nodes_path}")
     return 0
+
+
+def _progress_callback() -> Callable[[str, int, int | None], None]:
+    from rich.console import Console
+    from rich.progress import (
+        BarColumn,
+        Progress,
+        SpinnerColumn,
+        TaskID,
+        TextColumn,
+        TimeElapsedColumn,
+    )
+
+    console = Console(stderr=True)
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    )
+    tasks: dict[str, TaskID] = {}
+    started = False
+
+    def callback(stage: str, completed: int, total: int | None) -> None:
+        nonlocal started
+        if not started:
+            progress.start()
+            started = True
+        if stage not in tasks:
+            tasks[stage] = progress.add_task(
+                stage,
+                total=total,
+                completed=completed,
+            )
+        task_id = tasks[stage]
+        if total is None:
+            progress.update(task_id, completed=completed, total=1)
+        else:
+            progress.update(task_id, completed=completed, total=total)
+        if total is not None and completed >= total:
+            progress.update(task_id, completed=total)
+        if stage == "Writing export" and completed >= 1:
+            progress.stop()
+
+    return callback
 
 
 if __name__ == "__main__":

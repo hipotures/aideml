@@ -78,6 +78,28 @@ def test_export_preserves_tree_and_full_code(tmp_path):
     assert nodes[1]["local_cv_score"] == 0.91
 
 
+def test_export_reports_progress_callback(tmp_path):
+    log_dir = _write_run(tmp_path)
+    events = []
+
+    export_run_for_ai(
+        log_dir,
+        output_dir=tmp_path / "exports",
+        near_duplicates=False,
+        progress_callback=lambda stage, completed, total: events.append(
+            (stage, completed, total)
+        ),
+    )
+
+    assert ("Loading journal", 0, None) in events
+    assert ("Building node records", 0, 3) in events
+    assert ("Building node records", 3, 3) in events
+    assert ("Annotating exact duplicates", 0, None) in events
+    assert ("Annotating exact duplicates", 1, 1) in events
+    assert ("Writing export", 0, None) in events
+    assert ("Writing export", 1, 1) in events
+
+
 def test_export_handles_invalid_metric_value(tmp_path):
     log_dir = tmp_path / "logs" / "run-invalid-metric"
     log_dir.mkdir(parents=True)
