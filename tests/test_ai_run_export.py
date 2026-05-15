@@ -517,4 +517,5 @@ def test_export_preserves_unknown_metric_direction_and_ranks_as_maximize(tmp_pat
     assert (
         nodes[0]["duplicate"]["exact_submission_canonical_node_id"] == "node-child"
     )
+    assert meta["best_local"]["node_id"] == "node-child"
     assert meta["best_public"]["node_id"] == "node-child"

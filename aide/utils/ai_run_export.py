@@ -78,6 +78,13 @@ def _score_sort_value(record: dict[str, Any]) -> tuple[float, int]:
     return normalized, -step
 
 
+def _node_score_rank(node: Node) -> float:
+    score = _metric_value(node)
+    if score is None:
+        return float("-inf")
+    return _public_score_rank(float(score), _metric_maximize(node))
+
+
 def _canonical_by_best_score(records: list[dict[str, Any]]) -> dict[str, Any]:
     return max(records, key=_score_sort_value)
 
@@ -279,7 +286,7 @@ def _meta_record(
     node_records: list[dict[str, Any]],
 ) -> dict[str, Any]:
     scored = [node for node in journal.nodes if _metric_value(node) is not None]
-    best = max(scored, key=lambda node: node.metric, default=None)
+    best = max(scored, key=_node_score_rank, default=None)
     public_scored = [
         record
         for record in node_records
