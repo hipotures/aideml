@@ -245,3 +245,83 @@ def test_export_maps_public_score_by_sha_prefix(tmp_path):
 
     assert nodes[0]["submission_sha256"] == full_sha
     assert nodes[0]["kaggle_public_score"] == 0.92345
+
+
+def test_export_public_scores_follow_minimizing_metric_semantics(tmp_path):
+    log_dir = tmp_path / "logs" / "run-min-public"
+    log_dir.mkdir(parents=True)
+    first = Node(
+        code="print('first')\n",
+        plan="first plan",
+        id="node-first",
+        ctime=1770000000.0,
+        metric=MetricValue(0.3, maximize=False),
+        is_buggy=False,
+        analysis="first analysis",
+    )
+    second = Node(
+        code="print('second')\n",
+        plan="second plan",
+        id="node-second",
+        ctime=1770000060.0,
+        metric=MetricValue(0.2, maximize=False),
+        is_buggy=False,
+        analysis="second analysis",
+    )
+    journal = Journal()
+    journal.append(first)
+    journal.append(second)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    first_timestamp = artifact_timestamp_from_ctime(first.ctime)
+    second_timestamp = artifact_timestamp_from_ctime(second.ctime)
+    (log_dir / "artifacts" / first_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / first_timestamp / "submission.csv").write_text(
+        "id,PitNextLap\n1,0.8\n"
+    )
+    (log_dir / "artifacts" / second_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / second_timestamp / "submission.csv").write_text(
+        "id,PitNextLap\n1,0.7\n"
+    )
+    registry = log_dir.parent / "submission_registry.json"
+    registry.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-min-public",
+                        "step": "0",
+                        "timestamp": first_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.4",
+                    },
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-min-public",
+                        "step": "0",
+                        "timestamp": first_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.3",
+                    },
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-min-public",
+                        "step": 1,
+                        "timestamp": second_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.2",
+                    },
+                ]
+            }
+        )
+    )
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+    meta = json.loads(result.meta_path.read_text())
+
+    assert nodes[0]["kaggle_public_score"] == 0.3
+    assert nodes[1]["kaggle_public_score"] == 0.2
+    assert meta["best_public"]["node_id"] == "node-second"
+    assert meta["best_public"]["kaggle_public_score"] == 0.2

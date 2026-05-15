@@ -62,6 +62,10 @@ def _metric_maximize(node: Node) -> bool | None:
     return None if node.metric is None else bool(node.metric.maximize)
 
 
+def _public_score_rank(score: float, maximize: bool | None) -> float:
+    return score if maximize is not False else -score
+
+
 def _created_at(node: Node) -> str:
     return dt.datetime.fromtimestamp(node.ctime).astimezone().isoformat()
 
@@ -104,7 +108,7 @@ def _public_score_for_node(
         node_id_matches = entry.get("node_id") == node.id
         run_step_timestamp_matches = (
             entry.get("run") == run_id
-            and entry.get("step") == node.step
+            and str(entry.get("step")) == str(node.step)
             and entry.get("timestamp") == timestamp
         )
         sha_matches = (
@@ -114,7 +118,11 @@ def _public_score_for_node(
         if node_id_matches or run_step_timestamp_matches or sha_matches:
             scores.append(score)
 
-    return max(scores, default=None)
+    return max(
+        scores,
+        key=lambda score: _public_score_rank(score, _metric_maximize(node)),
+        default=None,
+    )
 
 
 def _node_record(
@@ -176,7 +184,10 @@ def _meta_record(
     ]
     best_public = max(
         public_scored,
-        key=lambda record: record["kaggle_public_score"],
+        key=lambda record: _public_score_rank(
+            record["kaggle_public_score"],
+            record["metric_maximize"],
+        ),
         default=None,
     )
     return {
