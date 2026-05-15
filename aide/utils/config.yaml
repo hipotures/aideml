@@ -171,6 +171,30 @@ agent:
         fit_args:
           save_space: true
 
+      best_boost_gpu_1h:
+        included_model_types: [XGB, GBM, CAT]
+        presets: best
+        time_limit: 3600
+        use_gpu: true
+        hyperparameters:
+          GBM:
+            - ag_args_fit:
+                num_gpus: 0
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args_fit:
+                num_gpus: 1
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+
       best_boost_1h:
         included_model_types: [XGB, GBM, CAT]
         presets: best

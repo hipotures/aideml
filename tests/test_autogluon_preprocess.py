@@ -314,6 +314,23 @@ def test_autogluon_best_boost_cpu_profiles_only_add_save_space(tmp_path):
         assert "hyperparameters" not in settings
 
 
+def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "best_boost_gpu_1h"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["presets"] == "best"
+    assert settings["time_limit"] == 3600
+    assert settings["use_gpu"] is True
+    assert settings["fit_args"] == {"save_space": True}
+    assert settings["hyperparameters"]["CAT"][0]["gpu_ram_part"] == 0.8
+    assert settings["hyperparameters"]["XGB"][0]["device"] == "cuda"
+    assert "validation_strategy" not in settings
+
+
 def test_autogluon_profiles_are_not_restored_from_python_schema(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
