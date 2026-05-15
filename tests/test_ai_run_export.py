@@ -519,3 +519,33 @@ def test_export_preserves_unknown_metric_direction_and_ranks_as_maximize(tmp_pat
     )
     assert meta["best_local"]["node_id"] == "node-child"
     assert meta["best_public"]["node_id"] == "node-child"
+
+
+def test_export_run_for_ai_cli_writes_export(tmp_path):
+    log_dir = _write_run(tmp_path)
+    output_dir = tmp_path / "exports"
+
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/export_run_for_ai.py",
+            str(log_dir),
+            "--output-dir",
+            str(output_dir),
+            "--no-near-duplicates",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "run_export.nodes.jsonl" in result.stdout
+    export_dirs = list(output_dir.iterdir())
+    assert len(export_dirs) == 1
+    assert (export_dirs[0] / "run_export.meta.json").exists()
+    assert (export_dirs[0] / "run_export.nodes.jsonl").exists()
