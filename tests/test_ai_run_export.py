@@ -434,3 +434,87 @@ def test_export_public_scores_follow_minimizing_metric_semantics(tmp_path):
     assert nodes[1]["kaggle_public_score"] == 0.2
     assert meta["best_public"]["node_id"] == "node-second"
     assert meta["best_public"]["kaggle_public_score"] == 0.2
+
+
+def test_export_preserves_unknown_metric_direction_and_ranks_as_maximize(tmp_path):
+    log_dir = tmp_path / "logs" / "run-unknown-direction"
+    log_dir.mkdir(parents=True)
+    root = Node(
+        code="print('same')\n",
+        plan="root plan",
+        id="node-root",
+        ctime=1770000000.0,
+        metric=MetricValue(0.9, maximize=None),
+        is_buggy=False,
+        analysis="root analysis",
+    )
+    child = Node(
+        code="print('same')\n",
+        plan="child plan",
+        id="node-child",
+        ctime=1770000060.0,
+        parent=root,
+        metric=MetricValue(0.91, maximize=None),
+        is_buggy=False,
+        analysis="child analysis",
+    )
+    journal = Journal()
+    journal.append(root)
+    journal.append(child)
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    root_timestamp = artifact_timestamp_from_ctime(root.ctime)
+    child_timestamp = artifact_timestamp_from_ctime(child.ctime)
+    (log_dir / "artifacts" / root_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / child_timestamp).mkdir(parents=True)
+    body = "id,PitNextLap\n1,0.8\n2,0.2\n"
+    (log_dir / "artifacts" / root_timestamp / "submission.csv").write_text(body)
+    (log_dir / "artifacts" / child_timestamp / "submission.csv").write_text(body)
+    registry = log_dir.parent / "submission_registry.json"
+    registry.write_text(
+        json.dumps(
+            {
+                "submissions": [
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-unknown-direction",
+                        "step": 0,
+                        "timestamp": root_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.4",
+                    },
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-unknown-direction",
+                        "step": 0,
+                        "timestamp": root_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.5",
+                    },
+                    {
+                        "competition": "playground-series-s6e5",
+                        "run": "run-unknown-direction",
+                        "step": 1,
+                        "timestamp": child_timestamp,
+                        "remote_status": "COMPLETE",
+                        "public_score": "0.6",
+                    },
+                ]
+            }
+        )
+    )
+
+    result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
+    nodes = _read_jsonl(result.nodes_path)
+    meta = json.loads(result.meta_path.read_text())
+
+    assert nodes[0]["metric_maximize"] is None
+    assert nodes[1]["metric_maximize"] is None
+    assert nodes[0]["kaggle_public_score"] == 0.5
+    assert nodes[0]["duplicate"]["exact_code_role"] == "duplicate"
+    assert nodes[0]["duplicate"]["exact_code_canonical_node_id"] == "node-child"
+    assert nodes[0]["duplicate"]["exact_submission_role"] == "duplicate"
+    assert (
+        nodes[0]["duplicate"]["exact_submission_canonical_node_id"] == "node-child"
+    )
+    assert meta["best_public"]["node_id"] == "node-child"

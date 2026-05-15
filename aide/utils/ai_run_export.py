@@ -61,7 +61,7 @@ def _metric_value(node: Node) -> float | None:
 
 
 def _metric_maximize(node: Node) -> bool | None:
-    return None if node.metric is None else bool(node.metric.maximize)
+    return None if node.metric is None else node.metric.maximize
 
 
 def _public_score_rank(score: float, maximize: bool | None) -> float:
