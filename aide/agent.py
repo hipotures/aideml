@@ -471,6 +471,7 @@ class Agent:
             "Your response should only contain a single code block.",
             f"Be aware of the running time of the code, it should complete within {humanize.naturaldelta(self.cfg.exec.timeout)}.",
             'If you run a post-CV blend-weight search with many independent AUC/ROC-AUC evaluations, do not evaluate thousands of `roc_auc_score` calls serially. Use `joblib.Parallel` with `n_jobs=min(10, os.cpu_count() or 1)` and `prefer="threads"` to avoid copying large OOF arrays; print "Evaluating N blend candidates with M workers" before starting. Keep candidate grids bounded, and fall back to a simple 1D blend if joblib is unavailable.',
+            "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
             'All the provided input data is stored in "./input" directory.',
             '**If there is test data provided for this task, please save the test predictions in a `submission.csv` file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
             'You can also use the "./working" directory to store any temporary files that your code needs to create.',
@@ -522,6 +523,7 @@ class Agent:
                 "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
                 "Do not change row count or reorder rows.",
                 "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
+                "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
             ]
         }
 

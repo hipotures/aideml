@@ -1560,6 +1560,27 @@ def test_legacy_agent_prompt_parallelizes_expensive_blend_search(tmp_path):
     assert any("Evaluating N blend candidates with M workers" in line for line in guidelines)
 
 
+def test_legacy_agent_prompt_prefers_behavior_preserving_optimization(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
+    assert any(
+        "reducing code size, memory use, or runtime" in line
+        for line in guidelines
+    )
+
+
 def test_agent_includes_latest_research_hints_in_debug_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False

@@ -442,6 +442,7 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "`id`" not in prompt_text
     assert "__is_train__" not in prompt_text
     assert "__aide_row_id__" not in prompt_text
+    assert "reducing code size, memory use, or runtime" in prompt_text
     assert "TabularPredictor" in node.code
     assert "TyreLife_x2" in node.code
 
