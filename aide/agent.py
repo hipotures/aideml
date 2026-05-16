@@ -24,6 +24,7 @@ from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import (
+    build_data_overview,
     filter_hypothesis_candidate_parents,
     format_hypothesis_for_log_panel,
     format_hypothesis_for_prompt,
@@ -924,7 +925,15 @@ class Agent:
     def update_data_preview(
         self,
     ):
-        self.data_preview = data_preview.generate(self.cfg.workspace_dir)
+        workspace_input_dir = Path(self.cfg.workspace_dir) / "input"
+        data_dir = workspace_input_dir if workspace_input_dir.exists() else Path(self.cfg.data_dir)
+        if data_dir.exists():
+            self.data_preview = data_preview.generate(
+                data_dir,
+                include_file_tree=False,
+            )
+        else:
+            self.data_preview = build_data_overview(self.cfg)
 
     def prepare_step(self) -> Node | None:
         if not self.journal.nodes or self.data_preview is None:

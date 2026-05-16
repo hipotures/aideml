@@ -127,13 +127,19 @@ def preview_json(p: Path, file_name: str):
     )
 
 
-def generate(base_path, include_file_details=True, simple=False):
+def generate(
+    base_path,
+    include_file_details=True,
+    simple=False,
+    include_file_tree=True,
+):
     """
     Generate a textual preview of a directory, including an overview of the directory
     structure and previews of individual files
     """
-    tree = f"```\n{file_tree(base_path)}```"
-    out = [tree]
+    out = []
+    if include_file_tree:
+        out.append(f"```\n{file_tree(base_path)}```")
 
     if include_file_details:
         for fn in _walk(base_path):
@@ -156,7 +162,10 @@ def generate(base_path, include_file_details=True, simple=False):
     # if the result is very long we generate a simpler version
     if len(result) > 6_000 and not simple:
         return generate(
-            base_path, include_file_details=include_file_details, simple=True
+            base_path,
+            include_file_details=include_file_details,
+            simple=True,
+            include_file_tree=include_file_tree,
         )
 
     return result

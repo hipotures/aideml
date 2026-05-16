@@ -77,6 +77,36 @@ def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
     assert "checkpoint 000027" not in summary
 
 
+def test_agent_data_preview_excludes_workspace_working_artifacts(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "train.csv").write_text("id,x,y\n1,2,0\n", encoding="utf-8")
+    (data_dir / "test.csv").write_text("id,x\n2,3\n", encoding="utf-8")
+    (data_dir / "sample_submission.csv").write_text("id,y\n2,0\n", encoding="utf-8")
+
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(data_dir)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "review-test"
+    cfg = prep_cfg(cfg)
+    metadata_dir = Path(cfg.workspace_dir) / "working" / "autogluon_model"
+    metadata_dir.mkdir(parents=True)
+    (metadata_dir / "metadata.json").write_text(
+        '{"packages": {"nvidia-cudnn-cu13": "9.0"}}', encoding="utf-8"
+    )
+    (metadata_dir / "version.txt").write_text("1.5.0\n", encoding="utf-8")
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    agent.update_data_preview()
+
+    assert agent.data_preview is not None
+    assert "train.csv" in agent.data_preview
+    assert not agent.data_preview.startswith("```")
+    assert "working/" not in agent.data_preview
+
+
 def test_journal_generates_branch_context_from_root_to_parent_only():
     journal = Journal()
     root = Node(code="root", plan="Root hypothesis plan")
