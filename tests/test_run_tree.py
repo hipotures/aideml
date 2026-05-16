@@ -898,7 +898,7 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
     )
 
     assert "◇ Research   · 030 @ 000122 ✓" in output
-    assert "★ Best Score · 000 @ 19:13:00 0.95115 @ 000122" in output
+    assert "★ Best Score · 000 @ 19:13:00 0.95115 · 000122" in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
@@ -918,8 +918,8 @@ def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
         )
     )
 
-    assert "0.95104@000122" in output
-    assert "bug@000205" in output
+    assert "0.95104·000122" in output
+    assert "bug·000205" in output
 
 
 def test_tree_view_shows_hypothesis_protocol_failures_with_id():
@@ -939,7 +939,7 @@ def test_tree_view_shows_hypothesis_protocol_failures_with_id():
         )
     )
 
-    assert "failed@000311" in output
+    assert "failed·000311" in output
 
 
 def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):

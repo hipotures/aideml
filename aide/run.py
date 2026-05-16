@@ -233,7 +233,7 @@ def _is_base_root(node: Node) -> bool:
 
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
-    return f"@{hypothesis_id}" if hypothesis_id is not None else ""
+    return f"·{hypothesis_id}" if hypothesis_id is not None else ""
 
 
 def _show_hypothesis_failure_in_tree(node: Node) -> bool:
@@ -1170,7 +1170,7 @@ def build_best_score_status(journal: Journal) -> Text | None:
     step = node.step if node.step is not None else "?"
     timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
     hypothesis_id = hypothesis_id_for_node(node)
-    suffix = f" @ {hypothesis_id}" if hypothesis_id is not None else ""
+    suffix = f" · {hypothesis_id}" if hypothesis_id is not None else ""
     return Text(
         f"{_run_status_label('★', 'Best Score')} · "
         f"{_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
