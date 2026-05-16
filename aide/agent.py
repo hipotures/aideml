@@ -572,6 +572,22 @@ class Agent:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
         return None
 
+    def _add_memory_or_branch_context(
+        self,
+        prompt: dict[str, Any],
+        *,
+        parent_node: Node | None,
+        include_global_memory: bool = True,
+    ) -> None:
+        if self._is_hypothesis_mode():
+            if parent_node is not None:
+                prompt["Branch context"] = self.journal.generate_branch_context(
+                    parent_node
+                )
+            return
+        if include_global_memory:
+            prompt["Memory"] = self.journal.generate_summary()
+
     def _autogluon_unavailable_columns(self) -> list[str]:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
         if columns is None:
@@ -675,9 +691,9 @@ class Agent:
                 "for a solution and then implement this solution in Python. We will now provide a description of the task."
             ),
             "Task description": self.task_desc,
-            "Memory": self.journal.generate_summary(),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(prompt, parent_node=None)
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Solution sketch guideline": [
@@ -712,9 +728,9 @@ class Agent:
                 "feature preprocessing for that runner."
             ),
             "Task description": self._autogluon_prompt_text(self.task_desc),
-            "Memory": self.journal.generate_summary(),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(prompt, parent_node=None)
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Preprocessing sketch guideline": [
@@ -753,9 +769,9 @@ class Agent:
                 "then implement this improvement in Python based on the provided previous solution. "
             ),
             "Task description": self.task_desc,
-            "Memory": self.journal.generate_summary(),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(prompt, parent_node=parent_node)
         prompt["Previous solution"] = {
             "Code": wrap_code(parent_node.code),
         }
@@ -792,12 +808,12 @@ class Agent:
                 "unchanged and make one atomic, leakage-safe feature improvement."
             ),
             "Task description": self._autogluon_prompt_text(self.task_desc),
-            "Memory": self.journal.generate_summary(),
             "Previous preprocess function": wrap_code(
                 self._previous_preprocess_source(parent_node)
             ),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(prompt, parent_node=parent_node)
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Preprocessing improvement sketch guideline": [
@@ -836,6 +852,11 @@ class Agent:
             "Execution output": wrap_code(parent_node.term_out, lang=""),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(
+            prompt,
+            parent_node=parent_node,
+            include_global_memory=False,
+        )
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Bugfix improvement sketch guideline": [
@@ -869,6 +890,11 @@ class Agent:
             "Execution output": wrap_code(parent_node.term_out, lang=""),
             "Instructions": {},
         }
+        self._add_memory_or_branch_context(
+            prompt,
+            parent_node=parent_node,
+            include_global_memory=False,
+        )
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Bugfix preprocessing sketch guideline": [

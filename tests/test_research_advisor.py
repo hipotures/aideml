@@ -1358,6 +1358,128 @@ def test_agent_exposes_active_hypothesis_log_hint_during_generation(
     assert "Try: Add current-lap rival aggregate features." in hint
 
 
+def test_hypothesis_root_prompt_omits_global_memory_and_branch_context(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    previous = _node(
+        0.99,
+        code="print('unrelated')",
+        plan="Unrelated global winner",
+    )
+    journal = Journal()
+    journal.append(previous)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=1,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000122",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Rival-relative pit-wave features",
+                summary="Use current-lap peer pit context.",
+                rationale="Pit decisions often react to nearby rivals.",
+                implementation_hint="Add current-lap rival aggregate features.",
+                expected_effect="Improves reactive stop timing signal.",
+                risk="Avoid future laps and target-derived aggregates.",
+                sources=[],
+                path=tmp_path / "hypothesis-000122.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "I will verify hypothesis 000122.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    assert "Memory" not in captured["prompt"]
+    assert "Branch context" not in captured["prompt"]
+    assert "Hypothesis under verification" in captured["prompt"]
+
+
+def test_hypothesis_child_prompt_uses_branch_context_not_global_memory(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    root = _node(0.91, code="root code", plan="Root branch plan")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000101"]
+    child = _node(0.92, code="child code", plan="Child branch plan")
+    child.parent = root
+    root.children.add(child)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000202"]
+    unrelated = _node(0.99, code="other code", plan="Unrelated global winner")
+    unrelated.research_mode = "hypothesis"
+    unrelated.research_hypotheses_offered = ["000999"]
+    journal = Journal()
+    journal.append(root)
+    journal.append(child)
+    journal.append(unrelated)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=3,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000303",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Assigned child hypothesis",
+                summary="Add one assigned child change.",
+                rationale="This validates the selected hypothesis.",
+                implementation_hint="Add the assigned feature block.",
+                expected_effect="May improve ROC AUC.",
+                risk="Keep it leakage-safe.",
+                sources=[],
+                path=tmp_path / "hypothesis-000303.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "I will verify hypothesis 000303.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(child)
+
+    assert "Memory" not in captured["prompt"]
+    assert "Branch context" in captured["prompt"]
+    branch_context = captured["prompt"]["Branch context"]
+    assert "Branch path:\n000101 -> 000202" in branch_context
+    assert "Ancestor 1 / root:" in branch_context
+    assert "Ancestor 2 / direct parent:" in branch_context
+    assert "Unrelated global winner" not in branch_context
+    assert "Hypothesis under verification" in captured["prompt"]
+    assert "Hypothesis ID: 000303" in captured["prompt"]["Hypothesis under verification"]
+
+
 def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
