@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut vulnerability proxy",
+  "summary": "Estimate whether the driver is vulnerable to competitors pitting earlier by comparing own tyre pressure to peer fresh-tyre and pace signals.",
+  "rationale": "External F1 strategy explanations emphasize undercut dynamics from fresh tyres and tyre degradation. The run’s peer and fresh-stop features point to a compact undercut proxy as a natural combination.",
+  "implementation_hint": "Create a small block combining own old-for-compound or current-window pressure, positive pace loss, position percentile, and leave-one-out peer fresh-tyre or current-pit rates. Add a single undercut-vulnerability score and binary high-vulnerability flag.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence.",
+  "risk": "No explicit time gaps are available, so this is an approximation and may be race-dependent.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.catapult.com/blog/motorsports-race-strategy-undercut-overcut"
+  ]
+}

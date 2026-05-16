@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Final-stop window entry",
+  "summary": "Flag rows where a fresh slick is not yet a feasible final stint now but becomes feasible for a stop on the next lap.",
+  "rationale": "The run explored many final-window entry variants; they were locally strong but sometimes more duplicate-heavy than option-richness features. The mechanism is plausible because teams often wait until a compound can carry them to the finish before stopping.",
+  "implementation_hint": "Compare fresh SOFT, MEDIUM, and HARD feasibility using current estimated laps remaining versus estimated laps remaining after one more lap. Add per-compound newly-viable flags, any/count newly-viable flags, softest newly-viable slick, and nearest boundary margin.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence; most useful for late-race threshold ranking.",
+  "risk": "Boundary features can overfit approximate compound-life constants; retain signed margins and avoid many redundant aliases.",
+  "sources": [
+    "https://www.catapult.com/blog/motorsports-race-strategy-undercut-overcut"
+  ]
+}

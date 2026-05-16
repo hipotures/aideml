@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint-progress versus race-progress contrast",
+  "summary": "Compare how deep the current tyre stint is with how deep the race is.",
+  "rationale": "A tyre that is old relative to the race phase is a stronger pit signal than age alone. Several strong baselines included tyre-life-to-lap and tyre-life-to-race ratios.",
+  "implementation_hint": "Add `TyreLife` divided by `LapNumber`, `TyreLife` divided by estimated total laps, `TyreLife` divided by estimated laps remaining, and interactions with `Stint` and compound expected life.",
+  "expected_effect": "Small to medium ROC AUC gain with high confidence.",
+  "risk": "Early-race denominators can be small; use guarded denominators and missingness flags.",
+  "sources": []
+}

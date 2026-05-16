@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Categorical frequency encodings",
+  "summary": "Add target-free frequency encodings for stable categorical identifiers and race-context combinations.",
+  "rationale": "Frequency features appeared in early strong baselines and many later stacks. They give AutoGluon compact information about category prevalence without target leakage.",
+  "implementation_hint": "Normalize categoricals, then add frequency fractions for `Driver`, `Race`, `Compound`, `Year`, and `Race_Year` using the incoming combined feature frame. Optionally add log-frequency variants for high-cardinality interactions.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Transductive frequencies use test feature distribution; this is target-free but may not match a strict online setting.",
+  "sources": []
+}

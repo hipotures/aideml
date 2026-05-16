@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fresh-slick option richness",
+  "summary": "Replace a single fresh-slick feasibility flag with a richer description of how many slick choices can finish and which one is softest.",
+  "rationale": "Duplicate-heavy public-submitted variants converged around this family, suggesting the signal is robust while many exact aliases are unnecessary. Counting viable options adds ordinal strategy information that a binary flag loses.",
+  "implementation_hint": "For a hypothetical next-lap stop, compute per-compound finish margins for SOFT, MEDIUM, and HARD; add the number of viable fresh slicks, the softest viable slick ordinal, best and worst viable margins, and whether a slick different from the current compound can finish.",
+  "expected_effect": "Medium ROC AUC gain with high confidence; expected to improve discrimination inside the final-stop window.",
+  "risk": "Many near-duplicate aliases produced nearly identical predictions; implement one compact canonical version to avoid unnecessary feature bloat.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ]
+}

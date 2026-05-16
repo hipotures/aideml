@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-pressure composite score",
+  "summary": "Create a small number of composite pressure scores from existing target-free state features.",
+  "rationale": "Many successful features are correlated components of the same strategic pressure. A bounded composite can help models capture monotonic pressure without relying on many duplicate aliases.",
+  "implementation_hint": "Construct one or two additive or multiplicative scores from normalized current-tyre finish pressure, positive lap-time loss, degradation per tyre life, late-race progress, stop/debt urgency, and next-stop feasibility. Keep component features as well and avoid target fitting.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Hand-built composites can encode poor assumptions; use normalized continuous inputs and keep the feature count low.",
+  "sources": []
+}

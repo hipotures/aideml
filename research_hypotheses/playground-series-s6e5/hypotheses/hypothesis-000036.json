@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pace residual trend versus field",
+  "summary": "First residualize lap-time delta against same-race-lap field pace, then compute prior-only driver trends.",
+  "rationale": "Raw lap-time delta can be contaminated by lap-wide effects. Some low-to-mid variants attempted field-residual rolling features; a cleaner residual-first approach may isolate driver-specific tyre decline.",
+  "implementation_hint": "Compute same-race-lap median `LapTime_Delta`, subtract it from each row to form a pace residual, then within each driver-race sequence compute shifted rolling residual level, recent maximum, and residual slope. Preserve row order.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence.",
+  "risk": "Same-lap field aggregation is contemporaneous and target-free but must be carefully aligned; rolling residuals can still overfit noise.",
+  "sources": []
+}

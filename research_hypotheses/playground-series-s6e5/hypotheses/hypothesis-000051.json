@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Missingness and clipping robustness",
+  "summary": "Add explicit flags and safe clipping for invalid numeric inputs before deriving ratios.",
+  "rationale": "Many features depend on ratios involving `RaceProgress`, `TyreLife`, `LapTime (s)`, and estimated laps remaining. Robust preprocessing reduces runtime failures and extreme artifacts.",
+  "implementation_hint": "For key numeric columns, coerce to numeric, add missingness flags, replace infinities with missing values, clip estimated total laps and ratio outputs to plausible ranges, and use small denominators. Preserve raw columns where possible.",
+  "expected_effect": "Small robustness gain with high confidence; may improve validation stability more than raw ranking.",
+  "risk": "Over-clipping can remove real extremes; choose broad caps and add flags so models can learn anomalies.",
+  "sources": []
+}

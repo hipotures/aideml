@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Alias pruning and canonical feature names",
+  "summary": "Test a compact preprocessing variant that removes redundant aliases from otherwise similar feature families.",
+  "rationale": "The export contained many near-duplicate feature blocks and identical prediction signals. Stronger ideas often came from the same mechanism rather than from many alternative names for the same quantity.",
+  "implementation_hint": "For each mechanism, keep one canonical continuous margin, one normalized ratio, and one or two binary threshold flags. Drop duplicate aliases, repeated interaction names, debug/proxy metric columns, and overly similar per-compound summaries unless they capture distinct information.",
+  "expected_effect": "Small validation-stability gain with medium confidence; may reduce overfit and runtime without changing the core signal.",
+  "risk": "Removing aliases can hurt if AutoGluon benefited from redundant representations for different model types; test as a single compactness experiment.",
+  "sources": []
+}

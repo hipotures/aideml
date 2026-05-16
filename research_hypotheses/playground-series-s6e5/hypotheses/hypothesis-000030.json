@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-time delta shock transforms",
+  "summary": "Expose positive, absolute, and normalized lap-time delta features as indicators of pace loss.",
+  "rationale": "Pit decisions respond to pace degradation, not just physical tyre age. Strong preprocessing stacks preserved positive and absolute lap-time loss transforms.",
+  "implementation_hint": "Add positive part of `LapTime_Delta`, absolute `LapTime_Delta`, signed and absolute ratios to `LapTime (s)`, and interactions with tyre age, compound expected life, and race phase.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Lap-time deltas may reflect traffic, safety-car, or weather effects rather than tyre wear; combine with field-relative context to reduce false signals.",
+  "sources": [
+    "https://www.catapult.com/blog/how-tyre-degradation-affects-race-strategy"
+  ]
+}

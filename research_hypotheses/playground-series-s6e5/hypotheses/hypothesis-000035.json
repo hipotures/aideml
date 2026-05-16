@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Prior-only tyre-cliff trend",
+  "summary": "Compute recent pace and degradation trends using only previous laps to detect accelerating tyre decline.",
+  "rationale": "Rolling trend variants were lower and more fragile than finish-window features, but the underlying tyre-cliff mechanism is plausible. A compact prior-only version may add complementary signal.",
+  "implementation_hint": "Within each race-driver sequence, compute shifted rolling means, exponentially weighted means, volatility, and simple slopes for `LapTime_Delta` and `Cumulative_Degradation` over short windows. Shift before rolling so the current row does not include future observations.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence.",
+  "risk": "Rolling features were relatively unstable and can be noisy on short stints; keep windows short and fill early-lap values safely.",
+  "sources": [
+    "https://www.catapult.com/blog/how-tyre-degradation-affects-race-strategy"
+  ]
+}

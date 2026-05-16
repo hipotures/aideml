@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Current-tyre finish pressure",
+  "summary": "Estimate whether the current tyre can plausibly reach the race finish and how far it is beyond or inside its compound-specific life window.",
+  "rationale": "The run repeatedly favored compact compound-window features over raw tyre age alone. Public-submitted variants also supported the idea that signed finish-margin features are more stable than a single old-tyre flag. Formula 1 strategy sources emphasize the trade-off between tyre durability and race distance.",
+  "implementation_hint": "Within `preprocess(df)`, normalize `Compound`, estimate total laps and laps remaining from `LapNumber` and `RaceProgress`, map each compound to a conservative expected life, then add current tyre-to-finish age, signed finish margin, normalized finish pressure, and a current-tyre-cannot-finish indicator. Keep the original raw columns.",
+  "expected_effect": "Medium expected ROC AUC gain with high confidence; this is one of the most stable observed feature families.",
+  "risk": "Compound-life constants are approximate and may not transfer perfectly across races; clip extreme estimated race lengths and guard division by zero.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

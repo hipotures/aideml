@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-compound baseline pressure",
+  "summary": "Normalize tyre age and degradation against causal race-compound context rather than only global compound constants.",
+  "rationale": "A SOFT tyre can be old at one circuit and normal at another. Race-compound context is more specific than global compound expected life, but it must be computed without peeking at later laps in the same driver sequence.",
+  "implementation_hint": "Within each race and compound, use current-lap peer context plus optional prior-lap race-compound expanding means/counts for `TyreLife`, `Cumulative_Degradation`, and `LapTime_Delta`. Smooth sparse groups toward global compound constants and add current-minus-baseline features.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Expanding race-compound aggregates are more complex than global medians; ensure temporary sorting does not change returned row order.",
+  "sources": []
+}

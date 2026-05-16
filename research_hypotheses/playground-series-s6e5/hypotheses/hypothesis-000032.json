@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Prior-lap driver state",
+  "summary": "Add causal lag features from the previous observed lap for the same driver and race.",
+  "rationale": "Chronological context was explored often and is natural for next-lap pit prediction. Previous tyre age, pace loss, position, and compound changes can identify transitions without future leakage.",
+  "implementation_hint": "Sort by race, driver, and lap; shift `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, `Position`, `Position_Change`, `PitStop`, and `Compound` by one row within each sequence. Add deltas from current to previous and previous-compound-same flags, then restore original order.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Sorting keys must include race-year context where available; missing or duplicated laps require stable tie handling.",
+  "sources": []
+}

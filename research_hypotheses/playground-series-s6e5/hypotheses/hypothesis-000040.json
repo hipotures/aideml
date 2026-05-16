@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-lap pit-wave context",
+  "summary": "Use current-lap `PitStop` rates among other cars to describe active pit waves.",
+  "rationale": "Pit stops often cluster, and the run explored current-lap pit-wave context. Because `PitStop` is a current-row feature in test, same-lap leave-one-out peer counts are target-free for next-lap prediction.",
+  "implementation_hint": "Group by race-year/race and `LapNumber`; compute leave-one-out counts and rates of other cars with `PitStop` active. Interact these with current tyre pressure, late-race flags, and different-fresh-slick feasibility.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Contemporaneous field features assume the full lap snapshot is available at inference. If deployed online before all cars complete the lap, this would be invalid.",
+  "sources": [
+    "https://www.catapult.com/blog/motorsports-race-strategy-undercut-overcut"
+  ]
+}

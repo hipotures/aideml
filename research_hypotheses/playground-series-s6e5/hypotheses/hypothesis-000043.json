@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-compound field comparison",
+  "summary": "Compare each car only to same-lap peers on the same tyre compound.",
+  "rationale": "Same-compound context is more strategy-cohort specific than whole-field context. Lower-scoring attempts suggest this may be weaker alone, but it remains a focused complementary feature block.",
+  "implementation_hint": "Group by race-year/race, lap, and normalized `Compound`; add within-group ranks and median deltas for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, and `Position`. Include safe defaults for small groups.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence.",
+  "risk": "Sparse compound groups can be noisy, and previous attempts were not consistently strong; use only a few stable features.",
+  "sources": []
+}

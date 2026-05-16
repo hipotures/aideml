@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Current pit-stop interaction block",
+  "summary": "Use the current-lap pit-stop indicator as a state feature interacting with fresh tyres, stint, and race phase.",
+  "rationale": "The current `PitStop` column is available at prediction time and carries strong state information. Interactions can distinguish rows where a stop just occurred from rows likely to stop next.",
+  "implementation_hint": "Add interactions between current `PitStop` and `TyreLife`, `FreshTyre`, `Stint`, `RaceProgress`, `LapsRemaining_Est`, current compound, and current-tyre finish pressure. Avoid shifting `PitStop` forward or deriving next-lap pit labels.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Can become label-adjacent if incorrectly shifted; keep only current-row and prior-row uses.",
+  "sources": []
+}

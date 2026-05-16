@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Robust race-length estimation",
+  "summary": "Improve derived race-progress features by estimating total laps carefully and flagging unreliable progress calculations.",
+  "rationale": "Many successful feature blocks depend on estimated laps remaining. If that base estimate is unstable, downstream finish-window and stop-window features inherit noise.",
+  "implementation_hint": "Derive estimated total laps as `LapNumber / RaceProgress` with guards for zero or missing progress, clip to a plausible range, add estimated laps remaining, progress-squared, early/mid/late/final-phase flags, and invalid-progress indicators.",
+  "expected_effect": "Medium stability benefit with medium-high confidence; direct gain may be small but downstream features become safer.",
+  "risk": "Overly aggressive clipping could hide short-race or synthetic edge cases; expose both clipped and missingness flags.",
+  "sources": []
+}

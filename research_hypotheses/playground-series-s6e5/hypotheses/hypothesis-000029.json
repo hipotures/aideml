@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Degradation per tyre-age exposure",
+  "summary": "Normalize `Cumulative_Degradation` by tyre age and expected compound life to separate accumulated wear from stint length.",
+  "rationale": "Degradation-derived features were present in most stronger stacks. Per-age degradation can reveal unusual tyre stress that raw cumulative degradation does not capture.",
+  "implementation_hint": "Add degradation per `TyreLife`, degradation per expected compound life, absolute degradation, positive degradation pressure, and degradation-to-finish pressure interactions. Guard zero tyre life with a small denominator.",
+  "expected_effect": "Small to medium ROC AUC gain with medium-high confidence.",
+  "risk": "Noisy degradation at low tyre ages can create extreme ratios; clip or winsorize derived ratios.",
+  "sources": [
+    "https://www.catapult.com/blog/how-tyre-degradation-affects-race-strategy"
+  ]
+}

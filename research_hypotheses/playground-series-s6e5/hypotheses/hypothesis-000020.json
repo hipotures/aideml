@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Physically finishable but legally pressured",
+  "summary": "Distinguish cars that can finish on current tyres from cars that can finish physically but still owe a compound or stop obligation.",
+  "rationale": "The run suggested rule-state features are most meaningful when tied to finish feasibility. A car that can physically reach the flag may still have a regulatory or strategic reason to pit.",
+  "implementation_hint": "Combine current-tyre can-finish, remaining dry-compound debt after the current row, observed stop debt if available, and race phase. Add flags and margins for can-finish-but-owes-dry-compound, can-finish-but-owes-stop, and late-race legal pressure.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Regulation proxies are approximate and can be wrong for wet races, red flags, or special race rules; include exemption flags and avoid over-specific assumptions.",
+  "sources": [
+    "https://www.redbull.com/za-en/formula-1-tire-compounds-guide"
+  ]
+}

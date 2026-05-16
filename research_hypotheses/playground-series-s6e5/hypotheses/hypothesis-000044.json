@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adjacent-rival pressure",
+  "summary": "Capture immediate tactical pressure from the cars directly ahead and behind in current position order.",
+  "rationale": "Neighbor-pressure variants were attempted but often weaker or bug-prone. The concept is still relevant for undercut/cover decisions because direct rivals matter more than the whole field.",
+  "implementation_hint": "Within each race-lap snapshot, sort by `Position` and add ahead/behind peer values and deltas for tyre age, lap-time delta, degradation, and finish-window pressure. Restore original row order after assigning features.",
+  "expected_effect": "Small ROC AUC gain with low confidence.",
+  "risk": "Earlier versions suffered alignment issues and may overfit noisy position snapshots; implement only if row-index handling is robust.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

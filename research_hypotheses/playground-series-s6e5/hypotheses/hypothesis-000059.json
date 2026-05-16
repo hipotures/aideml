@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Position-adjusted tyre pressure",
+  "summary": "Interact tyre-window pressure with current position and position percentile to distinguish leaders, midfield, and backmarkers.",
+  "rationale": "Pit incentives differ by track position. The export frequently preserved position transforms, while direct neighbor features were fragile; position-adjusted pressure is a simpler tactical proxy.",
+  "implementation_hint": "Add interactions between compound-scaled tyre age or current finish pressure and raw `Position`, same-lap position percentile, top/mid/back flags, and lost-position amount.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Position can be entangled with pit cycles and race strength; pair it with current `PitStop` and fresh-tyre flags.",
+  "sources": []
+}

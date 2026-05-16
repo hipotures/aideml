@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Post-stop recovery context",
+  "summary": "Use current and past `PitStop`/fresh-tyre indicators to identify rows immediately after a stop and the first few laps of a new stint.",
+  "rationale": "The target is next-lap stopping, so rows just after a stop should usually carry a different risk profile from old-stint rows. The current-lap pit flag is an available feature, not the next-lap target.",
+  "implementation_hint": "Within each driver-race sequence, derive current stop observed, previous lap stop observed, laps since last observed stop, fresh-tyre-after-stop flags, and interactions between post-stop state and `TyreLife`, `Compound`, and `RaceProgress`.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Improper shifting could leak future stops; only use current and earlier rows.",
+  "sources": []
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Weather-class next-stop feasibility",
+  "summary": "Separate dry-running and wet-weather-running rows when evaluating feasible next-lap stop options.",
+  "rationale": "Class-aware fresh-tyre variants were plausible: dry strategy stops differ from wet/intermediate survival decisions. Pirelli’s tyre taxonomy supports treating slicks and wet-weather tyres as different classes.",
+  "implementation_hint": "Add `Is_Slick`, `Is_WetWeather`, and class-aware next-stop can-finish features: slick options for dry rows, wet/intermediate options for wet-weather rows, and mixed-class switch flags. Include class-specific signed margins.",
+  "expected_effect": "Small ROC AUC gain with medium confidence if wet-weather rows are present.",
+  "risk": "Sparse wet-weather examples may make class-specific flags noisy; keep raw compound and general feasibility features.",
+  "sources": [
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

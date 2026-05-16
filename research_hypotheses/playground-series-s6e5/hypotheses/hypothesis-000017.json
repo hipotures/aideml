@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stop-solves-current-pressure interaction",
+  "summary": "Create features for the strategic condition where the current tyre cannot finish but a next-lap fresh tyre can.",
+  "rationale": "The strongest strategy features combine two facts: the current stint is becoming untenable and a stop is now viable. Isolated current-window or fresh-window flags were useful, but their intersection is more operational.",
+  "implementation_hint": "Use current-tyre finish pressure and next-stop fresh feasibility to add binary and continuous interaction features: current-window-fails-and-fresh-slick-can-finish, pressure margin times best fresh margin, and late-race versions using estimated laps remaining.",
+  "expected_effect": "Small to medium ROC AUC gain with medium-high confidence.",
+  "risk": "If implemented only as hard thresholds, it may miss gradual strategy pressure; pair flags with continuous signed margins.",
+  "sources": []
+}

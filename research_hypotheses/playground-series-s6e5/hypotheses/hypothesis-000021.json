@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Observed pit-stop debt state",
+  "summary": "Use the current-row `PitStop` feature to count prior and current observed stops within each driver-race sequence.",
+  "rationale": "`PitStop` is available in both train and test as a current-lap feature, and several variants found value in chronological stop-count features. Prior/current stop count describes whether the driver has already executed a strategy stop.",
+  "implementation_hint": "Sort by race, driver, and lap; compute cumulative prior pit count from `PitStop`, cumulative count including the current row, no-prior-stop flags, current lap is pit stop, laps since last observed stop if inferable, and remaining one-stop debt proxies. Restore row order.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Current `PitStop` must not be confused with the next-lap target. Avoid using future pit stops or deriving next-lap labels from sequence shifts.",
+  "sources": []
+}

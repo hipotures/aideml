@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Next-lap current-tyre pressure",
+  "summary": "Create features that ask whether the current tyres cross a compound-life or finish-window boundary after exactly one more lap.",
+  "rationale": "Several strong variants moved from generic current-state pressure to target-aligned one-lap-ahead pressure. This fits the target definition: the label is whether the driver pits on the next lap, not merely whether the current tyre is old.",
+  "implementation_hint": "Using current-row values only, add one to `TyreLife` and reduce estimated laps remaining by one, then recompute compound-life ratio, signed finish margin, crossing flags, and late-race crossing flags for the hypothetical next lap without looking at future rows.",
+  "expected_effect": "Small to medium ROC AUC gain with medium-high confidence; it should improve ranking near strategy thresholds.",
+  "risk": "If `RaceProgress` is noisy, the boundary may be brittle; include continuous margins rather than only binary crossings.",
+  "sources": []
+}

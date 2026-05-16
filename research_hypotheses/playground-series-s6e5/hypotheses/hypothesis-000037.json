@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Best-so-far performance decay",
+  "summary": "Track how far the current lap’s pace has fallen from the driver’s best prior observed pace in the same race.",
+  "rationale": "Future-looking stint minima are unsafe, but causal best-so-far features preserve a similar performance-decay concept. The run explicitly pruned future-looking stint summaries and favored current/past alternatives.",
+  "implementation_hint": "Within each race-driver sequence, compute prior cumulative best or median-low `LapTime_Delta`/pace residual, then add current minus prior-best, current minus prior rolling median, and late-race decay flags. Use shifted cumulative statistics only.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "A single anomalous fast lap can distort best-so-far; consider robust prior quantile approximations or clipped differences.",
+  "sources": []
+}

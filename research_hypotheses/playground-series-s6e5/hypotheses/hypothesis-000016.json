@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Different-compound final-stop opening",
+  "summary": "Specialize final-stop window entry to cases where the newly feasible tyre is not the current dry compound.",
+  "rationale": "General fresh-slick feasibility worked well, and dry-compound obligation variants suggested that changing compound can be strategically distinct from fitting a fresher copy of the same compound.",
+  "implementation_hint": "After computing newly feasible fresh slicks, add whether any newly feasible option differs from the current `Compound`, the softest different newly feasible slick, and the best headroom among different-compound openings. Use only current compound and current-row remaining-distance estimates.",
+  "expected_effect": "Small expected ROC AUC gain with medium confidence; likely complementary to rule-state features.",
+  "risk": "May be redundant if AutoGluon already learns interactions between current compound and per-compound margins.",
+  "sources": []
+}

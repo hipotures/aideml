@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fresh-tyre wave among peers",
+  "summary": "Describe whether other cars on the same lap have recently switched to fresh tyres or new slick compounds.",
+  "rationale": "A driver may respond to competitors entering a new stint. Run variants with pit-wave and fresh-tyre peer features were plausible, though exact implementations varied.",
+  "implementation_hint": "Within race-lap groups, compute leave-one-out rates of peers with very low `TyreLife`, current slick newly observed, or current `PitStop` active. Add own pressure times peer fresh-rate interactions.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence.",
+  "risk": "Requires chronological new-slick flags to be computed safely before same-lap aggregation; avoid future compound history.",
+  "sources": []
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-specific expected-life adjustment",
+  "summary": "Adjust generic compound-life windows with causal race-level tyre-age context rather than full-race future summaries.",
+  "rationale": "Fixed SOFT/MEDIUM/HARD life constants were useful, but tyre longevity varies by circuit and race conditions. A causal race-specific adjustment may capture that variability without using future stint endpoints.",
+  "implementation_hint": "For each race and compound, compute prior-lap or current-lap peer tyre-age baselines and smooth them toward global compound constants. Add adjusted current-tyre finish margins and old-for-race-compound flags using only current or earlier race context.",
+  "expected_effect": "Small to medium ROC AUC gain with low-medium confidence.",
+  "risk": "Race-specific baselines can be noisy early in a race; use conservative fallback constants and missingness flags.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ]
+}

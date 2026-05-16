@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fresh and very-old tyre flags",
+  "summary": "Add simple state flags for very fresh tyres, old tyres, and very old tyres using raw and compound-scaled thresholds.",
+  "rationale": "Fresh-tyre and old-tyre states help capture the immediate aftermath of a stop and the build-up to the next one. The run frequently retained `FreshTyre` and old-for-compound style features.",
+  "implementation_hint": "Create flags for tyre life at very low values, tyre life above compound-specific age bands, and very-old-for-compound. Interact these with late race, current `PitStop`, and degradation signals.",
+  "expected_effect": "Small ROC AUC gain with medium-high confidence.",
+  "risk": "Thresholds may be coarse; avoid splitting many tiny threshold variants into separate experiments.",
+  "sources": []
+}

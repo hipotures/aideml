@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Compound-scaled tyre age",
+  "summary": "Normalize tyre age by compound durability rather than relying on raw `TyreLife`.",
+  "rationale": "Raw tyre age is not comparable across SOFT, MEDIUM, HARD, INTERMEDIATE, and WET. The run consistently retained compound expected-life ratios in stronger branches.",
+  "implementation_hint": "Map each compound to expected life, then add tyre-life-to-expected-life ratio, remaining expected life, over-expected-life amount, old-for-compound flags, and interactions with race phase.",
+  "expected_effect": "Medium ROC AUC gain with high confidence.",
+  "risk": "Constants are approximate; make the ratio robust to missing compounds and preserve the raw compound category.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Compound switch novelty",
+  "summary": "Represent whether the current compound is newly observed, repeated, or a return to a previously used compound.",
+  "rationale": "The dry-compound history block showed value, but a richer current-switch state may better identify active strategy transitions and rule satisfaction.",
+  "implementation_hint": "Within each driver-race sequence, track previous compound, compounds seen before current row, current is new slick, current is same as previous, current is return to seen compound, and compound-switch-with-current-pit flags.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Needs careful current/past ordering and robust string normalization; rare compound patterns may be sparse.",
+  "sources": []
+}

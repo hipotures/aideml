@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Group-relative numeric medians",
+  "summary": "Subtract target-free group baselines from core numeric columns while avoiding future driver-race sequence statistics.",
+  "rationale": "Context-normalized numeric deltas appeared in many strong preprocessing stacks, but full-race future summaries are risky under the task’s causal ordering. A safer version uses same-lap race context and broad compound/year baselines rather than future driver-specific information.",
+  "implementation_hint": "For same-lap race groups, add current-row-minus-race-lap medians for pace, degradation, tyre age, and position. For broad non-sequential groups such as `Compound` or `Year`, add target-free global median deltas. Avoid within-driver-race future summaries.",
+  "expected_effect": "Small to medium ROC AUC gain with medium-high confidence.",
+  "risk": "Broad global medians are target-free but still transductive in a static table; avoid using future rows within a driver-race sequence.",
+  "sources": []
+}

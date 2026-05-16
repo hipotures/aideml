@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Current-counted dry-compound obligation",
+  "summary": "Track dry slick compound diversity within each race-driver sequence up to and including the current row.",
+  "rationale": "Chronological dry-compound obligation features were repeatedly promising. Counting only prior compounds can miss the fact that the current row’s compound may already satisfy part of the dry-compound rule state.",
+  "implementation_hint": "Temporarily sort by race context, driver, and lap. Within each sequence, track the set of observed slick compounds using only current and earlier rows, add current-counted slick diversity, remaining dry-compound debt, current compound is new, and late-race limited-diversity flags, then restore original row order.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence; useful for late-race legal/strategy pressure.",
+  "risk": "Sequence sorting must be stable and row-aligned; do not use future stint endpoints or future compounds.",
+  "sources": [
+    "https://www.redbull.com/za-en/formula-1-tire-compounds-guide"
+  ]
+}

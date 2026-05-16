@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Debt urgency per remaining lap",
+  "summary": "Convert remaining stop or compound obligations into urgency ratios using estimated laps remaining.",
+  "rationale": "Rule-state features become more predictive as the race approaches the finish. The run found late-race pressure versions more plausible than raw debt counts alone.",
+  "implementation_hint": "For each remaining obligation proxy, add debt divided by estimated laps remaining plus a small constant, binary few-laps-left-with-debt flags, and interactions with current-tyre can-finish and next-stop can-finish features.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Estimated laps remaining can be unstable early in the race; clip denominators and add missing/invalid progress flags.",
+  "sources": []
+}

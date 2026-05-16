@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race phase bins and smooth progress",
+  "summary": "Represent race phase with both continuous and thresholded progress features.",
+  "rationale": "Pit-stop timing is phase-dependent: early stops, middle-window stops, and final stops have different meanings. Race phase features were part of most stronger preprocessing stacks.",
+  "implementation_hint": "Add `RaceProgress` polynomial terms, estimated laps remaining, early/mid/late/final-quarter/final-ten-laps indicators, and interactions between phase flags and tyre-life or finish-window pressure.",
+  "expected_effect": "Small to medium ROC AUC gain with high confidence.",
+  "risk": "Thresholds can be redundant with tree models; keep only a few interpretable phase bins and continuous features.",
+  "sources": []
+}

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leave-one-out peer pressure",
+  "summary": "Estimate how much pressure other cars on the same race lap are under, excluding the current car.",
+  "rationale": "Several peer-pressure variants were attempted; the mechanism is relevant because pit windows often occur in waves. Leave-one-out aggregation avoids letting the row’s own pressure dominate its peer signal.",
+  "implementation_hint": "For each race-lap group, compute group sums/counts for key binary and continuous pressure features, subtract the current row’s value, and divide by the number of peers. Add peer mean pressure, peer high-pressure rate, and own-minus-peer pressure deltas.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Groups with one car need safe defaults; past attempts failed when grouped Series/DataFrame indexes were misaligned.",
+  "sources": []
+}

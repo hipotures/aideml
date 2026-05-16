@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-weather exemption for dry-compound debt",
+  "summary": "Clear dry-compound obligation pressure once wet or intermediate running has appeared in the current driver-race sequence.",
+  "rationale": "Weather-aware rule-state variants appeared technically plausible and avoided treating wet races as normal dry compound-rotation decisions. Pirelli describes intermediates and wets as distinct wet-weather tyre classes.",
+  "implementation_hint": "Within the chronological driver-race slick-history block, maintain a current-or-prior wet-weather-seen flag for INTERMEDIATE or WET compounds. Set remaining dry-compound debt to zero or add an exempted flag when wet-weather running has occurred.",
+  "expected_effect": "Small ROC AUC gain with medium confidence; most useful if the dataset contains mixed-weather races.",
+  "risk": "If wet-weather rows are rare, this may add sparse features with little effect; keep the block compact.",
+  "sources": [
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

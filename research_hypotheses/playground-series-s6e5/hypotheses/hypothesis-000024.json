@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Unseen viable slick choices",
+  "summary": "Count next-lap fresh slick choices that are both finish-capable and not yet used by the driver in the race.",
+  "rationale": "This combines the public-supported fresh-slick option family with the chronological slick-diversity family. It helps separate a stop that merely refreshes tyres from one that can also satisfy compound-variety pressure.",
+  "implementation_hint": "Within each driver-race sequence, track current-or-prior slick compounds seen. For each row, compare viable next-lap fresh slicks against the seen set and add unseen viable count, softest unseen viable slick, and unseen-different-slick-can-finish flags.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Requires careful current/past chronology; do not mark future compounds as seen.",
+  "sources": []
+}

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Position-loss pressure",
+  "summary": "Use position change and current track position as indicators of tactical urgency.",
+  "rationale": "Position and position-change transforms were retained broadly. Losing positions on old or degrading tyres can precede a pit decision, while gaining positions may reduce urgency.",
+  "implementation_hint": "Add absolute position change, lost-position amount, gained-position amount, position percentile within race-lap field, and interactions between lost positions, old-for-compound, and positive lap-time delta.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Position change can reflect pit cycles already underway rather than tyre condition; combine with current pit and fresh-tyre indicators.",
+  "sources": []
+}

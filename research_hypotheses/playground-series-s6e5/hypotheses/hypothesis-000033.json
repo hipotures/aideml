@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Observed stint reset state",
+  "summary": "Infer current stint starts from tyre-life drops, compound changes, or current pit-stop flags and add causal stint-age features.",
+  "rationale": "Stint-state variants were explored with mixed results but remain operationally relevant. A clean reset detector may capture pit-cycle timing better than raw `Stint` alone.",
+  "implementation_hint": "Within each race-driver sequence, mark a reset when `TyreLife` decreases, compound changes, `Stint` increases, or current `PitStop` is active. Add observed stint number, laps since observed stint start, prior stint length if known from past rows, and current stint progress ratios.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Do not use future stint endpoints. Prior stint length is only safe after a reset has already been observed.",
+  "sources": []
+}

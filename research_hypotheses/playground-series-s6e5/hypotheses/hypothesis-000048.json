@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Compact categorical interactions",
+  "summary": "Add a small set of domain-relevant categorical crosses instead of broad interaction explosions.",
+  "rationale": "The run repeatedly used `Race_Year`, race-compound, driver-compound, and driver-race style context. Broad interaction bloat was less clearly useful, so a curated set is preferable.",
+  "implementation_hint": "Create string interactions such as `Race_Year`, `Race_Compound`, `Driver_Compound`, `Driver_Race`, and `Compound_Stint` when source columns exist. Add frequencies for these interactions but avoid high-order crosses beyond three fields.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "High-cardinality crosses can overfit random holdouts; keep the interaction set compact and preserve raw categories.",
+  "sources": []
+}

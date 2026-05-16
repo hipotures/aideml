@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fresh-tyre next-stop finish feasibility",
+  "summary": "Model whether a pit stop on the next lap would put the car on tyres capable of reaching the flag.",
+  "rationale": "The strongest observed idea family was the complementary view to current-tyre pressure: not only whether the current tyre is exhausted, but whether a next-lap stop creates a feasible final stint. This directly maps to pit-window decision logic.",
+  "implementation_hint": "Compute estimated laps remaining after a next-lap stop and compare it with fixed fresh-life windows for SOFT, MEDIUM, HARD, INTERMEDIATE, and WET. Add any-fresh-can-finish, any-fresh-slick-can-finish, best fresh margin, and stop-solves-current-pressure indicators.",
+  "expected_effect": "Medium expected ROC AUC gain with high confidence; it was consistently useful and compact.",
+  "risk": "Approximate life windows may be race-dependent; keep both class-level flags and continuous margins to reduce threshold overfit.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.catapult.com/blog/how-tyre-degradation-affects-race-strategy"
+  ]
+}

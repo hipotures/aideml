@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wear-by-pace interaction",
+  "summary": "Combine tyre-life pressure with lap-time and degradation loss to identify tyres approaching a performance cliff.",
+  "rationale": "Single-source tyre-age signals miss cases where a young tyre is performing poorly or an old tyre is still competitive. The run often combined tyre, degradation, and lap-time features.",
+  "implementation_hint": "Create products or ratios between compound-scaled tyre age and positive lap-time delta, cumulative degradation, degradation per tyre life, and current-tyre finish pressure. Keep interactions limited to a compact set of physically meaningful pairs.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Interaction bloat was not consistently beneficial; use a small curated set and avoid exhaustive cross-products.",
+  "sources": []
+}

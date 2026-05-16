@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monaco two-stop rule proxy",
+  "summary": "Add a conservative special-case stop-debt proxy for Monaco races in years affected by mandatory multi-stop rules.",
+  "rationale": "Several later run variants explored a Monaco rule-state override. External F1 reporting confirms Monaco received a mandatory strategy change requiring at least three tyre sets and at least two compounds in dry conditions, making race/year-specific stop debt potentially informative.",
+  "implementation_hint": "When normalized `Race` indicates Monaco and `Year` matches the affected season, set a higher required observed-stop or tyre-set debt proxy. Combine it with current/prior observed `PitStop`, wet-weather exemption, race phase, and finish feasibility. Keep this as a small conditional block.",
+  "expected_effect": "Small ROC AUC gain with low-medium confidence; useful only if matching rows exist in the dataset.",
+  "risk": "Highly race/year-specific and potentially harmful if the synthetic task does not encode that rule; include a clear default fallback and avoid broad calendar assumptions.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.reuters.com/sports/formula1/f1s-monaco-grand-prix-have-mandatory-two-stops-2025-02-26/"
+  ]
+}

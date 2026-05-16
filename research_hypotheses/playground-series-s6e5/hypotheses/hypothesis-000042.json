@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap pace shock",
+  "summary": "Summarize lap-wide disruptions using same-race-lap lap-time delta dispersion and extreme slow rates.",
+  "rationale": "Some variants near the stronger range used race-lap pace shock summaries. Lap-wide slowdowns can affect pit decisions independently of individual tyre wear.",
+  "implementation_hint": "For each race-lap group, compute median `LapTime_Delta`, positive-delta share, dispersion, high-quantile positive delta, and extreme-slow rate. Add own-minus-median and lap-shock-with-tyre-pressure interactions.",
+  "expected_effect": "Small ROC AUC gain with medium confidence.",
+  "risk": "Lap-wide shocks can reflect safety cars or traffic not explicitly observed; same-lap aggregation must be target-free and row-aligned.",
+  "sources": []
+}

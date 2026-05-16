@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Minimal high-signal strategy stack",
+  "summary": "Combine only the most stable strategy mechanisms into a compact first-pass feature stack.",
+  "rationale": "The run suggests the strongest reusable signal is a small set: compound-scaled tyre pressure, current-tyre finish feasibility, next-stop fresh-slick feasibility, slick-option richness, race phase, and dry-compound state. Larger stacks with many peer and rolling features did not consistently dominate.",
+  "implementation_hint": "Build a single compact `preprocess` block with original columns plus race-length estimation, compound expected-life pressure, current and next-stop finish windows, fresh-slick option count/margins, current-counted slick diversity, and a few robust degradation/lap-time transforms. Exclude broad rolling and neighbor blocks in this first test.",
+  "expected_effect": "Medium ROC AUC and stability gain with high confidence.",
+  "risk": "May miss incremental gains from field context, but it should provide a cleaner baseline for later ablations.",
+  "sources": []
+}

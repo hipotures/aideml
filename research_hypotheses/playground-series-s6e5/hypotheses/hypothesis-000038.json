@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-lap field-relative context",
+  "summary": "Compare each car with the contemporaneous field on the same race lap for tyre age, pace, degradation, and position.",
+  "rationale": "Field-relative features were broadly explored and often present in strong synthetic stacks, though not always dominant. Pit decisions are relative to competitors as well as absolute tyre state.",
+  "implementation_hint": "Group by race-year/race and `LapNumber`, then add medians, ranks, percentile ranks, z-scores, and row-minus-field-median for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, `Position`, and `Position_Change`. Use current-lap values only.",
+  "expected_effect": "Small to medium ROC AUC gain with medium confidence.",
+  "risk": "Same-lap peer blocks had some implementation failures from index alignment; use transform-style group operations and preserve row order.",
+  "sources": []
+}
