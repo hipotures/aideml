@@ -661,6 +661,11 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     assert "Do not invent identifiers." in prompt_text
     assert "Do not copy exact scores or exact score deltas" in prompt_text
     assert "Stable hypothesis identifiers and experiment-linking metadata" in prompt_text
+    assert "external research is a required stage" in prompt_text
+    assert "exact-competition Kaggle notebooks" in prompt_text
+    assert "Do not copy public solutions directly." in prompt_text
+    assert "Distinguish weak from low-confidence." in prompt_text
+    assert "Low-confidence hypotheses may be valuable" in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
     assert "train.csv.gz" in result.stdout

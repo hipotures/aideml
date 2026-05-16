@@ -148,6 +148,11 @@ def test_playground_templates_render_without_placeholder_documentation(
     assert "Do not invent identifiers." in rendered
     assert "Do not copy exact scores or exact score deltas" in rendered
     assert "Stable hypothesis identifiers and experiment-linking metadata" in rendered
+    assert "external research is a required stage" in rendered
+    assert "exact-competition Kaggle notebooks" in rendered
+    assert "Do not copy public solutions directly." in rendered
+    assert "Distinguish weak from low-confidence." in rendered
+    assert "Low-confidence hypotheses may be valuable" in rendered
     assert "downloadable file" in rendered
     assert "Otherwise return the JSON directly" in rendered
     assert "under 1 hour" in rendered

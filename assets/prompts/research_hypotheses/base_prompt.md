@@ -61,9 +61,17 @@ How to read the export:
 - Use run-specific identifiers only while analyzing. Do not include them in the
   final JSON.
 
-If web browsing or external research is available, use it to strengthen the
-hypotheses with real, relevant sources. If web browsing is not available, do
-not invent sources.
+When web browsing, Kaggle CLI, or external research tools are available,
+external research is a required stage, not an optional embellishment.
+
+Use external research to discover candidate hypothesis families that may be
+absent from the attached AIDE run or from the model's prior knowledge.
+Prioritize exact-competition Kaggle notebooks, discussions, write-ups, and
+closely related tabular/time-aware binary classification solutions.
+
+Do not copy public solutions directly. Convert externally found techniques
+into generalized, leakage-safe, budget-compatible hypotheses. If external
+research tools are not available, do not invent sources.
 
 Critical output rule:
 Do NOT include any run-specific identifiers or measurements in the final output.
@@ -127,6 +135,9 @@ Field rules:
   just to reach the maximum count.
 - Prefer fewer strong, distinct, falsifiable hypotheses over filling the
   maximum with second-tier variants.
+- Distinguish weak from low-confidence. Low-confidence hypotheses may be valuable if they test a distinct mechanism; weak hypotheses are generic,
+  redundant, untestable, impossible to attribute, or incompatible with the
+  experiment budget.
 - Each hypothesis object must contain exactly these fields: `title`, `summary`, `rationale`, `implementation_hint`, `expected_effect`, `risk`, `sources`.
 - The `summary` field is required. It must not be a duplicate of the title.
 - The `sources` field is required and must always be an array.
