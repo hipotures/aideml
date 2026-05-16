@@ -1318,6 +1318,49 @@ def test_run_log_summary_uses_latest_lines_and_clips_width(tmp_path):
     assert "Fold 2 ROC AUC - XGB: 0.949261, CatBoost: 0.949…" in output
 
 
+def test_run_log_summary_shows_active_hypothesis_when_process_log_is_missing(
+    tmp_path,
+):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+
+    output = _render_text(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=3,
+            max_width=48,
+            missing_log_hint=(
+                "Hypothesis 000122\n"
+                "Title: Rival-relative pit-wave features\n"
+                "Try: Add current-lap rival aggregate features."
+            ),
+        )
+    )
+
+    assert "Hypothesis 000122" in output
+    assert "Title: Rival-relative pit-wave features" in output
+    assert "Try: Add current-lap rival aggregate features." in output
+    assert "waiting for process log" not in output
+
+
+def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    (artifact_dir / "process_stdout.log").write_text("real execution log\n")
+
+    output = _render_text(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=3,
+            max_width=48,
+            missing_log_hint="Hypothesis 000122\nTitle: hidden",
+        )
+    )
+
+    assert "real execution log" in output
+    assert "Hypothesis 000122" not in output
+
+
 def test_stage_status_message_names_review_stage():
     assert stage_status_message("generating") == "[green]Generating code..."
     assert stage_status_message("executing") == "[magenta]Executing code..."

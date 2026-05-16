@@ -855,6 +855,19 @@ def format_hypothesis_for_prompt(
     return "\n".join(lines)
 
 
+def format_hypothesis_for_log_panel(
+    selection: ManualHypothesisSelection,
+) -> str:
+    hypothesis = selection.hypotheses[0]
+    lines = [
+        f"Hypothesis {hypothesis.id}",
+        f"Title: {_compact_prompt_text(hypothesis.title, 180)}",
+        f"Summary: {_compact_prompt_text(hypothesis.summary, 260)}",
+        f"Try: {_compact_prompt_text(hypothesis.implementation_hint, 360)}",
+    ]
+    return "\n".join(line for line in lines if line.strip())
+
+
 def _metric_value(node: Node) -> float | None:
     return None if node.metric is None else node.metric.value
 

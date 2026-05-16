@@ -1438,9 +1438,20 @@ def build_run_log_summary(
     *,
     max_lines: int,
     max_width: int,
+    missing_log_hint: str | None = None,
 ) -> Group:
     log_path = active_run_log_path(active_artifact_dir)
     if log_path is None:
+        if missing_log_hint:
+            hint_lines = missing_log_hint.splitlines()
+            if len(hint_lines) > max_lines:
+                hint_lines = hint_lines[:max_lines]
+            return Group(
+                *(
+                    Text(_clip_log_line(line, max_width=max_width), style="dim")
+                    for line in hint_lines
+                )
+            )
         return Group(Text("waiting for process log", style="dim"))
 
     log_lines = _tail_log_lines(log_path, max_lines=max_lines)
@@ -2288,6 +2299,11 @@ def run(argv: list[str] | None = None):
                     active_artifact_dir,
                     max_lines=log_line_count,
                     max_width=log_width,
+                    missing_log_hint=(
+                        agent.active_research_hypothesis_log_hint
+                        if agent.active_stage == "generating"
+                        else None
+                    ),
                 ),
                 (0, 1, 0, 1),
             ),

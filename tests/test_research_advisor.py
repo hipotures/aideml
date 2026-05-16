@@ -1309,6 +1309,55 @@ def test_agent_includes_hard_hypothesis_contract_in_draft_prompt(
     assert node.research_source_hash == "sha256:test"
 
 
+def test_agent_exposes_active_hypothesis_log_hint_during_generation(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000122",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Rival-relative pit-wave features",
+                summary="Use current-lap peer pit context.",
+                rationale="Pit decisions often react to nearby rivals.",
+                implementation_hint="Add current-lap rival aggregate features.",
+                expected_effect="Improves reactive stop timing signal.",
+                risk="Avoid future laps and target-derived aggregates.",
+                sources=[],
+                path=tmp_path / "hypothesis-000122.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    captured_hint = {}
+
+    def fake_plan_and_code(_prompt):
+        captured_hint["value"] = agent.active_research_hypothesis_log_hint
+        return "I will verify hypothesis 000122.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    hint = captured_hint["value"]
+    assert "Hypothesis 000122" in hint
+    assert "Title: Rival-relative pit-wave features" in hint
+    assert "Summary: Use current-lap peer pit context." in hint
+    assert "Try: Add current-lap rival aggregate features." in hint
+
+
 def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
