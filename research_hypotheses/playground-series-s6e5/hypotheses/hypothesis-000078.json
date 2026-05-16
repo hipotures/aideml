@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Observed](https://www.kaggle.com/competitions/playground-series-s6e5/discussion/696380%22]},{%22title%22:%22Observed) stop-debt pressure from PitStop counts",
+  "summary": "Track how many pit stops have already been observed and whether the car still appears to owe a strategic stop late in the race.",
+  "rationale": "Chronological PitStop-derived rule-state features were among the stronger local families but were not submitted as often, making them promising underexplored candidates. They connect naturally to mandatory stop requirements and late-race pressure.",
+  "implementation_hint": "For each driver-race sequence, compute prior observed stop count, stop count including the current row, remaining assumed stop debt before and after the current row, stop debt per remaining lap, and finish-capable-but-still-owes-stop interactions. Test the block with and without current PitStop included.",
+  "expected_effect": "Small to medium AUC gain with medium confidence.",
+  "risk": "Counting future pit stops would directly leak. Current-row PitStop is allowed, but a prior-only ablation should be reported.",
+  "sources": []
+}

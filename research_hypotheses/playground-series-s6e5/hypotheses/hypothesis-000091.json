@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP](https://www.kaggle.com/code/masayakawamata/s6e5-stacking-vibe-coding%22,%22https://www.kaggle.com/code/oskarseweryn/playground-s6e5-tabular-ensemble/log%22]},{%22title%22:%22RealMLP) or PyTabKit diversity model",
+  "summary": "Train a compact RealMLP/PyTabKit tabular neural model on the engineered feature set and use it only as a diversity component in a blend.",
+  "rationale": "External notebooks for this competition explored RealMLP/PyTabKit, suggesting a neural tabular model may provide prediction diversity beyond gradient-boosted trees. The attached run did not explore this family directly.",
+  "implementation_hint": "Use pytabkit RealMLP with bounded runtime, standardized numeric features, encoded categoricals, and the same OOF folds as tree models. First test standalone OOF behavior and then a small blend with LightGBM/CatBoost predictions.",
+  "expected_effect": "Small blend gain with medium-low confidence; standalone performance may be weaker than trees but useful for diversity.",
+  "risk": "GPU/CPU runtime and package compatibility can be limiting. Do not let the neural model dominate the blend unless OOF evidence is strong.",
+  "sources": [
+    "[https://www.kaggle.com/code/yekenot/ps-s6-e5-realmlp-pytabkit",
+    "https://www.kaggle.com/code/masayakawamata/s6e5-realmlp-with-fe"
+  ]
+}

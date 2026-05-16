@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Same-lap leave-one-out peer pressure",
+  "summary": "Compare each driver to other drivers on the same race lap using leave-one-out averages of tyre pressure, final-stop feasibility, and current PitStop context.",
+  "rationale": "Same-race/same-lap peer features were frequently attempted and sometimes promising but failure-prone. A correctly implemented version may capture whether a car is unusually likely to pit relative to the field at the same moment.",
+  "implementation_hint": "For Year-Race-LapNumber groups, compute row-aligned leave-one-out means and deltas for a small set of engineered pressure features, TyreLife, LapTime_Delta, Cumulative_Degradation, Position, and PitStop. Use transform-based group sizes and sums to avoid MultiIndex alignment failures.",
+  "expected_effect": "Small AUC gain with medium-low confidence; useful as a distinct relative-context mechanism.",
+  "risk": "Contemporaneous peer data must be considered available for batch prediction; if enforcing per-driver online causality only, restrict to prior-lap peer aggregates. Implementation risk is high unless groupby outputs are row-aligned.",
+  "sources": []
+}

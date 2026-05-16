@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Time-since-pit and stint-reset state",
+  "summary": "Use current and prior PitStop plus TyreLife/Stint progression to represent laps since last observed pit, fresh-tyre reset status, and post-stop cooldown.",
+  "rationale": "PitStop is an allowed current-row feature, and next-lap pit probability depends on whether a car just stopped, is between stops, or is nearing another stop. The run explored stop-debt logic but did not fully isolate reset/cooldown behavior.",
+  "implementation_hint": "Within each driver-race sequence, compute prior PitStop count, laps since last prior PitStop, current PitStop indicator, fresh-after-stop flags, TyreLife reset consistency, and interactions with Stint and RaceProgress. Use only current and previous rows, not future pit events.",
+  "expected_effect": "Small to medium AUC gain with medium confidence.",
+  "risk": "Current PitStop can be a strong proxy but can be misused if future stops are counted. Keep separate prior-only and including-current features so causality is explicit.",
+  "sources": [
+    "[https://www.kaggle.com/competitions/playground-series-s6e5/discussion/696380"
+  ]
+}

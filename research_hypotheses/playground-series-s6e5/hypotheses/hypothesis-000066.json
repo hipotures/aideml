@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Final-stop window-opening indicators",
+  "summary": "Distinguish cars already inside a fresh-tyre finish window from cars for which that window becomes newly feasible on the next lap.",
+  "rationale": "The run repeatedly explored window-entry timing, and it is a target-aligned boundary condition for predicting next-lap stops. The signal is more specific than general feasibility because teams often pit when the final stint first becomes viable.",
+  "implementation_hint": "For each slick compound, compute whether it cannot finish if stopping now but can finish if stopping next lap, plus an opening-count aggregate, softest-opening ordinal, and closest-opening-boundary margin. Test this as an addition to the option-richness block and ablate per-compound flags versus compact aggregates.",
+  "expected_effect": "Small AUC gain with medium confidence; strongest expected on late-race boundary rows.",
+  "risk": "Implementation bugs occurred when boolean opening flags were converted to integers before reuse. Keep intermediate conditions boolean until all selection or masking operations are complete.",
+  "sources": []
+}

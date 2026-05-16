@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Projected degradation pressure to the finish",
+  "summary": "Use current degradation and tyre age to estimate whether degradation would become problematic if the driver stayed out to the finish.",
+  "rationale": "The attached run kept degradation and lap-time-loss transforms in most stronger feature stacks. A projected degradation pressure feature ties those continuous signals directly to remaining distance and current tyre age.",
+  "implementation_hint": "Create degradation per TyreLife, positive cumulative degradation, clipped LapTime_Delta pressure, projected degradation over remaining laps using simple linear extrapolation, and interactions with current-tyre finish margin. Test against a version using only raw degradation columns.",
+  "expected_effect": "Small AUC gain with medium confidence.",
+  "risk": "Linear extrapolation is simplistic and may amplify outliers. Clip extreme values and avoid using future degradation trends.",
+  "sources": []
+}

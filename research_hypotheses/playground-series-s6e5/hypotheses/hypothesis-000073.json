@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fold-safe driver historical encodings",
+  "summary": "Test smoothed out-of-fold encodings and frequency features for Driver and Driver-by-context combinations to capture driver/team-like latent strategy tendencies.",
+  "rationale": "The Driver column is high-cardinality but all test drivers appear in training, and external notebooks emphasize driver feature engineering. A fold-safe driver prior may capture persistent strategy, car, or team effects not represented by raw telemetry columns.",
+  "implementation_hint": "Create OOF-smoothed target encodings for Driver, Driver-Year, Driver-Compound, and Driver-Race only if fold groups prevent same-context leakage. Pair them with non-target counts and frequency encodings; compare target-encoded versus frequency-only driver blocks.",
+  "expected_effect": "Small to medium AUC gain with medium confidence.",
+  "risk": "Driver encodings are vulnerable to random-split leakage and memorization. Use smoothing, minimum-count fallback, and grouped validation by Race-Year or driver-race context.",
+  "sources": [
+    "[https://www.kaggle.com/code/pilkwang/s6e5-driver-s-high-driver-feature-eng"
+  ]
+}

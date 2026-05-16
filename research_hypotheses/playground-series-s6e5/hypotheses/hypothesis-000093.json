@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Group-aware](https://www.kaggle.com/code/mohankrishnathalla/ps-s6e5-full-eda-feature-engineering-models%22]},{%22title%22:%22Group-aware) validation suite",
+  "summary": "Replace single random holdout selection with a validation report spanning stratified random folds, Race-Year grouped folds, and season-holdout or race-holdout stress tests.",
+  "rationale": "The run's local and submitted outcomes did not always agree qualitatively, and many feature variants were duplicate-heavy. A broader validation suite is needed to distinguish real generalization from random-split memorization of race and year contexts.",
+  "implementation_hint": "For each candidate solution, compute OOF AUC under StratifiedKFold, StratifiedGroupKFold grouped by Race-Year, and a small set of leave-year or leave-race stress folds. Use random folds for continuity but select hypotheses by consistency across folds rather than by a single score.",
+  "expected_effect": "Large improvement in experiment reliability; direct AUC may not increase immediately, but selected models should be more robust.",
+  "risk": "Grouped validation can understate performance if the public test is randomly sampled from the same Race-Year contexts. Treat it as a robustness diagnostic, not the only selection criterion.",
+  "sources": []
+}

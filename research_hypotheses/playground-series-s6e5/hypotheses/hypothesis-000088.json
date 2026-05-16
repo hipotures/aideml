@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Canonical feature pruning to reduce duplicate signals",
+  "summary": "Prune redundant aliases and keep one canonical version of each race-state, finish-window, option-count, and rule-state signal.",
+  "rationale": "The run produced many exact or near-identical submissions from feature variants, indicating that redundant features often did not change predictions. A compact canonical stack can improve runtime, attribution, and ensemble diversity.",
+  "implementation_hint": "Keep one naming convention and one or two ratios per concept: current finish margin, next-stop option count, window-opening count, prior pit debt, slick-diversity debt, and core raw transforms. Compare prediction correlation and validation behavior against a larger feature stack.",
+  "expected_effect": "Small stability and runtime improvement with medium-high confidence; AUC may stay similar while reducing overfit.",
+  "risk": "Pruning can remove a weak but useful interaction feature. Use an ablation table rather than pruning all variants at once.",
+  "sources": []
+}

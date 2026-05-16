@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Small](https://www.kaggle.com/code/oskarseweryn/playground-s6e5-tabular-ensemble/log%22,%22https://www.kaggle.com/code/mohankrishnathalla/ps-s6e5-full-eda-feature-engineering-models%22]},{%22title%22:%22Small) OOF stacking layer for model diversity",
+  "summary": "Use out-of-fold predictions from a few diverse base models as inputs to a lightweight logistic or ridge-style stacker, with a simple average as the control.",
+  "rationale": "External exact-competition notebooks emphasize stacking from strong OOF predictions. Different models may rank boundary pit-window cases differently even with the same features.",
+  "implementation_hint": "Generate OOF predictions from direct tree models and optionally one neural tabular model; train a regularized logistic regression or shallow LightGBM stacker only on OOF predictions and a few core context features. Compare stacker versus equal-weight and OOF-AUC-weighted blends.",
+  "expected_effect": "Small to medium AUC gain with medium confidence if base predictions are sufficiently diverse.",
+  "risk": "Stacking is highly validation-sensitive and can overfit when folds leak Race-Year context. Keep the stacker low-capacity and validate with grouped folds.",
+  "sources": [
+    "[https://www.kaggle.com/code/masayakawamata/s6e5-stacking-vibe-coding",
+    "https://www.kaggle.com/code/oskarseweryn/playground-s6e5-tabular-ensemble/log"
+  ]
+}

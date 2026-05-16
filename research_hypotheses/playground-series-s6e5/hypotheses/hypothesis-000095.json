@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Bounded hyperparameter refinement for top tree models",
+  "summary": "Run a narrow Optuna or manual tuning pass for LightGBM and CatBoost around depth, learning rate, regularization, and leaf count using the selected feature stack.",
+  "rationale": "The run focused mostly on feature generation, and direct model control was limited by an automated wrapper. Once validation is stabilized, small bounded tuning can improve ranking without turning into an exhaustive search.",
+  "implementation_hint": "Use a small number of trials per model family, fixed folds, early stopping, and a compact search space around conservative defaults. Tune only after the canonical feature stack is chosen and keep a no-tuning baseline for attribution.",
+  "expected_effect": "Small to medium AUC gain with medium confidence after feature selection.",
+  "risk": "Broad sweeps violate the budget and can overfit validation. Stop if repeated trials converge to similar OOF predictions without validation consistency gains.",
+  "sources": []
+}

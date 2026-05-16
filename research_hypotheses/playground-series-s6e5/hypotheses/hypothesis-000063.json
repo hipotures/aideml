@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Signed](https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit%22,%22https://www.kaggle.com/code/lucabasa/f1-strategy-eda-and-base-models%22]},{%22title%22:%22Signed) finish margins instead of binary stop flags",
+  "summary": "Preserve continuous tyre-to-finish margins and normalized shortfalls alongside binary can-finish flags.",
+  "rationale": "The run contained many near-duplicate thresholded variants, while continuous margin variants appeared more reusable because they let tree models learn track-, phase-, and compound-specific cut points. This reduces information loss from hard thresholds.",
+  "implementation_hint": "For each compound-life pressure feature, add signed laps-to-window margin, positive shortfall, margin divided by remaining laps, and margin interacted with late-race phase. Keep binary flags only as companion features and compare against a binary-only version.",
+  "expected_effect": "Small AUC/ranking improvement with medium confidence.",
+  "risk": "Too many algebraically similar ratios can create duplicate-heavy predictions. Keep a compact set and ablate binary-only versus margin-plus-binary versions.",
+  "sources": []
+}

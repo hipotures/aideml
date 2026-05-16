@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Dry-compound obligation and slick-diversity state",
+  "summary": "Track prior slick compounds used in lap order and mark cars that still appear to need a different dry compound late in the race.",
+  "rationale": "The run repeatedly found chronological slick-history features useful, and Formula 1 dry races normally require multiple tyre compounds. This is a rule-state mechanism distinct from tyre-wear pressure.",
+  "implementation_hint": "Within each driver-race sequence, maintain the set/count of slick compounds observed up to the current row, flag whether the current slick is newly appearing, count remaining slick-compound debt, and interact the debt with late-race and current-tyre can-finish features. Downweight or clear the dry obligation when wet/intermediate running is observed.",
+  "expected_effect": "Small AUC gain with medium confidence; strongest expected in late dry-race rows.",
+  "risk": "A set built from all rows in the sequence would leak future compound usage. Use cumulative state only through the current lap.",
+  "sources": [
+    "[https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Robust](https://www.kaggle.com/competitions/playground-series-s6e5/discussion/698434%22]},{%22title%22:%22Robust) race-length estimation and clamping",
+  "summary": "Stabilize estimated total laps and remaining laps by combining LapNumber/RaceProgress estimates with race-level fallback constants and anomaly handling.",
+  "rationale": "Many high-value features depend on remaining laps, while direct division can produce pathological total-lap estimates on anomalous rows. A robust estimator should improve downstream feature stability.",
+  "implementation_hint": "Compute total-lap estimates from LapNumber divided by RaceProgress, round to plausible Formula 1 race lengths, clamp impossible values, and fallback to train-only Race-Year or Race medians when estimates are unstable. Apply the same deterministic mapping to train and test without target access.",
+  "expected_effect": "Small AUC and stability gain with medium confidence; mainly a support improvement for final-stint features.",
+  "risk": "Race-Year medians computed from all rows in a race can use future-lap information if handled carelessly. Prefer static row-derived estimates or train-only mappings.",
+  "sources": []
+}

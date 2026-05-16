@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Robust LapTime and degradation outlier handling",
+  "summary": "Clip or transform extreme LapTime, LapTime_Delta, and Cumulative_Degradation values before building ratio and projection features.",
+  "rationale": "Raw-data inspection showed very large lap-time and delta extremes, and these columns feed several engineered ratios. Robust preprocessing can prevent a few anomalous rows from dominating model splits or derived features.",
+  "implementation_hint": "Winsorize selected numeric columns using training quantiles inside each fold or globally on training data only, then create clipped absolute and positive versions. Compare clipped-features-plus-raw against raw-only so the model can still use anomaly information if helpful.",
+  "expected_effect": "Small stability gain with medium confidence; AUC impact may be small but should reduce brittle splits.",
+  "risk": "Over-clipping can remove genuine safety-car or pit-lap signals. Keep raw columns alongside clipped variants in the first experiment.",
+  "sources": []
+}

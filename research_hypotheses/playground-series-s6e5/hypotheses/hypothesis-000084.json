@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Nearby-position rival strategy pressure",
+  "summary": "Summarize tyre and stop-pressure states of nearby rivals in track position rather than the entire field.",
+  "rationale": "Run variants around undercut and nearby-position context were less consistently strong but technically distinct. Pit decisions can be driven by covering or undercutting cars close in race order rather than by field-wide averages.",
+  "implementation_hint": "Within each Year-Race-LapNumber group, sort by Position and compute leave-one-out rolling summaries for rivals within a small position window, including current-tyre finish pressure, next-stop feasibility, PitStop, and LapTime_Delta. Compare the current row to these local-rival summaries.",
+  "expected_effect": "Small AUC gain with low-medium confidence.",
+  "risk": "Position-window features are more complex and may overfit or fail on small same-lap groups. Keep only a few aggregates and test after the simpler same-lap peer block.",
+  "sources": []
+}

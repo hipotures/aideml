@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Class imbalance and race-group sample weighting",
+  "summary": "Test whether moderate positive-class weighting or Race-Year balancing improves ranking without distorting high-prevalence contexts.",
+  "rationale": "The target is imbalanced and rows are unevenly distributed across races and seasons. Tree models may overweight common race contexts or under-rank positive examples in sparse contexts.",
+  "implementation_hint": "Compare three training modes for LightGBM and CatBoost: no weights, mild positive-class weight, and inverse Race-Year frequency times mild positive-class weight. Keep the model and features fixed to isolate the weighting effect.",
+  "expected_effect": "Small AUC or robustness gain with low-medium confidence.",
+  "risk": "AUC does not require calibrated class balance, and aggressive weighting can hurt if test sampling mirrors training row frequencies. Use mild weights only.",
+  "sources": []
+}

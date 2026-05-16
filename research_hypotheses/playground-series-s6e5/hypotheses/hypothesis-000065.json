@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fresh-slick](https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit%22]},{%22title%22:%22Fresh-slick) option richness after a next-lap stop",
+  "summary": "Extend next-lap fresh-slick feasibility with the number of viable slick choices, per-compound margins, the softest viable slick, and whether a different slick can finish.",
+  "rationale": "Variants adding option richness produced very similar strong predictions in the run, suggesting the mechanism is stable but somewhat duplicate-prone. Strategy flexibility near the final-stop window is distinct from a single any-can-finish flag.",
+  "implementation_hint": "For fresh SOFT, MEDIUM, and HARD after a next-lap stop, add per-compound finish margins, option count, best and worst viable margin, softest viable ordinal, and a different-from-current-slick viability flag. Compare this against the simpler next-stop-feasibility block.",
+  "expected_effect": "Small to medium AUC gain with medium-high confidence; expected to help ranking around final-stop boundaries.",
+  "risk": "Avoid generating many aliases of the same option-count logic. Check public/validation consistency with grouped validation, not a single random holdout.",
+  "sources": []
+}

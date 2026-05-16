@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Next-lap fresh-slick finish feasibility",
+  "summary": "Add features answering whether a pit stop on the next lap could put the car on a fresh slick compound that can reach the finish.",
+  "rationale": "The strongest recurring strategy mechanism in the attached run was the complement between current-tyre finish pressure and next-lap stop feasibility. It matches the target definition because the decision is specifically about a pit stop on the following lap.",
+  "implementation_hint": "Compute laps remaining after one more lap and compare that value against fixed fresh SOFT, MEDIUM, and HARD life windows. Add any-fresh-slick-can-finish, minimum fresh-slick margin, and next-stop-solves-current-finish-pressure features using only current-row values and deterministic constants.",
+  "expected_effect": "Medium AUC gain with high confidence; this should be one of the first additions after the causal baseline.",
+  "risk": "Do not use actual future compound choices or future stint endings. The feature must represent hypothetical feasibility, not observed next-lap outcome.",
+  "sources": [
+    "[https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit"
+  ]
+}

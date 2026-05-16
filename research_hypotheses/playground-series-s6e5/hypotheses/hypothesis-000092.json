@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost](https://www.kaggle.com/code/yekenot/ps-s6-e5-realmlp-pytabkit%22,%22https://www.kaggle.com/code/masayakawamata/s6e5-realmlp-with-fe%22]},{%22title%22:%22CatBoost) native categorical baseline",
+  "summary": "Run a controlled CatBoost model that keeps Driver, Race, Compound, Year, and engineered context categories as native categorical features rather than only frequency or ordinal encodings.",
+  "rationale": "The data contains high-cardinality categoricals with complete train/test overlap, and external notebooks include CatBoost as a core model. Native ordered target statistics can capture category effects while reducing manual encoding complexity when validation is configured correctly.",
+  "implementation_hint": "Train CatBoostClassifier with categorical feature indices, moderate depth, early stopping, and grouped OOF folds. Compare raw categoricals only, raw plus frequency encodings, and raw plus fold-safe target encodings to determine whether manual encodings are additive.",
+  "expected_effect": "Small to medium AUC gain with medium confidence.",
+  "risk": "CatBoost ordered statistics still depend on fold design and random seed. High-cardinality Driver interactions may overfit under random holdout.",
+  "sources": [
+    "[https://www.kaggle.com/code/mohankrishnathalla/ps-s6e5-full-eda-feature-engineering-models"
+  ]
+}

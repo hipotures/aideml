@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Monaco 2025 mandatory two-stop pressure",
+  "summary": "Add a special rule-state feature for Monaco 2025 where the race required at least two pit stops and at least three tyre sets.",
+  "rationale": "External Formula 1 sources confirm the 2025 Monaco special rule, and the attached run explored this rule-state idea qualitatively. A small explicit feature can capture regulation-driven pit pressure that generic tyre windows may miss.",
+  "implementation_hint": "When Race indicates Monaco and Year indicates 2025, set required pit stops to two and required tyre sets to three; otherwise use the normal conservative requirement. Derive remaining required stops from prior and current PitStop counts and interact with RaceProgress and current-tyre finish capability.",
+  "expected_effect": "Small AUC gain with low-medium confidence because it affects a narrow subset, but it is high-value domain validation.",
+  "risk": "Do not apply the Monaco two-stop override to other years. Hard-coding may hurt if the competition data generation does not reflect the regulation cleanly.",
+  "sources": [
+    "[https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.mercedesamgf1.com/news/the-unique-new-rule-for-the-2025-monaco-grand-prix"
+  ]
+}

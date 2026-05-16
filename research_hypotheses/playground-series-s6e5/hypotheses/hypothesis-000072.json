@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fold-safe](https://www.kaggle.com/competitions/playground-series-s6e5/overview%22]},{%22title%22:%22Fold-safe) Race-Year and Compound target encodings",
+  "summary": "Use smoothed out-of-fold target encodings for Race-Year, Race, Compound, Year, and selected low-order interactions to capture stable base-rate differences.",
+  "rationale": "The run did not materially explore target encodings, while raw data shows large context-level target shifts. Fold-safe encodings can expose this signal without leaking labels into validation folds.",
+  "implementation_hint": "Within each training fold, compute smoothed means for Race-Year, Race, Compound, Year, Race-Compound, and Year-Compound using only fold-training rows; map validation and test rows with fallback to global prior. Compare against pure categorical trees under grouped folds.",
+  "expected_effect": "Medium AUC gain possible; confidence medium because encodings can be powerful but validation-sensitive.",
+  "risk": "Leakage risk is high if encodings are computed on the full training data before validation. They may also overfit exact Race-Year contexts under random holdout.",
+  "sources": []
+}

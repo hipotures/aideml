@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Race-phase pit-window proximity",
+  "summary": "Add proximity-to-phase features for common pit windows such as one-third distance, halfway, two-thirds distance, and final-quarter pressure.",
+  "rationale": "External Kaggle discussion highlighted race-track target patterns by RaceProgress, and the run found race phase and remaining-lap estimates useful. Pit strategy is often concentrated around phase windows rather than uniformly across laps.",
+  "implementation_hint": "Using estimated total laps and current LapNumber, compute distance to common phase marks, indicators for entering each window, and interactions with tyre-pressure features. Keep this as a small feature block and compare against RaceProgress alone.",
+  "expected_effect": "Small AUC gain with medium confidence; potentially stronger on races with conventional multi-stop windows.",
+  "risk": "Fixed phase marks may be too generic for special races or safety-car-like disruptions. Do not fit phase marks from public leaderboard feedback.",
+  "sources": [
+    "[https://www.kaggle.com/competitions/playground-series-s6e5/discussion/698434"
+  ]
+}

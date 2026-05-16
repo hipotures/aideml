@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Prior-only driver-race rolling pace and wear trends",
+  "summary": "Compute lagged, shifted rolling, and EWMA features within each Driver-Race-Year sequence to describe recent tyre degradation and pace trend before the current lap.",
+  "rationale": "Several run variants attempted prior-only rolling signals, and they are domain-plausible for tyre cliff behavior. They were less consistently strong than final-stint windows but remain a distinct causal mechanism.",
+  "implementation_hint": "Temporarily sort by Year, Race, Driver, and LapNumber; for LapTime_Delta, Cumulative_Degradation, Position_Change, and TyreLife, add previous value, previous delta, shifted rolling means, shifted EWMA, and cumulative positive degradation up to the previous lap. Restore original row order before modeling.",
+  "expected_effect": "Small AUC gain with medium-low confidence; potentially useful as a diversification feature block.",
+  "risk": "Using current or future rows in rolling windows would leak. Use transform or explicit reindexing to avoid groupby alignment failures.",
+  "sources": []
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal split between preprocessing and fold-dependent encoders",
+  "summary": "Separate deterministic feature engineering from fold-dependent target encodings and model fitting so that leakage checks remain simple and encodings remain valid.",
+  "rationale": "The attached run's preprocessing guard correctly caught target access, but this also means any future target encoding must be handled outside generic preprocessing. A clean pipeline boundary reduces leakage and implementation ambiguity.",
+  "implementation_hint": "Stage one creates only target-free deterministic features for train and test. Stage two, inside each CV fold, fits target encoders and scalers on fold-training rows, transforms validation/test rows, and trains models. Stage three blends OOF predictions. Keep all stages row-indexed by original id.",
+  "expected_effect": "Medium improvement in validation trust and experiment composability; AUC effect depends on whether fold-safe encodings are added.",
+  "risk": "The pipeline is more complex than a single preprocessing function. Mistakes in test-time averaging of fold encoders can still create inconsistencies.",
+  "sources": []
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Direct tree-model OOF ensemble",
+  "summary": "Train separate LightGBM, CatBoost, and XGBoost models on the canonical feature stack and blend their out-of-fold predictions.",
+  "rationale": "The run used an automated wrapper around tree families, while external competition notebooks show strong tabular ensembles and stacking approaches. A direct implementation gives control over folds, categorical handling, and leakage-safe OOF predictions within the allowed package set.",
+  "implementation_hint": "Use a fixed grouped or stratified fold scheme, train one LightGBM, one CatBoost, and one XGBoost model with modest parameters and early stopping, collect OOF/test predictions, and test a simple mean plus an OOF-weighted blend. Keep the first run to one seed per model.",
+  "expected_effect": "Medium AUC gain or stability gain with medium confidence, especially if validation is improved over random holdout.",
+  "risk": "Runtime can grow with three models but should fit the budget with early stopping. Weighting on a weak validation split can overfit; include simple average as the baseline.",
+  "sources": [
+    "[https://www.kaggle.com/code/oskarseweryn/playground-s6e5-tabular-ensemble/log",
+    "https://www.kaggle.com/code/mohankrishnathalla/ps-s6e5-full-eda-feature-engineering-models"
+  ]
+}

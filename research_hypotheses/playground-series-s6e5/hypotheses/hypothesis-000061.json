@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal race-state baseline feature block",
+  "summary": "Build a compact baseline around current-row race phase, estimated remaining distance, compound class, tyre-age ratios, degradation transforms, and position-change indicators while preserving all raw columns.",
+  "rationale": "The attached run repeatedly showed that raw features alone were weaker than deterministic race/stint context, and raw-data inspection showed complete columns with shared train/test categories. A row-preserving causal baseline gives later experiments a stable anchor without target-derived or future-lap features.",
+  "implementation_hint": "Use only current-row columns to derive estimated total laps, laps remaining, race-phase flags, compound ordinal and slick/wet flags, TyreLife ratios, positive/absolute LapTime_Delta and degradation, and signed position-change flags. Train a bounded LightGBM or CatBoost baseline and keep this feature block as the ablation reference.",
+  "expected_effect": "Medium expected ROC AUC improvement over a raw-only tree model; confidence high as a robust baseline rather than a final differentiator.",
+  "risk": "Estimated total laps can be unstable on anomalous RaceProgress rows. Clamp implausible estimates and avoid per-race aggregates that use future laps within the same sequence.",
+  "sources": [
+    "[https://www.kaggle.com/competitions/playground-series-s6e5/overview"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Feature-engineering implementation hardening",
+  "summary": "Add strict checks that every engineered feature is row-aligned, target-free, and computed from allowed current or past information before model fitting.",
+  "rationale": "Many failed run variants came from target references, stale submissions, pandas MultiIndex misalignment, and non-boolean masks. Preventing invalid experiments is a reusable research improvement, especially for peer and rolling feature families.",
+  "implementation_hint": "Separate y before preprocessing; forbid PitNextLap, split markers, and row ids in feature transforms; assert row count and row order after preprocessing; check duplicate column names; use groupby.transform or explicit reindexing for rolling and leave-one-out features; and fail fast before training if any invalid column appears.",
+  "expected_effect": "Large improvement in experiment validity and throughput; indirect AUC impact comes from making previously failure-prone ideas testable.",
+  "risk": "Guards can be overly conservative and block legitimate target encodings if they are not implemented inside the fold-training loop. Keep target encoding in a separate fold-safe transformer stage.",
+  "sources": []
+}

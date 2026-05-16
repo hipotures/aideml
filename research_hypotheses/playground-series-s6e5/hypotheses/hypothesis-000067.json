@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Class-aware dry versus wet next-stop feasibility",
+  "summary": "Separate dry-slick strategy windows from wet/intermediate survival windows instead of treating all compounds as one tyre class.",
+  "rationale": "The raw data contains slick, intermediate, and wet compounds, and several run variants attempted class-aware feasibility. Separate representation can prevent wet-weather rows from diluting dry-compound final-stop logic.",
+  "implementation_hint": "Create compound-class flags and evaluate dry-running rows against SOFT/MEDIUM/HARD final-stint windows, while wet/intermediate rows get simpler continuation or switch-pressure features. Keep the first experiment compact: class-specific can-finish, option count, and class-mismatch transition flags.",
+  "expected_effect": "Small AUC gain with medium confidence; likely most useful for rare wet/intermediate rows and false-pressure reduction on non-slick rows.",
+  "risk": "Wet rows are sparse, so detailed wet constants may overfit. Use coarse class features first and avoid target-derived wet priors unless fold-safe.",
+  "sources": []
+}

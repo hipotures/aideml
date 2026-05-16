@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Year and Race-Year interaction handling",
+  "summary": "Make Year, Race, and Race-Year interactions first-class categorical features because pit-stop prevalence and strategy patterns differ strongly by season and circuit.",
+  "rationale": "Raw-data inspection showed major season and race-specific shifts, and the run repeatedly retained Race-Year context. Explicit interactions can capture systematic strategy regimes without relying only on high-cardinality driver noise.",
+  "implementation_hint": "Create Race_Year, Compound_Year, Race_Compound, and coarse Year-by-race-phase interactions. In validation, report random stratified AUC and Race-Year-grouped AUC to ensure interactions are not merely memorizing one split.",
+  "expected_effect": "Small to medium AUC gain with medium-high confidence for in-distribution test rows.",
+  "risk": "Race-Year interactions can overfit if validation splits identical race-year contexts randomly. Grouped validation is required for a realistic robustness check.",
+  "sources": [
+    "[https://www.kaggle.com/competitions/playground-series-s6e5/overview"
+  ]
+}

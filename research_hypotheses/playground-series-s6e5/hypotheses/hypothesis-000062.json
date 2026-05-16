@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Current-tyre](https://www.kaggle.com/competitions/playground-series-s6e5/overview%22]},{%22title%22:%22Current-tyre) finish-margin pressure",
+  "summary": "Model whether the current tyre can plausibly reach the finish by comparing TyreLife plus estimated remaining laps against conservative compound-life windows.",
+  "rationale": "Current-compound finish pressure was one of the most recurring high-signal feature families in the run and is directly aligned with next-lap pit incentives. Tyres that cannot finish create immediate strategy pressure.",
+  "implementation_hint": "Assign fixed expected-life constants for SOFT, MEDIUM, HARD, INTERMEDIATE, and WET, then create current-tyre finish margin, shortfall, can-finish flag, normalized pressure, and late-race cannot-finish interactions. Test fixed constants first before any narrow constant tuning.",
+  "expected_effect": "Small to medium AUC gain with high confidence, especially inside tree models.",
+  "risk": "Incorrect constants can encode brittle assumptions across seasons and tracks. Do not derive actual stint endpoints from future rows of the same driver-race sequence.",
+  "sources": [
+    "[https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit",
+    "https://www.kaggle.com/code/lucabasa/f1-strategy-eda-and-base-models"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Previous-lap](https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq%22,%22https://www.mercedesamgf1.com/news/the-unique-new-rule-for-the-2025-monaco-grand-prix%22]},{%22title%22:%22Previous-lap) pit-wave field context",
+  "summary": "Use previous race-lap PitStop counts to capture field-level pit waves that may trigger next-lap reactions.",
+  "rationale": "Pit decisions are often clustered by race phase and competitor behavior, and the run included past-only race context ideas. Previous-lap pit-wave features are safer than current/future sequence summaries and can reflect undercut/cover dynamics.",
+  "implementation_hint": "Aggregate PitStop counts and rates by Year-Race-LapNumber, shift these aggregates forward by one and two laps within each race, and map them to current rows. Add interactions with current position, tyre-pressure, and next-stop-feasibility features.",
+  "expected_effect": "Small AUC gain with medium confidence.",
+  "risk": "Using current-lap or future-lap pit-wave counts changes the interpretation. For a strictly causal version, use only prior race-lap aggregates; test current-lap leave-one-out separately.",
+  "sources": []
+}

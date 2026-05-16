@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Same-lap pace-shock field context",
+  "summary": "Capture race-lap-wide pace disruptions by summarizing LapTime_Delta dispersion, positive-share, and changes versus the previous race lap.",
+  "rationale": "The run explored latent pace-shock blocks; they were not among the strongest families but address a plausible mechanism where safety-car-like or traffic disruptions alter pit timing. This is distinct from individual tyre ageing.",
+  "implementation_hint": "For each Year-Race-LapNumber, compute median LapTime_Delta, spread, upper-tail share, extreme-slow share, and the difference from the prior race-lap median. Add row-minus-field pace shock and interactions with current pit feasibility.",
+  "expected_effect": "Small AUC gain with low-medium confidence.",
+  "risk": "LapTime_Delta has extreme outliers, so robust clipping is required. Same-lap aggregates must not include future laps, and row alignment must be tested carefully.",
+  "sources": []
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Compound-specific tyre ageing hazard bins",
+  "summary": "Represent pit hazard as a function of compound-specific tyre age using coarse bins, old-for-compound flags, and tyre-age interactions with race phase.",
+  "rationale": "Raw target behavior is strongly tied to tyre age and stint state, and the run showed tyre-pressure features as consistently useful. Binned hazard features can capture non-linear age effects that a single ratio may miss.",
+  "implementation_hint": "For each compound class, create coarse TyreLife bins, old/very-old flags based on fixed compound thresholds, TyreLife times late-race phase, and TyreLife divided by expected compound life. Test separately from final-stop feasibility to isolate whether age-hazard features add information.",
+  "expected_effect": "Small to medium AUC gain with medium confidence.",
+  "risk": "Overly fine bins can overfit race- and season-specific stint distributions. Use a small number of bins and let tree models learn interactions.",
+  "sources": []
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal group-normalized numeric context",
+  "summary": "Replace broad full-race medians with train-only, historical, or same-lap contemporaneous normalizations for lap time, degradation, tyre age, and position.",
+  "rationale": "Group-relative numeric features were repeatedly included in stronger run variants, but full Race-Year aggregation can be future-looking if it uses later laps from the same event. A causal version can retain relative context while respecting sequence ordering.",
+  "implementation_hint": "Test three safe alternatives: train-only static medians by Race, Year, and Compound; same-lap leave-one-out medians across contemporaneous drivers; and prior-lap race aggregates shifted by LapNumber. Add row-minus-context and ratio-to-context features for LapTime_Delta, Cumulative_Degradation, TyreLife, Position, and RaceProgress.",
+  "expected_effect": "Small to medium AUC gain with medium confidence and better validation trust than full-event aggregates.",
+  "risk": "Same-lap context assumes contemporaneous field data is available at prediction time. Full-event medians using future laps should be excluded under the stated leakage rules.",
+  "sources": []
+}

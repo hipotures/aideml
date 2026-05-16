@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Leakage-safe](https://www.kaggle.com/code/pilkwang/s6e5-driver-s-high-driver-feature-eng%22]},{%22title%22:%22Leakage-safe) categorical frequency encodings",
+  "summary": "Add count and frequency encodings for high-cardinality categorical contexts without using the target.",
+  "rationale": "Frequency encodings appeared in stronger synthesis-style feature stacks, and the raw data has many Driver values with no missing categorical values. Non-target frequencies can help tree models understand category reliability and train/test coverage.",
+  "implementation_hint": "Compute train-only or combined train-test frequencies for Driver, Race, Race-Year, Compound, Driver-Year, and Race-Compound. Add log-count and rare-category flags while keeping raw categorical columns for CatBoost.",
+  "expected_effect": "Small AUC/stability gain with medium confidence.",
+  "risk": "Combined train-test frequencies are transductive; they avoid target leakage but exploit test-distribution availability. Compare train-only versus combined frequencies under the same validation scheme.",
+  "sources": []
+}

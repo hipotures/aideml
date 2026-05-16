@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Wet-weather](https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE%22]},{%22title%22:%22Wet-weather) rule-state transitions",
+  "summary": "Model transitions into and out of INTERMEDIATE/WET running and let wet-weather appearances modify dry-compound obligation features.",
+  "rationale": "Wet and intermediate rows are less frequent but strategically different; normal dry-compound requirements may not apply in the same way. The run included wet-class flags but did not deeply isolate wet transition state.",
+  "implementation_hint": "Create cumulative prior wet/intermediate seen flags, current weather-class switch indicators, laps since entering wet class, and interactions between wet-state and stop-debt or compound-obligation features. Keep constants coarse and test as a small add-on to slick-diversity state.",
+  "expected_effect": "Small AUC gain with low-medium confidence; likely improves rare-condition ranking more than global AUC.",
+  "risk": "Sparse wet data can overfit. Avoid detailed wet target priors unless they are smoothed and fold-safe.",
+  "sources": []
+}
