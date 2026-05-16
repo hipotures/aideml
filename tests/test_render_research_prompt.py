@@ -141,8 +141,13 @@ def test_playground_templates_render_without_placeholder_documentation(
     assert "Required placeholders:" not in rendered
     assert "short task name or slug" not in rendered
     assert "This prompt is ONLY for" not in rendered
-    assert "Always include exactly 10 hypotheses." in rendered
-    assert "Convert those patterns into 10 reusable" in rendered
+    assert "Generate up to 10 hypotheses." in rendered
+    assert "Do not pad the list" in rendered
+    assert "Convert those patterns into up to 10 reusable" in rendered
+    assert "Do not include `id`, `hypothesis_id`, `experiment_id`" in rendered
+    assert "Do not invent identifiers." in rendered
+    assert "Do not copy exact scores or exact score deltas" in rendered
+    assert "Stable hypothesis identifiers and experiment-linking metadata" in rendered
     assert "downloadable file" in rendered
     assert "Otherwise return the JSON directly" in rendered
     assert "under 1 hour" in rendered

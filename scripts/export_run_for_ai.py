@@ -63,7 +63,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--hypothesis-count",
         type=positive_int,
         default=10,
-        help="Number of hypotheses the rendered prompt should request.",
+        help="Maximum number of hypotheses the rendered prompt should request.",
     )
     parser.add_argument(
         "--allowed-packages",

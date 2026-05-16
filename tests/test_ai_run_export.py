@@ -654,8 +654,13 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     assert "AIDE is an automated ML coding and search system" in prompt_text
     assert "`train.csv` or `train.csv.gz" in prompt_text
     assert "AutoGluon" not in prompt_text
-    assert "Always include exactly 7 hypotheses." in prompt_text
-    assert "Convert those patterns into 7 reusable" in prompt_text
+    assert "Generate up to 7 hypotheses." in prompt_text
+    assert "Do not pad the list" in prompt_text
+    assert "Convert those patterns into up to 7 reusable" in prompt_text
+    assert "Do not include `id`, `hypothesis_id`, `experiment_id`" in prompt_text
+    assert "Do not invent identifiers." in prompt_text
+    assert "Do not copy exact scores or exact score deltas" in prompt_text
+    assert "Stable hypothesis identifiers and experiment-linking metadata" in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
     assert "train.csv.gz" in result.stdout
@@ -703,6 +708,7 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
     )
     assert "--prompt-mode" in result.stdout
     assert "--hypothesis-count" in result.stdout
+    assert "Maximum number of hypotheses" in result.stdout
     assert "--allowed-packages" in result.stdout
     assert "--data-dir" in result.stdout
     assert "--skip-data-files" in result.stdout

@@ -92,8 +92,12 @@ Your job:
    missingness, train/test differences, feature distributions, and leakage
    risks relevant to the hypotheses.
 4. Identify which ideas appear promising, weak, overfit-prone, duplicated, underexplored, or unstable.
-5. Convert those patterns into {{HYPOTHESIS_COUNT}} reusable development hypotheses.
+5. Convert those patterns into up to {{HYPOTHESIS_COUNT}} reusable development hypotheses.
 6. Each hypothesis must be self-contained: an AIDE coding agent should understand and test it without needing access to node ids, step ids, score tables, or previous run internals.
+7. Treat the output as a hypothesis registry for later empirical testing, not as
+   a final ranking of ideas. Later AIDE runs will evaluate hypotheses from
+   repeated experiment statistics, score movement, failures, duplicate checks,
+   and validation/public consistency when available.
 
 Return only valid JSON, no markdown, no comments, no prose outside JSON.
 Do not include Python code in the output.
@@ -118,7 +122,11 @@ JSON format:
 }
 
 Field rules:
-- Always include exactly {{HYPOTHESIS_COUNT}} hypotheses.
+- Generate up to {{HYPOTHESIS_COUNT}} hypotheses.
+- Do not pad the list with weak, redundant, generic, or low-value hypotheses
+  just to reach the maximum count.
+- Prefer fewer strong, distinct, falsifiable hypotheses over filling the
+  maximum with second-tier variants.
 - Each hypothesis object must contain exactly these fields: `title`, `summary`, `rationale`, `implementation_hint`, `expected_effect`, `risk`, `sources`.
 - The `summary` field is required. It must not be a duplicate of the title.
 - The `sources` field is required and must always be an array.
@@ -127,7 +135,14 @@ Field rules:
 - Do not invent external sources.
 - Do not include `enabled`.
 - Do not include `agent_modes`.
-- Do not include `id`.
+- Do not include `id`, `hypothesis_id`, `experiment_id`, `run_id`,
+  `node_id`, `step`, `parent_id`, `child_id`, submission hashes, or any
+  storage-layer metadata.
+- Do not invent identifiers.
+- Stable hypothesis identifiers and experiment-linking metadata will be
+  assigned by the orchestration layer after this JSON is parsed.
+- Do not copy exact scores or exact score deltas from the attached export.
+  Qualitative expected-effect estimates are allowed.
 - Do not include `body`.
 - Do not add any fields beyond the required schema.
 - Do not truncate strings. Return complete valid JSON.
@@ -137,7 +152,13 @@ Field rules:
 
 Quality rules:
 - Prefer concrete, testable ideas over generic Kaggle advice.
+- Do not treat your own prior confidence as a hard filter. Include a
+  low-confidence idea if it tests a distinct mechanism, addresses an
+  underexplored area, comes from credible external research, or can falsify an
+  important assumption.
 - Every hypothesis must have a minimal verification path that fits the experiment budget.
+- The `implementation_hint` must describe the smallest practical first
+  experiment that isolates the hypothesis as much as possible.
 - Do not propose huge feature explosions, exhaustive interaction generation, broad hyperparameter sweeps, large ensembles, or multi-hour training as the first verification step.
 - Each hypothesis should represent one meaningful mechanism or change family
   whose effect can be attributed after testing. Do not bundle several unrelated
