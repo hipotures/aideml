@@ -4,9 +4,9 @@ Allowed implementation scope:
   preprocessing, out-of-fold encodings, model blending, calibration, and longer
   experimental pipelines when justified.
 
-Allowed third-party packages for first experiments:
+Allowed third-party packages:
 - {{ALLOWED_PACKAGES}}
-- Treat this as the allowed third-party package set for first-pass hypotheses.
+- Treat this as the allowed third-party package set for generated hypotheses.
 - Do not propose installing new dependencies as part of an experiment.
 - Do not make a hypothesis depend on a package outside this set unless the
   `implementation_hint` includes a fallback using packages from this list.

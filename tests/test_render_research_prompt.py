@@ -160,7 +160,9 @@ def test_playground_templates_render_without_placeholder_documentation(
         assert "AutoGluon" not in rendered
         assert "legacy/manual" not in rendered
         assert "Legacy/manual" not in rendered
-        assert "Allowed third-party packages for first experiments" in rendered
+        assert "Allowed third-party packages:" in rendered
+        assert "first-pass" not in rendered
+        assert "for first experiments" not in rendered
         assert "`lightgbm`" in rendered
         assert "`catboost`" in rendered
         assert "`optuna`" in rendered
