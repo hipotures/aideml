@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from aide.agent import Agent, review_func_spec
@@ -20,7 +21,20 @@ def _cfg(tmp_path: Path):
 def test_review_schema_is_valid_for_codex_structured_output():
     assert review_func_spec.json_schema["additionalProperties"] is False
     assert "validity_warning" in review_func_spec.json_schema["required"]
+    assert "research_hypotheses_llm_claimed_used" in review_func_spec.json_schema[
+        "required"
+    ]
+    assert "research_usage_note" in review_func_spec.json_schema["required"]
     assert review_func_spec.json_schema["properties"]["validity_warning"]["type"] == [
+        "string",
+        "null",
+    ]
+    assert review_func_spec.json_schema["properties"][
+        "research_hypotheses_llm_claimed_used"
+    ]["items"]["type"] == "string"
+    assert review_func_spec.json_schema["properties"]["research_usage_note"][
+        "type"
+    ] == [
         "string",
         "null",
     ]
@@ -139,3 +153,69 @@ def test_parse_exec_result_keeps_metric_when_review_reports_validity_warning(
     assert node.metric.value == 0.949967
     assert node.metric.maximize is True
     assert node.validity_warning == "Possible leakage from same-lap aggregate features."
+
+
+def test_parse_exec_result_records_manual_research_claimed_usage(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "manual"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    node.research_mode = "manual"
+    node.research_hypotheses_offered = ["000001", "000002"]
+    node.research_source_hash = "sha256:test"
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.91\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": False,
+            "summary": "Used grouped validation research.",
+            "metric": 0.91,
+            "lower_is_better": False,
+            "validity_warning": None,
+            "research_hypotheses_llm_claimed_used": ["000001"],
+            "research_usage_note": "The review claims 000001 influenced validation.",
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.research_hypotheses_llm_claimed_used == ["000001"]
+    assert node.research_usage_note == "The review claims 000001 influenced validation."
+    usage = json.loads((Path(cfg.log_dir) / "research_hypotheses" / "usage.json").read_text())
+    assert usage["000001"]["llm_claimed_used_count"] == 1
+    assert node.id in usage["000001"]["llm_claimed_used_node_ids"]
+
+
+def test_parse_result_marker_records_manual_research_claim_from_plan(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "manual"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(
+        code="print('ok')",
+        plan="I intentionally use manual research hypothesis 000002.",
+    )
+    node.research_mode = "manual"
+    node.research_hypotheses_offered = ["000001", "000002"]
+    node.research_source_hash = "sha256:test"
+    exec_result = ExecutionResult(
+        term_out=[
+            'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+            '"metric": 0.92, "lower_is_better": false}\n'
+        ],
+        exec_time=1.0,
+        exc_type=None,
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.research_hypotheses_llm_claimed_used == ["000002"]
+    assert node.research_usage_note == (
+        "Plan text mentioned offered manual research hypothesis id(s): 000002."
+    )

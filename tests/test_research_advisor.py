@@ -3,6 +3,7 @@ import json
 import subprocess
 from pathlib import Path
 
+import aide.research as research
 from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
 from aide.journal import Journal, Node
@@ -70,6 +71,46 @@ def _write_research_checkpoint(
     return checkpoint
 
 
+def _write_manual_hypothesis(
+    root: Path,
+    task_slug: str,
+    hypothesis_id: str,
+    *,
+    title: str = "Grouped validation",
+    summary: str = "Use grouped validation to reduce public/CV mismatch.",
+    body: str = "Full research body with evidence and implementation notes.",
+    enabled: bool = True,
+) -> Path:
+    path = (
+        root
+        / "research_hypotheses"
+        / task_slug
+        / "hypotheses"
+        / f"hypothesis-{hypothesis_id}.json"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "enabled": enabled,
+                "title": title,
+                "summary": summary,
+                "body": body,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _manual_cfg(tmp_path: Path):
+    cfg = _cfg(tmp_path)
+    data_dir = tmp_path / "playground-series-s6e5"
+    data_dir.mkdir(exist_ok=True)
+    cfg.data_dir = data_dir
+    return cfg
+
+
 def test_build_data_overview_includes_compact_column_schema(tmp_path):
     input_dir = tmp_path / "input"
     input_dir.mkdir()
@@ -97,6 +138,178 @@ def test_build_data_overview_includes_compact_column_schema(tmp_path):
     assert "-> input/train.csv has 2 rows and 5 columns." in overview
     assert "Driver (object) has 2 unique values" in overview
     assert "TyreLife (int64)" in overview
+
+
+def test_manual_hypothesis_library_indexes_json_files_from_task_slug(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000002")
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Compact option-richness block",
+        summary="Prune alias-heavy features from the option-richness block.",
+    )
+
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+
+    assert library.task_slug == "playground-series-s6e5"
+    assert library.source_dir == (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5"
+    )
+    assert [hypothesis.id for hypothesis in library.hypotheses] == [
+        "000001",
+        "000002",
+    ]
+    assert library.hypotheses[0].title == "Compact option-richness block"
+    assert library.hypotheses[0].summary == (
+        "Prune alias-heavy features from the option-richness block."
+    )
+    assert library.hypotheses[0].enabled is True
+    assert library.hypotheses[0].body
+    assert library.source_hash.startswith("sha256:")
+
+
+def test_manual_hypothesis_library_rejects_missing_hypotheses_dir(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    (tmp_path / "research_hypotheses" / "playground-series-s6e5").mkdir(
+        parents=True
+    )
+
+    try:
+        research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+    except ValueError as exc:
+        assert "Missing manual research hypotheses directory" in str(exc)
+    else:
+        raise AssertionError("Expected missing hypotheses directory to fail")
+
+
+def test_manual_hypothesis_library_rejects_missing_required_fields(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    path = (
+        tmp_path
+        / "research_hypotheses"
+        / "playground-series-s6e5"
+        / "hypotheses"
+        / "hypothesis-000001.json"
+    )
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"title": "Only title"}), encoding="utf-8")
+
+    try:
+        research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+    except ValueError as exc:
+        assert "missing required field" in str(exc)
+        assert "summary" in str(exc)
+    else:
+        raise AssertionError("Expected missing required field to fail")
+
+
+def test_select_manual_hypotheses_prefers_under_offered_and_records_usage(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.manual_sample_size = 2
+    cfg.research.manual_seed = 123
+    for idx in range(1, 5):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+            summary=f"Summary {idx}",
+            body=f"Body {idx}",
+        )
+    usage_dir = Path(cfg.log_dir) / "research_hypotheses"
+    usage_dir.mkdir(parents=True)
+    (usage_dir / "usage.json").write_text(
+        json.dumps(
+            {
+                "000001": {"offered_count": 2},
+                "000002": {"offered_count": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selection = research.select_manual_hypotheses(
+        cfg,
+        completed_steps=10,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == [
+        "000003",
+        "000004",
+    ]
+    source_ref = json.loads((usage_dir / "source_ref.json").read_text())
+    assert source_ref["indexed_hypothesis_count"] == 4
+    assert source_ref["source_hash"].startswith("sha256:")
+    offers = (usage_dir / "offers.jsonl").read_text().splitlines()
+    assert len(offers) == 1
+    offer = json.loads(offers[0])
+    assert offer["checkpoint_step"] == 10
+    assert offer["offered"] == ["000003", "000004"]
+    updated_usage = json.loads((usage_dir / "usage.json").read_text())
+    assert updated_usage["000003"]["offered_count"] == 1
+    assert updated_usage["000004"]["offered_count"] == 1
+    assert updated_usage["000003"]["offered_checkpoint_steps"] == [10]
+
+
+def test_format_manual_research_hints_for_prompt_includes_usage_instruction(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Grouped validation",
+        summary="Use grouped validation to reduce public/CV mismatch.",
+        body="Build Race_Year groups and compare grouped CV against the current holdout.",
+    )
+
+    selection = research.select_manual_hypotheses(
+        cfg,
+        completed_steps=10,
+        repo_root=tmp_path,
+    )
+    rendered = research.format_manual_research_hints_for_prompt(selection)
+
+    assert "Manual research hypotheses offered" in rendered
+    assert "If your solution intentionally uses any of them" in rendered
+    assert "000001. Grouped validation" in rendered
+    assert "Use grouped validation to reduce public/CV mismatch." in rendered
+    assert "Build Race_Year groups" in rendered
+
+
+def test_select_manual_hypotheses_skips_disabled_hypotheses(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Disabled hypothesis",
+        enabled=False,
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        title="Enabled hypothesis",
+        enabled=True,
+    )
+
+    selection = research.select_manual_hypotheses(
+        cfg,
+        completed_steps=10,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    source_ref = json.loads(
+        (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
+    )
+    assert source_ref["indexed_hypothesis_count"] == 2
+    assert source_ref["enabled_hypothesis_count"] == 1
 
 
 def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):
@@ -515,6 +728,86 @@ def test_research_advisor_uses_scored_working_count_for_checkpoints(tmp_path):
     assert (Path(cfg.log_dir) / "research" / "checkpoint-000002").exists()
 
 
+def test_manual_research_advisor_records_offer_without_codex_runner(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "manual"
+    cfg.research.every_steps = 2
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Grouped validation",
+    )
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+    journal.append(_node(0.8, code="print('ok2')", plan="ok2"))
+
+    def fail_runner(*_args, **_kwargs):
+        raise AssertionError("manual mode must not invoke Codex research runner")
+
+    advisor = ResearchAdvisor(
+        cfg=cfg,
+        task_desc="task",
+        runner=fail_runner,
+        repo_root=tmp_path,
+    )
+
+    assert (
+        advisor.maybe_start(
+            journal=journal,
+            completed_steps=count_scored_working_nodes(journal),
+        )
+        is True
+    )
+    assert (Path(cfg.log_dir) / "research_hypotheses" / "offers.jsonl").exists()
+    assert not (Path(cfg.log_dir) / "research" / "checkpoint-000002").exists()
+
+
+def test_manual_research_advisor_does_not_duplicate_existing_offer(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "manual"
+    cfg.research.every_steps = 1
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+    advisor = ResearchAdvisor(
+        cfg=cfg,
+        task_desc="task",
+        runner=lambda *_args, **_kwargs: None,
+        repo_root=tmp_path,
+    )
+
+    assert advisor.maybe_start(journal=journal, completed_steps=1) is True
+    assert advisor.maybe_start(journal=journal, completed_steps=1) is False
+
+    offers = (
+        Path(cfg.log_dir) / "research_hypotheses" / "offers.jsonl"
+    ).read_text().splitlines()
+    assert len(offers) == 1
+
+
+def test_manual_research_advisor_status_text_shows_latest_offer(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "manual"
+    cfg.research.every_steps = 1
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+    advisor = ResearchAdvisor(
+        cfg=cfg,
+        task_desc="task",
+        runner=lambda *_args, **_kwargs: None,
+        repo_root=tmp_path,
+    )
+
+    advisor.maybe_start(journal=journal, completed_steps=1)
+
+    assert advisor.status_text() == "[green]Research: ✓ manual 000001"
+
+
 def test_research_advisor_status_text_shows_checkpoint_status(tmp_path):
     cfg = _cfg(tmp_path)
     checkpoint_dir = Path(cfg.log_dir) / "research" / "checkpoint-000010"
@@ -605,6 +898,54 @@ def test_agent_includes_latest_research_hints_in_draft_prompt(tmp_path):
 
     assert "research summary" in captured["prompt"]["External research hints"]
     assert "Use tire-age feature" in captured["prompt"]["External research hints"]
+
+
+def test_agent_includes_latest_manual_research_hints_in_draft_prompt(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "manual"
+    cfg.agent.data_preview = False
+    selection = research.ManualHypothesisSelection(
+        completed_steps=10,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000001",
+                enabled=True,
+                title="Grouped validation",
+                summary="Use grouped validation.",
+                body="Build Race_Year groups.",
+                path=tmp_path / "hypothesis-000001.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.load_latest_manual_research_hints",
+        lambda _cfg: selection,
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent._draft()
+
+    assert "Manual research hypotheses offered" in captured["prompt"][
+        "External research hints"
+    ]
+    assert "000001. Grouped validation" in captured["prompt"][
+        "External research hints"
+    ]
+    assert node.research_mode == "manual"
+    assert node.research_hypotheses_offered == ["000001"]
+    assert node.research_source_hash == "sha256:test"
 
 
 def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):

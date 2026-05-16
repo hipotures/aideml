@@ -63,12 +63,15 @@ it comes only from the filename.
 
 ```json
 {
+  "enabled": true,
   "title": "Replace single random holdout selection with race/year-aware repeated validation",
   "summary": "Use race/year-aware repeated validation to reduce CV/public mismatch.",
   "body": "Full hypothesis text, including evidence, rationale, implementation notes, risks, expected impact, and any prompt snippet."
 }
 ```
 
+`enabled` controls whether a hypothesis participates in sampling; disabled
+files stay in the library for audit/history but are not offered to the agent.
 `title` and `summary` are explicit fields for status, analysis, and concise
 prompt rendering. `body` contains the full hypothesis text. Runtime should
 validate these fields but should not parse headings out of free-form text.
@@ -134,7 +137,8 @@ different library, but it is not part of this design.
 ## Sampling
 
 Manual mode samples `research.manual_sample_size` hypotheses at each research
-checkpoint. The default is 3.
+checkpoint. The default is 3. Only hypotheses with `enabled: true` are eligible
+for sampling.
 
 Sampling should prefer under-offered hypotheses within the current run:
 
@@ -193,6 +197,7 @@ logs/<run>/research_hypotheses/
   "source_dir": "/home/xai/DEV/aideml/research_hypotheses/playground-series-s6e5",
   "source_hash": "...",
   "indexed_hypothesis_count": 9,
+  "enabled_hypothesis_count": 8,
   "indexed_at": "..."
 }
 ```
@@ -293,8 +298,9 @@ Manual mode should fail early with clear errors for:
 - no `hypothesis-*.json` files;
 - duplicate or invalid hypothesis ids derived from filenames;
 - invalid hypothesis JSON;
+- missing or non-boolean `enabled` in a hypothesis file;
 - `manual_sample_size <= 0`;
-- `manual_sample_size` larger than the available hypothesis count;
+- `manual_sample_size` larger than the enabled hypothesis count;
 - missing `title`, `summary`, or `body` in a hypothesis file.
 
 If `research.enabled=false`, none of this behavior runs.
@@ -307,6 +313,7 @@ Focused tests should cover:
 - startup indexing from sorted `hypothesis-*.json` files without filesystem search;
 - adding `hypothesis-000010.json` changes the next run's sampling pool without
   editing any central id list;
+- disabled hypotheses are indexed but not offered;
 - missing-library error message;
 - deterministic under-offered sampling;
 - prompt rendering includes only offered hypotheses;

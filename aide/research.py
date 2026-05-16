@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
+import random
+import re
 import subprocess
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
@@ -66,6 +70,34 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 PROMPT_SCORE_DECIMALS = 5
+REPO_ROOT = Path(__file__).resolve().parent.parent
+MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
+
+
+@dataclass(frozen=True)
+class ManualHypothesis:
+    id: str
+    enabled: bool
+    title: str
+    summary: str
+    body: str
+    path: Path
+
+
+@dataclass(frozen=True)
+class ManualHypothesisLibrary:
+    task_slug: str
+    source_dir: Path
+    source_hash: str
+    hypotheses: list[ManualHypothesis]
+
+
+@dataclass(frozen=True)
+class ManualHypothesisSelection:
+    completed_steps: int
+    source_hash: str
+    source_dir: Path
+    hypotheses: list[ManualHypothesis]
 
 
 def _json_default(value: Any) -> str:
@@ -82,6 +114,388 @@ def _write_json(path: Path, payload: Any) -> None:
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _manual_task_slug(cfg: Config) -> str:
+    return Path(cfg.data_dir).name
+
+
+def _manual_library_dir(cfg: Config, *, repo_root: Path = REPO_ROOT) -> Path:
+    return Path(repo_root) / "research_hypotheses" / _manual_task_slug(cfg)
+
+
+def _manual_source_hash(source_dir: Path, files: list[Path]) -> str:
+    digest = hashlib.sha256()
+    for path in files:
+        relative = path.relative_to(source_dir).as_posix()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return "sha256:" + digest.hexdigest()
+
+
+def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
+    match = MANUAL_HYPOTHESIS_PATTERN.match(path.name)
+    if match is None:
+        raise ValueError(
+            f"Invalid manual research hypothesis filename: {path.name}. "
+            "Expected hypothesis-000001.json."
+        )
+    hypothesis_id = match.group(1)
+    try:
+        payload = _read_json(path)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid hypothesis JSON in {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Manual research hypothesis {path} must be a JSON object.")
+
+    missing = []
+    if "enabled" not in payload or not isinstance(payload.get("enabled"), bool):
+        missing.append("enabled")
+    missing.extend(
+        field
+        for field in ("title", "summary", "body")
+        if not isinstance(payload.get(field), str) or not payload.get(field).strip()
+    )
+    if missing:
+        raise ValueError(
+            f"Manual research hypothesis {path} missing required field(s): "
+            + ", ".join(missing)
+        )
+
+    return ManualHypothesis(
+        id=hypothesis_id,
+        enabled=payload["enabled"],
+        title=payload["title"].strip(),
+        summary=payload["summary"].strip(),
+        body=payload["body"].strip(),
+        path=path,
+    )
+
+
+def load_manual_hypothesis_library(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisLibrary:
+    task_slug = _manual_task_slug(cfg)
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    hypotheses_dir = source_dir / "hypotheses"
+    if not source_dir.exists():
+        raise ValueError(f"Missing manual research library: {source_dir}")
+    if not hypotheses_dir.exists():
+        raise ValueError(
+            f"Missing manual research hypotheses directory: {hypotheses_dir}"
+        )
+
+    files = sorted(hypotheses_dir.glob("hypothesis-*.json"))
+    if not files:
+        raise ValueError(f"No manual research hypothesis files found in {hypotheses_dir}")
+
+    hypotheses: list[ManualHypothesis] = []
+    seen_ids: set[str] = set()
+    for path in files:
+        hypothesis = _read_manual_hypothesis(path)
+        if hypothesis.id in seen_ids:
+            raise ValueError(f"Duplicate manual research hypothesis id: {hypothesis.id}")
+        seen_ids.add(hypothesis.id)
+        hypotheses.append(hypothesis)
+
+    return ManualHypothesisLibrary(
+        task_slug=task_slug,
+        source_dir=source_dir,
+        source_hash=_manual_source_hash(source_dir, files),
+        hypotheses=hypotheses,
+    )
+
+
+def _manual_run_dir(cfg: Config) -> Path:
+    return Path(cfg.log_dir) / "research_hypotheses"
+
+
+def _load_manual_usage(cfg: Config) -> dict[str, Any]:
+    usage_path = _manual_run_dir(cfg) / "usage.json"
+    if not usage_path.exists():
+        return {}
+    try:
+        data = _read_json(usage_path)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_manual_usage(cfg: Config, usage: dict[str, Any]) -> None:
+    _write_json(_manual_run_dir(cfg) / "usage.json", usage)
+
+
+def _write_manual_source_ref(
+    *,
+    cfg: Config,
+    library: ManualHypothesisLibrary,
+    created_at: str,
+) -> None:
+    enabled_count = sum(1 for hypothesis in library.hypotheses if hypothesis.enabled)
+    _write_json(
+        _manual_run_dir(cfg) / "source_ref.json",
+        {
+            "source_dir": str(library.source_dir),
+            "source_hash": library.source_hash,
+            "indexed_hypothesis_count": len(library.hypotheses),
+            "enabled_hypothesis_count": enabled_count,
+            "indexed_at": created_at,
+            "filename_pattern": "hypotheses/hypothesis-*.json",
+        },
+    )
+
+
+def _append_manual_offer(
+    *,
+    cfg: Config,
+    completed_steps: int,
+    offered_ids: list[str],
+    source_hash: str,
+    created_at: str,
+) -> None:
+    path = _manual_run_dir(cfg) / "offers.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "checkpoint_step": completed_steps,
+        "offered": offered_ids,
+        "source_hash": source_hash,
+        "created_at": created_at,
+    }
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
+
+
+def _record_manual_offer_usage(
+    *,
+    cfg: Config,
+    offered_ids: list[str],
+    completed_steps: int,
+    created_at: str,
+) -> None:
+    usage = _load_manual_usage(cfg)
+    for hypothesis_id in offered_ids:
+        entry = usage.setdefault(hypothesis_id, {})
+        entry["offered_count"] = int(entry.get("offered_count", 0)) + 1
+        steps = entry.setdefault("offered_checkpoint_steps", [])
+        if isinstance(steps, list):
+            steps.append(completed_steps)
+        else:
+            entry["offered_checkpoint_steps"] = [completed_steps]
+        entry.setdefault("llm_claimed_used_count", 0)
+        entry.setdefault("prompt_node_ids", [])
+        entry.setdefault("llm_claimed_used_node_ids", [])
+        entry["last_offered_at"] = created_at
+    _write_manual_usage(cfg, usage)
+
+
+def _manual_offer_sort_key(
+    *,
+    hypothesis: ManualHypothesis,
+    usage: dict[str, Any],
+    seed_text: str,
+) -> tuple[int, float, str]:
+    entry = usage.get(hypothesis.id, {})
+    offered_count = (
+        int(entry.get("offered_count", 0)) if isinstance(entry, dict) else 0
+    )
+    tie_break = random.Random(f"{seed_text}:{hypothesis.id}").random()
+    return offered_count, tie_break, hypothesis.id
+
+
+def select_manual_hypotheses(
+    cfg: Config,
+    *,
+    completed_steps: int,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection:
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    enabled_hypotheses = [
+        hypothesis for hypothesis in library.hypotheses if hypothesis.enabled
+    ]
+    sample_size = int(cfg.research.manual_sample_size)
+    if sample_size <= 0:
+        raise ValueError("research.manual_sample_size must be greater than 0.")
+    if sample_size > len(enabled_hypotheses):
+        raise ValueError(
+            "research.manual_sample_size cannot exceed enabled manual hypotheses "
+            f"({sample_size} requested, {len(enabled_hypotheses)} enabled)."
+        )
+
+    usage = _load_manual_usage(cfg)
+    seed_text = f"{cfg.research.manual_seed}:{cfg.exp_name}:{completed_steps}"
+    ordered = sorted(
+        enabled_hypotheses,
+        key=lambda hypothesis: _manual_offer_sort_key(
+            hypothesis=hypothesis,
+            usage=usage,
+            seed_text=seed_text,
+        ),
+    )
+    selected = sorted(ordered[:sample_size], key=lambda hypothesis: hypothesis.id)
+    offered_ids = [hypothesis.id for hypothesis in selected]
+    created_at = dt.datetime.now().isoformat(timespec="seconds")
+    _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
+    _append_manual_offer(
+        cfg=cfg,
+        completed_steps=completed_steps,
+        offered_ids=offered_ids,
+        source_hash=library.source_hash,
+        created_at=created_at,
+    )
+    _record_manual_offer_usage(
+        cfg=cfg,
+        offered_ids=offered_ids,
+        completed_steps=completed_steps,
+        created_at=created_at,
+    )
+    return ManualHypothesisSelection(
+        completed_steps=completed_steps,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=selected,
+    )
+
+
+def _latest_manual_offer(cfg: Config) -> dict[str, Any] | None:
+    path = _manual_run_dir(cfg) / "offers.jsonl"
+    if not path.exists():
+        return None
+    latest: dict[str, Any] | None = None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            latest = payload
+    return latest
+
+
+def _manual_offer_exists(cfg: Config, completed_steps: int) -> bool:
+    path = _manual_run_dir(cfg) / "offers.jsonl"
+    if not path.exists():
+        return False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (
+            isinstance(payload, dict)
+            and int(payload.get("checkpoint_step", -1)) == completed_steps
+        ):
+            return True
+    return False
+
+
+def load_latest_manual_research_hints(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection | None:
+    offer = _latest_manual_offer(cfg)
+    if offer is None:
+        return None
+    offered_ids = offer.get("offered")
+    if not isinstance(offered_ids, list):
+        return None
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    hypotheses = [
+        by_id[hypothesis_id]
+        for hypothesis_id in offered_ids
+        if isinstance(hypothesis_id, str) and hypothesis_id in by_id
+    ]
+    if not hypotheses:
+        return None
+    return ManualHypothesisSelection(
+        completed_steps=int(offer.get("checkpoint_step", 0)),
+        source_hash=str(offer.get("source_hash") or library.source_hash),
+        source_dir=library.source_dir,
+        hypotheses=hypotheses,
+    )
+
+
+def record_manual_prompt_node(cfg: Config, node: Node) -> None:
+    if getattr(node, "research_mode", None) != "manual":
+        return
+    offered_ids = getattr(node, "research_hypotheses_offered", []) or []
+    if not offered_ids:
+        return
+    usage = _load_manual_usage(cfg)
+    for hypothesis_id in offered_ids:
+        if not isinstance(hypothesis_id, str):
+            continue
+        entry = usage.setdefault(hypothesis_id, {})
+        node_ids = entry.setdefault("prompt_node_ids", [])
+        if isinstance(node_ids, list) and node.id not in node_ids:
+            node_ids.append(node.id)
+        elif not isinstance(node_ids, list):
+            entry["prompt_node_ids"] = [node.id]
+        entry.setdefault("offered_count", 0)
+        entry.setdefault("llm_claimed_used_count", 0)
+        entry.setdefault("llm_claimed_used_node_ids", [])
+    _write_manual_usage(cfg, usage)
+
+
+def record_manual_claimed_usage(cfg: Config, node: Node) -> None:
+    if getattr(node, "research_mode", None) != "manual":
+        return
+    claimed_ids = getattr(node, "research_hypotheses_llm_claimed_used", []) or []
+    if not claimed_ids:
+        return
+    offered = set(getattr(node, "research_hypotheses_offered", []) or [])
+    timestamp = dt.datetime.now().isoformat(timespec="seconds")
+    usage = _load_manual_usage(cfg)
+    for hypothesis_id in claimed_ids:
+        if not isinstance(hypothesis_id, str) or hypothesis_id not in offered:
+            continue
+        entry = usage.setdefault(hypothesis_id, {})
+        entry["llm_claimed_used_count"] = (
+            int(entry.get("llm_claimed_used_count", 0)) + 1
+        )
+        node_ids = entry.setdefault("llm_claimed_used_node_ids", [])
+        if isinstance(node_ids, list) and node.id not in node_ids:
+            node_ids.append(node.id)
+        elif not isinstance(node_ids, list):
+            entry["llm_claimed_used_node_ids"] = [node.id]
+        entry["last_llm_claimed_used_at"] = timestamp
+        entry.setdefault("offered_count", 0)
+        entry.setdefault("prompt_node_ids", [])
+    _write_manual_usage(cfg, usage)
+
+
+def format_manual_research_hints_for_prompt(
+    selection: ManualHypothesisSelection,
+) -> str:
+    lines = [
+        "Manual research hypotheses offered for this experiment.",
+        "Treat them as hypotheses to test, not as proven facts.",
+        (
+            "You were offered manual research hypotheses with ids. If your "
+            "solution intentionally uses any of them, mention the ids in your "
+            "plan/rationale. If none are relevant, say that no manual research "
+            "hypothesis was used."
+        ),
+        f"Research source hash: {selection.source_hash}",
+        "",
+        "Offered hypotheses:",
+    ]
+    for hypothesis in selection.hypotheses:
+        lines.append(f"{hypothesis.id}. {hypothesis.title}")
+        lines.append(f"   Summary: {_compact_prompt_text(hypothesis.summary, 320)}")
+        body = _compact_prompt_text(hypothesis.body, 700)
+        if body:
+            lines.append(f"   Body: {body}")
+    return "\n".join(lines)
 
 
 def _metric_value(node: Node) -> float | None:
@@ -770,10 +1184,12 @@ class ResearchAdvisor:
         cfg: Config,
         task_desc: Any,
         runner: Runner = subprocess.run,
+        repo_root: Path = REPO_ROOT,
     ):
         self.cfg = cfg
         self.task_desc = task_desc
         self.runner = runner
+        self.repo_root = repo_root
         self._threads: list[threading.Thread] = []
 
     def maybe_start(self, *, journal: Journal, completed_steps: int) -> bool:
@@ -783,6 +1199,16 @@ class ResearchAdvisor:
             return False
         if completed_steps <= 0 or completed_steps % self.cfg.research.every_steps != 0:
             return False
+
+        if getattr(self.cfg.research, "mode", "llm") == "manual":
+            if _manual_offer_exists(self.cfg, completed_steps):
+                return False
+            select_manual_hypotheses(
+                self.cfg,
+                completed_steps=completed_steps,
+                repo_root=self.repo_root,
+            )
+            return True
 
         checkpoint_dir = checkpoint_dir_for(self.cfg, completed_steps)
         if _checkpoint_status(checkpoint_dir) is not None:
@@ -819,6 +1245,13 @@ class ResearchAdvisor:
 
     def status_text(self) -> str:
         self._threads = [thread for thread in self._threads if thread.is_alive()]
+        if getattr(self.cfg.research, "mode", "llm") == "manual":
+            latest_offer = _latest_manual_offer(self.cfg)
+            if latest_offer is None:
+                return "[dim]Research: ○ manual"
+            step = int(latest_offer.get("checkpoint_step", 0))
+            return f"[green]Research: ✓ manual {step:06d}"
+
         latest_checkpoint = _latest_checkpoint_with_status(self.cfg.log_dir)
         latest_name = (
             _checkpoint_label(latest_checkpoint[0])

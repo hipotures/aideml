@@ -23,7 +23,14 @@ from .backend import FunctionSpec, query
 from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
-from .research import format_research_hints_for_prompt, load_latest_research_hints
+from .research import (
+    format_manual_research_hints_for_prompt,
+    format_research_hints_for_prompt,
+    load_latest_manual_research_hints,
+    load_latest_research_hints,
+    record_manual_claimed_usage,
+    record_manual_prompt_node,
+)
 from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
 from .utils.config import Config
@@ -65,6 +72,15 @@ review_func_spec = FunctionSpec(
                 "type": ["string", "null"],
                 "description": "Use this for non-fatal methodological concerns such as possible leakage, overfitting, non-grouped validation, questionable feature availability, or other reasons the reported metric may not generalize. Leave null when there is no such concern. A validity warning is not a technical bug by itself.",
             },
+            "research_hypotheses_llm_claimed_used": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Manual research hypothesis ids that the implementation intentionally used. Include only ids that were explicitly offered in the prompt. Use an empty list when no offered manual research hypothesis was used.",
+            },
+            "research_usage_note": {
+                "type": ["string", "null"],
+                "description": "Short explanation of how the offered manual research hypotheses were used, or null when none were used.",
+            },
         },
         "required": [
             "is_bug",
@@ -72,6 +88,8 @@ review_func_spec = FunctionSpec(
             "metric",
             "lower_is_better",
             "validity_warning",
+            "research_hypotheses_llm_claimed_used",
+            "research_usage_note",
         ],
         "additionalProperties": False,
     },
@@ -114,6 +132,30 @@ def _review_validity_warning(response: dict[str, Any], *, summary: str) -> str |
     if bool(response.get("is_bug")):
         return summary.strip() or "Feedback model flagged a non-fatal validity concern."
     return None
+
+
+def _manual_research_ids_claimed_in_plan(node: Node) -> list[str]:
+    if node.research_mode != "manual":
+        return []
+    plan = str(node.plan or "")
+    return [
+        hypothesis_id
+        for hypothesis_id in node.research_hypotheses_offered
+        if hypothesis_id in plan
+    ]
+
+
+def _record_plan_claimed_manual_research_usage(cfg: Config, node: Node) -> None:
+    claimed = _manual_research_ids_claimed_in_plan(node)
+    if not claimed:
+        return
+    node.research_hypotheses_llm_claimed_used = claimed
+    node.research_usage_note = (
+        "Plan text mentioned offered manual research hypothesis id(s): "
+        + ", ".join(claimed)
+        + "."
+    )
+    record_manual_claimed_usage(cfg, node)
 
 
 def _metric_for_search(node: Node) -> float:
@@ -183,6 +225,21 @@ class Agent:
         if self._pending_node_ctime is not None:
             kwargs["ctime"] = self._pending_node_ctime
         return Node(**kwargs)
+
+    def _apply_research_metadata(
+        self,
+        node: Node,
+        metadata: dict[str, Any] | None,
+    ) -> Node:
+        if not metadata:
+            return node
+        node.research_mode = metadata.get("research_mode")
+        node.research_hypotheses_offered = list(
+            metadata.get("research_hypotheses_offered", [])
+        )
+        node.research_source_hash = metadata.get("research_source_hash")
+        record_manual_prompt_node(self.cfg, node)
+        return node
 
     def _generation_log_context(self) -> dict[str, Any]:
         parent = self.active_parent_node
@@ -354,12 +411,27 @@ class Agent:
             ]
         }
 
-    def _add_research_hints(self, prompt: dict[str, Any]) -> None:
+    def _add_research_hints(self, prompt: dict[str, Any]) -> dict[str, Any] | None:
         if not self.cfg.research.enabled:
-            return
+            return None
+        if getattr(self.cfg.research, "mode", "llm") == "manual":
+            selection = load_latest_manual_research_hints(self.cfg)
+            if selection is None:
+                return None
+            prompt["External research hints"] = format_manual_research_hints_for_prompt(
+                selection
+            )
+            return {
+                "research_mode": "manual",
+                "research_hypotheses_offered": [
+                    hypothesis.id for hypothesis in selection.hypotheses
+                ],
+                "research_source_hash": selection.source_hash,
+            }
         hints = load_latest_research_hints(self.cfg.log_dir)
         if hints is not None:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
+        return None
 
     def _autogluon_unavailable_columns(self) -> list[str]:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
@@ -480,9 +552,12 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._new_node(plan=plan, code=code)
+        return self._apply_research_metadata(
+            self._new_node(plan=plan, code=code),
+            research_metadata,
+        )
 
     def _draft_autogluon_preprocess(self) -> Node:
         prompt: Any = {
@@ -511,9 +586,12 @@ class Agent:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._wrap_autogluon_preprocess_node(plan=plan, code=code)
+        return self._apply_research_metadata(
+            self._wrap_autogluon_preprocess_node(plan=plan, code=code),
+            research_metadata,
+        )
 
     def _improve(self, parent_node: Node) -> Node:
         if is_autogluon_preprocess_mode(self.cfg):
@@ -547,12 +625,15 @@ class Agent:
         }
         prompt["Instructions"] |= self._prompt_impl_guideline
 
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._new_node(
-            plan=plan,
-            code=code,
-            parent=parent_node,
+        return self._apply_research_metadata(
+            self._new_node(
+                plan=plan,
+                code=code,
+                parent=parent_node,
+            ),
+            research_metadata,
         )
 
     def _improve_autogluon_preprocess(self, parent_node: Node) -> Node:
@@ -579,12 +660,15 @@ class Agent:
         }
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
         self._add_autogluon_context(prompt)
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._wrap_autogluon_preprocess_node(
-            plan=plan,
-            code=code,
-            parent=parent_node,
+        return self._apply_research_metadata(
+            self._wrap_autogluon_preprocess_node(
+                plan=plan,
+                code=code,
+                parent=parent_node,
+            ),
+            research_metadata,
         )
 
     def _debug(self, parent_node: Node) -> Node:
@@ -615,9 +699,12 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._new_node(plan=plan, code=code, parent=parent_node)
+        return self._apply_research_metadata(
+            self._new_node(plan=plan, code=code, parent=parent_node),
+            research_metadata,
+        )
 
     def _debug_autogluon_preprocess(self, parent_node: Node) -> Node:
         prompt: Any = {
@@ -647,12 +734,15 @@ class Agent:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
-        self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt)
         plan, code = self.plan_and_code_query(prompt)
-        return self._wrap_autogluon_preprocess_node(
-            plan=plan,
-            code=code,
-            parent=parent_node,
+        return self._apply_research_metadata(
+            self._wrap_autogluon_preprocess_node(
+                plan=plan,
+                code=code,
+                parent=parent_node,
+            ),
+            research_metadata,
         )
 
     def update_data_preview(
@@ -758,6 +848,7 @@ class Agent:
                     metric,
                     maximize=not bool(marker_response.get("lower_is_better")),
                 )
+            _record_plan_claimed_manual_research_usage(self.cfg, node)
             return
 
         prompt = {
@@ -772,6 +863,16 @@ class Agent:
             "Implementation": wrap_code(node.code),
             "Execution output": wrap_code(node.term_out, lang=""),
         }
+        if node.research_mode == "manual" and node.research_hypotheses_offered:
+            prompt["Manual research hypotheses offered"] = {
+                "ids": node.research_hypotheses_offered,
+                "instruction": (
+                    "Report only offered ids in "
+                    "research_hypotheses_llm_claimed_used. Use an empty list if "
+                    "the implementation did not intentionally use any offered "
+                    "manual research hypothesis."
+                ),
+            }
 
         response = query(
             system_message=prompt,
@@ -804,6 +905,21 @@ class Agent:
             parsed_response,
             summary=node.analysis,
         )
+        claimed = parsed_response.get("research_hypotheses_llm_claimed_used", [])
+        if isinstance(claimed, list):
+            offered = set(node.research_hypotheses_offered)
+            node.research_hypotheses_llm_claimed_used = [
+                item for item in claimed if isinstance(item, str) and item in offered
+            ]
+        else:
+            node.research_hypotheses_llm_claimed_used = []
+        usage_note = parsed_response.get("research_usage_note")
+        node.research_usage_note = (
+            usage_note.strip()
+            if isinstance(usage_note, str) and usage_note.strip()
+            else None
+        )
+        record_manual_claimed_usage(self.cfg, node)
         node.is_buggy = (
             node.exc_type is not None
             or metric is None

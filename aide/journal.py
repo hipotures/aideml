@@ -68,6 +68,14 @@ class Node(DataClassJsonMixin):
     # -> always True if exc_type is not None or no valid metric
     is_buggy: bool = field(default=None, kw_only=True)  # type: ignore
     submission_validation: dict | None = field(default=None, kw_only=True)
+    research_mode: str | None = field(default=None, kw_only=True)
+    research_hypotheses_offered: list[str] = field(default_factory=list, kw_only=True)
+    research_source_hash: str | None = field(default=None, kw_only=True)
+    research_hypotheses_llm_claimed_used: list[str] = field(
+        default_factory=list,
+        kw_only=True,
+    )
+    research_usage_note: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if self.parent is not None:

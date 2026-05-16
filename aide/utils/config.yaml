@@ -35,6 +35,7 @@ report:
 # optional external Codex research advisor
 research:
   enabled: False
+  mode: llm
   every_steps: 10
   top_k_best: 5
   top_k_worst: 5
@@ -42,6 +43,8 @@ research:
   timeout: 900
   model: gpt-5.4-mini
   reasoning_effort: low
+  manual_sample_size: 3
+  manual_seed: 42
 
 # optional external Codex solution synthesis
 synthesis:

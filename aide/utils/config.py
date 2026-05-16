@@ -142,6 +142,7 @@ class ExecConfig:
 @dataclass
 class ResearchConfig:
     enabled: bool = False
+    mode: str = "llm"
     every_steps: int = 10
     top_k_best: int = 5
     top_k_worst: int = 5
@@ -149,6 +150,8 @@ class ResearchConfig:
     timeout: int = 900
     model: str = "gpt-5.4-mini"
     reasoning_effort: str | None = "low"
+    manual_sample_size: int = 3
+    manual_seed: int = 42
 
 
 @dataclass
