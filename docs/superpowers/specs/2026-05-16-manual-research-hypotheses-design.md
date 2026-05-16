@@ -32,7 +32,7 @@ and no clear way to see whether the agent used a specific research idea.
 
 - Do not add a separate import CLI.
 - Do not search the filesystem for hypothesis libraries.
-- Do not copy every hypothesis JSON file into each run log.
+- Do not copy every hypothesis markdown file into each run log.
 - Do not change the LLM research prompt count or renderer limit as part of the
   first manual-mode implementation.
 - Do not force the agent to try every hypothesis before it can continue.
@@ -44,33 +44,44 @@ Manual hypotheses live once in the repository:
 ```text
 research_hypotheses/
   playground-series-s6e5/
+    source.md
     hypotheses/
-      hypothesis-000001.json
-      hypothesis-000002.json
+      hypothesis-000001.md
+      hypothesis-000002.md
       ...
-      hypothesis-000009.json
+      hypothesis-000009.md
 ```
+
+The initial library can be created directly from `/tmp/research01.md` during
+implementation. That temporary file is an import source only. Runtime must not
+depend on it.
+
+The source file currently contains 9 sections with source headings numbered
+`## 2.` through `## 10.`. The library should renumber them locally from
+`000001` through `000009`.
 
 Runtime must not rely on a hand-maintained list of hypothesis ids. The source
-of truth is the `hypotheses/hypothesis-*.json` directory. At run startup, manual
+of truth is the `hypotheses/hypothesis-*.md` directory. At run startup, manual
 mode indexes all matching files in sorted filename order, derives the id from
 the filename, and builds the sampling pool from that runtime index. If a new
-file such as `hypothesis-000010.json` is added before a later run, that later run
+file such as `hypothesis-000010.md` is added before a later run, that later run
 must pick it up automatically.
 
-Each hypothesis file is structured JSON:
+Each hypothesis file should be self-describing:
 
-```json
-{
-  "title": "Replace single random holdout selection with race/year-aware repeated validation",
-  "summary": "Use race/year-aware repeated validation to reduce CV/public mismatch.",
-  "body": "Full hypothesis text, including evidence, implementation notes, risks, and prompt snippet."
-}
+```markdown
+# Replace single random holdout selection with race/year-aware repeated validation
+
+Summary: Use race/year-aware repeated validation to reduce CV/public mismatch.
+
+Source heading: ## 2. Replace single random holdout selection with race/year-aware repeated validation
+
+...
 ```
 
-The id comes from the filename, not from JSON content. `title` and `summary`
-are explicit fields for status, analysis, and concise prompt rendering.
-`body` contains the full hypothesis text that can be excerpted for the prompt.
+`title` comes from the first markdown heading in the file. `summary` is a short
+runtime and reporting summary stored inside the same file. It can be derived
+manually from the hypothesis text for the initial library; no LLM is required.
 
 ## Library Location
 
@@ -155,7 +166,7 @@ surface as current external research hints:
 - summary text;
 - numbered hypothesis items;
 - title;
-- relevant excerpt from `body`;
+- implementation hint or relevant excerpt;
 - risk/expected effect when available.
 
 Only the selected hypotheses are rendered. The full library is never placed in
@@ -183,7 +194,7 @@ logs/<run>/research_hypotheses/
 }
 ```
 
-The hash covers all indexed `hypothesis-*.json` files and their relative paths.
+The hash covers all indexed `hypothesis-*.md` files and their relative paths.
 It lets later analysis detect whether a run used the current library or an
 older version. `source_ref.json` must not be the source of the sampling pool;
 it is only an audit record written after startup indexing.
@@ -207,7 +218,7 @@ it is only an audit record written after startup indexing.
 }
 ```
 
-Do not duplicate the hypothesis JSON files in the run log.
+Do not duplicate the hypothesis markdown files in the run log.
 
 ## Selected Versus Used
 
@@ -269,12 +280,11 @@ Manual mode should fail early with clear errors for:
 
 - missing library directory;
 - missing `hypotheses/` directory;
-- no `hypothesis-*.json` files;
+- no `hypothesis-*.md` files;
 - duplicate or invalid hypothesis ids derived from filenames;
-- invalid hypothesis JSON;
 - `manual_sample_size <= 0`;
 - `manual_sample_size` larger than the available hypothesis count;
-- missing `title`, `summary`, or `body` in a hypothesis file.
+- missing title or summary metadata in a hypothesis file.
 
 If `research.enabled=false`, none of this behavior runs.
 
@@ -283,8 +293,8 @@ If `research.enabled=false`, none of this behavior runs.
 Focused tests should cover:
 
 - task slug derivation from `data_dir`;
-- startup indexing from sorted `hypothesis-*.json` files without filesystem search;
-- adding `hypothesis-000010.json` changes the next run's sampling pool without
+- startup indexing from sorted `hypothesis-*.md` files without filesystem search;
+- adding `hypothesis-000010.md` changes the next run's sampling pool without
   editing any central id list;
 - missing-library error message;
 - deterministic under-selected sampling;
