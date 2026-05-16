@@ -942,7 +942,7 @@ def test_tree_view_shows_hypothesis_protocol_failures_with_id():
         )
     )
 
-    assert "failed·000311" in output
+    assert "● failed·000311" in output
 
 
 def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):

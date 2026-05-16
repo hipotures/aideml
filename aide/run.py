@@ -451,7 +451,7 @@ def _tree_node_label(
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
     if node.is_terminal_failure:
-        return Text(f"failed{suffix}", style="red")
+        return Text(f"● failed{suffix}", style="red")
 
     synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
         node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
