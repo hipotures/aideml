@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join official lap-level race status from FastF1 to expose Safety Car/VSC/red-flag/wet-transition windows",
+  "summary": "Formula 1 strategy sources explicitly note that teams pre-arm Safety Car pit windows and that wet/dry crossover moments cause abrupt stop decisions; FastF1 exposes track status, session status, and race control messages at lap/session granularity.",
+  "rationale": "Formula 1 strategy sources explicitly note that teams pre-arm Safety Car pit windows and that wet/dry crossover moments cause abrupt stop decisions; FastF1 exposes track status, session status, and race control messages at lap/session granularity. The current feature set appears to infer these regimes only indirectly from tyre and lap-time fields.",
+  "implementation_hint": "Build a Year+Race+LapNumber join against FastF1 `track_status`, `session_status`, and `race_control_messages`. Add features like `is_sc_or_vsc`, `laps_since_status_change`, `first_green_lap_after_sc`, `red_flag_restart_window`, `recent_wet_message`, and interactions with `TyreLife`, `Compound`, and `RaceProgress`. Validate on race-held-out folds because status regimes are race-specific.",
+  "expected_effect": "Better recall on abrupt pit-call clusters, especially neutralizations and weather transitions that tyre-age heuristics miss.",
+  "risk": "Race-name normalization and lap alignment can be messy; external joins can silently leak if statuses from future laps are forward-filled incorrectly.",
+  "sources": [
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8",
+    "https://www.formula1.com/en/latest/article.strategy-guide-what-are-the-possible-race-strategies-for-the-japanese-grand.3tkN9ZYL6FqmCPoFjPAE3z.html"
+  ]
+}

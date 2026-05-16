@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-constrained strategy booster",
+  "summary": "Pit urgency should usually increase as tyre-age pressure, service-window overage, and finish infeasibility worsen, while immediately-post-pit freshness should suppress it.",
+  "rationale": "Pit urgency should usually increase as tyre-age pressure, service-window overage, and finish infeasibility worsen, while immediately-post-pit freshness should suppress it. A small monotone-constrained LightGBM expert can regularize these directional signals and reduce race-specific memorization that unconstrained trees may exploit.",
+  "implementation_hint": "Keep the current engineered state features, but train a separate LightGBM with monotone constraints only on obviously directional variables such as `Service_Window_Pressure`, `Service_Age_Distance`, `Finish_Stop_Pressure`, `Cannot_Finish_On_Current_Tyre`, `TyreAge_At_Finish_Est`, and a negative constraint on `Laps_Since_Last_Pit` freshness-style features if present. Blend its OOF ranks with the unconstrained main model.",
+  "expected_effect": "Small CV gain or flatter fold variance, with better leaderboard robustness if the current model is overfitting race-specific heuristics.",
+  "risk": "Wrong constraint signs or over-constraining non-monotone interactions can lower AUC.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

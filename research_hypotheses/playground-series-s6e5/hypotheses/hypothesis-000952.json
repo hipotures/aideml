@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Grouped Pairwise Ranking on Candidate Laps Within a Race/Stint",
+  "summary": "ROC AUC rewards correct ordering, and public ranking objectives are designed to learn winner-vs-loser pairs inside a group.",
+  "rationale": "ROC AUC rewards correct ordering, and public ranking objectives are designed to learn winner-vs-loser pairs inside a group. This task is naturally a local hazard ordering problem: within a driver-race-stint, the true pre-pit lap should outrank nearby non-pit laps.",
+  "implementation_hint": "Create ranking groups such as `Year/Race/Driver/Stint`, or narrower pit-window groups, and pair the positive `PitNextLap=1` rows against nearby negatives from the same group. Train a CatBoost `PairLogitPairwise`/`QueryCrossEntropy` model and blend its OOF scores with the existing binary classifier rather than replacing it outright.",
+  "expected_effect": "Most likely to improve ranking around ambiguous pit-window laps where binary logloss models tend to flatten probabilities.",
+  "risk": "Grouping too broadly or generating weak pairs can add noise; ranking outputs are not calibrated probabilities, so they should be blended, not submitted raw.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231"
+  ]
+}

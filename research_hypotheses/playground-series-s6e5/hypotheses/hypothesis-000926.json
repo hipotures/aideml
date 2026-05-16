@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver-race rolling state features",
+  "summary": "State-space F1 tyre models treat pit stops as structural resets and lap times as evolving latent degradation; deep sequence models for pit decisions emphasize temporal dependencies.",
+  "rationale": "State-space F1 tyre models treat pit stops as structural resets and lap times as evolving latent degradation; deep sequence models for pit decisions emphasize temporal dependencies. Current best features are mostly row-wise and do not explicitly use recent within-stint trends.",
+  "implementation_hint": "Sort by Race, Year, Driver, LapNumber. Add lag1/lag2 and rolling 3-5 lap means/slopes for LapTime_Delta, Cumulative_Degradation, Position_Change, and TyreLife; reset rolling windows at Stint changes or PitStop=1. Include flags for sudden pace drop, degradation acceleration, and last-lap pit/out-lap anomalies.",
+  "expected_effect": "May capture late-stint deterioration and strategy triggers missed by static TyreLife/degradation ratios.",
+  "risk": "Rows may not form complete race sequences or train/test ids may be synthetic; ensure no future lags and compute train/test separately where needed.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://docs.fastf1.dev/core.html"
+  ]
+}

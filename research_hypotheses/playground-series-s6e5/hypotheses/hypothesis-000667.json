@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Engineer field-relative undercut and traffic-window features, not just absolute tyre age",
+  "summary": "F1 pit calls depend on whether a driver can undercut, avoid traffic, or react to rivals, not only on compound life.",
+  "rationale": "F1 pit calls depend on whether a driver can undercut, avoid traffic, or react to rivals, not only on compound life. Formula 1 strategy coverage emphasizes undercut/overcut dynamics, pit windows, and opposite-of-rival calls. Your current best code uses absolute windows but little explicit opponent context.",
+  "implementation_hint": "Within each `Race_Year` + `LapNumber`, add percentiles/ranks for tyre life, lap delta, degradation, position, and pace loss; compute nearest-ahead/behind pit-risk summaries; add whether immediate rivals are in undercut range; optionally enrich with FastF1 `DriverAhead`/distance or same-lap field pit counts if available.",
+  "expected_effect": "Should add signal for tactical reactions and explain why similar tyre states lead to different pit behavior depending on local traffic.",
+  "risk": "Simple lap-group z-scores already underperformed in one weak baseline, so features must be strategy-aware and robust, not generic standardization noise.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://docs.fastf1.dev/api_reference/telemetry.html"
+  ]
+}

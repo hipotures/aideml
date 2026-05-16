@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Inject external regulation and circuit-energy priors as race-level meta-features",
+  "summary": "The dataset spans 2022-2025, and F1 rules/track characteristics are not fully encoded by `Race` and `Compound` alone.",
+  "rationale": "The dataset spans 2022-2025, and F1 rules/track characteristics are not fully encoded by `Race` and `Compound` alone. FIA regulations impose dry-race compound-use constraints, and Monaco has a special 2025 three-set race rule. Official F1/Pirelli material also stresses that track energy and degradation regime vary strongly by circuit and drive strategy choice.",
+  "implementation_hint": "Add race-level features: mandatory dry-compound-change flag, Monaco-2025 special-rule flag, estimated circuit energy/degradation class, expected one-stop vs two-stop tendency, and wet-compound exemption flag. Encode these as simple lookup priors merged by `(Race, Year)` and interact them with tyre-life, stint, and laps remaining.",
+  "expected_effect": "Captures systematic between-race strategy differences that current frequency encodings likely blur, especially for outlier venues and 2025 rule changes.",
+  "risk": "Manual priors can be noisy or incomplete; gains depend on correct race-name mapping.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI"
+  ]
+}

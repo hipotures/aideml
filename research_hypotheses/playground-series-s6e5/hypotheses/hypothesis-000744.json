@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Opponent-Cover Pressure Features From Same-Lap Field Context",
+  "summary": "F1 pit calls are often reactive: undercut, overcut, or 'box-to-overtake' against nearby rivals.",
+  "rationale": "F1 pit calls are often reactive: undercut, overcut, or 'box-to-overtake' against nearby rivals. Current best solutions are mostly self-state + tyre-feasibility; they appear to underuse competitive context within the same race lap.",
+  "implementation_hint": "Within each Race-Lap, compute position-neighborhood features: tyre-life rank among cars ahead/behind, fraction of top-5/top-10 on each compound, distance from field median TyreLife/LapTime_Delta by compound, and whether nearby positions just pitted on the previous lap. Feed these to a tree model or a small specialist.",
+  "expected_effect": "Adds race-dynamic context that can move probabilities earlier or later around pit windows, improving discrimination among otherwise similar tyre-age states.",
+  "risk": "Without true time gaps, position-based neighborhood proxies may misrepresent real undercut opportunities on some circuits.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

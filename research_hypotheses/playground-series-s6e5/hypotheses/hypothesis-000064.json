@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -11,5 +11,6 @@
   "risk": "Do not use actual future compound choices or future stint endings. The feature must represent hypothetical feasibility, not observed next-lap outcome.",
   "sources": [
     "[https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit"
-  ]
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

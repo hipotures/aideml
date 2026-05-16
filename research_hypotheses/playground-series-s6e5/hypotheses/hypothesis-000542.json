@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Trust only ensembles that pass both group holdout and rolling-origin CV, then apply sigmoid-only calibration",
+  "summary": "The latest F1 degradation work validates with rolling-origin CV, while sklearn notes GroupKFold prevents same-group leakage and that isotonic calibration can change AUC by creating ties whereas sigmoid preserves ranking.",
+  "rationale": "The latest F1 degradation work validates with rolling-origin CV, while sklearn notes GroupKFold prevents same-group leakage and that isotonic calibration can change AUC by creating ties whereas sigmoid preserves ranking. For this task, a safer ensemble is a leakage-aware OOF stack from diverse models that improves under both `Year_Race` holdout and within-race forward validation, with sigmoid calibration only at the end.",
+  "implementation_hint": "Run two validation views: `GroupKFold(groups=Year_Race)` and a custom rolling-origin split within each race/driver. Generate OOF predictions from the current binary GBDT, the ranking sidecar, and the AFT/state-space sidecars; blend with a simple logistic meta-model and apply per-fold sigmoid calibration, not isotonic.",
+  "expected_effect": "Reduces false research wins from same-race memorization and can unlock small but real gains from diverse sidecars without sacrificing AUC ordering.",
+  "risk": "More evaluation complexity may slow search, and improvements may shrink once both validation schemes are enforced.",
+  "sources": [
+    "https://scikit-learn.org/dev/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

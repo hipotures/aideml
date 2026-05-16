@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial validation for race/test-shift weighting",
+  "summary": "The train/test split likely contains meaningful covariate shift from year, preseason sessions, and unseen driver/race compositions.",
+  "rationale": "The train/test split likely contains meaningful covariate shift from year, preseason sessions, and unseen driver/race compositions. Adversarial-validation literature shows offline CV can look optimistic when training rows are less test-like than deployment rows.",
+  "implementation_hint": "Train a leak-free classifier to distinguish train vs test using raw covariates only. Use its score to: 1) reweight training rows toward test-like races, 2) build harsher validation folds from the most test-like races, or 3) prune obviously off-distribution rows. Compare against strict `GroupKFold` by `Race_Year` and optionally leave-one-year-out.",
+  "expected_effect": "Reduces public-score surprises and may improve leaderboard robustness even if local CV changes little.",
+  "risk": "If the shift is partly conditional-label shift, pure covariate reweighting can overfit to the unlabeled test distribution and hurt AUC.",
+  "sources": [
+    "https://arxiv.org/abs/2112.10078",
+    "https://proceedings.mlr.press/v108/park20b.html"
+  ]
+}

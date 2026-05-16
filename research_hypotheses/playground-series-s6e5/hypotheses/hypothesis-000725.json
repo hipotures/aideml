@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Query Ranker As A Blend-Only Specialist",
+  "summary": "Pit decisions are relative within a race state: among cars on the same race/lap, who is most likely to stop next.",
+  "rationale": "Pit decisions are relative within a race state: among cars on the same race/lap, who is most likely to stop next. Learning-to-rank frameworks explicitly optimize within query groups, which is a better fit for this local ordering problem than pure global classification.",
+  "implementation_hint": "Create query groups like Year x Race x LapNumber, or Year x Race x LapNumber x dry/wet regime. Train an XGBRanker or CatBoost ranking model with the existing numeric features plus peer-relative ranks/percentiles inside each query, then blend its scores with the base classifier instead of replacing the classifier.",
+  "expected_effect": "Better within-lap ordering, especially in crowded strategy windows where multiple cars have similar absolute features but different relative urgency.",
+  "risk": "Ranking loss is not the Kaggle metric, so this is usually a specialist model not a standalone winner; folds must keep entire query groups intact or the signal will leak.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking#queryauc"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purge The CV Around Race-Driver Timelines Before Trusting Small Gains",
+  "summary": "Several current features use race/group aggregates and chronological transforms, so random or weakly grouped folds can overstate CV by letting near-identical race states leak across folds.",
+  "rationale": "Several current features use race/group aggregates and chronological transforms, so random or weakly grouped folds can overstate CV by letting near-identical race states leak across folds. Purged or embargoed grouped validation is standard when labels depend on nearby future states, and ordered boosting literature warns about prediction shift from target leakage.",
+  "implementation_hint": "Benchmark current best pipeline under stricter splits such as GroupKFold on `Year+Race`, then an embargoed variant that removes nearby laps from the same `Year+Race+Driver` around each validation block. Keep only features/models whose gain survives the harsher split.",
+  "expected_effect": "Likely lowers optimistic local CV but should improve correlation with leaderboard and reduce false-positive feature ideas.",
+  "risk": "This may not raise CV directly; it mainly prevents chasing leakage-driven gains.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ]
+}

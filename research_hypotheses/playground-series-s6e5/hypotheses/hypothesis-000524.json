@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use purged grouped temporal CV, then build only OOF-calibrated stacks on top of it",
+  "summary": "This problem has both chronology and grouping.",
+  "rationale": "This problem has both chronology and grouping. `TimeSeriesSplit` protects time order but ignores groups; `StratifiedGroupKFold` protects groups but not chronology. Any full-data frequency/target statistics or naive stacking can overstate local CV, and LightGBM explicitly warns that imbalance weighting harms probability quality.",
+  "implementation_hint": "Evaluate with a stricter fold design such as leave-`Race-Year`-out or chronological race blocks with non-overlapping race groups, and recompute every count/target/stat feature inside each fold only. Build stacking features from OOF predictions only, then calibrate the final blend with isotonic or Platt on OOF scores rather than raw train predictions.",
+  "expected_effect": "May lower local CV slightly but should improve leaderboard reliability and make ensemble gains trustworthy instead of leakage-driven.",
+  "risk": "Fewer effective groups can make fold variance noisy; calibration can also reduce AUC if done on weak or unstable OOF predictions.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://www.researchgate.net/publication/220519957_On_Cross-Validation_and_Stacking_Building_seemingly_predictive_models_on_random_data"
+  ]
+}

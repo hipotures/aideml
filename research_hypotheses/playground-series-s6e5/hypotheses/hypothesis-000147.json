@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Uncertainty and traffic-volatility features as pit-pressure signals",
+  "summary": "F1 simulation literature emphasizes lap-time variance, pit-stop duration variance, traffic, and undercut conditions as strategic drivers.",
+  "rationale": "F1 simulation literature emphasizes lap-time variance, pit-stop duration variance, traffic, and undercut conditions as strategic drivers. Your baseline uses mean-like pace/degradation features but not how unstable or risky the local race state is.",
+  "implementation_hint": "Compute past-only rolling std/MAD of `LapTime_Delta`, stint residuals, and position changes within Race-Year/Driver; add same-lap field pit-rate, same-lap pace dispersion, and nearby-position pace ranks as traffic-volatility proxies. Interact these with `LapsRemaining_Est` and compound.",
+  "expected_effect": "Should capture moments when teams pit because the current state is unstable or because an undercut window is opening, even if tyre-life thresholds alone do not fire.",
+  "risk": "Same-lap aggregates can leak if they implicitly use future ordering or post-pit effects from other cars on that lap; build them only from contemporaneous fields and test with purged race splits.",
+  "sources": [
+    "https://www.mdpi.com/2076-3417/10/12/4229",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

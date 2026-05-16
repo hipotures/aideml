@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-Time Survival Model For Remaining Laps To Next Pit",
+  "summary": "This target is naturally a time-to-event problem, not just a one-step classification problem.",
+  "rationale": "This target is naturally a time-to-event problem, not just a one-step classification problem. Discrete-time survival lets you learn a hazard curve over upcoming laps and then extract the next-lap hazard as the submission target, while enforcing consistency across 1, 2, 3+ lap horizons. That is a different direction from adding more local tyre heuristics.",
+  "implementation_hint": "Within each driver-race sequence, define event time as laps until next `PitStop==1`; censor at sequence end if no future stop. Expand to person-period rows for horizons 1..H or use a survival forest / discrete-time hazard model. Train with features at time t plus horizon index, then use predicted hazard at horizon 1 as `PitNextLap`. Compare to a multi-horizon classifier sharing parameters.",
+  "expected_effect": "Should improve late-stint timing and reduce inconsistent probabilities across adjacent laps.",
+  "risk": "Data expansion can be large and CV leakage becomes easier if horizons from the same sequence cross folds; keep splits sequence-pure.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://scikit-survival.readthedocs.io/en/stable/api/generated/sksurv.ensemble.RandomSurvivalForest.html"
+  ]
+}

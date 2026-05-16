@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Learn Effective Pit-Loss Priors From Realized Earlier Stops",
+  "summary": "Official F1 strategy coverage emphasizes that even a few tenths of pit-loss can open the window earlier; the current solutions use coarse circuit priors but not a learned operational stop-cost proxy from prior realized stops.",
+  "rationale": "Official F1 strategy coverage emphasizes that even a few tenths of pit-loss can open the window earlier; the current solutions use coarse circuit priors but not a learned operational stop-cost proxy from prior realized stops.",
+  "implementation_hint": "Chronologically reconstruct earlier pit episodes and estimate realized stop-loss proxies from in-lap/out-lap and position change around previous `PitStop`s. Smooth these by `Driver`, `Race`, `Year`, and wet/dry regime, then add mean/variance/fast-stop indicators as features.",
+  "expected_effect": "Should separate equally tyre-worn cars where one profile can afford the undercut and another cannot.",
+  "risk": "Stop-loss measurement is noisy and can leak if any post-decision information is included incorrectly.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/gone-in-1-88s-putting-together-the-perfect-f1-pit-stop.3lLKnEoPKdJgACsUn9IltC",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

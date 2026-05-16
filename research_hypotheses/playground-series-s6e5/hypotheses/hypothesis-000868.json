@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF sequence-model sidecar blended into the tabular tree",
+  "summary": "Recent pit-stop work found Bi-LSTM strongest among several sequence architectures because pit calls depend on temporal trends, not just current state.",
+  "rationale": "Recent pit-stop work found Bi-LSTM strongest among several sequence architectures because pit calls depend on temporal trends, not just current state. Your best solutions already exploit hand-built trend proxies, so the next step is to let a small sequential model summarize the last 8-12 laps and hand its OOF score or embedding to the stronger tabular model.",
+  "implementation_hint": "Train a compact GRU/BiLSTM/TCN on ordered lap windows per `(Year, Race, Driver)` with causal inputs only. Export out-of-fold next-lap probabilities and optionally a 4-16D penultimate-layer embedding, then blend or stack with CatBoost/LightGBM using the current handcrafted features.",
+  "expected_effect": "Most likely to add orthogonal signal on pace trend, stint evolution, and post-pit recovery patterns that trees approximate only crudely.",
+  "risk": "Random row CV will massively overstate gains. Sequence windows and OOF generation must respect race order and never mix future laps from the same driver-race into training.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.mdpi.com/2076-3417/10/21/7805/html"
+  ]
+}

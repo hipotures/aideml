@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online latent degradation filter as features",
+  "summary": "Recent F1 tire modeling work treats degradation as a latent state with pit-stop resets, fuel adjustment, and uncertainty, which is closer to race strategy state than raw cumulative degradation.",
+  "rationale": "Recent F1 tire modeling work treats degradation as a latent state with pit-stop resets, fuel adjustment, and uncertainty, which is closer to race strategy state than raw cumulative degradation. Your current features use fixed thresholds; an online filtered pace/degradation state could capture within-stint drift and warm-up more cleanly.",
+  "implementation_hint": "For each Race-Year-Driver sequence, build leakage-safe recursive features only from prior laps: expected fuel-adjusted lap time, EWMA/1D Kalman-style latent pace, residual-to-latent pace, residual volatility, post-pit warm-up age, and uncertainty bands. Reset state on PitStop=1. Feed these as extra numeric features into the existing tabular model.",
+  "expected_effect": "Should improve ranking around borderline laps where raw TyreLife and Cumulative_Degradation are ambiguous but latent pace deterioration is already visible.",
+  "risk": "If the filter is poorly specified, it can just repackage noisy lap-time deltas. Must exclude pit-in/out artifacts and keep updates strictly past-only.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8232898/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

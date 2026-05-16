@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal stint-curvature features instead of static wear levels",
+  "summary": "Recent tyre-degradation work models wear as a latent, time-varying process and explicitly allows degradation rate to accelerate.",
+  "rationale": "Recent tyre-degradation work models wear as a latent, time-varying process and explicitly allows degradation rate to accelerate. That points to recent slope and curvature within a stint being more informative than absolute tyre age alone.",
+  "implementation_hint": "Using trailing windows only within `Race_Year` + `Driver` + `Stint`, compute robust slopes/accelerations for `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation`; add deviation from the first 2-3 laps of the stint and a ‘degradation cliff’ flag when recent slope steepens materially.",
+  "expected_effect": "Should move positives earlier in rank order when a driver is entering a real pit window but has not yet crossed a simple tyre-life threshold.",
+  "risk": "Out-laps, traffic, or caution-like laps can mimic a cliff; windowing must be strictly past-only after correct race ordering.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

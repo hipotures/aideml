@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-window and neighbor-pressure features instead of only field averages",
+  "summary": "Official F1 strategy writeups emphasize clean air, traffic, pit-loss windows, box-to-overtake calls, and whether a driver is in undercut range.",
+  "rationale": "Official F1 strategy writeups emphasize clean air, traffic, pit-loss windows, box-to-overtake calls, and whether a driver is in undercut range. The current best code uses field means/percentiles, but not local competitor context around the car. A more tactical neighborhood view is closer to how pit calls are actually made.",
+  "implementation_hint": "Within each `Year-Race-LapNumber`, sort by `Position` and build features from the nearest 1-3 cars ahead/behind: their tyre life, compound, lap delta, recent pit flags, and relative old-tyre pressure. Add counters such as 'neighbors likely to pit now', 'driver at risk of undercut by trailing car', and 'clear-air opportunity if pitting'.",
+  "expected_effect": "Adds racecraft context that can separate identical tyre states with different tactical surroundings.",
+  "risk": "Without true time gaps, position-neighbor proxies may be noisy on spread-out fields or during atypical race phases.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue"
+  ]
+}

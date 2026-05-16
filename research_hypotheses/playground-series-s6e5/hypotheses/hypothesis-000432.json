@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Grouped ordered CatBoost CTRs for sparse strategy entities",
+  "summary": "Current best code mostly uses frequency encodings for high-cardinality fields.",
+  "rationale": "Current best code mostly uses frequency encodings for high-cardinality fields. CatBoost’s ordered boosting and categorical target statistics are explicitly designed to reduce leakage and improve quality on sparse categorical data, which matches 800+ drivers plus race/compound/stint interactions.",
+  "implementation_hint": "Train a separate CatBoost model on raw categorical columns (`Driver`, `Race`, `Year`, `Compound`, `Stint`) plus crossed cats like `Driver__Compound`, `Race__Compound`, `Race__Stint`. Use grouped CV by full race weekend, keep ordered boosting on, and compare its OOF ranks to the current tabular baseline.",
+  "expected_effect": "Better capture of strategy priors tied to rare drivers/races/compound combinations, with orthogonal errors versus the current feature-heavy GBDT baseline.",
+  "risk": "Easy to leak if CTRs or folds see neighboring laps from the same race; rare category crosses can overfit if not heavily regularized.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://arxiv.org/abs/1706.09516",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

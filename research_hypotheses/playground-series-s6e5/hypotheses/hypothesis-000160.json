@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only latent degradation state with uncertainty features",
+  "summary": "Recent F1 modeling work shows state-space tyre models outperform simpler AR baselines and naturally treat pit stops as state resets.",
+  "rationale": "Recent F1 modeling work shows state-space tyre models outperform simpler AR baselines and naturally treat pit stops as state resets. That suggests the useful signal is not raw TyreLife alone, but a filtered latent pace-loss state and its uncertainty within each driver-race stint.",
+  "implementation_hint": "Within each Driver x Race_Year sequence, compute past-only filtered latent variables from LapTime, LapTime_Delta, TyreLife, and Cumulative_Degradation: estimated degradation slope, innovation shock, and posterior variance since last pit. Feed those few state features into the existing tabular model.",
+  "expected_effect": "Should sharpen detection of hidden cliff edges and distinguish genuinely degrading tyres from noisy laps, especially late in long stints.",
+  "risk": "A full state-space filter may be computationally fiddly, and if approximated poorly it can add noise rather than signal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

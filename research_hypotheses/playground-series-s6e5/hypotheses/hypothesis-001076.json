@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Driver-stint local ranking model for 'pit now vs wait'",
+  "summary": "Learning-to-rank objectives are built for choosing the best item inside a query group.",
+  "rationale": "Learning-to-rank objectives are built for choosing the best item inside a query group. Here, the natural query is not the race lap across drivers but the driver-race-stint sequence across candidate laps, where the true stop lap should outrank nearby non-stop laps. That is a different supervision shape than the current global classifier and should produce a useful complementary model.",
+  "implementation_hint": "For each driver-race-stint, build query groups over laps before the actual pit. Label the realized stop lap highest, optionally give near-stop laps graded relevance by distance-to-stop, and train XGBRanker or CatBoost ranking with qid/group_id on the stint. Convert rank scores to next-lap probabilities via OOF sigmoid calibration and blend with the classifier.",
+  "expected_effect": "Can sharpen ordering inside ambiguous windows where many consecutive laps look similar under plain binary loss.",
+  "risk": "If queries are too long or mostly trivial, the ranker may learn stint length more than stop timing; calibration back to probabilities must be strictly OOF.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Year Grouped Validation",
+  "summary": "Random holdout likely leaks near-identical race-driver-stint trajectories across train and validation, inflating confidence in features that memorize local sequence structure.",
+  "rationale": "Random holdout likely leaks near-identical race-driver-stint trajectories across train and validation, inflating confidence in features that memorize local sequence structure. A race/year grouped split better matches unseen-event generalization and can reveal which features survive public LB.",
+  "implementation_hint": "Evaluate with GroupKFold or holdout by Year/Race, optionally rolling-origin by Year. Keep the same feature set/model, compare random CV vs race-group CV, then train final on all rows only after choosing features by grouped CV.",
+  "expected_effect": "May not directly raise local random CV, but should reduce validation traps and improve public/private correlation.",
+  "risk": "If Kaggle test rows are from the same races/distribution as train, grouped CV may be too pessimistic and discard useful memorization.",
+  "sources": [
+    "https://f1briefing.com/how-machine-learning-predicts-f1-tire-degradation/",
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

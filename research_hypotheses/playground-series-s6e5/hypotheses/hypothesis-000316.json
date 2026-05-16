@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dry-Tyre Legality State Machine",
+  "summary": "FIA race regulations require two dry compounds in a dry race, while wet/intermediate conditions change that logic.",
+  "rationale": "FIA race regulations require two dry compounds in a dry race, while wet/intermediate conditions change that logic. Current features count prior slicks, but not the full legal state: whether the driver still owes a compound change, whether the current compound repeats a previously used slick, and whether a wet-to-dry transition reactivates the dry-compound incentive.",
+  "implementation_hint": "Build an online per driver-race state machine with OOF-safe features: used_dry_set, remaining_required_dry_count, current_compound_already_used, stop_debt_if_dry, wet_exemption_flag, and laps_remaining_when_still_illegal. Interact these with LapsRemaining_Est, Compound, and Is_WetWeather; train as a small specialist or add to the main tabular model.",
+  "expected_effect": "Should improve mid/late-race pit calls where the car can technically finish but still has a regulation-driven reason to stop.",
+  "risk": "If many rows come from wet or mixed-condition sessions, a naive legality feature can misfire unless wet exemptions are modeled explicitly and leakage-safe race conditions are inferred only from observed compounds.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2022_formula_1_sporting_regulations_-_issue_7_-_2022-06-29.pdf",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-level rank and probability post-processing",
+  "summary": "ROC AUC is rank-based, and pit-stop probability within a race lap is a constrained relative decision: only a few cars usually pit next lap.",
+  "rationale": "ROC AUC is rank-based, and pit-stop probability within a race lap is a constrained relative decision: only a few cars usually pit next lap. Current submissions use raw probabilities without enforcing within-race strategic ordering.",
+  "implementation_hint": "After model prediction, transform scores within each Race/LapNumber or Race/Stint/LapNumber group by blending raw probability with within-group percentile rank, tyre-life percentile, and predicted top-k compression. Tune blend weights on OOF predictions only.",
+  "expected_effect": "May improve AUC by sharpening relative ordering among cars on the same strategic lap without needing calibrated probabilities.",
+  "risk": "Over-aggressive compression can damage global ordering across races; tune lightly and compare raw-vs-rank blend on race-group folds.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://testlightgbm.readthedocs.io/en/latest/Parameters.html"
+  ]
+}

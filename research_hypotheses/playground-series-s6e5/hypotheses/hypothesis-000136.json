@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Query-group ranker for within-sequence ordering, followed by OOF calibration",
+  "summary": "ROC AUC rewards ranking, and learning-to-rank objectives explicitly optimize pair ordering within groups.",
+  "rationale": "ROC AUC rewards ranking, and learning-to-rank objectives explicitly optimize pair ordering within groups. In this problem, the natural groups are driver-race or driver-race-stint sequences, where the model mainly needs to rank which laps are the most pit-imminent.",
+  "implementation_hint": "Train an `XGBRanker` or CatBoost pairwise ranker with `qid` equal to driver-race or driver-race-stint, compare `rank:pairwise` or `rank:ndcg` against binary GBDT, then calibrate the rank scores into probabilities with grouped out-of-fold isotonic, sigmoid, or temperature scaling.",
+  "expected_effect": "Better intra-sequence ordering of imminent pit laps, especially when positives are rare but locally concentrated.",
+  "risk": "Ranker outputs are not probabilities and can hurt submission quality if calibration is not fully out-of-fold; grouping choice also matters and can underperform if too coarse or too small.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/learning_to_rank.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

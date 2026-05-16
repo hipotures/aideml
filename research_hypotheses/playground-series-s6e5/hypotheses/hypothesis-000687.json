@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Learn OOF pit-window hazard priors instead of fixed tyre-age windows",
+  "summary": "This target is naturally a discrete-time event hazard: the probability of stopping on the next lap given the driver has not yet stopped this lap.",
+  "rationale": "This target is naturally a discrete-time event hazard: the probability of stopping on the next lap given the driver has not yet stopped this lap. Discrete-time survival literature fits this setup well, and it is a cleaner generalization of the current hard-coded pit-window heuristics.",
+  "implementation_hint": "Build smoothed out-of-fold lookup features such as logit P(PitNextLap=1 | Compound, TyreLife bucket, Stint, RaceProgress bucket, wet/dry, Race or Year). Feed these priors into the existing tabular model, or test a simple complementary-log-log / logistic meta-model on top of them.",
+  "expected_effect": "Should outperform manual window constants by learning track- and compound-specific stopping curves while staying simple enough for tabular boosters.",
+  "risk": "Sparse combinations can overfit; use hierarchical backoff and additive smoothing.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

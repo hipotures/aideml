@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ambiguity-Window Specialist Trained On Hard Negatives",
+  "summary": "Most negatives are trivial early-stint or impossible-to-pit laps, so AUC can plateau while the model still misses the subtle boundary cases.",
+  "rationale": "Most negatives are trivial early-stint or impossible-to-pit laps, so AUC can plateau while the model still misses the subtle boundary cases. XGBoost documentation explicitly highlights class-imbalance weighting, and F1 sources emphasize that the real decision zone is the pit window where undercut/overcut economics become active. A second-stage specialist should focus only on ambiguous laps near likely pit windows.",
+  "implementation_hint": "Define an ambiguity subset using OOF-safe rules such as `CurrentTyreCanReachFinish` near zero margin, within a track-template window, recent deterioration spike, or unresolved dry-compound debt. Train a separate boosted model on that subset with higher positive weighting (`scale_pos_weight` or sample weights), then blend its OOF logits with the global model only for rows that enter the ambiguity gate.",
+  "expected_effect": "Often lifts AUC by spending model capacity on the small slice that decides leaderboard movement instead of relearning obvious negatives.",
+  "risk": "If the gate is too narrow, recall drops; if too broad, the specialist collapses back into the base model.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/parameter.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

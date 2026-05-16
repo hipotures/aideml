@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Tyre Health Residuals",
+  "summary": "Recent F1 tyre-degradation work frames tyre pace as a latent state reset by pit stops, while current solutions only use raw degradation ratios and medians.",
+  "rationale": "Recent F1 tyre-degradation work frames tyre pace as a latent state reset by pit stops, while current solutions only use raw degradation ratios and medians. A smoothed residual tyre-health signal may capture when tyres are suddenly falling off before the next-lap pit decision.",
+  "implementation_hint": "Within each Race-Driver-Stint ordered by LapNumber, residualize LapTime against RaceProgress, Compound, Position, and race-lap median pace; add rolling residual mean/slope/acceleration, last-3-lap degradation slope, and z-scored residual versus same Race-Compound-TyreLife bins. Avoid future laps by using shifted expanding/rolling features only.",
+  "expected_effect": "Should improve ranking of imminent pit laps caused by sudden pace loss, especially when TyreLife alone is insufficient.",
+  "risk": "If row ordering or synthetic data construction makes temporal groups incomplete, shifted rolling features may be noisy; careless unshifted rolling would leak future information.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

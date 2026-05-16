@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic and clean-air tax features from within-lap relative pace",
+  "summary": "Public F1 strategy analysis repeatedly notes that undercuts and overcuts are often decided by traffic and clean air, not just tyre age.",
+  "rationale": "Public F1 strategy analysis repeatedly notes that undercuts and overcuts are often decided by traffic and clean air, not just tyre age. The existing features compare each row to lap means, but they do not explicitly estimate whether the driver is currently boxed into a train or likely to benefit from clear air after stopping.",
+  "implementation_hint": "Create causal traffic proxies such as: laptime residual minus race-normalized personal baseline, zero/negative position-change streaks, high lap-time residual while tyre metrics remain normal, and local crowding indicators from same-lap positions and pace ranks. Combine into a 'clean-air gain if pitting now' feature and interact it with compound and race phase.",
+  "expected_effect": "Can add orthogonal signal near midfield battles where identical tyre ages lead to different stop timing because of train effects.",
+  "risk": "Without actual gap-to-car-ahead data, traffic is inferred indirectly and may be noisy; poorly designed proxies could just duplicate existing lap-time residual features.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/",
+    "https://formula1.wiki/index.php/Lap_time_and_delta_analysis"
+  ]
+}

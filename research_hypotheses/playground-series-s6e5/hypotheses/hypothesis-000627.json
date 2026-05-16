@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cheap-Stop Slowdown Score",
+  "summary": "Safety Car/VSC periods reduce pit-loss delta and cause opportunistic pit stops.",
+  "rationale": "Safety Car/VSC periods reduce pit-loss delta and cause opportunistic pit stops. The tried race-lap average pace feature is too blunt; a robust field-slowdown score with rolling baselines should better detect cheap-stop windows.",
+  "implementation_hint": "For each Race, compute rolling prior median/IQR of field lap times by LapNumber; create lap_slowdown_z, field_compression proxies, fraction of drivers with extreme slow laps, current PitStop share, and interactions with TyreLife and RaceProgress. Use only prior rolling baselines, then attach current-lap slowdown signals available in test.",
+  "expected_effect": "Could boost recall for clustered next-lap pits after neutralizations or weather-like field slowdowns.",
+  "risk": "If synthetic data lacks true SC/VSC dynamics, this may add redundant noise; current PitStop share may dominate and overfit validation if split randomly.",
+  "sources": [
+    "https://f1briefing.com/how-delta-time-shapes-pit-stop-strategies/",
+    "https://gpexplained.com/what-are-undercuts-and-overcuts-in-formula-1/"
+  ]
+}

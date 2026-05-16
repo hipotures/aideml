@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap query ranking instead of plain binary classification",
+  "summary": "Pit calls are relative within a race/lap context: teams choose who among active cars is most pit-ready now.",
+  "rationale": "Pit calls are relative within a race/lap context: teams choose who among active cars is most pit-ready now. CatBoost ranking objectives support grouped optimization and preserve high-cardinality categoricals with ordered CTRs, which fits `Driver`, `Race`, and compound interactions better than manual encodings.",
+  "implementation_hint": "Create groups at `Race_Year x LapNumber` or `Race_Year x LapNumber x compound_regime`; train a ranker such as `YetiRankPairwise` or `QueryCrossEntropy` on `PitNextLap` labels, then map groupwise scores back to probabilities via OOF logistic calibration or monotone scaling. Keep current strong handcrafted numeric features, but pass raw categoricals natively.",
+  "expected_effect": "Better AUC by learning pit priority within each lap and reducing loss from globally miscalibrated thresholds.",
+  "risk": "Some groups may have few positives or none; probability recovery from ranking scores can be noisy if calibration is not fully OOF.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

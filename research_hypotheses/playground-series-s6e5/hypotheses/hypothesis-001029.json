@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add stint-dynamics features from lagged and rolling degradation slopes",
+  "summary": "The current best runs use static ratios, but pit calls depend on acceleration of degradation, not just level.",
+  "rationale": "The current best runs use static ratios, but pit calls depend on acceleration of degradation, not just level. Recent F1 tire-degradation work models latent pace decay with state resets at pit stops, implying slope and curvature within stint should matter.",
+  "implementation_hint": "For each driver-race-stint, derive lag-1/lag-2 changes and rolling regressions for LapTime, LapTime_Delta, Cumulative_Degradation, TyreLife, and position. Add slope, curvature, residual-to-trend, and post-pit reset indicators; compute them strictly from prior laps only.",
+  "expected_effect": "Should separate genuine cliff-edge stints from long but stable stints, improving recall near true stop windows without relying on leakage-prone target encoding.",
+  "risk": "Noise from safety-car/wet anomalies can corrupt slopes; robust clipping or race-phase normalization is needed.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

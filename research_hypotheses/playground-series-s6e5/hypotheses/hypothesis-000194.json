@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-level probability-mass normalization using empirical pit-count priors",
+  "summary": "Pit calls are not independent across rows; on a given race lap, usually zero or a small cluster of cars pit.",
+  "rationale": "Pit calls are not independent across rows; on a given race lap, usually zero or a small cluster of cars pit. F1 strategy articles emphasize pit windows, undercut range, and clustered reactions once a window opens. Modeling each row independently misses that competition structure.",
+  "implementation_hint": "From training folds only, estimate expected pit-count distributions by coarse contexts such as `(race_progress_bin, compound, stint, wet/dry, track regime)`. After base predictions, normalize probabilities within each `(Race, Year, LapNumber)` so total mass matches the context prior, or blend a lap-level classifier predicting `number_of_pitters_next_lap` and rescale row probabilities accordingly.",
+  "expected_effect": "Should reduce overprediction on quiet laps and sharpen predictions on tactical cluster laps, improving leaderboard robustness more than local CV alone.",
+  "risk": "Wrong priors can flatten true signals. Must be OOF-built and soft, not hard constrained.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Filtered latent wear state from a race-local state-space model",
+  "summary": "Recent F1 work models tyre degradation as a latent state with pit-stop resets and fuel adjustment, outperforming a simpler AR benchmark.",
+  "rationale": "Recent F1 work models tyre degradation as a latent state with pit-stop resets and fuel adjustment, outperforming a simpler AR benchmark. That suggests the current feature set may be missing a hidden wear signal that is better represented by filtered state, innovation, and state uncertainty than by raw `TyreLife` and `Cumulative_Degradation` alone.",
+  "implementation_hint": "For each driver-race sequence, fit a lightweight causal state-space or Kalman-style model on past laps only using lap time, lap delta, compound, and estimated fuel burn; export filtered latent degradation level, one-step forecast error, and posterior variance as features for the downstream classifier.",
+  "expected_effect": "Adds a dynamic ‘cliff’ indicator that can separate normal long stints from laps where pace loss is becoming strategically actionable.",
+  "risk": "Using smoothed states or future observations would leak; only filtered online states should be used.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

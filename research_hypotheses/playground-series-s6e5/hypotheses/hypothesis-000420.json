@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit legal-state gate for dry vs wet-exempt strategy",
+  "summary": "FIA rules make the mandatory two-dry-compound obligation disappear once a driver has used intermediate or wet tyres.",
+  "rationale": "FIA rules make the mandatory two-dry-compound obligation disappear once a driver has used intermediate or wet tyres. Current best solutions already track slick counts and wet flags, but not the full legality state, so they may mix compulsory-stop rows with purely tactical rows.",
+  "implementation_hint": "Create race-driver state features such as `wet_exempt`, `dry_noncompliant_one_slick_used`, `dry_compliant`, `current_tyre_can_finish_but_owes_compound_change`, and interact them with `LapsRemaining`, `TyreLife`, `Stint`, and prior pit count. Test either a gating feature set inside one model or separate specialists for dry-legal vs wet/mixed sessions.",
+  "expected_effect": "Should reduce late-race confusion by distinguishing rows where a stop is forced by rules from rows where the stop is optional.",
+  "risk": "Wet or mixed-condition rows may be sparse, so hard gating could fragment the data too much if not regularized.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf",
+    "https://run.unl.pt/bitstreams/c56ef932-3c13-40d1-8df9-57124cc1ed51/download"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal stint change-point features instead of more fixed tyre-life constants",
+  "summary": "RUL and recent F1 tyre-state papers both emphasize regime changes: the useful signal is often the onset of a new degradation phase, not tyre age alone.",
+  "rationale": "RUL and recent F1 tyre-state papers both emphasize regime changes: the useful signal is often the onset of a new degradation phase, not tyre age alone. In pit strategy terms, the cliff matters more than the clock.",
+  "implementation_hint": "Within each (Race_Year, Driver, Stint), compute only backward-looking features: rolling slope and acceleration of LapTime_Delta, residual pace vs same-race-lap peers, rolling variance jumps, run length of consecutive deterioration, and a piecewise-linear breakpoint score indicating the first sustained pace collapse.",
+  "expected_effect": "Should sharpen predictions for imminent stops triggered by sudden degradation or traffic-induced tyre overheating that static life-to-finish rules miss.",
+  "risk": "Raw lap times are noisy because of traffic, yellow-flag effects, and out/in laps; the residualization step has to stay causal and robust.",
+  "sources": [
+    "https://arxiv.org/abs/2401.04351",
+    "https://arxiv.org/abs/2512.00640",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

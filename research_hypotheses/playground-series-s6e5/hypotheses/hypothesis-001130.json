@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a small direct-AUROC optimization expert and blend by rank",
+  "summary": "Current base models optimize logloss while the competition scores ROC AUC.",
+  "rationale": "Current base models optimize logloss while the competition scores ROC AUC. Deep AUC-maximization work and LibAUC suggest a model trained on an AUC surrogate can produce a meaningfully different ranking, especially on imbalanced boundary samples.",
+  "implementation_hint": "Train a compact MLP or linear-tabular expert on the existing engineered features using a pairwise/deep AUC loss, ideally on a candidate subset near likely stop windows to control compute. Use it only as a low-weight rank-blend component with XGB/CatBoost rather than replacing them.",
+  "expected_effect": "Best case is not a standalone gain but a low-correlation reranker that nudges ambiguous positives upward and improves ensemble AUC.",
+  "risk": "Standalone model may underperform trees; pairwise AUC losses can be noisy and need careful batching, regularization, and early stopping.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S092523122301295X",
+    "https://libauc.org/"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost on High-Cardinality Race Memory",
+  "summary": "The dataset has many drivers and race-context combinations, and CatBoost’s ordered boosting plus ordered categorical statistics were designed specifically to reduce prediction shift from target leakage in such settings.",
+  "rationale": "The dataset has many drivers and race-context combinations, and CatBoost’s ordered boosting plus ordered categorical statistics were designed specifically to reduce prediction shift from target leakage in such settings. This is relevant because manual frequency/cross features may leave performance on the table while naive target encoding would be dangerous.",
+  "implementation_hint": "Train CatBoost in ordered mode with raw categorical columns and a small set of sequence-safe numeric features, emphasizing combos like Driver×Race, Driver×Compound, Race×Compound, and Year×Race. Compare a mostly-raw-cat CatBoost against the current engineered GBDT and blend OOF logits if fold correlation is low enough.",
+  "expected_effect": "May recover signal from sparse identity-strategy patterns without handcrafting many fragile encodings.",
+  "risk": "If folds are not race-grouped, ordered target statistics can still look artificially strong; public LB may also punish overfit race identity memory.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://arxiv.org/abs/1706.09516",
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

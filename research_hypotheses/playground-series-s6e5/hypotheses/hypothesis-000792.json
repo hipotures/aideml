@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multivariate OOF Calibrator for Diverse Experts",
+  "summary": "Calibration papers show beta calibration, ENIR, and multivariate isotonic methods can outperform a single sigmoid when combining distorted scores from different base learners.",
+  "rationale": "Calibration papers show beta calibration, ENIR, and multivariate isotonic methods can outperform a single sigmoid when combining distorted scores from different base learners. That is relevant if you blend a pointwise booster, lap-ranker, and regime expert whose score shapes differ.",
+  "implementation_hint": "Generate strict race-held-out OOF predictions from 2-4 diverse models, then fit a tiny second-stage calibrator on score vectors only: start with beta-calibrated logistic stacking, compare against ENIR, and optionally test a 2D monotone calibrator on the two strongest models. Prefer the simplest variant if OOF AUC gains are tiny.",
+  "expected_effect": "Small but plausible lift from exploiting complementary score geometry while keeping submissions more stable across race regimes.",
+  "risk": "Nonparametric calibrators can overfit badly with only 26 grouped events, so keep the meta-model low-capacity and fully OOF.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids%283f9dec1d-0afb-45f4-ba09-c1763232f976%29.html",
+    "https://pubmed.ncbi.nlm.nih.gov/28316511/",
+    "https://www.ijcai.org/proceedings/2020/353"
+  ]
+}

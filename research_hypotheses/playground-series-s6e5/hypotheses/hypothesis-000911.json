@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap query ranker blended by OOF rank",
+  "summary": "ROC AUC rewards ordering, and CatBoost supports groupwise ranking objectives.",
+  "rationale": "ROC AUC rewards ordering, and CatBoost supports groupwise ranking objectives. In this task, the natural query is all drivers on the same Year-Race-LapNumber, where only a few cars are truly in a pit window; learning within-lap ordering should be more strategy-aligned than another global binary model.",
+  "implementation_hint": "Train a CatBoost ranker with GroupId = Year_Race_LapNumber using YetiRankPairwise or LambdaMart, then blend its out-of-fold ranks with the current classifier. Keep features causal and compare standalone QueryAUC-style behavior versus blended ROC AUC.",
+  "expected_effect": "Adds complementary signal on pit-window ordering and pit-wave laps; most likely a small but real AUC gain in ensemble form rather than as a replacement model.",
+  "risk": "Many groups will have zero positives, so the ranker may be weak standalone and can become noisy if grouping or pair generation is not handled carefully.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace single-step target learning with a discrete hazard curve over the next 1-8 laps",
+  "summary": "Discrete-time survival work shows binary classifiers can model per-interval hazard effectively, and recent F1 pit-stop work found value in joint next-lap classification plus stop-horizon estimation.",
+  "rationale": "Discrete-time survival work shows binary classifiers can model per-interval hazard effectively, and recent F1 pit-stop work found value in joint next-lap classification plus stop-horizon estimation. A full hazard curve is a stronger formulation than a single next-lap label because it teaches the model where the pit window is approaching, not just whether it fires immediately.",
+  "implementation_hint": "Create person-period rows for horizons h=1..8 per original lap, mark the first future pit as the event and later horizons as censored after a stop/finish, train a GBDT/CatBoost with horizon as a feature, then recover next-lap probability from h=1 while optionally using summed survival consistency as an auxiliary check.",
+  "expected_effect": "Better ranking near pit windows, especially for borderline laps where current features know a stop is close but not whether it is exactly next lap.",
+  "risk": "Dataset expansion can be memory-heavy, and incorrect censoring/label construction will silently leak future information.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

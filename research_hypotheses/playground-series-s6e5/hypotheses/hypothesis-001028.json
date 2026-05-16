@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Reframe as discrete-time hazard prediction with an auxiliary time-to-pit target",
+  "summary": "This label is a one-step event hazard, not a generic IID binary class.",
+  "rationale": "This label is a one-step event hazard, not a generic IID binary class. Survival literature reports hazard-parameterized discrete-time models outperform PMF-style formulations, and recent F1 pit-stop work uses joint lap-level classification/regression heads.",
+  "implementation_hint": "Build driver-race sequences sorted by lap. Train either a small sequence model or tabular hazard model with outputs for next-lap pit probability plus auxiliary remaining-laps-to-pit regression/classification. Use only past laps within each driver-race; reset state after observed pit stops.",
+  "expected_effect": "Better alignment to the task structure, especially around pit windows where risk ramps over consecutive laps.",
+  "risk": "More engineering and higher leakage risk if future laps from the same sequence are accidentally exposed during training or feature generation.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6348952/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

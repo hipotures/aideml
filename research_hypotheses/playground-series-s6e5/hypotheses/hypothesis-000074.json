@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "Compute train-only or combined train-test frequencies for Driver, Race, Race-Year, Compound, Driver-Year, and Race-Compound. Add log-count and rare-category flags while keeping raw categorical columns for CatBoost.",
   "expected_effect": "Small AUC/stability gain with medium confidence.",
   "risk": "Combined train-test frequencies are transductive; they avoid target leakage but exploit test-distribution availability. Compare train-only versus combined frequencies under the same validation scheme.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

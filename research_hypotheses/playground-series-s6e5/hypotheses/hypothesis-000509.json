@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use robust race-relative pace and abnormal-regime features",
+  "summary": "LapTime has extreme values above 2000 seconds, which likely reflect red flags, safety cars, pit/in-lap artifacts, or timing anomalies.",
+  "rationale": "LapTime has extreme values above 2000 seconds, which likely reflect red flags, safety cars, pit/in-lap artifacts, or timing anomalies. Strategy research emphasizes that yellow flags and race state change pit-loss economics, so raw seconds can mislead unless converted to robust relative signals.",
+  "implementation_hint": "Within Race_Year+LapNumber compute robust ranks/z-scores for LapTime, LapTime_Delta, degradation, and position change using median/MAD or quantiles; add extreme_lap, field_slowdown_rank, isolated_driver_slowdown, and winsorized versions of raw timing columns. Test clipping raw LapTime_Delta while keeping anomaly flags.",
+  "expected_effect": "Should reduce overfit to timing outliers while preserving high-value safety-car/red-flag/pit-window signals.",
+  "risk": "Outliers may already encode real stops; excessive clipping can remove useful signal unless anomaly flags are retained.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0377221724005484",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

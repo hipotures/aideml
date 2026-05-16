@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Importance-Weighted CV And Shift-Aware Calibration",
+  "summary": "Test appears shifted relative to train by year/driver mix.",
+  "rationale": "Test appears shifted relative to train by year/driver mix. Under covariate shift, ordinary CV can mis-rank models, and calibration can break even when discrimination holds up.",
+  "implementation_hint": "Estimate a train-vs-test density ratio with a simple classifier or coarse marginals over `Year`, `Race`, `Compound`, `RaceProgress`, and driver novelty indicators. Use those weights in fold scoring/model selection, and calibrate OOF logits with a lightweight weighted calibrator rather than unweighted global calibration. Prefer leave-race or leave-race-year folds.",
+  "expected_effect": "More robust model selection for the public/private test distribution and fewer leaderboard drops from non-transferable CV wins.",
+  "risk": "Density ratios can be noisy or unstable if estimated on overly fine-grained categories.",
+  "sources": [
+    "https://jmlr.csail.mit.edu/papers/volume8/sugiyama07a/sugiyama07a.pdf",
+    "https://arxiv.org/abs/2006.16405",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

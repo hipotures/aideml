@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-Lap Set Model For Field Interaction",
+  "summary": "A pit decision is not only a single-driver state; it depends on the unordered set of competitors sharing the lap, because traffic, cover-stops, and open-air pockets matter.",
+  "rationale": "A pit decision is not only a single-driver state; it depends on the unordered set of competitors sharing the lap, because traffic, cover-stops, and open-air pockets matter. Set-based models are designed for permutation-invariant group structure and fit the 'all cars on this lap' problem more naturally than pointwise trees.",
+  "implementation_hint": "Build same-lap sets keyed by `(Year,Race,LapNumber)` with per-car features and a target for each car. Use a tiny Deep Sets or Set Transformer sidecar to output per-car pit propensity from the whole field state, then blend only its OOF predictions with the base tabular model. Keep it narrow and regularized; this is a sidecar, not a replacement.",
+  "expected_effect": "May recover interaction signal that handcrafted field-relative summaries miss, especially on cover-stop and clean-air cases.",
+  "risk": "Higher implementation complexity and easier to overfit on only ~20 cars per set; gains may be concentrated in a small subset of races.",
+  "sources": [
+    "https://huggingface.co/papers/1703.06114",
+    "https://huggingface.co/papers/1810.00825",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB"
+  ]
+}

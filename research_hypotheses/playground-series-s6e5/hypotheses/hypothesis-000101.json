@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Train a same-lap groupwise ranker instead of only pointwise classifiers",
+  "summary": "At each `Year,Race,LapNumber`, only a few cars are truly in the pit window.",
+  "rationale": "At each `Year,Race,LapNumber`, only a few cars are truly in the pit window. Learning-to-rank objectives can directly optimize within-group ordering, which is closer to the decision problem than treating every row independently.",
+  "implementation_hint": "Use `qid = Year__Race__LapNumber` and train XGBoost LTR or CatBoost ranking objectives so positives outrank negatives inside each lap-group. Blend its scores with the best pointwise model; rank-based blending often helps AUC even if raw probabilities are miscalibrated.",
+  "expected_effect": "Should improve relative ordering among cars facing the same track conditions, especially when same-lap context drives the decision.",
+  "risk": "Many groups may have zero positives, making ranking data sparse; scores may need calibration before averaging with probabilistic models.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

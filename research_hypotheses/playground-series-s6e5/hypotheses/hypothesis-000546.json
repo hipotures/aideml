@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost categorical sidecar with blocked OOF blending",
+  "summary": "Current best code manually frequency-encodes many high-cardinality race/driver combinations.",
+  "rationale": "Current best code manually frequency-encodes many high-cardinality race/driver combinations. CatBoost’s ordered boosting and ordered target statistics are designed to handle such categories with less leakage than ad hoc encodings, and its docs explicitly discourage external one-hot preprocessing for these features.",
+  "implementation_hint": "Train a sidecar CatBoostClassifier on mostly raw numerics plus raw categorical columns and a few interaction strings, using ordered boosting/CTR handling instead of manual freq and median encodings. If blending, use strictly fold-disjoint OOF predictions and sigmoid calibration; avoid isotonic if preserving AUC ranking is the priority.",
+  "expected_effect": "May recover signal from rare drivers/races/compound interactions that manual encodings smooth away, while also adding ensemble diversity with minimal extra feature work.",
+  "risk": "If folds are not truly forward/group blocked, ordered CTRs can still overstate CV; isotonic calibration can also alter AUC via ties.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/concepts/faq",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

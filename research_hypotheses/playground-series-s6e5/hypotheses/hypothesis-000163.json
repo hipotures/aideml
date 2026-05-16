@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged driver-race embargo CV around the next-lap label",
+  "summary": "`PitNextLap` uses a forward one-lap horizon, so adjacent laps from the same driver-race leak label context unless validation purges nearby rows.",
+  "rationale": "`PitNextLap` uses a forward one-lap horizon, so adjacent laps from the same driver-race leak label context unless validation purges nearby rows. Purged/embargoed CV is designed for overlapping forward labels and should better match leaderboard behavior than naive grouped folds.",
+  "implementation_hint": "Build folds at `Race_Year` or contiguous race blocks, then within each validation fold drop training rows from the same `Driver`+`Race_Year` whose lap index is within at least 1 lap of any validation row; compare ordinary GroupKFold vs purged+embargo CV on the same baseline.",
+  "expected_effect": "Likely no direct feature gain, but should reduce optimistic local CV and improve model/ensemble selection stability for LB-facing experiments.",
+  "risk": "Can lower apparent CV and reduce training data enough to hide small real gains if the purge window is too wide.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://ml4trading.io/docs/diagnostic/reference/references/",
+    "https://pypi.org/project/wfvkit/"
+  ]
+}

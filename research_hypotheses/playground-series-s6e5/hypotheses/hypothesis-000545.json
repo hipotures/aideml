@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual stop-now value features from strategy optimization",
+  "summary": "Pit-stop literature frames the choice as a compare-now-vs-wait optimization under degradation, pit loss, and remaining distance.",
+  "rationale": "Pit-stop literature frames the choice as a compare-now-vs-wait optimization under degradation, pit loss, and remaining distance. That suggests more useful features than raw wear ratios: approximate marginal benefit of stopping now, optimal stint-length gap, and undercut feasibility.",
+  "implementation_hint": "Estimate per-compound degradation slope from historical laps, then compute features such as current stint length minus approximate optimal stint length sqrt(2P/d), expected lap-time loss from one more lap, stop-now finishability on fresh compound, and a simple undercut margin using current vs fresh-tyre pace assumptions.",
+  "expected_effect": "Can turn existing heuristics into more causal, race-time-based signals and improve edge cases where identical TyreLife values imply different actions because laps remaining differ.",
+  "risk": "Needs assumptions for pit-loss and fresh-tyre pace; if those are too crude, the features may just repackage noise.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3769652",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint-level ranking objective: one positive lap per pit window instead of plain binary classification",
+  "summary": "Each pit stop creates a small query where the model mainly needs to rank the final pre-stop lap above earlier laps in the same stint.",
+  "rationale": "Each pit stop creates a small query where the model mainly needs to rank the final pre-stop lap above earlier laps in the same stint. CatBoost ranking objectives are designed for grouped ordering problems and can reduce the penalty from class imbalance and duplicated near-negative rows.",
+  "implementation_hint": "Build query groups as contiguous driver-race-stints ending at a pit stop; mark only the lap immediately before the stop as positive, optionally add position weights for laps within 3-5 laps of the stop. Train CatBoost ranker with `YetiRankPairwise` or `LambdaMart`, then blend ranked scores with the current classifier.",
+  "expected_effect": "Can sharpen separation inside each stint and improve AUC by learning local ordering of pit-window laps instead of global thresholds.",
+  "risk": "Poor grouping can leak future information or create unstable tiny queries; wet/safety-car stints may behave differently and need separate handling.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add team-aware double-stack and teammate-conflict features",
+  "summary": "F1 strategy is constrained by the fact that each team runs two cars and may need to double-stack; official F1 glossary and pit-lane reporting show that teammate timing and pit-lane tightness can directly alter when a driver is called in.",
+  "rationale": "F1 strategy is constrained by the fact that each team runs two cars and may need to double-stack; official F1 glossary and pit-lane reporting show that teammate timing and pit-lane tightness can directly alter when a driver is called in. This is different from generic whole-grid pit-wave features.",
+  "implementation_hint": "Join a public `Year x Driver -> Team` map, then within each `Race_Year x Team` derive `TeammatePittedThisLap`, `TeammateJustStopped`, `SharedPitWindow`, and `LikelyDoubleStack` features, plus interactions with tight-pit-lane circuits and current position.",
+  "expected_effect": "Captures pit-box capacity and coordinated team strategy that driver-only or field-only features miss.",
+  "risk": "Needs accurate yearly team mapping and special handling for reserve drivers or pre-season testing entries.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/f1-glossary-a-e.1MFONigMlQSbSQtpP7YCy2",
+    "https://www.racefans.net/2021/09/05/teams-braced-for-challenge-of-zandvoorts-tighter-than-monaco-pit-lane/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

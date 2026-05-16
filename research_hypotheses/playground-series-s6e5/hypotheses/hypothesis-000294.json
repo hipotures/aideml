@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut and traffic-pressure features from same-lap opponents",
+  "summary": "F1 strategy sources repeatedly emphasize that pit timing depends on undercut range, clean air, and traffic windows, not just tire age.",
+  "rationale": "F1 strategy sources repeatedly emphasize that pit timing depends on undercut range, clean air, and traffic windows, not just tire age. Even without full gap telemetry, same-race-lap relative context can proxy whether a driver is vulnerable to an undercut or can rejoin into traffic.",
+  "implementation_hint": "Within each Race-Year-LapNumber, create leakage-safe cross-sectional features from current-lap observations only: percentile/rank of LapTime_Delta, TyreLife, and degradation; local neighborhood medians by adjacent Position bands; leader-to-midfield pace separation; indicators for being slower than nearby position rivals on older tires; and interaction terms with Position and Compound. Avoid any future-lap aggregates.",
+  "expected_effect": "Should help separate true pit-window pressure from generic late-stint wear by capturing strategic context against nearby rivals.",
+  "risk": "Because direct time gaps are unavailable, proxies may be weak or track-specific. Cross-sectional aggregates must be computed per current lap only.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

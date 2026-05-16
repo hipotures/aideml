@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Entity-Embedding Identity Features",
+  "summary": "`Driver`, `Race`, and their interactions are high-cardinality and sparse; entity embeddings are a proven Kaggle pattern for learning similarity structure that trees and target stats often miss.",
+  "rationale": "`Driver`, `Race`, and their interactions are high-cardinality and sparse; entity embeddings are a proven Kaggle pattern for learning similarity structure that trees and target stats often miss. This is especially relevant here because strategy behavior likely clusters across drivers, tracks, and compound usage styles.",
+  "implementation_hint": "Train a small tabular NN on raw categoricals plus core numeric features under leave-race-out OOF. Export either OOF logits or learned embeddings for `Driver`, `Race`, `Compound`, `Driver×Compound`, and `Race×Year`, then feed those into the main booster.",
+  "expected_effect": "Adds complementary signal for rare drivers/races and may generalize better than pure frequency/count encodings.",
+  "risk": "Weak fold discipline will leak identity signal; NN-only models may trail trees, so use embeddings as auxiliary features or a blend source.",
+  "sources": [
+    "https://www.researchgate.net/publication/301878003_Entity_Embeddings_of_Categorical_Variables",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

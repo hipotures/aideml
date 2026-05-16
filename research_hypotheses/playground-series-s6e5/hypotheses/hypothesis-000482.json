@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-lap field context features",
+  "summary": "Pit calls are relative decisions: undercuts, overcuts, traffic, and mass pit timing depend on where a car sits versus the field, not only its own tyre age.",
+  "rationale": "Pit calls are relative decisions: undercuts, overcuts, traffic, and mass pit timing depend on where a car sits versus the field, not only its own tyre age. Current best features use race/compound medians over broad groups, but not same-race same-lap percentiles or field composition.",
+  "implementation_hint": "For each Race_Year/Race + LapNumber, add leak-safe cross-sectional features: TyreLife percentile, Cumulative_Degradation percentile, LapTime_Delta z-score, Position percentile, count/share of cars on each Compound, count of PitStop==1 on the current lap, and whether this driver is an early/late outlier for its compound/stint.",
+  "expected_effect": "Should improve ranking around pit waves and undercut windows, especially when many cars approach the same strategic lap together.",
+  "risk": "If validation computes group statistics using held-out rows differently from test-time availability, CV may be optimistic; keep features strictly same-lap and target-free.",
+  "sources": [
+    "https://thef1db.com/blog/f1-strategy-undercut-overcut",
+    "https://en.wikipedia.org/wiki/Pit_stop",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/"
+  ]
+}

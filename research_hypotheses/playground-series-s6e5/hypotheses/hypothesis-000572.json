@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent race-regime state from pit-wave and neutralization signals",
+  "summary": "Pit timing changes abruptly under safety-car windows, low-grip warm-up conditions, or sudden field-wide pit waves.",
+  "rationale": "Pit timing changes abruptly under safety-car windows, low-grip warm-up conditions, or sudden field-wide pit waves. Official F1 coverage explicitly mentions safety-car windows and warm-up-sensitive undercut/overcut balance. A latent state model can capture these regime shifts better than static handcrafted flags.",
+  "implementation_hint": "Create race-lap aggregate signals first: number of pitters this lap and previous 1-3 laps, field mean/std of lap delta, field mean/std of degradation, fraction on each compound, and abrupt shifts in these aggregates. Fit a small HMM/change-point model per race or globally on these aggregates, output posterior regime probabilities for each row, and feed those posteriors into the booster.",
+  "expected_effect": "Could improve recall on clustered pit events and unusual laps where many drivers react to a common exogenous state rather than individual tyre wear.",
+  "risk": "If inferred states are unstable across folds or mostly recapitulate race progress, the extra complexity will not pay off. Keep the state space very small.",
+  "sources": [
+    "https://academic.oup.com/biometrics/article/56/4/1002/7263469",
+    "https://academic.oup.com/biomet/article/81/2/317/468177",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

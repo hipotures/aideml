@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Sigmoid-Calibrated Regime Blend",
+  "summary": "You already have several near-tied models, so gain may now come from safer blending.",
+  "rationale": "You already have several near-tied models, so gain may now come from safer blending. Scikit-learn notes isotonic can change ROC-AUC by introducing ties, while sigmoid is strictly monotonic; for this competition that makes sigmoid the safer post-processing choice.",
+  "implementation_hint": "Build 2 to 4 diverse specialists such as base classifier, ranker, CatBoost categorical model, and latent-state model. Generate strictly OOF predictions under race-grouped folds, fit a small logistic meta-blender or per-regime sigmoid calibrator on those OOF scores, and only then refit base models on full data for test inference.",
+  "expected_effect": "More stable leaderboard transfer and a modest lift from complementary errors without sacrificing ranking quality.",
+  "risk": "Main trap is leakage from in-fold blending/calibration; isotonic may also reduce AUC through tied predictions if overused.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

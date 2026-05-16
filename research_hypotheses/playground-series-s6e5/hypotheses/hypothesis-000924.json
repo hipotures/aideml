@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut And Field-Pressure Signals",
+  "summary": "F1 pit timing is strategic, not purely tyre wear: undercut, traffic, relative position, and pit-lane loss determine whether a stop is attractive.",
+  "rationale": "F1 pit timing is strategic, not purely tyre wear: undercut, traffic, relative position, and pit-lane loss determine whether a stop is attractive. Race-strategy references explicitly model traffic and undercut conditions.",
+  "implementation_hint": "Create same-lap field aggregates by Year/Race/LapNumber: driver tyre-life percentile, position-neighborhood tyre-life mean, count/share of cars with older tyres, median lap delta by position band, and whether nearby positions have worse pace/older tyres. Add interactions with Position, Position_Change, RaceProgress, and Estimated_Laps_Remaining.",
+  "expected_effect": "Could improve discrimination among drivers with similar tyre age where only track-position context makes a pit likely.",
+  "risk": "No explicit gap/safety-car data is available, so proxies may be noisy; aggregate features must be computed identically on concatenated train/test without target labels.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://racemate.io/tyre-strategy-simulator/"
+  ]
+}

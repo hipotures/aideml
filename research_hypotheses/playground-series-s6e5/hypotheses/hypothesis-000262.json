@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-threat and traffic-window features from nearest rivals",
+  "summary": "F1 strategy literature emphasizes that undercut success depends on rival proximity, traffic, tyre warm-up, and safety-car exposure, not just own tyre age.",
+  "rationale": "F1 strategy literature emphasizes that undercut success depends on rival proximity, traffic, tyre warm-up, and safety-car exposure, not just own tyre age. Public strategy analyses repeatedly note that a stop is attractive when fresh-tyre out-lap can jump the nearby car, but can fail if traffic or poor warm-up blocks the move.",
+  "implementation_hint": "Within each `Race_Year x LapNumber`, compute leakage-safe local context: nearest car ahead/behind by position, local TyreLife/LapTime_Delta differences to those rivals, number of cars within +/-2 positions on same compound, same-lap pit-rate among nearby rivals, and 'clean-air after pit' proxies using gaps in position order or race-lap pace tiers. Interact these with compound and late-race flags.",
+  "expected_effect": "Captures attack/defend pit behavior that fixed compound-finish windows miss, especially for midfield cars where relative position matters most.",
+  "risk": "The dataset lacks explicit time gaps, so proxy traffic features may be noisy; some race-lap context can accidentally peek at future information if built from unsorted sequences or fold-global aggregates.",
+  "sources": [
+    "https://f1strategyblog.wordpress.com/2016/10/13/undercutting/",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/",
+    "https://f1strategyblog.wordpress.com/2016/12/06/game-tree-framework-for-analysing-pit-stop-timing-decisions/"
+  ]
+}

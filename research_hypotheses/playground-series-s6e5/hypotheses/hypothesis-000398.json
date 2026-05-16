@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Minimax group-robust AUC super learner",
+  "summary": "Super Learner explicitly supports AUC-based metalearning, and grouped CV is the right defense against race/year leakage.",
+  "rationale": "Super Learner explicitly supports AUC-based metalearning, and grouped CV is the right defense against race/year leakage. The likely public-score gain is from combining complementary specialists while choosing weights that survive unseen groups, not from one more monolithic model.",
+  "implementation_hint": "Generate OOF scores from heterogeneous specialists under `Race_Year` or leave-one-year-out splits, then fit a convex meta-learner that maximizes held-out AUC while penalizing poor worst-fold performance. Blend in score-rank space first; only calibrate probabilities on held-out folds after weights are fixed.",
+  "expected_effect": "Reduces CV-to-LB drift and captures complementary signal from hazard, cliff, and hard-negative specialists.",
+  "risk": "With few seasons and only 26 races, the meta-layer can overfit if base models are too correlated or weights are tuned on mixed groups.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6089257/",
+    "https://sklearn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://www.degruyterbrill.com/document/doi/10.1515/ijb-2015-0035/pdf"
+  ]
+}

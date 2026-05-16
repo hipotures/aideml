@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-expert ensemble with segment-wise calibration",
+  "summary": "F1 pit timing is regime-dependent: slick vs wet, first stint vs later stints, and early vs late race behave differently.",
+  "rationale": "F1 pit timing is regime-dependent: slick vs wet, first stint vs later stints, and early vs late race behave differently. Calibration literature suggests post-hoc calibration and gated ensembles can improve probability quality under distribution shift even when base models are strong.",
+  "implementation_hint": "Train separate experts for major regimes such as slick/wet, stint 1 vs 2+, and early/mid/late race, then stack out-of-fold logits with a simple meta-learner or rule-based gate. Apply beta or isotonic calibration per regime using OOF predictions only, then blend calibrated probabilities.",
+  "expected_effect": "Can reduce probability distortion from mixing incompatible subproblems and may improve public-score robustness if train/test regime mix shifts.",
+  "risk": "Too many experts can fragment data and overfit; calibration does not guarantee AUC gains unless regime segmentation meaningfully changes ranking.",
+  "sources": [
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/"
+  ]
+}

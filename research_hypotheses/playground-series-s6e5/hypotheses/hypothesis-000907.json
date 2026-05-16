@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed Race-Aware CV And Fold-Safe Encoders",
+  "summary": "The current feature set already uses race/driver history heavily, so optimistic CV is a real risk if adjacent laps from the same race narrative leak across folds.",
+  "rationale": "The current feature set already uses race/driver history heavily, so optimistic CV is a real risk if adjacent laps from the same race narrative leak across folds. Purged or gap-based splits are specifically designed for labels built from future information and should make model selection more leaderboard-aligned.",
+  "implementation_hint": "Split by ordered `Year-Race` with a lap-gap embargo around validation races; recompute every target/stat encoding, prior, and aggregate inside each fold only; compare current CV to embargoed CV before trusting small gains.",
+  "expected_effect": "Likely lowers local CV a bit but improves signal-to-noise when selecting features and blends, reducing false positives from leakage-driven tweaks.",
+  "risk": "This may expose that some current gains are not real, and fewer effective folds can increase variance of local estimates.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://github.com/hudson-and-thames/mlfinlab/blob/master/mlfinlab/cross_validation/cross_validation.py",
+    "https://arxiv.org/abs/1706.09516"
+  ]
+}

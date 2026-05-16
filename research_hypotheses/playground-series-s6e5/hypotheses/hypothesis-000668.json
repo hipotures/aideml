@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use diversity-first OOF ensembling with post-hoc calibration",
+  "summary": "AUC often improves from combining differently biased tabular models, and scikit-learn’s stacking/calibration APIs are designed around cross-validated predictions.",
+  "rationale": "AUC often improves from combining differently biased tabular models, and scikit-learn’s stacking/calibration APIs are designed around cross-validated predictions. CatBoost native-categorical models, histogram GBDTs, and query-rank models should make different errors; calibrated blending can preserve ranking while fixing over/under-confidence.",
+  "implementation_hint": "Train 2-4 diverse OOF bases: current classifier, CatBoost native-cat model, ranking model, and a constrained HistGradientBoosting model. Blend by rank-average or a logistic `StackingClassifier`, then calibrate final scores with OOF sigmoid or temperature scaling; compare to raw blend because AUC sometimes prefers uncalibrated ranks.",
+  "expected_effect": "Often yields a modest but reliable bump when single-model feature work is saturating near a CV ceiling.",
+  "risk": "Stacking can overfit if OOF discipline is broken; isotonic may overfit if calibration folds are too small or regime-shifted.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html"
+  ]
+}

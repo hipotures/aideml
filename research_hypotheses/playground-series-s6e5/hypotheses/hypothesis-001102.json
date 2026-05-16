@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal hierarchical target stats instead of transductive category frequencies",
+  "summary": "Your current best code factorizes categories and computes frequency features on train+test together, which is transductive and can make grouped CV look better than deployment.",
+  "rationale": "Your current best code factorizes categories and computes frequency features on train+test together, which is transductive and can make grouped CV look better than deployment. CatBoost’s ordered-statistics literature exists precisely because naive category statistics create prediction shift/leakage. A safer adjacent-competition pattern is hierarchical shrinkage encoding computed only from past events or OOF folds.",
+  "implementation_hint": "Drop train+test frequency/code features for Driver/Race/Compound interactions. Build ordered or OOF target stats with Bayesian shrinkage for Driver, Driver-Compound, Race-Compound, and Year-Driver using only earlier races within each fold; back off rare keys to parent levels. Compare grouped CV vs forward-embargo CV to see if small lifts survive.",
+  "expected_effect": "Usually lowers validation optimism and can improve LB robustness; may also help rare drivers/races where raw factor codes are noisy.",
+  "risk": "If the leaderboard distribution matches train closely, removing transductive stats can reduce local CV before improving generalization.",
+  "sources": [
+    "https://huggingface.co/papers/1706.09516",
+    "https://catboost.ai/docs/en/references/training-parameters/common"
+  ]
+}

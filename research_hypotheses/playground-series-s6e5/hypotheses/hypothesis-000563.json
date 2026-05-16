@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leader-Follower Strategy Style Priors",
+  "summary": "Public motorsport strategy work describes pit decisions as adversarial, with leader-follower behavior and undercut avoidance materially affecting outcomes.",
+  "rationale": "Public motorsport strategy work describes pit decisions as adversarial, with leader-follower behavior and undercut avoidance materially affecting outcomes. Two drivers with similar tyre state can still differ because one historically pits proactively while another reacts.",
+  "implementation_hint": "Create OOF priors for each driver/team on proactive vs reactive behavior: probability of being first among local peers to pit, average deviation from field-median stop lap, tendency to extend after a rival pits, and tendency to defend track position when within pit window. Shrink to team/year/race-type priors for sparse or unseen drivers.",
+  "expected_effect": "Separates otherwise similar rows when entity strategy tendencies matter more than tyre age alone.",
+  "risk": "Can overfit historical dominance or driver identity if not strongly regularized; unseen-driver handling must fall back cleanly.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

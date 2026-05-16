@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone Multi-Horizon Hazard Stack With Beta-Calibrated Blend",
+  "summary": "Recent F1 pit-stop papers report value from jointly predicting next-stop timing and classification, and discrete-time hazard models are a natural fit for lap-level event prediction.",
+  "rationale": "Recent F1 pit-stop papers report value from jointly predicting next-stop timing and classification, and discrete-time hazard models are a natural fit for lap-level event prediction. A practical variant here is to predict pit within 1/2/3/5 laps jointly, enforce monotone horizon consistency in post-processing, then derive the next-lap probability from the horizon stack. Beta calibration is safer than isotonic when you want probability correction without unnecessary rank damage.",
+  "implementation_hint": "Train shared-feature heads for targets like pit<=1, <=2, <=3, <=5 laps or one binary model plus auxiliary remaining-laps-to-pit regression. Convert cumulative horizon outputs to a consistent next-lap hazard, then apply OOF beta or sigmoid calibration to the final blend rather than isotonic.",
+  "expected_effect": "Should smooth noisy boundary cases near pit windows, improve probability shape, and add model diversity beyond single-head binary boosting.",
+  "risk": "More moving parts; if the auxiliary heads are weak or inconsistently calibrated, the derived next-lap hazard can become less sharp than a plain binary model.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/abstract",
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://pypi.org/project/pycox/",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

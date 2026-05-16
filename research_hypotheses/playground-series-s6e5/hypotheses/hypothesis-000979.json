@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Specialist experts plus monotonic stacking and sigmoid calibration",
+  "summary": "Official docs suggest CatBoost can exploit raw categoricals well via ordered target statistics, while calibration guidance notes sigmoid calibration preserves ranking unlike isotonic.",
+  "rationale": "Official docs suggest CatBoost can exploit raw categoricals well via ordered target statistics, while calibration guidance notes sigmoid calibration preserves ranking unlike isotonic. For this task, separate experts for dry vs wet/intermediate or early-race vs pit-window rows are plausible because strategy mechanics differ sharply across regimes.",
+  "implementation_hint": "Train regime experts such as dry-only, wet/inter-only, and late-stint-only models; generate OOF predictions; blend with a simple monotone meta-model or logistic regression. Use sigmoid/Platt scaling only if probability shape matters, since isotonic can change AUC by introducing ties.",
+  "expected_effect": "Often yields small but real gains by letting one model specialize in rare wet/inter and another dominate common dry scenarios, while preserving robust ranking.",
+  "risk": "Too many experts can fragment data and overfit rare regimes; keep the partitioning coarse and require OOF-only stacking.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231"
+  ]
+}

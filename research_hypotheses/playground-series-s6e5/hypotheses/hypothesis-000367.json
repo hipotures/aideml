@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adjacent-Rival Reaction Features",
+  "summary": "The Frontiers F1 paper reports that pitting by the driver ahead materially raises pit probability, and newer multi-agent F1 work models pit timing as opponent-responsive.",
+  "rationale": "The Frontiers F1 paper reports that pitting by the driver ahead materially raises pit probability, and newer multi-agent F1 work models pit timing as opponent-responsive. This suggests the strongest missing interaction signal is not generic field context but the immediate local battle around a car.",
+  "implementation_hint": "For each Race x Lap snapshot, engineer only contemporaneous or previous-lap neighbor features: compound/tyre-life of cars at positions +/-1 or +/-2, whether they pitted last lap, local stint-age dispersion, same-team double-stack proxy, and whether an ahead car just opened an undercut/cover window. Optionally train a small neighborhood specialist and rank-average it with the base tree model.",
+  "expected_effect": "Captures cover-stop and undercut reactions that single-car features miss.",
+  "risk": "Do not use same-lap future pit outcomes from rivals; neighbor features must be based on current row state or prior laps only.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://arxiv.org/abs/2602.23056",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115"
+  ]
+}

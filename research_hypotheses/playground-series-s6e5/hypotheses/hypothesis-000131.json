@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native categorical boosting with ordered statistics and explicit crossed IDs",
+  "summary": "The dataset has very high-cardinality `Driver` and many sparse `Race/Year` combinations.",
+  "rationale": "The dataset has very high-cardinality `Driver` and many sparse `Race/Year` combinations. CatBoost’s ordered boosting and ordered target statistics were designed specifically to reduce prediction shift from categorical leakage, which is relevant in this strongly autocorrelated setup.",
+  "implementation_hint": "Train CatBoost on mostly raw columns plus lightweight numerics, keeping `Driver`, `Race`, `Year`, `Compound`, `Driver x Race`, `Driver x Year`, and `Race x Compound` as native categorical features. Compare against the current manual frequency/median encoding under grouped chronological CV.",
+  "expected_effect": "May unlock interaction signal the manual preprocessing is flattening, particularly for rare drivers/tracks and sparse compound usage patterns.",
+  "risk": "If folds are not grouped chronologically by driver-race, ordered statistics can still look better offline than on leaderboard; CatBoost may also underperform if numerics already dominate.",
+  "sources": [
+    "https://papers.nips.cc/paper_files/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers.html",
+    "https://research.yandex.com/blog/catboost-paper-at-neurips-2018"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

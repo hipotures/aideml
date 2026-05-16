@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "AUC-Optimized Super Learner Instead Of Grid-Blended Ranks",
+  "summary": "The baseline still chooses blends mostly by hand-crafted grids and rank heuristics.",
+  "rationale": "The baseline still chooses blends mostly by hand-crafted grids and rank heuristics. Super Learner and AUC-maximizing metalearning are explicitly designed to learn convex combinations that maximize cross-validated ROC AUC, which is the exact leaderboard metric.",
+  "implementation_hint": "Create fold-safe base learners including current XGB, CatBoost, ranking expert, and choice expert. Train a non-negative meta-learner on OOF predictions plus a few meta-features such as adversarial-shift score, query size, wet/dry flag, and ambiguity margin. Optimize the meta-learner for AUC, not logloss. Keep final output as OOF-trained stacking only.",
+  "expected_effect": "Most plausible short-path gain for this codebase because it upgrades the already-successful ensemble stage rather than replacing the core models.",
+  "risk": "Meta-overfitting is the main danger; all stacker inputs and any calibration must be strictly OOF and preferably checked on chronological splits.",
+  "sources": [
+    "https://www.researchgate.net/publication/5933560_Super_Learner",
+    "https://www.researchgate.net/publication/303552481_AUC-Maximizing_Ensembles_through_Metalearning",
+    "https://scikit-learn.org/stable/api/sklearn.calibration.html"
+  ]
+}

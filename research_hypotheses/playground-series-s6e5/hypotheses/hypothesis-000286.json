@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap ranking specialist with groupwise objective",
+  "summary": "ROC AUC rewards ranking, and CatBoost exposes ranking losses plus native categorical handling; F1 strategy is also inherently relative to the other cars on the same lap rather than purely absolute.",
+  "rationale": "ROC AUC rewards ranking, and CatBoost exposes ranking losses plus native categorical handling; F1 strategy is also inherently relative to the other cars on the same lap rather than purely absolute. A separate specialist that ranks drivers within `Race x Year x LapNumber` or `Race x Year x LapNumber x Compound regime` could capture who is most pit-imminent in that local decision set.",
+  "implementation_hint": "Train a second model with group IDs built from race-lap contexts, using CatBoost ranking objectives such as `QueryCrossEntropy` or `YetiRank`, then blend its out-of-fold scores with the current binary classifier by rank-average or logistic stacking. Keep all categorical columns raw rather than manual one-hot.",
+  "expected_effect": "Better ordering of borderline cases where several drivers are near the pit window at once, potentially improving public AUC even if logloss does not move.",
+  "risk": "If groups are defined too narrowly or include leaked race aggregates, the model may overfit or learn unstable within-group quirks; ranking loss may also hurt absolute calibration, so blend rather than replace.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html"
+  ]
+}

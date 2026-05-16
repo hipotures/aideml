@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cascaded multi-task expert for stop now, laps-to-stop, and next compound",
+  "summary": "Recent F1 pit-stop work uses a cascaded multi-task design where next-lap stop probability is complemented by a regression head for remaining laps, and older race-strategy work explicitly splits pit/no-pit from next-compound choice.",
+  "rationale": "Recent F1 pit-stop work uses a cascaded multi-task design where next-lap stop probability is complemented by a regression head for remaining laps, and older race-strategy work explicitly splits pit/no-pit from next-compound choice. That structure matches this problem better than a single scalar target because pit timing and intended tyre choice are coupled.",
+  "implementation_hint": "Create auxiliary labels from future rows: clipped laps-until-next-pit and next compound after the next pit. Train a joint model or cascade, then feed OOF auxiliary predictions into the main GBM/CatBoost. For races involving inters/wets, allow a separate auxiliary regime or class grouping.",
+  "expected_effect": "Sharper localization of true pit windows and better handling of compound-rule logic than a single binary head.",
+  "risk": "Future-derived auxiliary labels can be noisy near race end, red-flag-like resets, or missing follow-up laps; added complexity can wash out if the auxiliary targets are poorly learned.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://res.mdpi.com/d_attachment/applsci/applsci-10-07805/article_deploy/applsci-10-07805.pdf",
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf"
+  ]
+}

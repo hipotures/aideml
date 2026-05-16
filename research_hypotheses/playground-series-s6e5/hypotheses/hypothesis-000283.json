@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/Overcut Opportunity Features From Race-Lap Relative State",
+  "summary": "F1 strategy sources emphasize that pit timing depends not just on tyre age but on whether fresh tyres can unlock an undercut, whether traffic makes an overcut preferable, and whether pit-loss windows are open.",
+  "rationale": "F1 strategy sources emphasize that pit timing depends not just on tyre age but on whether fresh tyres can unlock an undercut, whether traffic makes an overcut preferable, and whether pit-loss windows are open. That suggests race-lap relative features, not just absolute degradation thresholds.",
+  "implementation_hint": "Within each race-year and lap, compute leakage-safe relative ranks or robust z-scores for LapTime_Delta, Position, TyreLife, and degradation using only same-lap competitors. Add features for local traffic pressure such as position bucket, whether pace is worse than same-lap peers on same compound, and whether the row sits in an 'undercut-open' state where current pace loss exceeds a compound-specific fresh-tyre gain proxy.",
+  "expected_effect": "Should lift discrimination for midfield strategy calls where pitting depends on competitive context rather than intrinsic tyre wear alone.",
+  "risk": "Same-lap aggregates can leak if computed using future rows from validation folds; track-specific effects may make generic undercut proxies noisy.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-group ranker specialist blended with binary classifier",
+  "summary": "The target is next-lap pit probability, but operationally only a few cars per lap are truly under strongest stop pressure.",
+  "rationale": "The target is next-lap pit probability, but operationally only a few cars per lap are truly under strongest stop pressure. LightGBM’s ranking objectives are built for query-group ordering, which matches ranking drivers within the same lap context better than pure global classification. This develops the earlier ranking idea into a concrete specialist.",
+  "implementation_hint": "Train an LGBMRanker or `rank_xendcg` specialist with groups = Year-Race-LapNumber and relevance = PitNextLap. Feed it the same causal features plus opponent-aware ones, then blend its out-of-fold predictions with the binary booster using rank-average or logistic stacking on held-out folds. Keep the ranker as a specialist, not a replacement.",
+  "expected_effect": "Often improves ordering among contemporaneous candidates, which is exactly where ROC AUC gains can come from when the baseline already separates obvious non-stops well.",
+  "risk": "Per-lap groups are small and sparse positives can make ranking unstable; a pure ranker is not probability-calibrated and must be blended carefully.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

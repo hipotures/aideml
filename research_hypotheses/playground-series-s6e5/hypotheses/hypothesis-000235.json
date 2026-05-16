@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap relative context features using field percentiles and lagged pit pressure",
+  "summary": "Pit calls depend on relative, not just absolute, state: whether this driver is older on tyres than peers, losing pace relative to same-compound cars, or entering a lap where many rivals are nearing their windows.",
+  "rationale": "Pit calls depend on relative, not just absolute, state: whether this driver is older on tyres than peers, losing pace relative to same-compound cars, or entering a lap where many rivals are nearing their windows. The current best solutions use some group medians, but not richer within-race-lap percentiles and pressure features.",
+  "implementation_hint": "For each `Race_Year x LapNumber`, compute same-lap percentiles/z-scores for `TyreLife`, `Cumulative_Degradation`, `LapTime_Delta`, and `Position` overall and within compound. Add counts/shares of rivals with older tyres, rivals already on alternate compounds, and one-lap-lagged pit counts by compound/stint bucket.",
+  "expected_effect": "Should improve ranking among simultaneous candidates and capture pit-wave behavior without needing a full sequence model.",
+  "risk": "Same-lap aggregates must exclude the target only if target leakage can enter through labels; keep features purely from contemporaneous covariates and use lagged event counts when involving pit activity.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://f1briefing.com/how-delta-time-shapes-pit-stop-strategies/"
+  ]
+}

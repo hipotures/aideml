@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace raw sparse ID effects with hierarchical partial-pooling priors",
+  "summary": "Driver, Race, Race_Year, and Driver_Compound are high-cardinality and partially shifted between train and test.",
+  "rationale": "Driver, Race, Race_Year, and Driver_Compound are high-cardinality and partially shifted between train and test. Hierarchical partial pooling is designed for repeated binary outcomes with sparse groups, shrinking noisy entities toward shared population means instead of letting them memorize.",
+  "implementation_hint": "Fit a simple hierarchical logistic model or empirical-Bayes prior table for entities such as Driver, Race, Compound, Stint, and their small interactions. Export out-of-fold posterior means/log-odds as numeric features for the tree model.",
+  "expected_effect": "Should generalize better to rare drivers/races and reduce variance from aggressive target-like encodings.",
+  "risk": "If the hierarchy is too rich it can duplicate what the tree already learns; keep it shallow and compare against current frequency features only.",
+  "sources": [
+    "https://mc-stan.org/learn-stan/case-studies/pool-binary-trials.html",
+    "https://mc-stan.org/learn-stan/case-studies/pool-binary-trials-rstanarm.html"
+  ]
+}

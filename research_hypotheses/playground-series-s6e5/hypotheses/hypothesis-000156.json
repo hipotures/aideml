@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only latent degradation state instead of more threshold rules",
+  "summary": "Recent F1 research models tyre pace as a latent state with structural resets at pit stops, which is closer to the true mechanism than static expected-life cutoffs.",
+  "rationale": "Recent F1 research models tyre pace as a latent state with structural resets at pit stops, which is closer to the true mechanism than static expected-life cutoffs. That suggests using filtered degradation or pace-loss state as a feature, updated only from prior laps in the same driver-race sequence.",
+  "implementation_hint": "Within each driver-race stint, estimate a recursive latent state from `LapTime (s)`, `LapTime_Delta`, `TyreLife`, and `Cumulative_Degradation` after race-level normalization; reset at `PitStop=1`. Feed only filtered current-state estimates and one-step-ahead deterioration estimates into the tabular model.",
+  "expected_effect": "Could separate ‘old but stable’ stints from ‘old and cliffing’ stints, improving timing around true stop windows.",
+  "risk": "Easy to leak if the state smoother uses future laps; a full smoother is wrong here, so only filtering/online updates are acceptable.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Beta-calibrated prior-shift adaptation by season/regime",
+  "summary": "Adversarial weights already suggest train-test shift.",
+  "rationale": "Adversarial weights already suggest train-test shift. Calibration literature and prior-probability-shift adjustment methods indicate that well-calibrated scores can be adapted to new class priors more safely than raw scores. This is distinct from weighting during training and can be applied selectively by regime or season.",
+  "implementation_hint": "Fit OOF beta calibration on the ensemble output, then estimate shifted positive prevalence on test globally and within coarse regimes (dry/wet, phase, tyre-age bin) using an EM or prevalence-matching procedure. Apply only when the estimated shift is stable and bounded; otherwise back off to raw calibrated probabilities. Compare to plain isotonic/beta-only baselines.",
+  "expected_effect": "May improve leaderboard transfer if test pit frequency or regime mix differs from train, especially when the main model is slightly miscalibrated.",
+  "risk": "AUC is rank-based, so pure calibration does little unless the shift-adjustment changes ordering in the right places; unstable prevalence estimates can hurt.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7",
+    "https://pubmed.ncbi.nlm.nih.gov/11747533/"
+  ]
+}

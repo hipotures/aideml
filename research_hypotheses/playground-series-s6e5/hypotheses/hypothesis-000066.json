@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "For each slick compound, compute whether it cannot finish if stopping now but can finish if stopping next lap, plus an opening-count aggregate, softest-opening ordinal, and closest-opening-boundary margin. Test this as an addition to the option-richness block and ablate per-compound flags versus compact aggregates.",
   "expected_effect": "Small AUC gain with medium confidence; strongest expected on late-race boundary rows.",
   "risk": "Implementation bugs occurred when boolean opening flags were converted to integers before reuse. Keep intermediate conditions boolean until all selection or masking operations are complete.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

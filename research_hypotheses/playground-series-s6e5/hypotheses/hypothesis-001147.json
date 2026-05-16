@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a native same-lap ranker expert, not just query-aware postprocessing",
+  "summary": "Your current pipeline only rank-blends classifier outputs within `(Year,Race,LapNumber)`.",
+  "rationale": "Your current pipeline only rank-blends classifier outputs within `(Year,Race,LapNumber)`. CatBoost has native groupwise and pairwise ranking objectives, which are better aligned with the competition’s within-lap selection problem because each lap is effectively a query and the positive set is the driver(s) who pit next lap.",
+  "implementation_hint": "Train a separate CatBoost ranker with `GroupId=(Year,Race,LapNumber)` using `QuerySoftMax` or `YetiRankPairwise`; keep current tabular features, generate OOF ranker scores, then stack/blend them with the best binary classifier OOF predictions under fold-safe grouped CV.",
+  "expected_effect": "Should add a lower-correlation expert that improves ordering among borderline same-lap candidates, especially when multiple drivers have similar raw pit pressure.",
+  "risk": "If group sizes are small or many laps have no positives, the ranker can be noisy; it needs careful handling of zero-positive groups and must be evaluated under race-grouped folds only.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

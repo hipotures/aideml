@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/overcut opportunity surface from clean-air and warm-up proxies",
+  "summary": "Official F1 strategy analysis emphasizes that undercuts succeed with high degradation, tight gaps, and clean air, while overcuts become viable when fresh tyres warm slowly.",
+  "rationale": "Official F1 strategy analysis emphasizes that undercuts succeed with high degradation, tight gaps, and clean air, while overcuts become viable when fresh tyres warm slowly. That domain logic is richer than the current same-lap tyre-pressure proxy and suggests explicit features for local traffic opportunity and out-lap warm-up penalty.",
+  "implementation_hint": "Build causal features at each race-lap for local pack density, nearby-position pace dispersion, prior-lap pit-wave intensity, and compound-specific warm-up penalty learned from post-pit out-laps. Interact these with estimated laps remaining, tyre age, and track/race identifiers to approximate undercut versus overcut favorability.",
+  "expected_effect": "Should help on close strategic calls where the stop decision depends less on absolute wear and more on whether pitting now buys clean air or loses warm-up time.",
+  "risk": "Without explicit gap telemetry, clean-air proxies may be noisy and can overfit track-specific patterns.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

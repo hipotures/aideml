@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Conservative pseudo-label adaptation with calibrated disagreement filtering",
+  "summary": "Tabular self-training can help when unlabeled test rows are plentiful, but only if pseudo-labels are filtered by confidence and agreement.",
+  "rationale": "Tabular self-training can help when unlabeled test rows are plentiful, but only if pseudo-labels are filtered by confidence and agreement. This competition has a large test set and high-cardinality entities where mild distribution adaptation may matter.",
+  "implementation_hint": "Build diverse OOF base models, calibrate them on OOF folds, and pseudo-label only extreme-agreement test rows, e.g. very low/high probabilities with low rank variance across models. Retrain one additional model on train plus pseudo-labeled rows, then give it a small ensemble weight.",
+  "expected_effect": "Potential small gain from adapting to unseen driver/race combinations in test without changing the main modeling pipeline.",
+  "risk": "Most dangerous idea here: overconfident mistakes can poison training, so keep thresholds strict, use a small blend weight, and abort if CV proxy degrades.",
+  "sources": [
+    "https://www.researchgate.net/publication/368843278_Revisiting_Self-Training_with_Regularized_Pseudo-Labeling_for_Tabular_Data",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use temporally ordered hierarchical target encoders for Driver/Race/Compound interactions",
+  "summary": "Driver and race IDs are very high-cardinality and likely carry stable strategy priors, but raw codes/frequencies waste signal and naive target means leak.",
+  "rationale": "Driver and race IDs are very high-cardinality and likely carry stable strategy priors, but raw codes/frequencies waste signal and naive target means leak. Regularized target encoding with GLMM-style shrinkage performs well on high-cardinality data, and CatBoost-style ordered statistics show how to compute such signals without leakage.",
+  "implementation_hint": "Build out-of-fold encoders with partial pooling for keys like Driver, Driver+Race, Driver+Compound, Race+Compound, and Driver+Race+Stint, using only prior folds or prior chronological rows; encode with posterior mean plus count/uncertainty features.",
+  "expected_effect": "Should strengthen categorical signal for rare drivers/races while avoiding the brittleness of plain factor codes and global frequencies.",
+  "risk": "Improper encoding order will silently leak target information; overly aggressive interaction keys can become sparse noise.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use cause-specific competing-risks survival instead of a single generic stop hazard",
+  "summary": "A single hazard conflates different pit causes: normal degradation, dry-race rule debt, and opportunistic caution/weather stops.",
+  "rationale": "A single hazard conflates different pit causes: normal degradation, dry-race rule debt, and opportunistic caution/weather stops. Competing-risks methods are explicitly designed for mutually exclusive event causes and avoid bias from treating other causes as ordinary censoring.",
+  "implementation_hint": "Assign weak cause labels at actual pit laps using causal heuristics: `degradation_stop`, `rule_debt_stop`, `regime_opportunistic_stop`. Train cause-specific discrete-time hazards or cumulative incidence experts, then sum the next-lap cause probabilities to recover `PitNextLap`.",
+  "expected_effect": "Should separate orderly planned stops from exogenous spikes, reducing overconfident mistakes in rare regimes and late-race legality cases.",
+  "risk": "Cause labels will be noisy. If the heuristic taxonomy is wrong, performance can drop; validate each cause model separately and keep the final aggregation simple.",
+  "sources": [
+    "https://scikit-survival.readthedocs.io/en/latest/user_guide/competing-risks.html",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/when-it-s-time-to-change-from-slick-to-wet-tyres-in-formula-1-52943/"
+  ]
+}

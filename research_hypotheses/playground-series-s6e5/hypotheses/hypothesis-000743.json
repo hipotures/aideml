@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hidden Safety-Car / Rain-Crossover Regime Detector",
+  "summary": "Official F1 strategy notes emphasize safety-car windows and driver-initiated pit calls in low-grip or wet transitions.",
+  "rationale": "Official F1 strategy notes emphasize safety-car windows and driver-initiated pit calls in low-grip or wet transitions. The dataset lacks explicit SC/VSC/weather flags, so field-wide simultaneous slowdown and pit-burst patterns are likely missing latent drivers of pit timing.",
+  "implementation_hint": "For each Race-Lap, derive robust field aggregates such as median/95th percentile LapTime_Delta, pit-stop count on current lap, share on wet tyres, and sudden jumps versus previous lap. Use these as gating features or train a separate 'neutralized/transition' specialist blended with the base dry-race model.",
+  "expected_effect": "Should improve recall on abrupt mass-pit laps and reduce model confusion in wet/transition windows where tyre-age heuristics alone are weak.",
+  "risk": "Race-lap aggregates can be noisy in sparse late-race situations and may leak if not computed fold-safely.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/it-s-graining-men--124082/"
+  ]
+}

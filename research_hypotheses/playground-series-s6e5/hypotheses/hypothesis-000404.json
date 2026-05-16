@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-snapshot ranking expert over (Race, Lap) groups",
+  "summary": "Adjacent ranking literature suggests LambdaMART-style objectives are strong when the real question is relative urgency inside a group.",
+  "rationale": "Adjacent ranking literature suggests LambdaMART-style objectives are strong when the real question is relative urgency inside a group. Here, pit calls are often competitive within the same race lap: who is most exposed to undercut, warm-up disadvantage, or tyre fade right now.",
+  "implementation_hint": "Build a second model with query groups = rows sharing (Race_Year, LapNumber). Add peer-relative features such as rank of LapTime_Delta, rank of TyreLife, gap to same-lap median pace, teammate-relative order, and compound rarity within the group. Train LightGBM/XGBoost ranking, then use blocked OOF rank scores as a feature or blend with the pointwise classifier.",
+  "expected_effect": "Should improve ordering of borderline cases near shared pit windows, especially when absolute thresholds miss relative race context.",
+  "risk": "Some groups will have few positives or no positives; ranking loss is only indirectly aligned with rowwise ROC AUC and needs clean group-blocked OOF generation.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

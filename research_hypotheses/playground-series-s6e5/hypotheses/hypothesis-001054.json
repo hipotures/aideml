@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Sequence teacher distillation into GBDT",
+  "summary": "A recent F1 pit-stop paper reports competitive deep sequential models for pit timing, while your strongest runs are still tree ensembles.",
+  "rationale": "A recent F1 pit-stop paper reports competitive deep sequential models for pit timing, while your strongest runs are still tree ensembles. A good competition pattern is to train a diverse sequence model, then distill its OOF signal into GBDT rather than submit the neural net directly.",
+  "implementation_hint": "Train a lightweight causal sequence model per driver-stint or driver-race prefix, using only past laps and categorical embeddings for driver/race/compound. Generate fold-local OOF probabilities or penultimate-layer embeddings, then add them as features to CatBoost/XGBoost or blend ranks only after OOF generation.",
+  "expected_effect": "Adds a genuinely different learner that may capture temporal motifs like gradual tyre fade plus abrupt pace loss better than hand-crafted rolling features.",
+  "risk": "Easy to leak future laps if prefixes are built incorrectly; standalone net may underperform, so only OOF distillation is worth trusting.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/abstract"
+  ]
+}

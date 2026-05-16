@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Upgrade the prior hazard idea into a censored time-to-next-pit AFT model",
+  "summary": "This target is naturally a time-to-event problem: rows before the next pit have an observed remaining-laps label, while rows with no later pit in the race are right-censored.",
+  "rationale": "This target is naturally a time-to-event problem: rows before the next pit have an observed remaining-laps label, while rows with no later pit in the race are right-censored. AFT survival models are built for exactly this setting and may extract more signal than direct binary next-lap classification when the decision surface is really a shrinking pit-window.",
+  "implementation_hint": "For each driver-race sequence, compute remaining laps until next pit stop; if no future pit exists, mark the label as right-censored at laps_remaining_to_flag. Train an XGBoost `survival:aft` model on existing features plus a few regime features, then convert predicted survival time into `P(pit in next lap)` using a calibrated mapping from predicted remaining-life to empirical next-lap event frequency.",
+  "expected_effect": "Could improve CV by capturing the full pit-window trajectory instead of only the last-step boundary; also gives a second model family with genuinely different ranking behavior for blending.",
+  "risk": "Need careful label construction and OOF conversion from survival output to next-lap probability; a poor mapping can erase the benefit even if the survival fit is strong.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/stable/python/survival-examples/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

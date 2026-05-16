@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Residualized tire-degradation state features",
+  "summary": "A new 2026 F1 paper models tyre wear as a latent state with pit stops as resets, which matches this task closely.",
+  "rationale": "A new 2026 F1 paper models tyre wear as a latent state with pit stops as resets, which matches this task closely. Your current features use raw degradation ratios, but not whether a driver is degrading faster than expected for that race/compound/stint regime.",
+  "implementation_hint": "Estimate target-free baseline pace/degradation curves by Year-Race-Compound-Stint or Year-Race-Compound-TyreLife bins using only training folds. Add residual features such as LapTime_Delta minus race-compound median at same tyre-life, cumulative degradation minus expected curve, and short-term acceleration of that residual. Treat pit stops as regime resets.",
+  "expected_effect": "Should separate genuinely 'falling off the cliff' tyres from normal old-tyre behavior, which is exactly where next-lap pit probability spikes.",
+  "risk": "Fold-safe residualization is mandatory; if baselines are fit on full data, leakage will inflate CV.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

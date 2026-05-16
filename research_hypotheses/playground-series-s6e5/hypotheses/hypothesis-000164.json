@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-time survival head for pit hazard, then read off next-lap probability",
+  "summary": "Discrete-time survival converts time-to-event prediction into conditional hazard classification on person-period rows.",
+  "rationale": "Discrete-time survival converts time-to-event prediction into conditional hazard classification on person-period rows. Pit timing is naturally a time-to-event problem, and survival-consistent hazards can use richer supervision than a single next-lap binary while still outputting `P(pit on next lap)`.",
+  "implementation_hint": "For each driver-race stint, expand training targets to remaining laps until next pit/end-of-race; fit a compact model for conditional hazard by lap-to-go or tyre-age bucket with shared covariates, then use the t+1 hazard as submission probability or blend it with the current binary classifier.",
+  "expected_effect": "Should improve signal extraction from long stints and reduce brittle one-lap thresholding, especially in late-stint regions where hazard ramps sharply.",
+  "risk": "Person-period expansion can explode row count and overfit if baseline hazard structure is too flexible.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ]
+}

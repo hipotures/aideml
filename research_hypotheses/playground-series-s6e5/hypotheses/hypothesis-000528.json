@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace manual frequency stats with leakage-safe ordered categorical learning",
+  "summary": "The dataset has very high-cardinality categories (`Driver`, `Race`, combinations across years/regimes).",
+  "rationale": "The dataset has very high-cardinality categories (`Driver`, `Race`, combinations across years/regimes). Current nodes mostly use raw frequencies and full-fold grouped medians, which can leak future information inside the fold and underuse rich category interactions. CatBoost’s ordered statistics were designed specifically to avoid prediction shift from target-based categorical processing.",
+  "implementation_hint": "Train a CatBoost model using raw categorical columns plus a few explicit combos like `Race×Compound`, `Driver×Compound`, `Race×Stint`, with ordered boosting enabled and folds grouped by race chronology. Compare against the current manually encoded GBDT baseline; if helpful, use CatBoost only as a diversity model for stacking rather than as a full replacement.",
+  "expected_effect": "Can outperform hand-built counts on rare drivers/races and reduce subtle within-fold leakage from full-sample category aggregates.",
+  "risk": "If CV is not grouped causally, CatBoost can still look better locally than it generalizes; keep evaluation race-aware.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases"
+  ]
+}

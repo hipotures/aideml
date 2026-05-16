@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use lap-snapshot peer residuals, not only race/compound medians",
+  "summary": "Undercut and pit-window pressure are relative phenomena: fresh-tyre pace, in-lap weakness, and degradation matter versus other cars on the same lap under the same track evolution.",
+  "rationale": "Undercut and pit-window pressure are relative phenomena: fresh-tyre pace, in-lap weakness, and degradation matter versus other cars on the same lap under the same track evolution. Current preprocessing only residualizes by whole race or compound, which is too coarse.",
+  "implementation_hint": "Within each `Race_Year x LapNumber` and `Race_Year x LapNumber x slick/wet` snapshot, compute percentile or robust z-score versions of `LapTime (s)`, `LapTime_Delta`, `Position_Change`, `Cumulative_Degradation`, and `Deg_Per_TyreLife`; then add 1-3 lap rolling changes of those residuals inside each driver-race sequence.",
+  "expected_effect": "Should surface cliff/in-lap behavior and local pace collapse without adding more fixed tyre-life constants.",
+  "risk": "Lagged residuals must remain strictly prior-only within each driver-race sequence to avoid leakage.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://blog.ouseful.info/2015/07/11/detecting-undercuts-in-f1-races-using-r/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

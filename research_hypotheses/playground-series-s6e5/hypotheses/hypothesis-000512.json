@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fuel-Corrected Causal Degradation Slopes",
+  "summary": "F1 lap times mix tyre degradation with fuel burn-off, traffic, and abnormal laps.",
+  "rationale": "F1 lap times mix tyre degradation with fuel burn-off, traffic, and abnormal laps. A causal residual degradation slope within each driver stint may identify tyres approaching the performance cliff better than static TyreLife and Cumulative_Degradation features.",
+  "implementation_hint": "For each Race_Year, estimate a robust race-lap baseline pace from non-pit laps, then compute driver-stint residual pace. Add past-only rolling means, slopes, curvature, last-lap z-scores, and residual acceleration over windows like 2, 3, and 5 laps, grouped by Race_Year, Driver, Stint.",
+  "expected_effect": "Can lift AUC by ranking imminent stops higher when pace is deteriorating quickly even if absolute tyre age is not extreme.",
+  "risk": "Neutralized, wet, or traffic laps can contaminate slopes; features must be strictly causal within folds and not use future laps.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-fitted CatBoost on raw categorical identities instead of mostly frequency encodings",
+  "summary": "The dataset has very high-cardinality Driver and many race-context combinations; CatBoost’s ordered target statistics were designed specifically to fight prediction shift and target leakage in categorical boosting.",
+  "rationale": "The dataset has very high-cardinality Driver and many race-context combinations; CatBoost’s ordered target statistics were designed specifically to fight prediction shift and target leakage in categorical boosting. That is a materially different learner from the current mostly manual feature engineering plus category/frequency treatment.",
+  "implementation_hint": "Run CatBoost with raw Driver/Race/Compound and selected combinations like Driver+Race, Driver+Compound, Race+Compound, but only under strict out-of-fold training and race-grouped validation. Compare plain ordered boosting vs the existing engineered matrix, and also test CatBoost on a reduced feature set to see whether ordered categorical memory beats hand-built frequency features.",
+  "expected_effect": "May recover signal from sparse driver-race-compound identities and historically similar strategy contexts that frequency encoding flattens away.",
+  "risk": "If folds are not grouped by race/year, ordered stats can still look better than they should; CatBoost may underperform if numeric interactions already dominate.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://arxiv.org/abs/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

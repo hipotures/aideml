@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a raw-categorical CatBoost expert and blend by OOF rank, not calibration",
+  "summary": "High-cardinality categories such as `Driver`, `Race`, `Year_Race`, and their interactions are likely being compressed by manual frequency encodings.",
+  "rationale": "High-cardinality categories such as `Driver`, `Race`, `Year_Race`, and their interactions are likely being compressed by manual frequency encodings. CatBoost’s ordered boosting and ordered target statistics are specifically designed for this setting. Since the metric is ROC AUC, monotone rescaling from calibration usually does not help ranking; diverse OOF rank blending is a better use of budget.",
+  "implementation_hint": "Train a minimally engineered CatBoost model on raw categorical columns plus causal numeric features. Keep it separate from the current feature-heavy tree model, collect OOF predictions under the same race-grouped CV, convert each model output to fold-wise ranks/percentiles, and average or stack those ranks.",
+  "expected_effect": "A small but realistic uplift from categorical inductive bias and ensemble diversity, with less risk than post-hoc probability calibration.",
+  "risk": "If the existing baseline already uses CatBoost-like behavior or if models are too correlated, the gain may be negligible.",
+  "sources": [
+    "https://papers.nips.cc/paper_files/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://www.scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html"
+  ]
+}

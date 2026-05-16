@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Sequence Specialist Blended With GBDT",
+  "summary": "Recent F1 pit-window studies found deep sequential models competitive because cumulative degradation is inherently temporal.",
+  "rationale": "Recent F1 pit-window studies found deep sequential models competitive because cumulative degradation is inherently temporal. The current best solutions are feature-engineered tabular transforms; a compact sequence model could capture nonlinear stint evolution missed by hand-built rolling stats.",
+  "implementation_hint": "Build short per-driver-per-race sequences ending at the current lap and train a small GRU/TCN/Transformer on ordered numeric inputs plus embeddings for race/compound/driver. Use grouped OOF predictions as an additional feature or average with the best CatBoost/LightGBM model rather than replacing the baseline.",
+  "expected_effect": "May capture nonlinear pre-stop patterns such as sudden pace fade, stabilization after traffic, or compound-specific warmup effects that simple roll3 features smooth away.",
+  "risk": "Sequence nets can overfit to driver/race identity and usually need stricter grouped validation; if trained end-to-end on full rows without careful masking, leakage is easy.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.mdpi.com/2076-3417/10/21/7805/html",
+    "https://eprints.whiterose.ac.uk/id/eprint/229478/1/PBRX_F1_IEEE_Conference_Version.pdf"
+  ]
+}

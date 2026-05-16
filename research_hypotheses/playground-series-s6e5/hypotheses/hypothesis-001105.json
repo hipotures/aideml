@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Right-censored time-to-next-pit model converted back to P(next lap)",
+  "summary": "Survival formulations are a natural fit for 'when is the next stop?' and official XGBoost AFT support handles censoring directly.",
+  "rationale": "Survival formulations are a natural fit for 'when is the next stop?' and official XGBoost AFT support handles censoring directly. Adjacent literature on discrete-time survival finds hazard parameterizations strong for event-time prediction, which matches the pit-window nature of this problem better than a single binary snapshot.",
+  "implementation_hint": "For each row, compute laps until the driver’s next pit stop within the race. Use uncensored intervals `[t,t]` when a future stop exists and right-censored `[t,+inf)` when it does not. Train an XGBoost `survival:aft` expert or a discrete-hazard multi-bin model over 1/2/3/5 laps, then convert to `P(T=1)` or `h(1)` for submission and stacking.",
+  "expected_effect": "Can sharpen pit-window timing and improve consistency across adjacent laps, especially near stint ends.",
+  "risk": "Label construction is easy to get subtly wrong around final stints and already-pit rows; local CV may be noisy if conversion from survival output to next-lap probability is crude.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6348952/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

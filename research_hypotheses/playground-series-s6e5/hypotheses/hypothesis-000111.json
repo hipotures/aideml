@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Same-Lap Learning-to-Rank Expert Instead Of Only Binary Classification",
+  "summary": "One prior research direction was same-lap ranking, and the public docs support query-group ranking with binary labels.",
+  "rationale": "One prior research direction was same-lap ranking, and the public docs support query-group ranking with binary labels. This task is naturally partly relative: on a given lap, the model should rank which cars are most likely to pit next, not just score them independently.",
+  "implementation_hint": "Train an XGBoost `rank:pairwise` or `rank:ndcg` model with `qid=(Year, Race, LapNumber)` and/or a CatBoost ranking model with group IDs set to race-lap. Keep the current classifier as the main model, then blend the ranking expert’s OOF scores with binary and survival outputs; ranking features should emphasize same-lap relative deltas and opponent-aware signals.",
+  "expected_effect": "Usually modest standalone CV, but valuable ensemble diversity because the objective optimizes within-lap ordering rather than global calibration.",
+  "risk": "Many query groups are small and may yield noisy pair construction; ranking predictions also need a secondary calibrator or blend because raw scores are not probabilities.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Reframe the label as censored time-to-pit and convert back to next-lap hazard",
+  "summary": "Pit-stop timing is naturally a time-to-event problem.",
+  "rationale": "Pit-stop timing is naturally a time-to-event problem. XGBoost supports Cox and AFT survival objectives with censoring, and F1 tyre-degradation work explicitly models pit stops as state resets. A survival target uses more structure than plain next-lap classification because every non-pit lap also contains information about how far the stop still is.",
+  "implementation_hint": "For each driver-race-stint row, compute `time_to_next_pit` when an eventual pit exists; mark rows near session end without another observed pit as right-censored. Train a survival model or discrete hazard model on stint-level sequences, then extract the implied hazard for horizon 1 as `P(PitNextLap=1)`. Blend that hazard with the existing binary classifier.",
+  "expected_effect": "Better ordering near the pit window, especially on long stints where the current classifier may treat many negative rows as similar.",
+  "risk": "Label construction is easy to get wrong around final laps, red-flag-like anomalies, or test-time censoring assumptions; a bad conversion back to next-lap probability can erase the benefit.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/latest/parameter.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

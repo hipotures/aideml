@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-Task Head: Next-Lap Pit Plus Laps-To-Stop and Next Compound Family",
+  "summary": "A next-lap positive is the sharp edge of a broader time-to-stop process.",
+  "rationale": "A next-lap positive is the sharp edge of a broader time-to-stop process. Recent F1-specific work reports gains from jointly predicting next-lap pit probability and pit horizon; adding next compound family is a natural extra auxiliary target because strategy choice and stop timing are coupled.",
+  "implementation_hint": "Derive auxiliary train labels such as `laps_until_next_pit` and coarse `next_compound_family` from future rows within each driver-race only for training. Use a shared backbone with classification plus regression/ordinal heads, and score only the binary head at inference.",
+  "expected_effect": "Should regularize rare-event learning and make the classifier rank imminent stops above merely late-stint laps more consistently.",
+  "risk": "Auxiliary labels can become sparse or noisy near race end and in wet transitions; weighting the heads poorly can hurt the main AUC.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

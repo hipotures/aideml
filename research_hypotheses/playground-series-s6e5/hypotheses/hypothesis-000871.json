@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leakage-safe prefix stats plus regime-aware rank-space ensemble",
+  "summary": "Your best models still use mostly frequency encodings for high-cardinality categories.",
+  "rationale": "Your best models still use mostly frequency encodings for high-cardinality categories. CatBoost-style ordered target statistics are a more expressive way to capture driver/race/compound/stint tendencies without future leakage, and they pair well with an ensemble of orthogonal experts. For AUC, rank-space blending is usually safer than chasing raw probability calibration alone.",
+  "implementation_hint": "Create strictly prefix-based or fold-wise ordered target stats for combos like `(Driver, Compound)`, `(Race, Compound, Stint)`, `(Race_Year, Driver)`, and post-pit state. Train a lightweight 'history expert' on these plus core numerics, then rank-average or logit-stack it with the base tree, survival sidecar, and sequence sidecar. If score skew hurts stacking, try beta calibration on OOF logits before blending.",
+  "expected_effect": "Can add stable categorical memory and make the final ensemble less dependent on one heuristic-heavy tree model.",
+  "risk": "The gain disappears if ordered stats are not truly OOF/causal. Beta calibration can also overfit if applied per tiny regime; keep regimes coarse and weights simple.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/features/cross-validation",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Field Pit-Wave Response Features",
+  "summary": "Pit stops often cascade: once rivals stop, nearby cars may respond to defend against an undercut or avoid losing track position.",
+  "rationale": "Pit stops often cascade: once rivals stop, nearby cars may respond to defend against an undercut or avoid losing track position. The current feature set has individual pit counts but little field-level pit-wave pressure.",
+  "implementation_hint": "Within Race_Year and LapNumber, compute current/prior-lap PitStop counts and rates overall, by compound, by position band, and for nearby positions such as +/-2. Add lag1/lag2 pit-wave intensity, cumulative stops this window, and whether cars ahead or behind have just pitted.",
+  "expected_effect": "Should catch synchronized strategy windows and undercut-response laps that static tyre-life features miss.",
+  "risk": "Same-lap field aggregates may be a timing assumption; validate both same-lap and lag-only variants under grouped race validation.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.motorsport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10500434/"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut and traffic-pressure proxies",
+  "summary": "Strategy literature emphasizes undercut, traffic, and competition; neglecting competition can materially reduce optimality.",
+  "rationale": "Strategy literature emphasizes undercut, traffic, and competition; neglecting competition can materially reduce optimality. The dataset lacks explicit time gaps, but position order plus relative tyre age, degradation, compound, and pace can proxy the incentive to pit before or after rivals.",
+  "implementation_hint": "Within Race+LapNumber sorted by Position, add not just immediate neighbor deltas but windowed features over positions ahead/behind: mean/min TyreLife and degradation for top-k ahead/behind, count of rivals in pit window nearby, compound mismatch with car ahead/behind, current driver’s tyre age rank and degradation rank in the field, and interactions with Position and RaceProgress.",
+  "expected_effect": "May improve rows where pit probability is driven by covering undercuts or escaping traffic rather than absolute tyre wear.",
+  "risk": "Position is ordinal but not time gap; proxy may be noisy. Some immediate neighbor features were already weak, so broader rank/window summaries should be tested separately from the existing neighbor-delta variant.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

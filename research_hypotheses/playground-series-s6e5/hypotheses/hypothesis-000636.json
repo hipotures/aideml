@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Latent Tyre State Features",
+  "summary": "A 2026 F1 tyre degradation paper models tyre pace as a latent stochastic state with pit stops as resets.",
+  "rationale": "A 2026 F1 tyre degradation paper models tyre pace as a latent stochastic state with pit stops as resets. The current features use same-row ratios and group medians, but not a causal evolving state estimate within each driver-race-stint.",
+  "implementation_hint": "Sort by Year/Race/Driver/LapNumber and compute only past-looking EWM/rolling residuals: lap_time minus race-lap median, EWM residual slope, residual acceleration, rolling variance, and post-pit reset age. Use shift(1) before rolling to avoid same-lap leakage.",
+  "expected_effect": "Should capture degradation cliffs and noisy tyre condition better than static TyreLife or Cumulative_Degradation features, potentially improving AUC on borderline pit-window laps.",
+  "risk": "Requires row order to be trustworthy; non-causal rolling or train-test concatenation without careful shifting can create validation leakage.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://docs.fastf1.dev/gen_modules/examples_gallery/plot_strategy.html"
+  ]
+}

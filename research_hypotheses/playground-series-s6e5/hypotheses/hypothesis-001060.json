@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Uncertainty-aware ensemble with stochastic tree member plus isotonic recalibration",
+  "summary": "Your current ensemble is mostly deterministic tree blending.",
+  "rationale": "Your current ensemble is mostly deterministic tree blending. CatBoost exposes `langevin` and `posterior_sampling` for uncertainty-style training, and scikit-learn notes isotonic calibration can correct monotonic distortion when enough data is available. A stochastic member can be most useful exactly on ambiguous pit-window rows where binary and rank models disagree.",
+  "implementation_hint": "Train one CPU CatBoost variant with `posterior_sampling` or `langevin`, or an XGBoost DART model, collect OOF predictions, and calibrate each base learner with OOF isotonic regression before blending. Also try disagreement features such as max-min across members and allow a simple second-stage blender on OOF only.",
+  "expected_effect": "More diverse errors and cleaner probability shape, which can improve both standalone AUC and ensemble rank ordering on edge cases.",
+  "risk": "Calibration will not help if base scores are already near-monotone optimal for AUC, and stochastic models are slower/noisier. CatBoost uncertainty options are CPU-only.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/dart.html",
+    "https://scikit-learn.org/1.0/modules/calibration.html"
+  ]
+}

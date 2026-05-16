@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Forward-only undercut/overcut economics features from prior pitters",
+  "summary": "Official F1 strategy analysis repeatedly emphasizes that stop timing depends on track-specific undercut strength, tyre warm-up penalty, degradation, and whether a rival is within striking range.",
+  "rationale": "Official F1 strategy analysis repeatedly emphasizes that stop timing depends on track-specific undercut strength, tyre warm-up penalty, degradation, and whether a rival is within striking range. Your current features approximate wear windows well, but they do not directly estimate the race-specific value of pitting now versus staying out using only prior in-race evidence.",
+  "implementation_hint": "For each `(Year,Race,Compound,LapNumber)`, compute forward-only summaries from already-pitted cars only: fresh-tyre out-lap delta, next-lap position gain/loss after pitting, and recent undercut success rate. Interact these with each driver’s own wear state, cooldown state, and local rival proxies (`Position`, neighbor deltas, recent lap loss). Keep all summaries strictly based on earlier laps within race.",
+  "expected_effect": "Adds a race-specific economics signal that distinguishes tracks or conditions where pitting now is actually rewarded from those where warm-up makes the overcut viable.",
+  "risk": "Easy to leak if any feature uses same-lap or future post-stop outcomes; sparse prior evidence early in races can make the estimate noisy and should be gated by evidence count.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/monday-morning-debrief-undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Engineer whole-grid pit-wave and snapshot-pressure features",
+  "summary": "F1 strategists explicitly note that race strategy is easy in isolation and difficult because of other cars; box-to-overtake calls and Safety Car windows create clustered decisions.",
+  "rationale": "F1 strategists explicitly note that race strategy is easy in isolation and difficult because of other cars; box-to-overtake calls and Safety Car windows create clustered decisions. That points to whole-lap field context, not just driver-local state, as a missing signal.",
+  "implementation_hint": "For each Race_Year x LapNumber snapshot, compute only current/past-safe aggregates: share pitting this lap, previous-lap pit count, compound mix, field median and dispersion of LapTime_Delta, field percentile of each driver's TyreLife and degradation within compound, and deviations from snapshot medians. Add lag-1 snapshot deltas to catch pit waves opening or fading.",
+  "expected_effect": "Captures herd effects, cheap-stop windows and chain-reaction strategy calls that single-car features miss.",
+  "risk": "Do not leak future laps or post-target information; generate aggregates from the current lap snapshot only and keep CV grouped by race.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/watch-the-insiders-guide-to-f1-strategists.6VT3445ugVd0bh85Pw5slO",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/palmer-how-bad-timing-stopped-pole-sitter-perez-adding-to-his-win-tally-in.7CyCAlZg0UR2tJHXjfhI7i"
+  ]
+}

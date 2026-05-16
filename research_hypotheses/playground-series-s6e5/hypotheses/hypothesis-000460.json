@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Field-Conformity Rule Pressure",
+  "summary": "FIA dry-race rules require using two dry compounds, but the current features mostly encode only the driver’s own stop/compound debt.",
+  "rationale": "FIA dry-race rules require using two dry compounds, but the current features mostly encode only the driver’s own stop/compound debt. Strategy is also relative: pit windows, cover stops, and same-compound herd behavior are field-level phenomena.",
+  "implementation_hint": "On dry slick laps, compute per race-lap fractions of drivers who still owe the mandatory compound, already made a first stop, are on the same compound with older tyres, or are pitting now. Interact these field-pressure features with the driver’s own prior pit count, prior slick count, position, and tyre finish-pressure features.",
+  "expected_effect": "Adds race-state coordination and compliance pressure without needing full sequence models.",
+  "risk": "Needs careful gating for wet/intermediate races and Monaco-specific rule differences.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1"
+  ]
+}

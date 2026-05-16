@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a within-lap ranking model over drivers in the same race/lap",
+  "summary": "Pit calls are partly relative, not purely absolute: strategists react to rivals, track position, and the limited set of realistic stoppers on a lap.",
+  "rationale": "Pit calls are partly relative, not purely absolute: strategists react to rivals, track position, and the limited set of realistic stoppers on a lap. Ranking within each `Race_Year x LapNumber` query can model who is most likely to pit next even if binary probabilities are mis-scaled.",
+  "implementation_hint": "Build query groups as all drivers on the same `Race_Year x LapNumber`. Train an `LGBMRanker` with `lambdarank` or `rank_xendcg` using `PitNextLap` as integer relevance, skipping all-zero queries if needed. Blend the ranker score with the existing binary classifier rather than replacing it.",
+  "expected_effect": "Captures competitive context and field-relative urgency that current row-wise features likely miss, improving ordering on difficult laps with multiple plausible pit candidates.",
+  "risk": "Ranking optimizes NDCG-style query ordering, not ROC AUC directly. Many laps may have zero positives, and careless query construction can make the task noisy.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115"
+  ]
+}

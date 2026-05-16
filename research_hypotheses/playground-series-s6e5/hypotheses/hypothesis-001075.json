@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "State-space tyre-health features with explicit pit-reset dynamics",
+  "summary": "Fresh literature models tyre degradation as a latent state with pit stops acting as structural resets, which matches the race mechanics better than raw cumulative degradation alone.",
+  "rationale": "Fresh literature models tyre degradation as a latent state with pit stops acting as structural resets, which matches the race mechanics better than raw cumulative degradation alone. The current feature set uses many ratios but no explicit hidden-state estimate, so a smoothed tyre-health proxy could add new signal without changing the base learners.",
+  "implementation_hint": "Within each driver-race-stint, fit a simple Kalman/state-space proxy using observed LapTime_Delta, TyreLife, Compound, and Cumulative_Degradation to estimate latent pace loss, degradation slope, and recent acceleration of wear. Feed only current/past-filtered estimates, plus compound-specific slope residuals and estimated optimal-stint-gap features, into the tree models.",
+  "expected_effect": "Adds a more stable notion of ‘how close this tyre really is to the cliff’ and may help generalization across compounds and circuits.",
+  "risk": "Easy to leak future information if you smooth bidirectionally instead of filtering forward only; poorly tuned latent models may just repackage existing features.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

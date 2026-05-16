@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Test native CatBoost with ordered categorical statistics instead of manual frequency encodings",
+  "summary": "The dataset has very high-cardinality categoricals (`Driver`, `Race`, their combinations) and CatBoost’s ordered target statistics were built for exactly this setting.",
+  "rationale": "The dataset has very high-cardinality categoricals (`Driver`, `Race`, their combinations) and CatBoost’s ordered target statistics were built for exactly this setting. The current solutions already rely heavily on manual count/frequency features; CatBoost can learn richer leakage-resistant categorical interactions directly.",
+  "implementation_hint": "Train CatBoost on raw categoricals plus the strongest numeric features, with rows kept in chronological order and `has_time=True` so permutations do not destroy temporal order. Compare against LightGBM/XGBoost using the same purged grouped folds; then blend if the errors are complementary.",
+  "expected_effect": "Can capture driver/race/compound interaction structure that hand-built counts miss, especially for sparse drivers appearing in only some seasons.",
+  "risk": "If row order is not meaningful within folds, `has_time` can hurt; also avoid one-hot preprocessing that prevents CatBoost from building CTR-style features.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://catboost.ai/docs/en/references/training-parameters/common.html"
+  ]
+}

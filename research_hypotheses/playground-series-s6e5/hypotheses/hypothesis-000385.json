@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Driver Race Ranker Instead of Pure Pointwise Classification",
+  "summary": "ROC AUC rewards ordering, and XGBoost's ranking objectives are explicitly pairwise within query groups.",
+  "rationale": "ROC AUC rewards ordering, and XGBoost's ranking objectives are explicitly pairwise within query groups. Inference: pit timing is partly a 'which lap in this sequence is most stop-like?' problem, so a ranker over `Driver x Race` or `Driver x Race x Stint` can learn relative urgency better than a pure pointwise classifier.",
+  "implementation_hint": "Build a specialist `rank:pairwise` or `rank:ndcg` model with `qid` equal to sequence group, optionally on a filtered candidate window, then blend its score with the existing probabilistic model using OOF logits.",
+  "expected_effect": "Can improve lap ordering around actual stop windows and therefore AUC, especially on hard negatives from the same stint.",
+  "risk": "If groups are too long or candidate windows are poorly defined, the ranker can become noisy and underperform the baseline classifier.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html"
+  ]
+}

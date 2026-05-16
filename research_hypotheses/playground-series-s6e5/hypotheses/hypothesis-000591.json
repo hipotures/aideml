@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-group LambdaMART ranking head",
+  "summary": "Pit decisions are partly relative within a race-lap: which cars in the current field are most likely to stop next.",
+  "rationale": "Pit decisions are partly relative within a race-lap: which cars in the current field are most likely to stop next. Learning-to-rank methods explicitly compare items within a query group, which maps naturally to `qid=(Year,Race,LapNumber)` with binary labels for next-lap pitters.",
+  "implementation_hint": "Train an `XGBRanker` or LightGBM ranker with groups sorted by `Year,Race,LapNumber`; optionally drop groups with no positives or downweight them. Use the same engineered features, output a rank score per row, and blend that score with the binary classifier probability. Validate only with race-blocked folds.",
+  "expected_effect": "Adds a different inductive bias that can help on crowded pit windows where absolute thresholds are weak but relative ordering among drivers is strong.",
+  "risk": "Many lap-groups may contain zero positives, so the ranking signal can be sparse. If qids cross races or include leakage from same-race held-out groups, the gain will be fake.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

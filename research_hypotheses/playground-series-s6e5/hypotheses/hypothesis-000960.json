@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Sigmoid Logit Stacking of Orthogonal Experts",
+  "summary": "The local-CV/public gap suggests model diversity is likely worth more than another round of feature inflation, but ROC AUC rewards preserved ranking.",
+  "rationale": "The local-CV/public gap suggests model diversity is likely worth more than another round of feature inflation, but ROC AUC rewards preserved ranking. scikit-learn notes isotonic calibration can change AUC by creating ties, whereas sigmoid is strictly monotonic and preserves ranking.",
+  "implementation_hint": "Generate out-of-fold predictions from three genuinely different models: the current best numeric booster, the race-lap ranker, and a native-categorical CatBoost expert using raw categorical combos rather than manual one-hot/frequency expansion. Fit sigmoid or temperature-style calibrators on OOF predictions only, then blend in logit space; avoid isotonic on the final blend.",
+  "expected_effect": "More stable public-board performance via orthogonal model families and AUC-safe calibration.",
+  "risk": "If base learners are too correlated, stacking adds noise; any calibrator trained on in-fold predictions will overstate CV.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/faq"
+  ]
+}

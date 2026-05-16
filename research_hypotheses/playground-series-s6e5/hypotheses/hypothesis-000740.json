@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Self-Supervised Stint Embeddings As Sidecar Features",
+  "summary": "Recent time-series pretraining work shows that masked/contrastive sequence encoders learn transferable temporal structure, and tabular time-series transformers can pretrain embeddings for downstream tasks.",
+  "rationale": "Recent time-series pretraining work shows that masked/contrastive sequence encoders learn transferable temporal structure, and tabular time-series transformers can pretrain embeddings for downstream tasks. This dataset is lap-sequential but the current pipeline is almost entirely handcrafted tabular features.",
+  "implementation_hint": "Build short sequences per `Driver,Race,Stint` over core numeric columns plus compound tokens; pretrain a tiny encoder with masked next-step reconstruction or Siamese past-to-current consistency, then export the current hidden state or pooled embedding as 8-32 numeric features for the existing tree model.",
+  "expected_effect": "Should capture latent stint shape, warm-up, and degradation trajectory that fixed ratios miss, while keeping the final predictor tabular and simple.",
+  "risk": "The sequence depth is modest and a neural sidecar can add complexity without beating a strong handcrafted baseline.",
+  "sources": [
+    "https://proceedings.mlr.press/v235/dong24e.html",
+    "https://research.ibm.com/publications/tabular-transformers-for-modeling-multivariate-time-series"
+  ]
+}

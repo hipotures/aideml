@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Shift-aware weighting plus harsher grouped/temporal validation",
+  "summary": "The local-public gap suggests some fold optimism.",
+  "rationale": "The local-public gap suggests some fold optimism. With 2022-2025 data and test-only drivers/races, this is a covariate-shift problem; standard grouped CV can still overrate features that do not transfer well to the held-out season/race mix.",
+  "implementation_hint": "Run adversarial validation to predict train vs test using only features available at inference, then use that score for sample weighting or for selecting a ‘stable’ feature subset. Evaluate models under a stricter scheme such as `StratifiedGroupKFold` on `(Year,Race)` plus a forward-style split by year/race order, and tune blends for worst-fold or mean-minus-std AUC rather than mean AUC alone.",
+  "expected_effect": "May not raise raw CV, but should reduce public-LB decay and favor features that transfer to unseen races/drivers.",
+  "risk": "Importance weighting can be high-variance when estimated badly; stricter CV can make iteration slower and may underfit if over-penalized.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://research.ibm.com/publications/direct-density-ratio-estimation-for-large-scale-covariate-shift-adaptation"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-wave and rival-relative context features",
+  "summary": "Competition-aware F1 strategy research argues that ignoring rivals materially changes optimal pit timing, and sports analytics literature repeatedly finds context-normalized features stronger than absolute KPIs.",
+  "rationale": "Competition-aware F1 strategy research argues that ignoring rivals materially changes optimal pit timing, and sports analytics literature repeatedly finds context-normalized features stronger than absolute KPIs. A next-lap pit often happens as a response to an undercut threat or a field pit wave.",
+  "implementation_hint": "Create same-race/current-lap aggregates available at decision time: count/share of other cars pitting now, count in nearby position bands pitting now, driver lap-time and degradation percentile within race-lap and within compound, and interaction terms like `slow_relative_pace x nearby_pit_wave`. Keep all aggregates contemporaneous, never future-looking.",
+  "expected_effect": "Should add signal for reactive stops that the current solo-driver heuristics miss, especially around undercut/cover-stop behavior.",
+  "risk": "Using race-lap aggregates is valid only if they are based on current-lap observables; any accidental use of future laps or target-derived labels will inflate CV.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://www.nature.com/articles/s41598-022-05089-y"
+  ]
+}

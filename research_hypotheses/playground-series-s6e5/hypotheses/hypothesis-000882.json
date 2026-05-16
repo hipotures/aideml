@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking sidecar over `(Year,Race,LapNumber)` groups",
+  "summary": "Pit calls are inherently relative: the question is often which nearby car pits first, not only whether a single row crosses a tyre threshold.",
+  "rationale": "Pit calls are inherently relative: the question is often which nearby car pits first, not only whether a single row crosses a tyre threshold. Ranking losses are designed for grouped ordering and may capture within-lap pit priority better than plain binary logloss.",
+  "implementation_hint": "Train a sidecar CatBoost `YetiRankPairwise`/`PairLogitPairwise` or LightGBM `lambdarank` model with query groups such as `(Year,Race,LapNumber)` and optionally restrict pairs to cars within a position/gap neighborhood. Feed its OOF score or rank percentile into the main binary model rather than replacing the classifier.",
+  "expected_effect": "Should improve discrimination among ambiguous mid-window rows and sharpen who-pits-now ordering without requiring a full sequence model.",
+  "risk": "Query groups can be noisy because many laps have zero or one positive; pairwise CatBoost also changes categorical handling and can be slower.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

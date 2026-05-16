@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit Window Distance-to-Optimum Features",
+  "summary": "Strategy models approximate optimum stint length from pit loss and degradation rate; public F1 strategy guides describe the stop decision as fresh-tyre gain versus pit-loss cost.",
+  "rationale": "Strategy models approximate optimum stint length from pit loss and degradation rate; public F1 strategy guides describe the stop decision as fresh-tyre gain versus pit-loss cost. Current solutions include tyre-life medians, but not an explicit distance from expected compound/race/stint pit window.",
+  "implementation_hint": "Using train only for supervised-free aggregates, estimate median and quantiles of observed TyreLife/LapNumber at PitNextLap=1 by Race, Year, Compound, Stint, and fallback Compound-Stint. Add distance_to_pit_window, inside_25_75_window, past_p90_window, and normalized tyre age versus expected stop age to train/test.",
+  "expected_effect": "Can add a strong prior for when each compound/stint typically stops while allowing GBM/XGB to adjust for live degradation and position context.",
+  "risk": "Aggregating only positive stops can overfit rare race-compound groups; use smoothed fallbacks and avoid including the current row's target in out-of-fold train encodings if implemented as target-derived statistics.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://podiumprophets.com/blog/f1-tyre-strategy-guide"
+  ]
+}

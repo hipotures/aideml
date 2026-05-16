@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Held-Out Expert Blend With Beta or Local Calibration",
+  "summary": "F1 pit probabilities are regime-heterogeneous: early-stint dry laps, late one-stop races, wet crossover laps, and traffic-driven undercuts do not share the same score-to-probability map.",
+  "rationale": "F1 pit probabilities are regime-heterogeneous: early-stint dry laps, late one-stop races, wet crossover laps, and traffic-driven undercuts do not share the same score-to-probability map. Calibration literature suggests global Platt-style fixes can be too rigid, while isotonic can overfit; beta calibration or local calibration trees are better candidates for distorted GBDT scores.",
+  "implementation_hint": "Keep model training mostly unchanged, but score every base model with `LeaveOneGroupOut` on `Race_Year` or a stricter grouped split, then fit a small calibrator per regime bucket such as dry/wet, early/mid/late race, and stint index. Compare global isotonic vs beta calibration vs a tiny calibration tree on OOF predictions only. Blend calibrated experts rather than raw scores.",
+  "expected_effect": "Often improves leaderboard robustness more than raw CV, especially if current probabilities are mis-scaled across race regimes or shifted test composition.",
+  "risk": "AUC is rank-based, so calibration alone may not move local CV much; over-partitioned calibrators can become noisy on rare wet or late-race slices.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://papers.cool/arxiv/1808.00111"
+  ]
+}

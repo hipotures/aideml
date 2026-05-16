@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-stage hazard-plus-calibration stack with sigmoid-only final mapping",
+  "summary": "Recent F1 pit-stop work uses a cascaded setup that predicts both next-lap stop and horizon-to-stop, while survival literature treats this naturally as a discrete-time hazard with time-varying covariates.",
+  "rationale": "Recent F1 pit-stop work uses a cascaded setup that predicts both next-lap stop and horizon-to-stop, while survival literature treats this naturally as a discrete-time hazard with time-varying covariates. For this leaderboard, the practical angle is a two-stage stack: one model for immediate hazard, one for remaining-laps risk, then a monotone final combiner. Calibration docs matter because isotonic can change AUC via ties, while sigmoid preserves ranking.",
+  "implementation_hint": "Build a secondary target such as laps-until-next-pit within a driver-race sequence, fit a discrete-time hazard or survival-style auxiliary model using person-period framing or a horizon classifier, and feed its OOF hazard/remaining-laps predictions into the main binary model. If post-processing is tested, prefer Platt/sigmoid on held-out folds rather than isotonic so ROC ordering is preserved.",
+  "expected_effect": "Adds a structured notion of imminent vs eventual pit pressure, which may sharpen predictions in medium-probability regions without rewriting the whole pipeline.",
+  "risk": "Auxiliary labels must be generated strictly causally and resets around pit stops must be correct; poorly fit calibration or isotonic ties can lower AUC even if probabilities look nicer.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://arxiv.org/abs/1910.06724",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Separate Dry vs Wet Strategy Regimes",
+  "summary": "Recent pit-stop modeling work explicitly drops wet/intermediate laps because wet stops are reactive to weather rather than predictable degradation.",
+  "rationale": "Recent pit-stop modeling work explicitly drops wet/intermediate laps because wet stops are reactive to weather rather than predictable degradation. The current best only ordinal-encodes wet/intermediate compounds, which may blur two different decision processes.",
+  "implementation_hint": "Add dry_regime flags: is_dry_compound, is_wet_or_intermediate, dry_compound_age, wet_compound_age, and interactions with LapTime_Delta/RaceProgress. Train either one model with regime interactions or a dry-only model blended with a simple high-variance wet/intermediate model.",
+  "expected_effect": "Could improve ranking by preventing rare wet/reactive rows from distorting dry pit-window learning while still assigning plausible probabilities to wet rows.",
+  "risk": "If test contains many wet-like cases and train has enough signal, isolating them may reduce sample size and hurt calibration.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

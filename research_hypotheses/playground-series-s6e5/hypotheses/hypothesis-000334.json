@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver-archetype cluster conditioning",
+  "summary": "A Formula 1 strategy thesis found that clustering drivers by performance, tactical, and behavioral metrics improved strategic modeling.",
+  "rationale": "A Formula 1 strategy thesis found that clustering drivers by performance, tactical, and behavioral metrics improved strategic modeling. With hundreds of drivers and many unseen identities in test, archetypes may generalize better than raw driver IDs alone.",
+  "implementation_hint": "Build per-driver historical profiles from prior races only: median first-stop lap, mean stint length, aggressiveness under degradation, compound-switch diversity, late-race stop rate, wet-race tendency. Cluster these profiles OOF, then add cluster ID, distance-to-centroid, and cluster x current-state interactions as features; assign unseen drivers by nearest centroid from prefix stats.",
+  "expected_effect": "Better generalization for sparse/unseen drivers and more stable use of driver history.",
+  "risk": "If cluster profiles use the full season or same held-out race, they leak future behavior; compute profiles only from prior races within each fold.",
+  "sources": [
+    "https://run.unl.pt/bitstreams/c56ef932-3c13-40d1-8df9-57124cc1ed51/download",
+    "https://run.unl.pt/handle/10362/179736?locale=en"
+  ]
+}

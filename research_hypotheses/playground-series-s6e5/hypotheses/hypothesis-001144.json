@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Landmark dynamic survival expert instead of plain binary classification",
+  "summary": "Dynamic survival work shows that updating risk from longitudinal marker history can outperform static landmark Cox-style models, and discrete hazard parameterizations often beat PMF formulations.",
+  "rationale": "Dynamic survival work shows that updating risk from longitudinal marker history can outperform static landmark Cox-style models, and discrete hazard parameterizations often beat PMF formulations. This task is naturally a 1-step hazard problem conditional on surviving without a pit so far in the stint.",
+  "implementation_hint": "Build a separate expert on risk sets only: at lap t, use only cars still active in the stint and summarize recent history causally (last 3 lap deltas, slope, latent tire state, position trend, same-lap field pressure). Try either a coarse landmark random survival forest or a discrete logistic-hazard model over short horizons with quantile-based bins; use the 1-lap hazard as the submission feature/expert output.",
+  "expected_effect": "A different inductive bias from the current tree classifier that may improve borderline cases by modeling conditional event risk rather than unconditional binary labels.",
+  "risk": "Heavier engineering and slower CV. Too many landmark times or time bins can fragment data and underperform the simpler baseline.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-021-01375-x",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ]
+}

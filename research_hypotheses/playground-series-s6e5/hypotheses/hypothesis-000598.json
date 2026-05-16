@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotonic-constraint expert on physically directional features",
+  "summary": "Several core signals should be directionally stable in aggregate: more laps since last stop, more wear relative to expected life, more laps beyond finish window, and stronger stop-evidence intensity should not usually reduce pit risk all else equal.",
+  "rationale": "Several core signals should be directionally stable in aggregate: more laps since last stop, more wear relative to expected life, more laps beyond finish window, and stronger stop-evidence intensity should not usually reduce pit risk all else equal. Monotonic constraints are documented in both XGBoost and CatBoost and can suppress fold-specific inversions from noisy handcrafted interactions.",
+  "implementation_hint": "Train a second expert with monotonic constraints on a small trusted subset of features such as `TyreLife_ExpectedLife_Ratio`, `Compound_LapsBeyondFinishWindow`, `LapsRemaining_AfterExpectedLife`, `PitReadiness_CooldownAdjusted`, and maybe decreasing constraints on `PitCooldown_Suppression` or very-short remaining-laps variables where appropriate. Blend this constrained expert with the unconstrained baseline instead of forcing all features into constraints.",
+  "expected_effect": "Lower overfitting and more stable LB transfer by preserving the physically sensible shape of the strongest readiness signals.",
+  "risk": "Badly chosen constraints can hurt because F1 strategy has real exceptions, especially wet races, safety-car-like latent regimes, and endgame no-stop situations; keep the constrained feature set small.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://catboost.ai/docs/en/references/training-parameters/",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html"
+  ]
+}

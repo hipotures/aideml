@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-horizon discrete-time hazard head plus rank-preserving blend",
+  "summary": "Discrete-time survival work shows that next-event timing can be reframed as person-period binary hazards, letting standard classifiers model conditional event risk across multiple future intervals.",
+  "rationale": "Discrete-time survival work shows that next-event timing can be reframed as person-period binary hazards, letting standard classifiers model conditional event risk across multiple future intervals. For this task, a 1-lap label alone may be too brittle; learning hazards for 1, 2, and 3 laps ahead can produce a smoother stopping-intent signal and a stronger ensemble member.",
+  "implementation_hint": "Create row-causal targets for `pit in 1`, `pit in <=2`, and `pit in <=3` laps within each driver-race sequence. Train shared-feature classifiers or a person-period hazard model, then convert to next-lap probability and blend by OOF rank averaging with the current best model. Use `CalibratedClassifierCV` only on OOF predictions if the blend needs smoother probability shape; keep the final combination rank-focused because ROC AUC is the metric.",
+  "expected_effect": "Adds a complementary timing model that captures stop imminence instead of just binary threshold crossings, often improving marginal cases one or two laps before the actual stop.",
+  "risk": "Person-period expansion can explode row count and class imbalance. Calibration can flatten useful extremes or introduce ties if applied carelessly; all horizons and blend weights must be OOF.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://scikit-learn.org/stable/api/sklearn.calibration.html"
+  ]
+}

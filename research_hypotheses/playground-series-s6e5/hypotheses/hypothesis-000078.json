@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "For each driver-race sequence, compute prior observed stop count, stop count including the current row, remaining assumed stop debt before and after the current row, stop debt per remaining lap, and finish-capable-but-still-owes-stop interactions. Test the block with and without current PitStop included.",
   "expected_effect": "Small to medium AUC gain with medium confidence.",
   "risk": "Counting future pit stops would directly leak. Current-row PitStop is allowed, but a prior-only ablation should be reported.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

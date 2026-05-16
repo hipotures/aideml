@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Latent Tyre-Wear Filter",
+  "summary": "Recent F1 tyre-degradation work models wear as a latent state with pit-stop resets and uncertainty, which is closer to race reality than fixed expected-life constants.",
+  "rationale": "Recent F1 tyre-degradation work models wear as a latent state with pit-stop resets and uncertainty, which is closer to race reality than fixed expected-life constants. Official F1 strategy material also stresses that degradation and fresh-tyre outlap pace are what make undercuts and pit timing work.",
+  "implementation_hint": "Within each Driver x Race x Stint sequence, fit a causal local-linear or Kalman-style filter on lap-time residuals after race/compound normalization, resetting state on PitStop. Feed filtered wear level, wear slope, wear acceleration, one-step forecast error, and uncertainty width into the existing tabular stack; never use future laps.",
+  "expected_effect": "Better detection of pre-pit cliff laps that look similar on raw TyreLife but differ in latent pace decay.",
+  "risk": "Sensitive to safety-car, wet, and traffic outliers; any non-causal residualization will leak badly.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://aws.amazon.com/sports/f1/",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

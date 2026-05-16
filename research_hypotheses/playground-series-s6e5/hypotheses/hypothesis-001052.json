@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged-embargo CV with strictly fold-local encoders",
+  "summary": "The label depends on the next lap, so adjacent laps from the same race leak future context more easily than ordinary grouped CV suggests.",
+  "rationale": "The label depends on the next lap, so adjacent laps from the same race leak future context more easily than ordinary grouped CV suggests. Purging and embargo are designed for label intervals that overlap in time; CatBoost’s ordered boosting also exists specifically to reduce target leakage and prediction shift.",
+  "implementation_hint": "Keep race-level grouping, but within each validation fold purge training rows from the same race whose label window overlaps the validation horizon and embargo 1-2 laps around each validation block. Recompute every target/frequency/hazard prior inside each fold only, then compare current CV to purged CV before trusting improvements.",
+  "expected_effect": "May lower offline CV slightly while improving leaderboard reliability and make small modeling gains more trustworthy.",
+  "risk": "Stricter splitting can reduce train size and make local CV noisier; real score may stay flat even if leakage was reduced.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases"
+  ]
+}

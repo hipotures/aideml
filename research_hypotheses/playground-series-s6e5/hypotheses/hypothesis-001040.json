@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace the XGBoost ranker with CatBoost group ranking on race-lap choice sets",
+  "summary": "The current rank experiment uses XGBoost `rank:pairwise`, but CatBoost has richer pairwise/groupwise objectives and handles raw high-cardinality categories without manual coding.",
+  "rationale": "The current rank experiment uses XGBoost `rank:pairwise`, but CatBoost has richer pairwise/groupwise objectives and handles raw high-cardinality categories without manual coding. In this task, each race-lap is a natural query group where the model ranks which drivers are most likely to pit next.",
+  "implementation_hint": "Set `GroupId = Year_Race_LapNumber` and train CatBoost with `YetiRankPairwise`, `PairLogitPairwise`, or `QuerySoftMax` on raw `Driver/Race/Compound` plus causal history features. Use OOF rank-normalized predictions and blend them with the standard classifier instead of raw probability averaging.",
+  "expected_effect": "Can outperform the current XGB ranker by using better categorical interactions inside within-lap ranking, especially for rare drivers and compounds.",
+  "risk": "Pairwise objectives are slower and may optimize query ordering better than absolute probability; benefit may appear mostly in the ensemble.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html"
+  ]
+}

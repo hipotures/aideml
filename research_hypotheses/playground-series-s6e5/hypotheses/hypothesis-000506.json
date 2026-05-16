@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Verify next-lap PitStop shift as a transductive label identity",
+  "summary": "The target is PitNextLap and the test rows still include PitStop.",
+  "rationale": "The target is PitNextLap and the test rows still include PitStop. If rows form complete driver-race lap sequences, then PitNextLap may be nearly equal to the next row's PitStop after sorting by Race_Year/Race, Driver, LapNumber, and id. This is a validation trap worth testing before adding more weak tyre features.",
+  "implementation_hint": "Create NextObservedPitStop = lead(PitStop) within each driver-race sequence on train+test separately; on train, measure AUC/agreement against PitNextLap. If agreement is very high, use the shifted value directly or blend it with the current model for ambiguous final-lap/duplicate-lap rows.",
+  "expected_effect": "Potentially very large public score jump if the dataset exposes future covariates; otherwise quickly falsified and useful as a leakage audit.",
+  "risk": "May fail if PitStop is not current-lap stop, sequences are incomplete, or Kaggle private rows break the batch-transductive assumption.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

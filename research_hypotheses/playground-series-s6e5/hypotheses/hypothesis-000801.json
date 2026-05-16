@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial-validation-weighted model selection",
+  "summary": "Train/test drift is plausible here because the train has more unique drivers than test and strategy regimes vary by season and venue.",
+  "rationale": "Train/test drift is plausible here because the train has more unique drivers than test and strategy regimes vary by season and venue. Public Kaggle guidance recommends adversarial validation when ordinary CV may be optimistic under distribution shift.",
+  "implementation_hint": "Train a train-vs-test classifier on feature space only, score each training row by test-likeness, and use that score in two ways: build one extra validation split from the most test-like rows, and train a weighted expert that upweights test-like training samples. Keep only models that are stable across both race-held-out CV and adversarial-validation CV.",
+  "expected_effect": "More reliable offline selection and potentially better public-LB transfer, even if raw local CV changes little.",
+  "risk": "Adversarial weights can amplify noise or downweight genuinely useful old-regime samples.",
+  "sources": [
+    "https://www.kdnuggets.com/2016/10/adversarial-validation-explained.html",
+    "https://www.kdnuggets.com/2020/02/adversarial-validation-overview.html",
+    "https://developer.nvidia.com/blog/the-kaggle-grandmasters-playbook-7-battle-tested-modeling-techniques-for-tabular-data/"
+  ]
+}

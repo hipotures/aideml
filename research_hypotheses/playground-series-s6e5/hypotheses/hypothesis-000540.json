@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online latent tyre-state features from a resettable state-space filter",
+  "summary": "A recent F1 tire-degradation paper models latent pace/degradation with explicit pit-stop resets and rolling-origin evaluation, arguing that observed lap times are noisy proxies for an underlying degradation state.",
+  "rationale": "A recent F1 tire-degradation paper models latent pace/degradation with explicit pit-stop resets and rolling-origin evaluation, arguing that observed lap times are noisy proxies for an underlying degradation state. That is a tighter version of 'latent tyre state' than the current hand-built ratios and could expose hidden wear, warm-up, and uncertainty signals.",
+  "implementation_hint": "Fit a lightweight per-driver-race online filter using only past laps to estimate latent pace level, degradation slope, post-pit reset level, and state uncertainty. Feed those filtered states as new numeric features into the existing GBDT rather than replacing the whole model.",
+  "expected_effect": "Should help separate genuinely worn tyres from noisy slow laps, improving discrimination near the pit window and reducing overreaction to one-off traffic/errors.",
+  "risk": "If the filter is misspecified or too expensive, it may add noise; wet/mixed races and abnormal out-laps may need separate handling.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

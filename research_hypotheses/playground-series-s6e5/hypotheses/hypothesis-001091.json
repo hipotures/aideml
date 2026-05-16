@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regime-wise OOF stacking with beta or Venn-Abers calibration before blending",
+  "summary": "Your stack already relies heavily on rank blending, which suggests score-scale mismatch across experts/regimes.",
+  "rationale": "Your stack already relies heavily on rank blending, which suggests score-scale mismatch across experts/regimes. Beta calibration handles skewed score distortions better than Platt scaling, while Venn-Abers methods are specifically designed to improve probability calibration from OOF-style predictions.",
+  "implementation_hint": "Train the base experts as usual, then fit calibrators on OOF predictions separately for a few broad regimes such as wet/dry and early/mid/late race; feed calibrated scores into a tiny meta-learner or regime-gated linear blend instead of raw/ranked scores only.",
+  "expected_effect": "Can turn small but real expert differences into a more stable ensemble, especially when one model is overconfident in specific regimes.",
+  "risk": "Calibration will not help if models are already nearly rank-equivalent; too many regime splits can overfit and even hurt AUC.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids%283f9dec1d-0afb-45f4-ba09-c1763232f976%29.html",
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x"
+  ]
+}

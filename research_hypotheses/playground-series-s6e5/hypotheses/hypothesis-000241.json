@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF empirical-Bayes strategy priors for high-cardinality IDs",
+  "summary": "`Driver`, `Race`, and their interactions are high-cardinality and likely carry stable stop-style signal, but naive target means leak badly.",
+  "rationale": "`Driver`, `Race`, and their interactions are high-cardinality and likely carry stable stop-style signal, but naive target means leak badly. Regularized target encoding literature and CatBoost’s ordered categorical handling both suggest shrinkage/ordered statistics can outperform crude frequency features on this kind of tabular data.",
+  "implementation_hint": "Create out-of-fold smoothed encodings for `Driver`, `Race`, `Year`, `Compound`, `Driver×Compound`, `Race×Compound`, and `Race×Stint`, with hierarchical fallback (`Driver×Compound` -> `Driver` -> global). Compare LightGBM/XGBoost on these features against plain frequency counts; if using CatBoost, test raw categoricals plus only the new numeric priors, not one-hot.",
+  "expected_effect": "Better generalization on rare drivers/races and a lift over current freq-based categorical handling, especially on public LB where entity mix shifts.",
+  "risk": "If folds are not grouped by race/year, the encodings will overstate CV. Gains may be small if CatBoost already absorbs most of this signal.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

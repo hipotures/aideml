@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Explicit same-lap pairwise ranker with hard negatives",
+  "summary": "A generic querywise rank blend has already been tried, but the natural structure here is stronger: within each `Year/Race/LapNumber` group, positives should outrank most negatives, especially those near the same pit window.",
+  "rationale": "A generic querywise rank blend has already been tried, but the natural structure here is stronger: within each `Year/Race/LapNumber` group, positives should outrank most negatives, especially those near the same pit window. CatBoost supports pairwise and groupwise ranking losses directly, so you can move from implicit ranking to explicit pair construction.",
+  "implementation_hint": "Build a CatBoost ranker with `GroupId = Year_Race_LapNumber`. Generate pairs from each positive row against sampled negatives in the same group, but upweight 'hard negatives' that match compound, stint band, position band, or similar tyre life. Try `PairLogitPairwise` and `QueryCrossEntropy`, then blend this ranker only after converting scores to fold-local within-query ranks.",
+  "expected_effect": "Can add a low-correlation expert that sharpens ordering exactly where AUC is won: distinguishing the few imminent pitters from lookalike non-pitters on the same lap.",
+  "risk": "Easy to overfit if pair generation uses too many trivial negatives or if groups with zero/one positive dominate training; slower than pointwise models.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification"
+  ]
+}

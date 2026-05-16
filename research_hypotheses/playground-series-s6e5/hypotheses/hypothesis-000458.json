@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Physics-Constrained Booster",
+  "summary": "Tyre wear, degradation pressure, and fresh-tyre advantage have partly monotone relationships with pit likelihood.",
+  "rationale": "Tyre wear, degradation pressure, and fresh-tyre advantage have partly monotone relationships with pit likelihood. XGBoost/CatBoost both support monotone constraints, and XGBoost also supports interaction constraints to prevent spurious high-cardinality interactions.",
+  "implementation_hint": "Train a specialist booster with monotone constraints on wear-pressure features such as TyreLife, positive LapTime_Delta, degradation-per-lap, finish-excess, and decreasing fresh-tyre finish-margin features. Add interaction constraints so wear variables mainly interact with Compound, RaceProgress, and regime flags, then rank-average with the unconstrained baseline.",
+  "expected_effect": "Likely reduces overfit to noisy race/driver patterns and narrows CV-to-LB drift while keeping strong discrimination.",
+  "risk": "Wrong constraint directions or overly tight interaction sets can underfit and miss real nonlinearities.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/feature_interaction_constraint.html",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

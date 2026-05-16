@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join External Race-State Signals: Safety Car, VSC, Weather, Race Control",
+  "summary": "Public F1 data sources expose exactly the exogenous shocks that shift pit-stop timing: weather, track status, safety car/VSC, and race-control messages.",
+  "rationale": "Public F1 data sources expose exactly the exogenous shocks that shift pit-stop timing: weather, track status, safety car/VSC, and race-control messages. Those state changes are largely absent from the provided columns but are directly strategy-relevant.",
+  "implementation_hint": "For each Race-Year-Lap, join OpenF1 or FastF1 race-control, track-status, and weather data. Add features like active SC/VSC flag, laps since status change, rainfall/track-temp trend, and whether a stop under neutralization would reduce pit-loss. Test a dry-only baseline versus enriched wet/neutralized subsets separately.",
+  "expected_effect": "Most likely gain is on rare but high-information regimes where current rowwise tyre features are weak, especially weather transitions and neutralized races.",
+  "risk": "Temporal alignment is the trap: lap timestamps, session times, and race-control event times must be aligned conservatively to avoid using messages posted after the decision lap.",
+  "sources": [
+    "https://openf1.org/",
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://docs.fastf1.dev/_modules/fastf1/_api.html",
+    "https://docs.fastf1.dev/time_explanation.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual undercut/overcut value features",
+  "summary": "Official F1 strategy explainers repeatedly frame the decision as 'pit now' versus 'stay out one more lap' under clean-air, tyre warm-up, and degradation tradeoffs.",
+  "rationale": "Official F1 strategy explainers repeatedly frame the decision as 'pit now' versus 'stay out one more lap' under clean-air, tyre warm-up, and degradation tradeoffs. That suggests modeling option value directly, not just whether the current tyre can finish.",
+  "implementation_hint": "Create proxy features for expected pit-now benefit: same-lap peer-relative pace, compound-specific warm-up risk, estimated pit-loss by race, clean-air proxy from position/field context, and one-lap counterfactual margins such as expected gain from fresh tyres minus pit-loss/traffic penalty. Include separate overcut-risk features for hard tyres or cool/wet compounds.",
+  "expected_effect": "Can capture why two cars with similar tyre age behave differently because one is in undercut range and the other is protected by track position or poor out-lap warm-up.",
+  "risk": "The dataset lacks explicit gaps, traffic, and safety-car labels, so these counterfactuals are approximations and may be circuit-specific.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

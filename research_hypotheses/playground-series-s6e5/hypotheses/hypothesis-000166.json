@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer neutralization and pit-wave regimes from field-wide anomalies",
+  "summary": "Safety Car/VSC periods materially reduce pit-loss cost, and pit decisions also cluster in reactive 'waves' after rivals stop.",
+  "rationale": "Safety Car/VSC periods materially reduce pit-loss cost, and pit decisions also cluster in reactive 'waves' after rivals stop. Even without an explicit flag column, these regimes should be inferable from synchronized field lap-time spikes and same-lap pit counts.",
+  "implementation_hint": "Create race-lap features such as field median `LapTime_Delta`, robust z-score of field lap-time inflation, fraction of cars pitting that lap, top-team pit count last 1-2 laps, and each driver’s gap-to-wave percentile; interact these with `LapsRemaining_Est`, `Position`, and compound.",
+  "expected_effect": "Can capture cheap-stop windows and chain-reaction strategic behavior that current per-row tyre features miss.",
+  "risk": "Heuristic event inference may confuse rain, traffic, or red-flag-like outliers with true neutralizations.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

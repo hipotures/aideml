@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarially Weighted, Regime-Specific OOF Stacking With Sigmoid Meta-Blending",
+  "summary": "The train/test split likely contains temporal and regime shift across years, drivers, and new regulations.",
+  "rationale": "The train/test split likely contains temporal and regime shift across years, drivers, and new regulations. Adversarial validation is a standard competition tactic for selecting validation rows closer to test, and stacking works best when base learners capture different biases; sigmoid calibration preserves ranking while isotonic can change AUC via ties.",
+  "implementation_hint": "Train a train-vs-test classifier to score test-likeness, use those scores to pick validation folds or sample weights, then stack diverse OOF models: baseline binary GBDT, ordered CatBoost, and the ranking model, optionally split into dry vs wet experts. Use a logistic meta-learner or sigmoid-only calibration on OOF predictions; avoid isotonic unless it empirically helps AUC.",
+  "expected_effect": "Can reduce leaderboard/CV mismatch and convert several small orthogonal gains into a more stable public score lift.",
+  "risk": "High implementation complexity and strong overfitting risk if the stack is not strictly OOF and race-grouped; adversarial weights can hurt if the detected shift is spurious.",
+  "sources": [
+    "https://link.springer.com/chapter/10.1007/978-3-031-20862-1_35",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer hidden cheap-stop and crossover regimes from field-synchronous shocks",
+  "summary": "Public F1 analysis repeatedly shows pit timing changes abruptly when SC/VSC makes stops cheaper or when wet/dry crossover points are reached.",
+  "rationale": "Public F1 analysis repeatedly shows pit timing changes abruptly when SC/VSC makes stops cheaper or when wet/dry crossover points are reached. Your table has no explicit caution or weather flag, so the useful signal is likely in race-lap-wide synchronous anomalies rather than in single-row tyre features.",
+  "implementation_hint": "Build causal race-lap aggregates such as mean/std of `LapTime_Delta`, share of drivers with extreme positive deltas, wet-tyre share, compound-switch counts, and field compression proxies. Fit a small HMM/clusterer or direct classifier out-of-fold to create 3-5 latent regime states, then feed the current state and recent state transitions into the main model or a specialist expert.",
+  "expected_effect": "Should improve recall on opportunistic pits that static finish-window rules miss, especially around VSC/SC-like laps and wet/dry transition laps.",
+  "risk": "Unsupervised states can be unstable and leak if fit on full data. Learn states fold-pure by held-out race groups and only from current/prior race laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/palmer-how-bad-timing-stopped-pole-sitter-perez-adding-to-his-win-tally-in.7CyCAlZg0UR2tJHXjfhI7i",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/when-it-s-time-to-change-from-slick-to-wet-tyres-in-formula-1-52943/"
+  ]
+}

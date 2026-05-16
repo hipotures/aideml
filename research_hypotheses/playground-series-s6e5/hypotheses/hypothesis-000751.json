@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strictly OOF stacked ensemble with beta calibration and model-disagreement meta-features",
+  "summary": "Prior work on stacking and beta calibration suggests the next gain may come from combination quality, not a single stronger base learner.",
+  "rationale": "Prior work on stacking and beta calibration suggests the next gain may come from combination quality, not a single stronger base learner. Beta calibration is more flexible than plain Platt scaling for skewed score distributions, while modern Kaggle stacks often profit from OOF mean/std features that expose model disagreement.",
+  "implementation_hint": "Build 2-4 intentionally diverse level-1 models, generate predictions strictly OOF with grouped folds, beta-calibrate each model on fold-held-out scores, then train a tiny level-2 learner on calibrated OOF predictions plus `mean`, `std`, `max-min`, and dry/wet regime flags. Sanity-check that raw AUC does not drop after monotone calibration and keep the stack fully fold-pure.",
+  "expected_effect": "Likely modest but reliable gain on leaderboard stability and public/private consistency, especially if current models are close in CV and make different mistakes around rare stop windows.",
+  "risk": "Easy to overfit if the meta-learner sees in-fold predictions or too many near-duplicate base models. Calibration may help probability quality more than standalone AUC, so gains can be small.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC3248752/",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://developer.nvidia.com/blog/grandmaster-pro-tip-winning-first-place-in-a-kaggle-competition-with-stacking-using-cuml/"
+  ]
+}

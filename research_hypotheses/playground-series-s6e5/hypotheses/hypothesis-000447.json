@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Trajectory Summaries Within Each Stint",
+  "summary": "Current best features are mostly single-row heuristics.",
+  "rationale": "Current best features are mostly single-row heuristics. Dynamic prediction literature and recent F1 sequence models both emphasize that event risk improves when you summarize the recent trajectory, not just the latest value.",
+  "implementation_hint": "Within each sorted `(Race, Year, Driver, Stint)` sequence, add trailing 3/5-lap causal features for `LapTime (s)`, `LapTime_Delta`, `Cumulative_Degradation`, `Position_Change`: last value, EWMA, slope, acceleration, std, max deterioration, and a shock flag when the latest point deviates sharply from the recent window. Keep windows strictly backward-looking.",
+  "expected_effect": "Better detection of tyre-cliff, traffic, and pre-stop buildup patterns that current row-wise features miss.",
+  "risk": "Easy to leak if windows are centered or sorting is wrong; early-stint windows will be sparse and noisy.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://journal.r-project.org/articles/RJ-2024-014/"
+  ]
+}

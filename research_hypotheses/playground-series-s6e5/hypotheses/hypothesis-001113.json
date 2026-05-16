@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Multi-horizon auxiliary targets instead of single-step-only learning",
+  "summary": "A recent lap-level F1 pit-stop paper uses multi-task learning; for this tabular setup, the simpler analogue is to derive auxiliary labels such as stop within 2 laps, within 3 laps, and remaining laps in stint.",
+  "rationale": "A recent lap-level F1 pit-stop paper uses multi-task learning; for this tabular setup, the simpler analogue is to derive auxiliary labels such as stop within 2 laps, within 3 laps, and remaining laps in stint. Those tasks are denser and can regularize the brittle next-lap label.",
+  "implementation_hint": "Create fold-safe auxiliary targets from each race sequence: `pit_in_2`, `pit_in_3`, and discrete/continuous remaining-stint labels. Train separate models or a shared stack of models on these targets, then feed their OOF predictions into the final `PitNextLap` blender. Judge lift only under forward/embargoed CV because nearby horizons are highly correlated.",
+  "expected_effect": "Often stabilizes predictions near the decision boundary and can recover recall on emerging pit windows without overreacting to one noisy lap.",
+  "risk": "This can collapse into target duplication if not evaluated carefully; gains may be small if the final model already infers short-horizon hazard well.",
+  "sources": [
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

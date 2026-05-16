@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-vs-Overcut Mixture of Experts",
+  "summary": "F1 strategy articles make clear that high-degradation/high-energy circuits favor the undercut, while low-degradation/slow warm-up tracks can favor the overcut; a single global classifier likely averages across opposite mechanisms.",
+  "rationale": "F1 strategy articles make clear that high-degradation/high-energy circuits favor the undercut, while low-degradation/slow warm-up tracks can favor the overcut; a single global classifier likely averages across opposite mechanisms.",
+  "implementation_hint": "Create a gating model from circuit, compound, degradation slope, lap-delta behavior, and field-relative pace proxies to estimate `undercut_favored` vs `overcut_favored`. Train separate experts per regime and blend them with leak-safe OOF predictions.",
+  "expected_effect": "Should recover circuit-specific signal that a monolithic model smooths away, especially at strategy-extreme venues.",
+  "risk": "Regime assignment may be noisy and the expert split can reduce effective sample size.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ]
+}

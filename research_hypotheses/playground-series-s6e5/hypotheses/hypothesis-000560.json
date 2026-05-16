@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged OOF Stacking with Raw-Cat CatBoost Sidecar",
+  "summary": "Current best code hand-engineers many category frequencies, but CatBoost is built to form categorical combinations with ordered target statistics, which can recover interaction signal without manual leakage-prone encodings.",
+  "rationale": "Current best code hand-engineers many category frequencies, but CatBoost is built to form categorical combinations with ordered target statistics, which can recover interaction signal without manual leakage-prone encodings. For blending, sigmoid stacking preserves ranking, whereas isotonic can introduce ties and shift AUC.",
+  "implementation_hint": "Add a CatBoost sidecar using raw categorical columns plus minimal numeric features under chronological/grouped folds; generate strictly OOF predictions with race-level embargo around nearby laps, then blend GBDT + ranker + CatBoost using logistic regression or sigmoid calibration only on OOF scores.",
+  "expected_effect": "Model diversity plus safer categorical handling should add incremental lift and reduce overfit to handcrafted encodings.",
+  "risk": "If folds are not purged by race chronology, ordered statistics and stacker targets can still look better locally than they will generalize.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation"
+  ]
+}

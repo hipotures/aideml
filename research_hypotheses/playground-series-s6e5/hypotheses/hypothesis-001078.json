@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace fixed rank blending with nested OOF stacking plus conservative sigmoid calibration",
+  "summary": "Stacked generalization is specifically meant to learn and correct base-model biases in a second space, and scikit-learn notes that sigmoid calibration preserves ranking while isotonic can change ROC-AUC via ties.",
+  "rationale": "Stacked generalization is specifically meant to learn and correct base-model biases in a second space, and scikit-learn notes that sigmoid calibration preserves ranking while isotonic can change ROC-AUC via ties. Given the current pipeline already has multiple strong but similar predictors, the next gain is likely in a leakage-safe meta-layer that conditions on regime/domain context rather than a single global weight search.",
+  "implementation_hint": "Build a level-1 dataset from nested OOF predictions of XGB, CatBoost, ranker/expert models, plus a few meta-features such as wet flag, estimated laps left, and adversarial-domain score. Train a very small logistic/CatBoost meta-learner, then apply per-regime sigmoid calibration only if reliability improves; use isotonic only as a diagnostic because AUC can move via ties.",
+  "expected_effect": "Often yields small but real gains by learning when each model is trustworthy, while keeping the leaderboard-facing ranking stable.",
+  "risk": "This is the easiest place to leak; it must be nested OOF, not same-fold tuning. Gains may be marginal if the base models remain too correlated.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

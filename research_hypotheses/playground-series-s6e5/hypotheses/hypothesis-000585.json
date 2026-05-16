@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-specific undercut elasticity prior",
+  "summary": "Official F1 strategy coverage emphasizes that pit-lane loss and undercut strength vary materially by circuit, and that faster pit operations can open the stop window earlier.",
+  "rationale": "Official F1 strategy coverage emphasizes that pit-lane loss and undercut strength vary materially by circuit, and that faster pit operations can open the stop window earlier. Your current features approximate tyre windows globally, but they do not appear to learn race-specific undercut economics from history.",
+  "implementation_hint": "For each Year-Race and lap, build fold-local priors from earlier laps/races: prior average position gain after pitting, prior pit-lane-loss proxy from pitted drivers’ lap deltas, and a circuit-level undercut score. Interact these with current position, clean-air proxies, tyre age, and whether the driver is covering/attacking the nearest rival.",
+  "expected_effect": "Better ranking near true stop windows, especially on tracks where the same tyre age implies very different stop value.",
+  "risk": "High leakage risk if the prior uses same-lap or future race information; compute only from earlier laps within race or from training races only.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

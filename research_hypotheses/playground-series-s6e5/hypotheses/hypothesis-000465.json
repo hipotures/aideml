@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-transition specialist model",
+  "summary": "Wet and intermediate tyre usage changes race strategy and can remove the normal dry-compound obligation; F1 sources note drivers may be called in when grip conditions change.",
+  "rationale": "Wet and intermediate tyre usage changes race strategy and can remove the normal dry-compound obligation; F1 sources note drivers may be called in when grip conditions change. Current features mark wet tyres, but may miss transition moments where lap times spike and the field switches compounds.",
+  "implementation_hint": "Train a small specialist or add features for weather-transition regimes: current/previous lap wet/inter share, slick-to-wet and wet-to-slick wave indicators, field median LapTime_Delta spike, lap-time dispersion spike, first wet compound seen in race, and interactions with PitStop debt and mandatory dry-compound features. Blend specialist predictions only when any wet/inter evidence exists.",
+  "expected_effect": "Likely improves rare but high-signal wet-condition rows that tree models may underweight in a global model; could also reduce false pressure from dry-compound rules during wet races.",
+  "risk": "Wet rows may be sparse, so a specialist can overfit. Apply only as features or low-weight blend unless CV confirms gain on wet-heavy folds.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://www.planetf1.com/features/f1-tyres-compounds-rules-explained",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

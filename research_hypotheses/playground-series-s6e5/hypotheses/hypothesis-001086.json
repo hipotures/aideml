@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Cheap counterfactual strategy-gap features from lap-wise simulation",
+  "summary": "Motorsport strategy papers explicitly model pit timing as a trade-off between tyre degradation benefit and pit-loss cost, and Monte Carlo race simulation is used to compare early vs late stops.",
+  "rationale": "Motorsport strategy papers explicitly model pit timing as a trade-off between tyre degradation benefit and pit-loss cost, and Monte Carlo race simulation is used to compare early vs late stops. Even a crude per-row approximation of 'benefit if I stop now versus one lap later' gives the classifier a decision-theoretic feature instead of more raw ratios.",
+  "implementation_hint": "Estimate per-race pit-loss proxy and per-compound local degradation slope, then compute features such as `delta_if_stop_now_vs_next_lap`, `gap_to_optimal_stint_length`, `expected_position_gain_if_cover_wave`, and robustness under reduced pit-loss scenarios. Start deterministic; optionally add a few Monte Carlo draws for safety-car-reduced pit loss and aggregate mean/std as features.",
+  "expected_effect": "Injects first-order race-strategy economics that trees can combine with current lap context; likely most useful on borderline rows where tyre age alone is ambiguous.",
+  "risk": "Misspecified pit-loss or degradation slope can add noise; must remain strictly causal and avoid using race-outcome information.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.mdpi.com/2076-3417/10/12/4229",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html"
+  ]
+}

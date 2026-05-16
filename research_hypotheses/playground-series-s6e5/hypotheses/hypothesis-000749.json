@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a race-lap query-ranking specialist for pitting order within each field state",
+  "summary": "Game-theoretic pit-stop work emphasizes that optimal timing depends on rivals, and CatBoost supports query/group ranking objectives directly.",
+  "rationale": "Game-theoretic pit-stop work emphasizes that optimal timing depends on rivals, and CatBoost supports query/group ranking objectives directly. Instead of only pointwise `PitNextLap`, model each `(Year,Race,LapNumber)` as a query and learn who is most likely to pit next among the cars on track.",
+  "implementation_hint": "Train a CatBoost `YetiRankPairwise` or `QueryCrossEntropy` specialist with query groups at `Year_Race_LapNumber`, using current numeric features plus field-relative ranks such as tyre-age percentile, lap-delta percentile, and position-pressure percentile within the same query. Blend its OOF score with the existing pointwise model rather than replacing it. Use `LeaveOneGroupOut` on `Year_Race` for all OOF generation.",
+  "expected_effect": "Should sharpen relative ordering on crowded pit windows where several drivers are plausible stoppers and ROC AUC is driven by ranking quality more than absolute calibration.",
+  "risk": "Query groups can be small or noisy, and ranking objectives can underperform if the engineered within-query context is weak. It is also easy to leak if query-normalized features are computed outside each fold.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

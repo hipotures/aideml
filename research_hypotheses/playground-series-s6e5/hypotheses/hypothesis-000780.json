@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Temporal Point-Process Pit Model",
+  "summary": "Pit stops are event sequences with a strong refractory period right after a stop and rising hazard as stint age accumulates.",
+  "rationale": "Pit stops are event sequences with a strong refractory period right after a stop and rising hazard as stint age accumulates. Temporal point-process models are built for this pattern and can capture nonlinear dependence on event history better than static tabular rows.",
+  "implementation_hint": "Create one sequence per driver-race ordered by lap. Use marks such as compound, tyre life, stint, lap delta, degradation, and pit indicators; predict next event intensity for a pit on the next lap. Start with a lightweight Hawkes/Transformer-Hawkes style expert or approximate it with a causal sequence encoder that outputs next-lap hazard.",
+  "expected_effect": "Could uncover signal missed by row-wise boosters, especially around cooldown, repeated stops, and long-range sequence context.",
+  "risk": "Higher implementation complexity and more fragile validation; needs strict race-driver causal ordering and group-wise CV.",
+  "sources": [
+    "https://proceedings.mlr.press/v119/zuo20a.html",
+    "https://proceedings.mlr.press/v219/isik23a.html"
+  ]
+}

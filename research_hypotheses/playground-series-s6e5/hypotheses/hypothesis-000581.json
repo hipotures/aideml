@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit rival-stop reaction features for cover/oppose behavior",
+  "summary": "Official F1 strategy descriptions explicitly mention 'box-to-overtake' and reacting to cars in front.",
+  "rationale": "Official F1 strategy descriptions explicitly mention 'box-to-overtake' and reacting to cars in front. The current best code uses aggregate prior pit counts, but not targeted reaction features tied to nearby rivals who just stopped.",
+  "implementation_hint": "Within each race, sort by lap then position. Add fold-local features for whether the car ahead/behind pitted on the previous 1-2 laps, their tyre age/degradation before pitting, and the subject driver's relative pace/position pressure at that moment. Test simple interactions such as rival-pitted-last-lap × own-old-tyre × position-band.",
+  "expected_effect": "Improves recall on reactive next-lap pit calls that are triggered by undercut defense or opposite-strategy responses rather than pure tyre wear.",
+  "risk": "Position is only a coarse proxy for track gaps, so some inferred rival interactions will be noisy.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Smoothed race-compound hazard curves",
+  "summary": "Pit windows are lap ranges where stopping becomes strategically viable, not just a raw tyre-life threshold.",
+  "rationale": "Pit windows are lap ranges where stopping becomes strategically viable, not just a raw tyre-life threshold. A smoothed empirical hazard by Race, Year, Compound, Stint, TyreLife bin, and RaceProgress bin can capture event-specific strategy timing beyond hand-coded expected-life constants.",
+  "implementation_hint": "Create out-of-fold target-rate encodings for grouped bins such as Race_Compound_Stint_TyreLifeBin and Year_Race_ProgressBin with Bayesian smoothing toward global and compound-level priors. For test, fit encodings on all train only; avoid using test target surrogates.",
+  "expected_effect": "Should add a compact prior for optimal stop timing and improve ranking around pit-window boundaries where many rows have similar tyre-life arithmetic.",
+  "risk": "Random CV can overstate gains; use GroupKFold by Year/Race or at least out-of-fold encodings to avoid leaking race-specific labels.",
+  "sources": [
+    "https://thef1sector.com/terms/pit-window",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://scikit-learn.org/1.4/auto_examples/preprocessing/plot_target_encoder_cross_val.html"
+  ]
+}

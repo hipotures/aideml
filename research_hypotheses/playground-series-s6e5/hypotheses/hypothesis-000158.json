@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap grouped objective instead of plain binary loss",
+  "summary": "Pit calls are relative within a race context: teams decide against same-lap competitors, tyre warm-up, and track-position windows.",
+  "rationale": "Pit calls are relative within a race context: teams decide against same-lap competitors, tyre warm-up, and track-position windows. CatBoost’s QueryCrossEntropy explicitly models grouped binary outcomes with per-group shifts, which is a closer fit than independent rowwise logloss.",
+  "implementation_hint": "Create groups such as Race_Year x LapNumber or Race_Year x estimated pit-window bucket, train a CatBoost model with QueryCrossEntropy or QuerySoftMax on top of the current features, and blend its OOF logits with the baseline classifier rather than replacing it.",
+  "expected_effect": "May improve ranking among same-context candidates and add complementary signal to the current tree baseline, especially when several drivers are simultaneously near pit windows.",
+  "risk": "If groups are too coarse or sparse, the grouped objective can become noisy and underperform plain logloss; careful grouping and OOF blending are required.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/querycrossentropy.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

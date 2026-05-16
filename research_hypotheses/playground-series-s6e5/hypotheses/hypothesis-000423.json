@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Shift-weighted specialist blend with final isotonic mapping",
+  "summary": "Tabular OOD work shows robustness to distribution shift is partly separate from in-domain fit.",
+  "rationale": "Tabular OOD work shows robustness to distribution shift is partly separate from in-domain fit. This competition mixes seasons, circuits, and pre-season testing, so a shift-aware blend of specialists may travel better than a single global model. A final monotone calibrator can improve probability quality while preserving the ranking structure that drives ROC AUC.",
+  "implementation_hint": "Train a few diverse specialists, for example dry-slick vs wet/mixed, early-race vs late-race, and CatBoost vs standard GBDT. Estimate train-to-test similarity with a domain classifier or density-ratio model on covariates like `Year`, `Race`, `Compound`, `RaceProgress`, and `Stint`, then use those weights when learning the OOF blend. Fit one isotonic regressor on blended OOF scores only before generating test probabilities.",
+  "expected_effect": "Should improve leaderboard robustness if the hidden test mix differs from CV, while keeping the final prediction map AUC-friendly.",
+  "risk": "Importance weighting can add variance and hurt local CV; too many specialists can waste data and create unstable blend weights.",
+  "sources": [
+    "https://arxiv.org/abs/2312.07577",
+    "https://proceedings.mlr.press/v108/li20b.html",
+    "https://icml.cc/2012/papers/372.pdf"
+  ]
+}

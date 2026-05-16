@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Multi-horizon stop-imminence targets instead of only next-lap binary",
+  "summary": "Recent F1 pit-stop papers report gains from architectures that jointly predict next-stop classification and stop timing/horizon, implying the signal is smoother across nearby laps than a single binary cut.",
+  "rationale": "Recent F1 pit-stop papers report gains from architectures that jointly predict next-stop classification and stop timing/horizon, implying the signal is smoother across nearby laps than a single binary cut. For this task, predicting pit-within-{1,2,3,5} laps or distance-to-next-stop as auxiliary labels should regularize the noisy decision boundary around actual stop laps.",
+  "implementation_hint": "Create leakage-safe labels within each driver-race trajectory: binary targets for stop within H laps and optionally clipped distance-to-next-stop. Train CatBoost/XGB multitask-style via separate models and feed their OOF outputs into the final next-lap model or a tiny meta-learner; enforce monotone consistency across horizons at blend time.",
+  "expected_effect": "Usually improves recall on borderline laps and yields decorrelated OOF signals versus the current pure next-lap classifier.",
+  "risk": "Overlapping horizon labels can inflate CV if folds are not purged around event boundaries; auxiliary targets may collapse to the same ranking if engineered naively.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One"
+  ]
+}

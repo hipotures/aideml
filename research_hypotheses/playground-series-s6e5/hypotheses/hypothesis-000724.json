@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-Categorical CatBoost Specialist",
+  "summary": "Your best runs still reduce high-cardinality race/driver context to frequency features.",
+  "rationale": "Your best runs still reduce high-cardinality race/driver context to frequency features. CatBoost’s ordered boosting and ordered categorical statistics are designed to reduce prediction shift and target leakage on categorical-heavy tabular data, which matches this dataset’s many Driver/Race/Compound interactions.",
+  "implementation_hint": "Train a CatBoostClassifier on mostly raw categorical columns plus the current numeric tyre-window features; let CatBoost build category combinations such as Driver x Race, Driver x Compound, Race x Year, Compound x Stint. Validate with race-grouped folds and compare against the current frequency-encoded tree model, especially on unseen/rare drivers.",
+  "expected_effect": "Small but real CV lift from better handling sparse category interactions and less leakage-prone target statistics.",
+  "risk": "If folds are not grouped chronologically/by race, CatBoost can look better than it really is; raw IDs may also overfit rare entities without enough regularization.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

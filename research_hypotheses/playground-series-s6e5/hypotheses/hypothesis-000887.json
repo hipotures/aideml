@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use race-aware purged validation instead of row-mixed CV",
+  "summary": "This is panel time-series data: adjacent laps from the same driver/race are highly dependent.",
+  "rationale": "This is panel time-series data: adjacent laps from the same driver/race are highly dependent. Public guidance for time-ordered and grouped CV indicates that random or weakly grouped folds can overstate AUC by leaking same-race structure.",
+  "implementation_hint": "Benchmark `LeaveOneGroupOut` on `group=Year|Race` and a blocked/rolling scheme by year-race order. Keep current models, but only trust feature gains that survive strict race holdout. Compare CV-LB correlation before changing features.",
+  "expected_effect": "More honest local CV and fewer leaderboard regressions; may expose which current engineered features are exploiting within-race leakage.",
+  "risk": "CV score will likely drop, and if the test set contains many familiar race contexts, the stricter split can be slightly pessimistic.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

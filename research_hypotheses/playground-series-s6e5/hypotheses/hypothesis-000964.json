@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-First Rank Blend Across Binary, Survival, And Pairwise Models",
+  "summary": "ROC AUC rewards ordering quality, not probability calibration.",
+  "rationale": "ROC AUC rewards ordering quality, not probability calibration. CatBoost and LightGBM expose ranking objectives, while a survival model orders rows by remaining-stint risk differently from a plain binary classifier. A rank-space blend is a concrete extension of prior ensemble ideas and better aligned with the competition metric.",
+  "implementation_hint": "Train three OOF models with race-aware folds: a strong binary GBDT, the censored remaining-stint model, and a local group ranker using CatBoost PairLogit/LambdaMart or LightGBM `lambdarank` on race-lap candidate groups. Convert each prediction stream to fold-wise ranks or normal scores, then average with CV-tuned weights.",
+  "expected_effect": "Small but plausible gain from objective diversity: different models may sort borderline pit-window rows differently even when their calibrated probabilities look similar.",
+  "risk": "If group definitions are weak, the ranker adds noise; weight fitting must stay strictly OOF and not drift into public-LB tuning.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html"
+  ]
+}

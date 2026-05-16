@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-boosting raw-category specialist with cross features",
+  "summary": "Current best snippets still rely mostly on manual frequency encodings.",
+  "rationale": "Current best snippets still rely mostly on manual frequency encodings. CatBoost’s ordered boosting and ordered categorical statistics were designed specifically to reduce prediction shift from target leakage in high-cardinality categoricals, which fits Driver, Race, Year, Compound, and their interactions.",
+  "implementation_hint": "Train a separate CatBoost specialist on mostly raw categoricals plus a few numeric anchors, including crosses like Driver x Race, Driver x Compound, Race x Compound, and Race x Year. Keep native categorical handling, avoid manual one-hot, and blend by rank with the existing AutoGluon/tabular base instead of replacing it outright.",
+  "expected_effect": "Should recover interaction signal from sparse driver/race identities that manual counts and medians miss, while being more robust than fold-global encodings.",
+  "risk": "If folds are not grouped by race-driver chronology, even ordered boosting can look better locally than it generalizes.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

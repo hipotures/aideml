@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged Race-Walk Validation With Next-Lap Embargo",
+  "summary": "Because the label is 'pit on next lap', adjacent laps from the same driver/stint are near-duplicates; ordinary grouped CV can overstate AUC if training rows sit immediately before or after test events.",
+  "rationale": "Because the label is 'pit on next lap', adjacent laps from the same driver/stint are near-duplicates; ordinary grouped CV can overstate AUC if training rows sit immediately before or after test events. Walk-forward splits with a small temporal embargo are standard leakage protection for forward-horizon labels.",
+  "implementation_hint": "Split by Year/Race in chronological order; inside each held-out race, purge training rows from the same driver within +/-1 lap of test laps and optionally embargo the first post-test lap. Compare current CV to purged CV before selecting features/models.",
+  "expected_effect": "Lower but more trustworthy local CV; better correlation between local ranking and public LB, especially for aggressive contextual features.",
+  "risk": "If the test set is IID rather than future-like, stricter CV may underuse data and slightly slow iteration.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://pypi.org/project/wfvkit/"
+  ]
+}

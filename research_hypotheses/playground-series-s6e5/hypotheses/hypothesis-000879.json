@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace full-frame frequency/median encoders with ordered historical priors",
+  "summary": "Current best code appears to compute value-count frequencies and group medians on the full dataframe, which can leak fold information and inflate local CV.",
+  "rationale": "Current best code appears to compute value-count frequencies and group medians on the full dataframe, which can leak fold information and inflate local CV. CatBoost’s ordered boosting and ordered categorical statistics were designed to remove this prediction shift, and grouped/time-aware CV docs support using chronological or group-isolated splits.",
+  "implementation_hint": "Rebuild Driver/Race/Compound combo stats as out-of-fold encodings and, where possible, historical-only encodings ordered by Year-Race-LapNumber. For test, map from train-only aggregates with Bayesian shrinkage. Re-run CV with non-overlapping race groups and a temporal embargo between train and validation races.",
+  "expected_effect": "May lower local CV slightly but improve public LB robustness and make high-cardinality features genuinely additive.",
+  "risk": "If public test is iid rather than future-like, stricter encoders can underfit; compare OOF-only vs ordered-history variants.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Smooth additive specialist (EBM/GAM) blended with tree model",
+  "summary": "Your current top solutions are heavily tree-plus-hand-feature oriented.",
+  "rationale": "Your current top solutions are heavily tree-plus-hand-feature oriented. An Explainable Boosting Machine or boosted GAM can learn smooth monotone-ish response shapes for `TyreLife`, `RaceProgress`, `LapsRemaining_Est`, and degradation features, then contribute a meaningfully different error pattern to an ensemble.",
+  "implementation_hint": "Train an EBM/GAM specialist on a compact feature set emphasizing continuous wear/progress variables plus a few low-order interactions (`TyreLife×Compound`, `TyreLife×RaceProgress`, `LapTime_Delta×Compound`). Use its OOF predictions as one extra meta-feature or rank-average it with the best tree model. Inspect learned shapes to prune obviously spurious engineered features.",
+  "expected_effect": "Diversity gain rather than solo-model gain; can stabilize oversharp tree predictions and sometimes improve AUC through complementary ordering on boundary cases.",
+  "risk": "If the signal is dominated by high-order race-specific interactions, the additive specialist may underfit and contribute little. Blending must be OOF to avoid optimistic CV.",
+  "sources": [
+    "https://www.microsoft.com/en-us/research/publication/interpretml-a-unified-framework-for-machine-learning-interpretability/",
+    "https://academic.oup.com/biometrics/article/62/4/961/7324928",
+    "https://www.nature.com/articles/s41598-026-43928-4"
+  ]
+}

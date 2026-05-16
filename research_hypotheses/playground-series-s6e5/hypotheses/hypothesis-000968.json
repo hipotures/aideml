@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial-validation gated experts for train/test regime shift",
+  "summary": "Previous summaries already pointed to shift-aware stacking, but the live literature on classifier-based covariate shift suggests making shift measurement explicit.",
+  "rationale": "Previous summaries already pointed to shift-aware stacking, but the live literature on classifier-based covariate shift suggests making shift measurement explicit. In this dataset, 2025, wet races, pre-season testing, and rare drivers are obvious shift candidates. A train-vs-test discriminator can expose where one global model is brittle and provide a gating signal for specialized experts.",
+  "implementation_hint": "Train a discriminator on train versus test rows using only features available at inference. Use its score to define high-shift slices or sample weights, then fit 2-4 experts such as dry vs wet, high-shift vs low-shift, or 2025-like vs historical. Blend expert predictions with weights learned from OOF performance and optionally the adversarial score.",
+  "expected_effect": "Usually a small gain, but it can improve public robustness if the leaderboard is concentrated in shifted regimes that global CV underweights.",
+  "risk": "Can overfit noise if the discriminator mostly learns identifier artifacts. If folds are not race-grouped, the gating logic will look stronger locally than it really is.",
+  "sources": [
+    "https://proceedings.mlr.press/v162/jang22a.html",
+    "https://aws.amazon.com/sports/f1/"
+  ]
+}

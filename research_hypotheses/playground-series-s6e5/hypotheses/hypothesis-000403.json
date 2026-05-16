@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use a query-group ranker and AUC-safe OOF stacking instead of raw probability averaging",
+  "summary": "AUC is fundamentally about ordering, and LightGBM/CatBoost ranking objectives can learn which laps within a driver-race or driver-stint are most stop-like.",
+  "rationale": "AUC is fundamentally about ordering, and LightGBM/CatBoost ranking objectives can learn which laps within a driver-race or driver-stint are most stop-like. For blending, scikit-learn notes isotonic can change AUC by introducing ties, while beta calibration is a stronger parametric alternative than plain sigmoid on skewed score distributions.",
+  "implementation_hint": "Train a ranker with queries like `(Race-Year, Driver, Stint)` and relevance increasing as the next stop approaches; generate out-of-fold rank scores, calibrate each specialist with sigmoid or beta on grouped OOF predictions, and train a low-capacity meta-learner on OOF predictions only.",
+  "expected_effect": "Should improve pit-window ordering while preserving ensemble discrimination better than ad hoc averaging or isotonic-heavy post-processing.",
+  "risk": "Ranking labels need careful construction in multi-stop races, and isotonic should be avoided unless tie-induced AUC changes are acceptable.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/"
+  ]
+}

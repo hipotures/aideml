@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost Ordered-Categorical Specialist For Driver-Race Context",
+  "summary": "Your current best solutions rely on hand-built frequency features, but CatBoost’s ordered categorical statistics are designed to reduce prediction shift and usually outperform naive frequency/mean encodings on high-cardinality categories like Driver, Race, and Driver x Compound.",
+  "rationale": "Your current best solutions rely on hand-built frequency features, but CatBoost’s ordered categorical statistics are designed to reduce prediction shift and usually outperform naive frequency/mean encodings on high-cardinality categories like Driver, Race, and Driver x Compound.",
+  "implementation_hint": "Train a separate CatBoost specialist on mostly raw columns plus a small set of numeric strategy features. Let CatBoost ingest Driver, Race, Compound, Year, and cross features such as Driver x Compound and Race x Compound as categorical inputs. Blend its out-of-fold predictions with the current best tabular model rather than replacing the stack outright.",
+  "expected_effect": "Improves generalization on sparse drivers/races and captures non-linear categorical interactions without manual leakage-prone encodings.",
+  "risk": "If folds are not grouped by race-year, CatBoost can still overfit race identity; standalone performance may trail the ensemble if numeric engineering is underpowered.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

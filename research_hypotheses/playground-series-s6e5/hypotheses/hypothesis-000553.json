@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/Overcut Duel Features",
+  "summary": "Official F1 strategy analysis says undercut/overcut success depends on being close to rivals, tyre warm-up, degradation, and clean air.",
+  "rationale": "Official F1 strategy analysis says undercut/overcut success depends on being close to rivals, tyre warm-up, degradation, and clean air. The current best code is rich in tyre-state features but still light on explicit rival-specific pit-window interactions.",
+  "implementation_hint": "Create ahead/behind duel features inside each race-lap: local position neighbors, same/other-compound flags, relative tyre life/degradation percentiles, local lap-delta percentile, and proxies for undercut-favorable vs overcut-favorable conditions. Add interactions with compound class and race phase.",
+  "expected_effect": "Should capture the tactical trigger for next-lap stops better than global field averages alone, especially around midfield cover-offs.",
+  "risk": "No explicit time-gap column exists, so duel pressure must be approximated from available ordering and pace features; weak proxies could add noise.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1",
+    "https://repositorio.uchile.cl/handle/2250/199664"
+  ]
+}

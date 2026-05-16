@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a within-lap ranker over drivers in the same race-lap and blend it with the binary model",
+  "summary": "Pit calls are relative decisions made against the field state, not just absolute thresholds.",
+  "rationale": "Pit calls are relative decisions made against the field state, not just absolute thresholds. Learning-to-rank objectives are built for grouped binary relevance and can optimize ordering inside each query group; here the natural query is all drivers on the same `(Year,Race,LapNumber)`.",
+  "implementation_hint": "Use XGBoost `rank:pairwise` or `rank:map` with `qid=(Year,Race,LapNumber)`, label `PitNextLap`, and the current feature set plus field-relative features. Convert per-query ranks to probabilities via OOF calibration, then average or stack with the best binary classifier.",
+  "expected_effect": "Can improve AUC by emphasizing correct ordering among the handful of plausible pit candidates each lap, especially when class imbalance is severe.",
+  "risk": "Some lap groups may have few or zero positives, reducing effective pairs; ranking outputs also need careful post-calibration before blending.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/"
+  ]
+}

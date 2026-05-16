@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a same-lap race-context ranker with race-lap queries",
+  "summary": "Pit calls are competitive decisions: teams react to rivals, traffic, and undercut windows.",
+  "rationale": "Pit calls are competitive decisions: teams react to rivals, traffic, and undercut windows. Learning-to-rank over all cars on the same Race-Year-Lap can model who is most likely to pit next even if absolute probabilities are noisy.",
+  "implementation_hint": "Create a separate LightGBM ranking model with query groups = Race-Year-Lap and relevance = PitNextLap. Feed relative features such as within-lap percentile of TyreLife, LapTime_Delta, position, stint age, and gaps to race-lap medians; blend OOF ranks with the main classifier.",
+  "expected_effect": "Should supply complementary ordering signal in crowded strategic windows where several drivers have similar absolute degradation but only one or two are true next-lap pit candidates.",
+  "risk": "Ranking loss optimizes within-query order, not global AUC, so it should be a specialist in an ensemble, not the only model.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

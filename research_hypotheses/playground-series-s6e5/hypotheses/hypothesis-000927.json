@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Position-neighbor undercut pressure",
+  "summary": "Undercut/overcut decisions depend heavily on nearby rivals, traffic, and whether pitting creates or avoids a strategic threat.",
+  "rationale": "Undercut/overcut decisions depend heavily on nearby rivals, traffic, and whether pitting creates or avoids a strategic threat. Prior field medians are broad; the stronger signal may be adjacent cars by track position on the same lap.",
+  "implementation_hint": "Within each Race-Year-LapNumber, sort by Position and add features comparing the current driver to position ahead/behind: TyreLife delta, degradation delta, compound mismatch, LapTime_Delta delta, and whether neighbor just pitted or is on a new stint. Add min/median stats for top-3 nearest positions rather than the whole field.",
+  "expected_effect": "Could improve ranking for cars likely to pit defensively or attempt an undercut, especially around dense mid-race windows.",
+  "risk": "Position may not equal physical gap, and synthetic/test data may not preserve full grids; missing neighbors need robust defaults.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

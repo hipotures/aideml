@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Position-neighborhood undercut-pressure features",
+  "summary": "Official F1 strategy writeups repeatedly emphasize clean air, traffic, undercut coverage, and pit-window timing.",
+  "rationale": "Official F1 strategy writeups repeatedly emphasize clean air, traffic, undercut coverage, and pit-window timing. That suggests next-lap pit probability depends on nearby rivals' state, not just the focal driver's tyre age.",
+  "implementation_hint": "Within each `Race_Year x LapNumber`, build same-lap cross-sectional features: percentile ranks of tyre life/degradation/lap delta, counts of older-tyre cars ahead and fresher-tyre cars behind in `Position±2`, local median pace change, and a proxy for 'clear air if I pit now'.",
+  "expected_effect": "Adds race-context signal the current single-car feature set largely misses, especially for undercut/cover calls and midfield traffic decisions.",
+  "risk": "There is no explicit gap-to-car feature, so neighborhood proxies may be noisy; any same-race aggregation must stay strictly on the current lap to avoid future leakage.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-french-grand.5OWQISJaUC0wmFd7Kl2kVq",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-miami-grand.4y0pjlA9AYSwYPptpsFacX.html"
+  ]
+}

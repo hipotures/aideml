@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add an interval-censored survival expert and convert it to next-lap hazard",
+  "summary": "XGBoost’s AFT survival objective explicitly supports uncensored, right-censored, left-censored, and interval-censored labels.",
+  "rationale": "XGBoost’s AFT survival objective explicitly supports uncensored, right-censored, left-censored, and interval-censored labels. In this task, many rows naturally describe time-to-next-pit with censoring at race end or at truncated observations, so a survival model is a cleaner fit than pure binary classification and should produce a decorrelated expert for blending.",
+  "implementation_hint": "For each driver-race trajectory, derive laps-until-next-pit. Use [a,a] when the next pit lap is known, [a,+inf) for rows with no later pit observed, and optionally interval labels when the exact stop is ambiguous after data filtering. Train `xgb.train` with `objective=survival:aft`, then convert predicted survival time to an approximate next-lap hazard/probability and blend its OOF ranks with the current XGB/Cat stack.",
+  "expected_effect": "Moderate CV upside if current models are mis-ranking late-stint censored rows; strongest benefit should be as a third ensemble member rather than a standalone replacement.",
+  "risk": "Easy to implement incorrectly; wrong censoring construction can silently hurt AUC, and survival outputs need careful mapping back to next-lap probabilities.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/release_3.1.0/parameter.html"
+  ]
+}

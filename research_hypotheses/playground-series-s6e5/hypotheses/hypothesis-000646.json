@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic and Free-Air Regime Indicators",
+  "summary": "F1technical notes tyre degradation and overcut potential are strongly affected by traffic versus free air.",
+  "rationale": "F1technical notes tyre degradation and overcut potential are strongly affected by traffic versus free air. Current models use Position and Position_Change, but not whether a car is likely stuck in traffic, in clean air, or able to extend a stint.",
+  "implementation_hint": "For each race-lap, compute rank-normalized LapTime, Position density around current Position, number of cars within nearby positions, whether current lap time is faster/slower than adjacent position groups, and free_air_proxy for front runners or isolated position bands. Interact these with Compound, TyreLife, and RaceProgress.",
+  "expected_effect": "May separate high-degradation traffic-induced early stops from low-traffic cars that can overcut or go long on older tyres.",
+  "risk": "Without true time gaps, position-neighborhood proxies are imperfect; benefits may depend on whether Race/Position distributions match public test.",
+  "sources": [
+    "https://www.f1technical.net/news/25828",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

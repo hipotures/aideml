@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit economics breakeven features",
+  "summary": "F1 strategy references frame pit timing as a tradeoff between pit-lane loss and future time gained on fresher tyres; optimal stint length can be approximated from degradation and pit loss.",
+  "rationale": "F1 strategy references frame pit timing as a tradeoff between pit-lane loss and future time gained on fresher tyres; optimal stint length can be approximated from degradation and pit loss. Current features include degradation ratios but not explicit breakeven economics.",
+  "implementation_hint": "Estimate race-compound degradation slope from lap-time residuals versus tyre age after subtracting race-lap median pace. Add `estimated_optimal_stint = sqrt(2*pit_loss/slope)`, `tyrelife_minus_optimal`, `remaining_laps_gain_estimate`, and binned versions by Race/Compound/Stint. Use a fixed pit-loss proxy around 22-25 seconds or infer from abnormal pit laps if possible.",
+  "expected_effect": "Gives tree models a compact, strategy-aligned signal for when tyres have crossed the value threshold to stop.",
+  "risk": "Slope estimates can be noisy because lap time includes traffic, fuel burn, safety cars, and pit laps; robust clipping is needed.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://podiumprophets.com/blog/f1-tyre-strategy-guide"
+  ]
+}

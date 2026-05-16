@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer hidden SC/VSC pit windows from synchronized field slowdown",
+  "summary": "The Virtual Strategy Engineer paper shows pit loss drops materially during full-course yellow phases and that teams react immediately.",
+  "rationale": "The Virtual Strategy Engineer paper shows pit loss drops materially during full-course yellow phases and that teams react immediately. Since your dataset lacks explicit SC/VSC flags, a latent caution detector can recover a major missing strategic state from race-wide synchronization patterns.",
+  "implementation_hint": "At each `Race-Year` × `LapNumber`, compute field-level features such as median and upper-quantile `LapTime_Delta`, fraction of drivers with large positive deltas, abnormal simultaneous `PitStop` spikes, and position churn; join those race-lap features back to each row and interact them with tyre-age and laps-remaining features.",
+  "expected_effect": "Should catch caution-driven pit waves and improve rows where the individual driver state looks weak but the whole field is entering a discounted stop window.",
+  "risk": "Same-lap aggregation is safe, but anything using future laps is not; race-wide anomalies may also reflect weather or red-flag artifacts rather than SC/VSC only.",
+  "sources": [
+    "https://res.mdpi.com/d_attachment/applsci/applsci-10-07805/article_deploy/applsci-10-07805.pdf",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

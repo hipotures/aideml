@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored AFT specialist for laps-until-next-stop",
+  "summary": "The target is inherently a time-to-event problem.",
+  "rationale": "The target is inherently a time-to-event problem. XGBoost AFT supports ranged labels and right censoring, which maps naturally to rows where the next stop is not observed before race end. That gives a principled auxiliary score beyond binary next-lap classification.",
+  "implementation_hint": "In train only, derive `laps_to_next_stop` per row within each driver-race sequence; use exact intervals [k,k] when a future stop exists and right-censor rows with no later stop at [laps_remaining,+inf). Train an AFT model as a specialist, then blend its implied one-lap event probability or negative predicted remaining time with the main classifier out of fold.",
+  "expected_effect": "Often improves ordering near the pit boundary and late-race rows where binary labels are sparse but time-to-event structure is strong.",
+  "risk": "Bad label construction or using future stops outside fold boundaries will leak badly; AFT output also needs careful conversion before blending with probabilities.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

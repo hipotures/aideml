@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal tyre-cliff trend features",
+  "summary": "Inference from F1/AWS tyre-performance notes: stop decisions depend on effective tyre performance being used up, not just raw tyre age.",
+  "rationale": "Inference from F1/AWS tyre-performance notes: stop decisions depend on effective tyre performance being used up, not just raw tyre age. Public pit-stop ML work also reports tyre age and recent pace as dominant signals. The current best features are mostly static and miss short-horizon deterioration dynamics.",
+  "implementation_hint": "Within each `Race_Year`-`Driver` sequence sorted by lap, build strictly lagged 1/2/3-lap deltas, rolling slopes, accelerations, EWMAs, and shock flags for `LapTime_Delta`, `LapTime (s)`, `Cumulative_Degradation`, and `Position_Change`. Reset rolling features after `PitStop==1`, and add demeaned versions versus same-race medians to reduce track-level noise.",
+  "expected_effect": "Better separation between ordinary old-tyre laps and genuine imminent-stop laps, especially when fixed compound-life windows are noisy.",
+  "risk": "High sensitivity to safety-car/red-flag/noise laps; leakage occurs if any rolling window touches the current or future lap incorrectly.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L",
+    "https://www.researchgate.net/publication/400963775_A_Gradient_Boosting_Analytics_Framework_for_Predictive_Pit_Stop_Decision_Making_in_Formula_One_Racing"
+  ]
+}

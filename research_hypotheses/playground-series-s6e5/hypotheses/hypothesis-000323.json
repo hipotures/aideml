@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model the whole lap snapshot, not only the focal driver row",
+  "summary": "Pit decisions are multi-agent and depend on rival states, not just one car’s tyre age.",
+  "rationale": "Pit decisions are multi-agent and depend on rival states, not just one car’s tyre age. Recent F1 strategy papers explicitly model pit-stop decisions as interacting agents, and set models are designed for permutation-invariant group context.",
+  "implementation_hint": "Build per-`(Race_Year, LapNumber)` snapshots of all drivers and encode them with either a small set model or simpler snapshot aggregates. Useful features: counts of rivals on older tyres, compound mix ahead/behind, same-stint congestion, and lap-level pit intensity. Blend the snapshot expert with the existing row-wise tree model.",
+  "expected_effect": "Adds competitive context during synchronized pit windows and should improve ranking on ambiguous midfield scenarios.",
+  "risk": "Heavier engineering and stronger overfitting risk because there are few races relative to rows; all snapshot features must be generated OOF by race group.",
+  "sources": [
+    "https://arxiv.org/abs/2602.23056",
+    "https://arxiv.org/abs/1810.00825"
+  ]
+}

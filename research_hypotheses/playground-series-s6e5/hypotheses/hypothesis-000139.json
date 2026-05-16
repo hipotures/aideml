@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-horizon discrete hazard model instead of a single next-lap label",
+  "summary": "Survival-stacking and discrete-time hazard literature suggest modeling conditional event risk over future intervals can be more stable than directly fitting only the one-step target.",
+  "rationale": "Survival-stacking and discrete-time hazard literature suggest modeling conditional event risk over future intervals can be more stable than directly fitting only the one-step target. For pit stops, predicting hazards for the next 1, 2, 3, and 5 laps should regularize noisy boundary cases and encode time-to-stop structure.",
+  "implementation_hint": "Create auxiliary labels for pit within <=k laps on uncensored driver-race prefixes, train a shared model with multi-output heads or separate models, then derive the final next-lap probability from the hazard head while using longer-horizon heads as auxiliary supervision. Enforce consistency so P(stop<=1) <= P(stop<=2) <= P(stop<=3) <= P(stop<=5).",
+  "expected_effect": "Improves stability and recall around ambiguous windows where the car is close to pitting but not exactly on the next lap.",
+  "risk": "If auxiliary heads dominate, the model may smooth away sharp next-lap signals; monitor AUC specifically on the original target and keep horizon labels causal.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12247786/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://link.springer.com/article/10.1186/s12859-024-05799-2"
+  ]
+}

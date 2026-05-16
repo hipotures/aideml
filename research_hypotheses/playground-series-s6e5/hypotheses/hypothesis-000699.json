@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-fitted partial-pooling encoders for Driver/Race history",
+  "summary": "Current best code uses frequency counts only, but the data has very high-cardinality `Driver` and race-context categories.",
+  "rationale": "Current best code uses frequency counts only, but the data has very high-cardinality `Driver` and race-context categories. Regularized target encoding and GLMM-style shrinkage usually beat raw frequency features because they borrow strength across rare levels while reducing overfit.",
+  "implementation_hint": "Replace or augment `_freq` features with fold-safe encodings for `Driver`, `Race`, `Race_Compound`, `Driver_Compound`, `Race_Year`, using chronological or grouped OOF fits only. Test GLMM/log-odds shrinkage and regularized target encoding, with priors estimated from earlier folds only.",
+  "expected_effect": "Better use of historical pit tendency by driver/race/compound, likely improving AUC on sparse categories without relying on leakage-prone full-data means.",
+  "risk": "If encodings are not strictly OOF and time-safe, local CV will be inflated. Rare 2025-only categories may still need fallback-to-global priors.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://contrib.scikit-learn.org/category_encoders/glmm.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

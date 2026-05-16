@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Specialist Ensemble With OOF Sigmoid Calibration",
+  "summary": "The strongest public pattern here is heterogeneity: dry vs wet, green vs neutralized, early vs late race, and first-stop vs later-stop behavior differ meaningfully.",
+  "rationale": "The strongest public pattern here is heterogeneity: dry vs wet, green vs neutralized, early vs late race, and first-stop vs later-stop behavior differ meaningfully. A small specialist ensemble can exploit that, while sigmoid calibration preserves ranking unlike isotonic, which can introduce ties and perturb AUC.",
+  "implementation_hint": "Train separate experts for at least dry-slick, wet/intermediate, and late-race finish-window regimes, plus one global model. Blend using OOF predictions only, then calibrate the final blend with fold-safe sigmoid calibration on held-out folds; use isotonic only if a large calibration set exists and AUC loss is acceptable.",
+  "expected_effect": "Better probability quality and modest AUC lift from regime specialization without overcommitting to one monolithic feature space.",
+  "risk": "Main trap is stacked leakage: base predictions, blend weights, and calibration all must be generated strictly out of fold. Over-segmentation can also starve minority regimes.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

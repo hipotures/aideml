@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Constraint-aware temporal post-processing",
+  "summary": "Race strategy is sequential and pit stops reset tyre state; public simulators and modelling references represent stints as timelines with resets.",
+  "rationale": "Race strategy is sequential and pit stops reset tyre state; public simulators and modelling references represent stints as timelines with resets. Current submissions appear to use raw row-wise probabilities without enforcing temporal consistency within each driver race.",
+  "implementation_hint": "After model prediction, sort test by Race, Driver, LapNumber. Apply lightweight rules tested on OOF predictions: suppress probability on the row immediately after a current PitStop, smooth isolated spikes with neighboring same-stint probabilities, boost local maxima inside learned pit windows, and optionally keep only the top one or two probability peaks per Race-Driver-Stint depending on historical stop count priors.",
+  "expected_effect": "May improve AUC by removing impossible or implausible isolated high scores and concentrating rank mass on true stop windows.",
+  "risk": "Over-aggressive clipping can hurt AUC if the target includes unusual events such as safety-car double stops or wet-weather chaos. Tune only on OOF race-group validation.",
+  "sources": [
+    "https://racemate.io/tyre-strategy-simulator/",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

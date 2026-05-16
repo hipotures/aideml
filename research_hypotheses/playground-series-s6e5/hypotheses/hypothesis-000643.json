@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-race rank postprocessing",
+  "summary": "ROC AUC rewards ranking, and pit decisions are constrained within each race/lap/stint context.",
+  "rationale": "ROC AUC rewards ranking, and pit decisions are constrained within each race/lap/stint context. FastF1 strategy examples emphasize comparing all drivers' stint strategies in a race, suggesting relative ordering features and rank-preserving postprocessing may matter more than calibrated probabilities.",
+  "implementation_hint": "For each Race-LapNumber and Race-Stint group, add ranks/percentiles of TyreLife, LapTime_Delta, Cumulative_Degradation, Position, and pace deviation. After prediction, optionally monotone-rank adjust by blending model probability with percentile ranks of tyre age/degradation pressure inside Race/Compound/Stint.",
+  "expected_effect": "Improves AUC by ranking likely stoppers above non-stoppers in the same strategic context, especially when absolute lap-time scales differ by race.",
+  "risk": "Aggressive postprocessing can distort already-good model ranks; use small blend weights and check race-group validation, because random CV may overstate gains.",
+  "sources": [
+    "https://docs.fastf1.dev/gen_modules/examples_gallery/plot_strategy.html",
+    "https://www.techinterview.org/post/3233460045/train-test-validation-split-the-right-way-and-common-mistakes/"
+  ]
+}

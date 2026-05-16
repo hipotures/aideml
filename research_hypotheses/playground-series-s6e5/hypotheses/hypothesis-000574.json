@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strict OOF regime-aware stack plus beta calibration",
+  "summary": "Public docs and calibration literature support stacking only from cross-validated base predictions, and beta calibration is often safer than plain Platt when score distributions are skewed.",
+  "rationale": "Public docs and calibration literature support stacking only from cross-validated base predictions, and beta calibration is often safer than plain Platt when score distributions are skewed. For this task, different regimes likely need different calibrators because late-race forced stops and early-race non-events are distributed differently.",
+  "implementation_hint": "Generate race-blocked OOF predictions from 3-4 diverse models only: current CatBoost/GBDT baseline, ranker, hazard sidecar, and optionally a simpler linear/GAM hazard. Train the stacker only on OOF predictions, then apply per-regime calibration: beta calibration on dense regimes, isotonic only where calibration sample size is large enough. Audit calibration separately for dry vs wet and early/mid/late race.",
+  "expected_effect": "Usually low-risk when done strictly OOF; can convert small diverse signals into a stable AUC gain and cleaner submission probabilities.",
+  "risk": "Main trap is leakage from using in-fold predictions or global calibrators fit on all data. Isotonic can overfit in sparse regimes, so gate it by sample count.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://scikit-learn.org/stable/modules/isotonic.html"
+  ]
+}

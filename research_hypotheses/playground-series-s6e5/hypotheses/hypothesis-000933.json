@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete Survival Hazard Features",
+  "summary": "PitNextLap is a next-event prediction after stint reset, matching a discrete-time hazard framing.",
+  "rationale": "PitNextLap is a next-event prediction after stint reset, matching a discrete-time hazard framing. Public F1 modelling describes pit stops as structural resets and tyre degradation as a latent state, while current features mostly use static ratios rather than empirical survival curves.",
+  "implementation_hint": "Estimate OOF smoothed hazards P(PitNextLap=1 | Compound, Stint, TyreLife_bin, RaceProgress_bin), plus cumulative survival proxy up to current TyreLife and hazard deltas from previous/next bins. Use monotonic smoothing or Bayesian m-estimates to avoid sparse-bin noise, and include dry/wet separate hazard tables.",
+  "expected_effect": "Should give tree models a compact prior for when a tyre/stint typically becomes pit-eligible, improving ranking around ambiguous mid-stint laps.",
+  "risk": "If bins are too granular, sparse Driver/Race combinations overfit; if folds are random within race, survival priors may still leak strategy patterns.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://stats.stackexchange.com/questions/488856/does-using-a-random-train-test-split-lead-to-data-leakage"
+  ]
+}

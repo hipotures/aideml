@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adjacency-Based Undercut And Cover Pressure",
+  "summary": "Public F1 strategy analysis and recent game-theoretic work both emphasize that pit decisions are driven by nearby rivals, undercut threat, and cover moves, not just absolute tyre age.",
+  "rationale": "Public F1 strategy analysis and recent game-theoretic work both emphasize that pit decisions are driven by nearby rivals, undercut threat, and cover moves, not just absolute tyre age. The current baseline uses position and field means, but not the actual state of the cars immediately ahead and behind.",
+  "implementation_hint": "Within each Year/Race/LapNumber, sort by Position and create predecessor/successor features: neighbor compound, tyre-life ratio, degradation, lap-delta, same-lap pit flag, and relative wear percentile. Build pressure features such as undercut-threat-from-behind, cover-car-ahead, same-compound trap, and traffic-pocket risk.",
+  "expected_effect": "Should improve discrimination among mid-window cars that look similar individually but differ tactically because of local rival context.",
+  "risk": "Without real time gaps, positional adjacency is noisy on lapped laps, wet races, and restart bunching; use masks for abnormal field-delta spikes and early-lap chaos.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://ideas.repec.org/a/eee/ejores/v319y2024i3p908-919.html"
+  ]
+}

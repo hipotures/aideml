@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specific ensemble with beta calibration on out-of-fold predictions",
+  "summary": "The public best appears plateaued near the same CV with similar heuristic features, which is a classic sign that diversity and probability shaping may matter more than more features.",
+  "rationale": "The public best appears plateaued near the same CV with similar heuristic features, which is a classic sign that diversity and probability shaping may matter more than more features. Beta calibration is specifically motivated as a more flexible alternative to Platt scaling, and regime-wise blending matches F1’s clear dry/wet and early/late-race behavior shifts.",
+  "implementation_hint": "Build 2-3 diverse members: current heuristic GBDT baseline, CatBoost ordered-categorical model, and the lap-ranking model. Fit OOF beta calibrators globally or by coarse regimes such as dry vs wet and early/mid/late race, then blend with weights learned on OOF AUC/logloss rather than equal averaging.",
+  "expected_effect": "Small but realistic gain from combining complementary errors and fixing distorted probability tails before submission.",
+  "risk": "AUC is rank-based, so over-calibration can be neutral or harmful if it collapses ordering; regimes must stay coarse to avoid overfitting.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids%283f9dec1d-0afb-45f4-ba09-c1763232f976%29.html"
+  ]
+}

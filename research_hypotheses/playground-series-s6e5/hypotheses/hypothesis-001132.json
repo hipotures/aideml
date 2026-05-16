@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Censored AFT model for laps-until-next-pit",
+  "summary": "The target is a one-step slice of an underlying time-to-event problem.",
+  "rationale": "The target is a one-step slice of an underlying time-to-event problem. XGBoost’s AFT objective is designed for censored event times, which matches rows near the end of a race or final stints where the next pit may never occur in-observation. Converting predicted remaining-lap time into next-lap hazard should add a lower-correlation expert relative to pure binary classifiers.",
+  "implementation_hint": "Rebuild labels per row as remaining laps until the driver’s next pit in the same race; rows with no future pit become right-censored. Train an `xgb.train` model with `objective=survival:aft`, `label_lower_bound`, and `label_upper_bound`. At inference, transform predicted survival time into `P(T<=1)` or a monotone proxy for next-lap probability, then rank-blend with the current XGB/CatBoost classifier stack.",
+  "expected_effect": "Could improve ranking on long-tail stints and end-of-race cases where binary models overfit local heuristics instead of the full stop-time structure.",
+  "risk": "Main trap is label construction leakage: future pits must be computed only within each row’s own race trajectory, while all feature engineering remains strictly past/current. Raw AFT outputs may need fold-safe monotone calibration before blending.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

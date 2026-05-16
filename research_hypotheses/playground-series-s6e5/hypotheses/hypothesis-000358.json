@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Permutation-invariant lap-snapshot specialist",
+  "summary": "At a given race lap, the model is really seeing a set of up to 20 competitors whose interactions matter.",
+  "rationale": "At a given race lap, the model is really seeing a set of up to 20 competitors whose interactions matter. Set-based models are designed for exactly this order-invariant structure and recent F1 multi-agent work also treats competitor interaction as a first-class signal.",
+  "implementation_hint": "Build a lightweight DeepSets/Set-Transformer specialist over all rows sharing `Race_Year x LapNumber`: encode each driver row, pool the full lap snapshot into a context embedding, concatenate that context back to each row, and predict `PitNextLap`. If full set modeling is too heavy, approximate it with a learned pooled snapshot embedding from quantile-binned field features. Blend this specialist with the best tabular booster rather than replacing it.",
+  "expected_effect": "Higher-upside than another hand-built threshold feature because it can learn collective race-state patterns and relative positioning automatically.",
+  "risk": "This is the highest-variance idea here: more engineering, more tuning, and more risk of overfitting if the sequence/snapshot split is not strictly race-held-out.",
+  "sources": [
+    "https://proceedings.mlr.press/v97/lee19d.html",
+    "https://arxiv.org/abs/2602.23056"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete Hazard Model Over Stint Survival",
+  "summary": "The target is naturally a one-step event hazard: probability of stopping on the next lap given survival up to the current lap.",
+  "rationale": "The target is naturally a one-step event hazard: probability of stopping on the next lap given survival up to the current lap. Discrete-time survival literature fits this framing directly and can enforce a cleaner notion of stop pressure than ad hoc tyre-window formulas.",
+  "implementation_hint": "Expand each driver-race stint into person-lap hazard rows or approximate this with a classifier whose features are explicitly indexed by lap-within-stint and laps-remaining-to-finish. Include baseline hazard terms by `Compound`, `Race`, `Stint`, and `RaceProgress` bucket, plus interactions with degradation and lap delta. Convert hazards back to next-lap probabilities directly; if helpful, use the hazard model as a specialist or as a meta-feature rather than a standalone submission model.",
+  "expected_effect": "May capture the shape of pit risk over a stint more cleanly than the current fixed service-life equations, especially when combined with grouped CV.",
+  "risk": "This is close to prior hazard ideas, so gains may be incremental unless the baseline hazard is modeled explicitly and leak-safe; full row expansion can also add engineering overhead.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12247786/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC2954271/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

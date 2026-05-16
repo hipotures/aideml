@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-Group Count Plus Within-Lap Reranker",
+  "summary": "Pit calls are not independent: teams react to opponents on the same race lap.",
+  "rationale": "Pit calls are not independent: teams react to opponents on the same race lap. Learning-to-rank methods are built for grouped decisions, and F1 strategy papers emphasize competitive interaction rather than isolated per-row classification.",
+  "implementation_hint": "For each (Year,Race,LapNumber), train a small count model for how many cars pit next lap, then a ranker with qid=(Year,Race,LapNumber) to order drivers within that lap-group. Convert ranks to probabilities by matching the predicted pit-count or blending with the current classifier.",
+  "expected_effect": "Should improve ordering on busy strategy windows where several cars are simultaneously in-range, lifting AUC beyond a row-wise-only model.",
+  "risk": "If many lap-groups have zero or one positive, the ranker may be noisy unless regularized and blended with the base classifier.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

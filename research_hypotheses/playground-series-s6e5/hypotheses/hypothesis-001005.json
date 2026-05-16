@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Chronology-aware CatBoost on raw high-cardinality IDs and crosses",
+  "summary": "CatBoost’s ordered boosting and ordered categorical statistics were designed to reduce prediction shift from target leakage, which is especially relevant here because driver/race/compound identities are high-cardinality and rows are sequential within races.",
+  "rationale": "CatBoost’s ordered boosting and ordered categorical statistics were designed to reduce prediction shift from target leakage, which is especially relevant here because driver/race/compound identities are high-cardinality and rows are sequential within races. This directly tests whether the current manual frequency/cross features are leaving value on the table.",
+  "implementation_hint": "Train CatBoost with categorical columns kept raw (`Driver`, `Race`, `Compound`, `Year`, plus simple crosses like `Driver+Compound`, `Race+Compound`), using folds grouped by race-year and row order sorted causally within each driver-race sequence before fit. Compare against the current handcrafted feature set both with and without manual frequency features.",
+  "expected_effect": "Small-to-moderate CV gain if leakage-safe category handling captures driver/race priors and interaction structure more efficiently than manual encodings.",
+  "risk": "Can underperform if folds are not race-pure or if ordered statistics still absorb same-race future information through careless preprocessing outside the model.",
+  "sources": [
+    "https://arxiv.org/abs/1706.09516",
+    "https://catboost.ai/docs/en/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

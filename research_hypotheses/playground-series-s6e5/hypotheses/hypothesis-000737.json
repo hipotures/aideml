@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Test OOF beta or Venn-Abers calibration only as a blend stabilizer",
+  "summary": "Calibration usually does not improve a single model’s ROC AUC because monotone transforms preserve ranking, but it can materially help when combining heterogeneous specialists.",
+  "rationale": "Calibration usually does not improve a single model’s ROC AUC because monotone transforms preserve ranking, but it can materially help when combining heterogeneous specialists. Beta calibration is a low-variance alternative to Platt/isotonic, and out-of-bag Venn-style calibration has evidence of tighter, more reliable probabilities than using a separate small calibration split.",
+  "implementation_hint": "Generate leak-free OOF predictions under grouped race-level folds, then compare three ensemble inputs: raw ranks, beta-calibrated probabilities, and Venn-Abers-style calibrated probabilities. Select by blend CV stability and public-LB variance, not by standalone calibrated-model AUC alone.",
+  "expected_effect": "Most likely gain is a more stable ensemble and less fold-sensitive weighting, rather than a large boost from any one calibrated model.",
+  "risk": "If the OOF protocol is not strictly grouped by race/year, calibration will look better than it is and contaminate ensemble selection.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen/",
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x",
+    "https://www.sciencedirect.com/science/article/pii/S0306437920301083"
+  ]
+}

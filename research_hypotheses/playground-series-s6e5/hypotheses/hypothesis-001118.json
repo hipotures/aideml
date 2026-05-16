@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Engineer Hawkes-style pit-contagion and inhibition features",
+  "summary": "Pit decisions are not independent: rival stops create undercut pressure, teammate stops create stack constraints, and race-wide events create short-lived bursts of stop activity.",
+  "rationale": "Pit decisions are not independent: rival stops create undercut pressure, teammate stops create stack constraints, and race-wide events create short-lived bursts of stop activity. Temporal point-process literature is built for exactly this self-excitation/inhibition pattern, and your current pressure features are close in spirit but not explicitly event-intensity based.",
+  "implementation_hint": "Create decayed counts and intensities of prior pit events over multiple horizons for race-wide, team, compound, and position-band cohorts. Add both excitation terms (recent rival/team stops raise hazard) and inhibition terms (recent own-team stop may suppress immediate second stop). Test exponential kernels with short half-lives like 1-3 laps and estimate them only from past laps within fold.",
+  "expected_effect": "Should improve race-lap coordination signal beyond simple same-lap aggregates, especially around clustered stop windows and reaction stops.",
+  "risk": "If features accidentally use same-lap or future pit counts they will leak badly; all intensities must be shifted. Gains may be modest if the dataset already encodes most bursts through lap-time deltas.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/abs/pii/S0020025523009039",
+    "https://www.sciencedirect.com/science/article/pii/S0167715221001760"
+  ]
+}

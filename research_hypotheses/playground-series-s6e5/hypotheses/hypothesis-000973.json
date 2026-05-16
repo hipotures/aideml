@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged race-level validation with embargo and novelty checks on unseen drivers",
+  "summary": "The dataset has repeated rows within races and many drivers repeated across years; naive folds can overestimate ROC AUC when future race structure bleeds into training.",
+  "rationale": "The dataset has repeated rows within races and many drivers repeated across years; naive folds can overestimate ROC AUC when future race structure bleeds into training. Purged/embargo CV is a standard defense for event-driven sequences, and this competition likely needs race-blocked validation to avoid false feature wins.",
+  "implementation_hint": "Compare current CV against stricter splits such as `GroupKFold` by `(Year,Race)`, leave-one-race-out within year, and a purged variant that drops neighboring laps/races around validation groups. Track feature gains only if they survive stricter CV. Also report separate fold metrics for unseen drivers/races appearing only in test-era seasons.",
+  "expected_effect": "May not raise local CV, but should improve leaderboard fidelity and reduce wasted iterations on leaky ideas; can change which hypotheses are actually worth keeping.",
+  "risk": "CV score may drop materially, and overly harsh splits can become high-variance with only 26 races.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

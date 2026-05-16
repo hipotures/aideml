@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap query ranking specialist",
+  "summary": "At a given race lap, pit decisions are relative to the local field state, and CatBoost supports groupwise ranking objectives/metrics via `GroupId` and `QueryAUC`.",
+  "rationale": "At a given race lap, pit decisions are relative to the local field state, and CatBoost supports groupwise ranking objectives/metrics via `GroupId` and `QueryAUC`. F1 strategy sources also frame stop timing as competition for track position and undercut windows, not independent binary events.",
+  "implementation_hint": "Train a second specialist with `GroupId = Race_Year x LapNumber` (or `Race x Year x LapNumber`) using CatBoost ranking losses like `QueryCrossEntropy`/`YetiRank`, then ensemble its OOF probabilities with the current binary model. Keep the same handcrafted features, but add within-group ranks/percentiles for TyreLife, LapTime_Delta, degradation, and position.",
+  "expected_effect": "Better ordering of who pits next within the same lap, which should help ROC AUC even if absolute calibration is imperfect.",
+  "risk": "If some groups have very few positives or odd lap composition, ranking loss can be noisy and may underperform unless blended rather than used standalone.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

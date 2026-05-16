@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-Constrained Strategy Pressure Model",
+  "summary": "The current best solutions already create physically ordered pressure features, but unconstrained trees can still learn locally inverted responses.",
+  "rationale": "The current best solutions already create physically ordered pressure features, but unconstrained trees can still learn locally inverted responses. CatBoost supports monotone constraints, which are well matched to features like service pressure, finish pressure, and pit cooldown.",
+  "implementation_hint": "Apply monotone constraints to a reduced, high-signal feature set: increasing for service/finish urgency and cannot-finish indicators, decreasing for fresh-after-pit or recent-pit cooldown features. Test a constrained CatBoost sidecar or constrained main model against the unconstrained baseline.",
+  "expected_effect": "More robust out-of-fold ranking and less overfitting to noisy local interactions, especially on sparse race/driver subsets.",
+  "risk": "Wrong-sign constraints on noisy or proxy features can cap peak performance.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/r-reference_catboost-train",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases"
+  ]
+}

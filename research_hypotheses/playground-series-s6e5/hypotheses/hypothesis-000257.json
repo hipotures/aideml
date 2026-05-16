@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-versus-overcut regime gating by race characteristics",
+  "summary": "Official F1 strategy explainers note that undercut dominates on high-degradation tracks, while overcut becomes viable when tyre warm-up is poor and degradation is low, such as Monaco-like conditions.",
+  "rationale": "Official F1 strategy explainers note that undercut dominates on high-degradation tracks, while overcut becomes viable when tyre warm-up is poor and degradation is low, such as Monaco-like conditions. That implies one global timing function is probably averaging across incompatible regimes.",
+  "implementation_hint": "Infer a per-race regime from observable data only: early-stint LapTime_Delta slope, field-wide degradation spread, compound-specific warm-up behavior after recent stops, and race-level variance of fresh-tyre out-laps. Train separate specialists for undercut-friendly and overcut-friendly races, or add a regime probability that interacts with pit urgency features.",
+  "expected_effect": "Should sharpen stop timing around tracks where the same tyre age means opposite actions depending on warm-up versus degradation balance.",
+  "risk": "With only 26 races, hard race-level clustering can overfit. Use coarse 2-3 regimes and validate by grouped race-year folds.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/bottas-pinpoints-tyre-warm-up-issues-and-slow-corner-balance-as-mercedes.1WVaUMbonvL3JV4RtNCTYZ"
+  ]
+}

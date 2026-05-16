@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Clean-air and pit-release counterfactual features",
+  "summary": "F1 strategy sources repeatedly note that undercuts work only when the rival is within reach, fresh tyres warm quickly, and the car is not released into traffic.",
+  "rationale": "F1 strategy sources repeatedly note that undercuts work only when the rival is within reach, fresh tyres warm quickly, and the car is not released into traffic. The current best solutions encode broad circuit priors, but not an explicit estimate of whether pitting now yields clean air or rejoin traffic.",
+  "implementation_hint": "Within each `(Year,Race,LapNumber)`, estimate local field state: cars ahead/behind by position, tyre age ranks, lap-delta ranks, and expected post-stop rejoin slot using empirical pit-loss per race from observed `PitStop` laps. Build features like `rejoin_in_traffic`, `clean_air_gap_after_pit`, `undercut_reach_if_pit_now`, and `overcut_risk_if_stay_out`.",
+  "expected_effect": "Adds a more mechanistic interaction layer and may outperform coarse race-name priors, especially when the same circuit behaves differently across years or weather compounds.",
+  "risk": "Without true time gaps, rejoin estimates are approximate and can add noise; naive field-relative features already underperformed, so this needs disciplined, race-local construction.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

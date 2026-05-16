@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF regime specialists with rank-preserving calibration",
+  "summary": "Different mechanisms drive stops in wet laps, mandatory-compound completion, late-race sprints, and standard dry degradation.",
+  "rationale": "Different mechanisms drive stops in wet laps, mandatory-compound completion, late-race sprints, and standard dry degradation. A blended specialist setup can exploit this heterogeneity, but calibration should avoid hurting AUC; scikit-learn notes isotonic can change ranking due to ties, while sigmoid preserves ranking.",
+  "implementation_hint": "Train 3-4 specialists on disjoint regimes such as slick vs wet, early/mid/late race, and low-vs-high field-shock laps; stack only OOF predictions with a simple meta-learner, and if post-calibration is used, prefer sigmoid/Platt on OOF predictions instead of isotonic. Evaluate all blending with race-group holdouts.",
+  "expected_effect": "Usually small but reliable lift from model diversity and better handling of distinct strategic regimes, with lower risk of AUC erosion from calibration.",
+  "risk": "Too many regimes can fragment data and create unstable specialists; gains may be marginal unless the gating features are clean.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf"
+  ]
+}

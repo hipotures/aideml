@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-weekend holdout CV plus OOF target encoding",
+  "summary": "Rows from the same race share hidden context like weather, tyre nomination, pit-loss, and pit-wave timing, so random row CV can overestimate generalization.",
+  "rationale": "Rows from the same race share hidden context like weather, tyre nomination, pit-loss, and pit-wave timing, so random row CV can overestimate generalization. High-cardinality identifiers such as Driver and Driver x Race x Compound likely contain signal, but only if encoded leakage-safely.",
+  "implementation_hint": "Score experiments with `LeaveOneGroupOut` or `LeavePGroupsOut` on `Race_Year`, and build only fold-local target encodings for combos like `Driver`, `Driver x Compound`, `Driver x Race`, `Race x Compound`, `Stint x Compound`, and lap buckets. Compare against CatBoost native categorical handling with ordered statistics.",
+  "expected_effect": "Cleaner local CV and stronger generalization from categorical priors that are richer than raw frequency encoding.",
+  "risk": "Public score may not rise if leaderboard/test races are very similar to train races; OOF encoding also adds implementation complexity and variance if category counts are small.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

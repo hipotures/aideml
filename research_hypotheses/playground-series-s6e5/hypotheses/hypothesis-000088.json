@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "Keep one naming convention and one or two ratios per concept: current finish margin, next-stop option count, window-opening count, prior pit debt, slick-diversity debt, and core raw transforms. Compare prediction correlation and validation behavior against a larger feature stack.",
   "expected_effect": "Small stability and runtime improvement with medium-high confidence; AUC may stay similar while reducing overfit.",
   "risk": "Pruning can remove a weak but useful interaction feature. Use an ablation table rather than pruning all variants at once.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Feature-Conditional Recalibration Instead of One Global Calibrator",
+  "summary": "Calibration literature shows good global reliability can hide systematic miscalibration by covariate; beta calibration improves on plain logistic calibration for skewed scores, and Venn-Abers offers robust post-hoc probabilistic adjustment.",
+  "rationale": "Calibration literature shows good global reliability can hide systematic miscalibration by covariate; beta calibration improves on plain logistic calibration for skewed scores, and Venn-Abers offers robust post-hoc probabilistic adjustment.",
+  "implementation_hint": "Use OOF predictions to audit reliability by `RaceProgress`, `Stint`, `Compound`, wet/dry regime, and maybe estimated strategy regime. Apply beta or Venn-Abers calibration per broad regime, or calibrate only ensemble weights, keeping ranking-preserving transformations where possible.",
+  "expected_effect": "More stable ensemble blending and better leaderboard transfer without inventing another base learner.",
+  "risk": "Over-granular calibration strata can flatten useful extremes and slightly hurt AUC.",
+  "sources": [
+    "https://arxiv.org/abs/2209.15154",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v60/manokhin17a.html"
+  ]
+}

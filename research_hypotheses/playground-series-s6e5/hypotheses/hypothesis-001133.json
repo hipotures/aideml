@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two-stage mixture-cure stop model: ever pit again × when",
+  "summary": "A mixture-cure formulation separates failure occurrence from failure timing.",
+  "rationale": "A mixture-cure formulation separates failure occurrence from failure timing. In F1 terms, many rows are effectively in a 'no more stops this race' state, and mixing those with rows that will stop soon can blur the decision boundary. Modeling 'whether another pit happens' separately from 'when it happens' is a cleaner inductive bias than a single binary next-lap model.",
+  "implementation_hint": "Stage 1: classify `EverPitAgainInRace` using grouped CV and fold-safe historical features. Stage 2: on rows with future pits, fit either discrete hazard or AFT remaining-lap model. Final score is `P(EverPitAgain) * P(NextLap | EverPitAgain)`. Use current binary ensemble as either stage 1 or as a third blended expert.",
+  "expected_effect": "Usually sharpens late-race and low-remaining-laps behavior, where many false positives come from cars that are on old tyres but are simply not stopping again.",
+  "risk": "If `EverPitAgain` is too easy under local CV, it may look better than it generalizes; the split must be checked under race-held-out folds and preferably year-race chronological folds.",
+  "sources": [
+    "https://proceedings.mlr.press/v151/engelhard22a.html",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-Task Next-Pit Horizon Stacking",
+  "summary": "A recent lap-level pit-stop paper used a cascaded multi-task setup where next-lap classification is complemented by a regression estimate of laps remaining until stop.",
+  "rationale": "A recent lap-level pit-stop paper used a cascaded multi-task setup where next-lap classification is complemented by a regression estimate of laps remaining until stop. That is a natural extension here because ROC AUC can improve when the model learns a smoother hazard progression instead of only a one-step binary label.",
+  "implementation_hint": "Create an auxiliary target equal to remaining laps until the next PitStop within each driver-race sequence, censored when no later stop exists. Train a separate regression or ordinal model OOF, then use its prediction, rank, and clipped inverse-horizon transforms as features for the final binary model.",
+  "expected_effect": "Provides complementary supervision that smooths noisy positives and sharpens the ramp-up into pit windows.",
+  "risk": "Censoring and final-stint handling matter; bad label construction can inject noise or leak sequence endpoints across folds.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://arxiv.org/abs/1805.00917",
+    "https://www.researchgate.net/publication/5844232_Continuous_and_Discrete_Time_Survival_Analysis_Neural_Network_Approaches"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

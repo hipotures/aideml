@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Shift-Aware Training Via Train-vs-Test Weighting And Prior-Shift Checks",
+  "summary": "The test set has fewer drivers than train and includes testing/wet regimes, so ordinary CV may mis-rank candidates under covariate or label shift.",
+  "rationale": "The test set has fewer drivers than train and includes testing/wet regimes, so ordinary CV may mis-rank candidates under covariate or label shift. Domain-adaptation work supports importance weighting under covariate shift and BBSE-style prior correction under label shift.",
+  "implementation_hint": "Train a lightweight classifier to distinguish train from test rows using only features available at inference; use clipped density-ratio style weights for main-model training or for importance-weighted CV scoring. Separately, estimate whether positive-class prior shifts materially across regimes via BBSE on OOF predictions, then test a small post-hoc logit intercept correction.",
+  "expected_effect": "Should reduce local-CV optimism and improve leaderboard transfer if current folds underrepresent target-like regimes.",
+  "risk": "Weight estimates can be high variance and harm strong tree models; clip aggressively and compare against an unweighted baseline.",
+  "sources": [
+    "https://pure.korea.ac.kr/en/publications/importance-weighted-cross-validation-for-covariate-shift/",
+    "https://research.ibm.com/publications/direct-importance-estimation-for-covariate-shift-adaptation",
+    "https://www.amazon.science/publications/detecting-and-correcting-for-label-shift-with-black-box-predictors"
+  ]
+}

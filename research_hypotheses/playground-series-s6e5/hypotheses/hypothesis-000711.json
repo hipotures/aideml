@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual stop-now vs stop-next-lap economics features",
+  "summary": "Motorsport strategy papers frame pit timing as a dynamic-programming tradeoff between current tyre decay, pit-loss, and future pace.",
+  "rationale": "Motorsport strategy papers frame pit timing as a dynamic-programming tradeoff between current tyre decay, pit-loss, and future pace. Your best features already encode finish feasibility, but not the immediate economic regret of waiting one more lap versus boxing now.",
+  "implementation_hint": "Estimate race/year-specific pit-loss from observed PitStop rows and fit coarse compound-specific lap-time decay curves from non-pit laps. For each row, simulate two one-step counterfactuals: stay out one lap then pit, versus pit now onto each feasible fresh compound. Feed the model features like best stop-now advantage, worst delay penalty, and gap between current-compound continuation and best fresh-compound trajectory.",
+  "expected_effect": "Adds a more decision-like signal than static thresholds, especially around the true stop window where one extra lap becomes expensive.",
+  "risk": "Can overfit if pit-loss or decay curves are estimated on the full dataset or with target contamination; keep estimates fold-local and simple.",
+  "sources": [
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

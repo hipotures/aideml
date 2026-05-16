@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotonic constrained tree specialist on wear and finish-feasibility variables",
+  "summary": "Official LightGBM/XGBoost docs note monotone constraints can improve predictive performance when strong directional priors exist.",
+  "rationale": "Official LightGBM/XGBoost docs note monotone constraints can improve predictive performance when strong directional priors exist. This task has several plausible monotone effects after conditioning: more compound-window overshoot, larger positive lap-time loss, and higher degradation should not reduce pit risk.",
+  "implementation_hint": "Train one specialist GBDT using only high-confidence directional features such as `TyreLife_ToFinish_CompoundRatio`, `Compound_LapsBeyondFinishWindow`, positive `LapTime_Delta`, degradation-per-lap, and maybe inverse margins-to-finish, with monotone signs enforced. Blend its OOF predictions with the unconstrained main model.",
+  "expected_effect": "Often improves public-board stability by removing implausible local inversions while contributing diversity to the ensemble.",
+  "risk": "Some raw features are not globally monotone because of fresh-tyre resets and wet-race regime changes; constraints should be applied only to carefully transformed variables and maybe only on dry-race subsets.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

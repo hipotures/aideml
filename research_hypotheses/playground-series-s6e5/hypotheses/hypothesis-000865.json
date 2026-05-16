@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer latent cheap-stop regimes from synchronized field anomalies",
+  "summary": "FIA VSC/SC rules force all cars above a minimum delta, and official F1 analysis notes Safety Car conditions can roughly halve pit-loss.",
+  "rationale": "FIA VSC/SC rules force all cars above a minimum delta, and official F1 analysis notes Safety Car conditions can roughly halve pit-loss. Those regime shifts radically change stop incentives but are not explicit in the dataset. A latent detector built from field-wide same-lap anomalies can approximate hidden neutralization state.",
+  "implementation_hint": "For each `(Year,Race,LapNumber)`, build same-lap aggregates such as field median lap-time delta, spread compression, unusually high pit-count on the lap, and abrupt cross-driver slowdown. Use these to create a neutralization probability or regime flag, then gate a specialized expert or interact it with pit-pressure features.",
+  "expected_effect": "Should sharpen predictions for clustered pit laps and explain cases where teams stop earlier than tyre-life heuristics alone would suggest.",
+  "risk": "The proxy can confuse weather, red-flag aftermath, or testing sessions with SC/VSC behavior; overfitting is likely if the detector is too hand-tuned.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

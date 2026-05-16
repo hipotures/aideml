@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dual-clock recurrent-event model instead of plain binary next-lap classification",
+  "summary": "Pit stops are repeated events, and recurrent-event literature emphasizes modeling both total time and time since the previous event.",
+  "rationale": "Pit stops are repeated events, and recurrent-event literature emphasizes modeling both total time and time since the previous event. Here, `LapNumber` and `TyreLife` naturally provide those two clocks, which may be more faithful than a flat classifier when risk accelerates near the end of a stint.",
+  "implementation_hint": "Build a second model that predicts stop timing as a recurrent event using elapsed race time and elapsed stint time jointly. Practical version: train an XGBoost AFT or discrete-time survival surrogate on laps-to-next-pit within each stint, then convert to next-lap hazard and blend with the baseline classifier.",
+  "expected_effect": "Sharper pit-window timing, especially for separating medium-risk laps from the final 1-2 laps before a stop.",
+  "risk": "Survival labels and censoring logic are easy to get wrong; objective mismatch can hurt ROC AUC if the hazard conversion is noisy.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC10404068/",
+    "https://link.springer.com/article/10.1186/s12874-019-0677-0"
+  ]
+}

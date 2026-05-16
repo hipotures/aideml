@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Estimate latent tyre condition with a simple state-space residual model and feed its state/uncertainty as features",
+  "summary": "Recent F1 tyre-degradation research models lap time as observed output from a latent degradation state with pit stops acting as resets.",
+  "rationale": "Recent F1 tyre-degradation research models lap time as observed output from a latent degradation state with pit stops acting as resets. Your current features use raw degradation and rolling lap times, but not an inferred hidden tyre-health state or uncertainty, which may be closer to the real pit decision variable.",
+  "implementation_hint": "Fit a lightweight per-compound or per-race recursive filter on historical laps to estimate latent pace loss and degradation slope from `LapTime`, `LapTime_Delta`, `TyreLife`, and `Cumulative_Degradation`, resetting on `PitStop=1`. Export features like filtered degradation level, one-step predicted pace loss, slope acceleration, and posterior uncertainty.",
+  "expected_effect": "Could separate noisy lap-time spikes from true tyre fade and sharpen decision boundaries near undercut/overcut windows.",
+  "risk": "A poorly specified filter can just restate existing rolling means and add noise; careful leakage control is required so all state estimates are strictly historical.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/"
+  ]
+}

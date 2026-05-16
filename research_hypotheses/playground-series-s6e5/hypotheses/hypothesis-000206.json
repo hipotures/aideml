@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rejoin-Clean-Air Traffic Surrogates",
+  "summary": "F1 analysis notes that pit timing is heavily driven by whether a driver can stop into clean air and avoid losing time behind traffic.",
+  "rationale": "F1 analysis notes that pit timing is heavily driven by whether a driver can stop into clean air and avoid losing time behind traffic. Even without explicit gap-to-car data, the table contains enough race-lap context to build a surrogate for rejoin quality.",
+  "implementation_hint": "Estimate race-specific pit-loss proxies from RaceProgress/LapNumber context and use same-lap field order to approximate where a driver would rejoin if they stopped now. Engineer features such as estimated rejoin position band, nearby-field LapTime_Delta congestion, and clean-air flags when the likely rejoin zone has slow or volatile cars.",
+  "expected_effect": "Should help on marginal decisions where tyre wear says 'maybe' but traffic makes the timing clearly good or bad.",
+  "risk": "The proxy can be noisy because true time gaps are unobserved; gains depend on careful race-relative normalization.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article.gone-in-1-88s-putting-together-the-perfect-f1-pit-stop.3lLKnEoPKdJgACsUn9IltC.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

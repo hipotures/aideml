@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Learned soft regime-switching ensemble instead of hand-built regime keys",
+  "summary": "The best code already does regime-based blending, which is a good sign, but it uses fixed bins and shrinkage heuristics.",
+  "rationale": "The best code already does regime-based blending, which is a good sign, but it uses fixed bins and shrinkage heuristics. State-space tyre modeling suggests structural resets and changing latent pace states; a learned gate can exploit that more flexibly than static `early/mid/late × tyre_bin × pos_bin` buckets.",
+  "implementation_hint": "Train 3-5 specialized experts on disjoint slices such as dry-normal, wet/intermediate, early-stint, old-tyre, and late-race pressure. Then fit a tiny fold-local gate (logistic regression or shallow booster) on observable state features only (`RaceProgress`, `TyreLife`, `Compound`, `Stint`, `LapTime_Delta`, `Position`) to predict which expert’s OOF rank is most reliable, and use the gate to soft-blend test predictions.",
+  "expected_effect": "More adaptive than fixed regime weights, especially if current heuristics are averaging away sharp phase changes like wet tyres, fresh-stop resets, or end-of-stint cliffs.",
+  "risk": "Mixture gates can overfit very easily if trained on raw scores without strict OOF discipline; benefit may vanish if experts are too correlated.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://link.springer.com/article/10.1007/s00181-022-02214-8",
+    "https://link.springer.com/article/10.1007/s11222-023-10238-y"
+  ]
+}

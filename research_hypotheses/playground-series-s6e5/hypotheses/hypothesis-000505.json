@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Post-process with per-stint stop-count mass constraints",
+  "summary": "ROC AUC depends on ranking, but raw probabilities may assign too much positive mass across many laps in the same stint.",
+  "rationale": "ROC AUC depends on ranking, but raw probabilities may assign too much positive mass across many laps in the same stint. A constrained calibrator can preserve most within-stint order while matching plausible remaining stop counts implied by rules, tyre age, and historical stint patterns.",
+  "implementation_hint": "After OOF predictions, fit a lightweight meta-calibrator using base logit, Race-Year, Stint, LapsRemaining, current stop count, and compound. Within each driver-race-stint, shrink or cap probability mass toward learned expected remaining stops while preserving rank as much as possible.",
+  "expected_effect": "Improves cross-stint ordering and reduces overconfident repeated pit probabilities after a high-risk lap passes.",
+  "risk": "Aggressive per-group normalization can hurt AUC by changing global ranks; compare sigmoid-only, isotonic, and mass-constrained variants on grouped folds.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_1_-_2023-09-26.pdf",
+    "https://www.autosport.com/f1/news/f1-tyres-what-are-the-compounds-and-what-do-they-mean/10344284/"
+  ]
+}

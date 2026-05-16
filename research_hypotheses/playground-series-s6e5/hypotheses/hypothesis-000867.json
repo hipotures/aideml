@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stability-weighted expert blend selected under both grouped and forward CV",
+  "summary": "Scikit-learn’s GroupKFold and TimeSeriesSplit highlight different leakage risks: same-group contamination versus future-to-past leakage.",
+  "rationale": "Scikit-learn’s GroupKFold and TimeSeriesSplit highlight different leakage risks: same-group contamination versus future-to-past leakage. Given the small gains left, leaderboard-safe improvement is likely to come from keeping only models that are strong under both race-group and temporal splits, then blending rank-diverse experts rather than chasing a single CV setup.",
+  "implementation_hint": "Evaluate each expert under `GroupKFold` by race-like groups and a forward split by year/order. Keep only models whose fold metrics are stable across both. Blend by rank averaging or OOF-stacked logits, then optionally apply fold-wise calibration only to reduce ties or stabilize probabilities, not to chase AUC directly.",
+  "expected_effect": "Lower CV illusion risk and a better chance that public-LB gains survive distribution shift between races/years.",
+  "risk": "This may improve robustness more than local CV, so it can look neutral locally while still being the safer competition move.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV"
+  ]
+}

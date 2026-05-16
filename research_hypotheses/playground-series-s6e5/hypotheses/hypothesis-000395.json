@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online stint-cliff detector features",
+  "summary": "Recent F1 tyre papers model degradation as latent, compound-specific, and reset by pit stops; change-point literature is designed for abrupt regime shifts.",
+  "rationale": "Recent F1 tyre papers model degradation as latent, compound-specific, and reset by pit stops; change-point literature is designed for abrupt regime shifts. Pit calls are often triggered by acceleration in pace loss, not just high absolute tyre age.",
+  "implementation_hint": "Within each `Race_Year x Driver` history, build past-only features such as rolling slope and curvature of `LapTime_Delta`, degradation-per-lap acceleration, run-length since last stable regime, and residuals from a simple piecewise or state-space degradation filter that resets after `PitStop==1`.",
+  "expected_effect": "Adds sensitivity to sudden wear cliffs, evolving track state, and compound-specific breakdowns that current static thresholds miss.",
+  "risk": "Noisy on very short stints or anomalous laps; must use only past laps to avoid future leakage.",
+  "sources": [
+    "https://arxiv.org/abs/0710.3742",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add online latent tyre-state features from a lightweight state-space filter",
+  "summary": "Recent F1 research models tyre degradation as a latent stochastic state with pit-stop resets and shows better rolling-origin prediction than an AR(1) benchmark.",
+  "rationale": "Recent F1 research models tyre degradation as a latent stochastic state with pit-stop resets and shows better rolling-origin prediction than an AR(1) benchmark. That fits this task well because `PitNextLap` should depend on hidden tyre condition, not only observed `TyreLife` and cumulative degradation.",
+  "implementation_hint": "Per driver-race-stint, fit or approximate a simple online Kalman/state-space filter using only past laps to estimate latent pace, latent degradation slope, slope acceleration, reset-adjusted warmup state, and posterior uncertainty. Feed only filtered states available up to the current row into XGB/CatBoost.",
+  "expected_effect": "Should add a cleaner degradation signal than hand-built rolling deltas, especially when observed lap times are noisy from traffic or driver errors.",
+  "risk": "Too-rich filtering can leak future information if smoothed instead of filtered states are used. A weak approximate filter may collapse to features you already have.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-release and undercut-range proxies from same-lap field context",
+  "summary": "Official F1 strategy explainers emphasize that undercuts depend on being within striking range and on where a car will rejoin after the stop.",
+  "rationale": "Official F1 strategy explainers emphasize that undercuts depend on being within striking range and on where a car will rejoin after the stop. The current best solutions already model tyre pressure well, but they appear lighter on inferred release-into-traffic context.",
+  "implementation_hint": "Within each race lap, engineer relative features: position percentile, lap-time delta rank, local neighborhood stats for cars in positions `p-2..p+2`, count of nearby rivals with similar tyre age, and field-relative pace residuals by compound. Derive proxies for `undercut_available`, `overcut_viable`, and `traffic_penalty_if_pit_now`.",
+  "expected_effect": "Adds orthogonal competitive-state information, especially for midfield battles where stop timing depends more on traffic and track position than on raw tyre age.",
+  "risk": "Without true gap-to-car-ahead/behind telemetry, these are indirect proxies and may add noise on sparse or unusual laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

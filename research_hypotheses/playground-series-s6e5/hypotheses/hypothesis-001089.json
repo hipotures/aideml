@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Model each lap as a set of cars with a permutation-invariant field-context network",
+  "summary": "Pit timing depends on local field state, not just a driver's own tyre age: traffic, peer tyre ages, and who else looks pit-ready matter.",
+  "rationale": "Pit timing depends on local field state, not just a driver's own tyre age: traffic, peer tyre ages, and who else looks pit-ready matter. Deep Sets and Set Transformer are built for permutation-invariant set inputs and are a better fit than manual lap aggregates for race-lap context.",
+  "implementation_hint": "For each Year-Race-LapNumber, build a set of all active cars using current numeric features and compound embeddings; train a small Deep Sets or Set Transformer teacher to output per-car pit probability, then use its OOF prediction as a single extra feature or ensemble member.",
+  "expected_effect": "Can capture undercut/traffic pressure and peer-relative context that handcrafted mean/max lap features miss.",
+  "risk": "More engineering and higher overfit risk than trees; gains may depend on careful regularization and causal masking only to current lap.",
+  "sources": [
+    "https://papers.neurips.cc/paper/6931-deep-sets",
+    "https://proceedings.mlr.press/v97/lee19d.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost Specialist On Raw High-Cardinality Race Context",
+  "summary": "CatBoost’s ordered categorical statistics are designed to reduce target leakage, and high-cardinality benchmarks favor regularized target encoding over naive integer/one-hot schemes.",
+  "rationale": "CatBoost’s ordered categorical statistics are designed to reduce target leakage, and high-cardinality benchmarks favor regularized target encoding over naive integer/one-hot schemes. This fits the dataset’s many rare `Driver` identities and interaction-heavy context (`Driver`,`Race`,`Year`,`Compound`,`Stint`) better than more manual frequency features.",
+  "implementation_hint": "Train one specialist with raw categoricals plus a few explicit combos such as `Driver x Race_Year`, `Driver x Compound`, `Race_Year x LapBucket`, `Compound x Stint`. Validate with grouped folds by `Race_Year` and keep row order chronological within each race/driver so ordered CTRs stay causal. Compare standalone score and rank-blend with the current tree model.",
+  "expected_effect": "Should add complementary signal on sparse driver- and event-specific pit behavior, especially where manual heuristics flatten rare categories.",
+  "risk": "If folds are not grouped chronologically, ordered CTR gains can be illusory; with strong race holdout, some combos may be too sparse and collapse to priors.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

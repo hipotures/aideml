@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Out-of-fold empirical hazard priors by strategy state",
+  "summary": "The strongest current features encode physics-like windows but not learned historical stop propensity for specific race/lap/stint/compound states.",
+  "rationale": "The strongest current features encode physics-like windows but not learned historical stop propensity for specific race/lap/stint/compound states. Leakage-safe target encoding can convert sparse categorical strategy states into smooth empirical hazards while avoiding high-cardinality overfit.",
+  "implementation_hint": "Create bins for RaceProgress, TyreLife, LapsRemaining_Est, Position, and degradation. In grouped OOF folds, compute smoothed PitNextLap means for combinations such as Race_Year x Compound x StintBin, Race x LapBin, Compound x TyreLifeBin, and TestingFlag x LapBin. Add these priors as numeric features, then refit mappings on full train for test.",
+  "expected_effect": "May add a low-variance prior that captures circuit/year strategy templates missed by hand thresholds, with less model dependence than a full CatBoost CTR sidecar.",
+  "risk": "Target leakage is the main failure mode; encodings must be built inside folds and validation should group by Race_Year or use a time-aware split.",
+  "sources": [
+    "https://sklearn.org/1.7/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://contrib.scikit-learn.org/category_encoders/targetencoder.html",
+    "https://arxiv.org/abs/2104.00629"
+  ]
+}

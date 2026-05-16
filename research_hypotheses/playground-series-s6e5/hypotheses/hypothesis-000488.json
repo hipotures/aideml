@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Encode pit-service carryover anomalies",
+  "summary": "F1 stops are not identical tyre swaps: front-wing adjustments and operational issues can change the next stint context.",
+  "rationale": "F1 stops are not identical tyre swaps: front-wing adjustments and operational issues can change the next stint context. The dataset has no stop duration, but a pit-lap LapTime residual, Position_Change, and post-stop pace can proxy abnormal service, damage repair, or compromised rejoin.",
+  "implementation_hint": "For each Race_Year-Driver sequence, create lagged features from the most recent PitStop row: pit-lap time residual versus race/lap median, position loss at stop, compound changed flag, laps since abnormal stop, and whether post-stop first two laps were slow versus field median.",
+  "expected_effect": "May separate planned strategy stops from incident/repair stops, improving ranking after unusual pit events and in races with multiple stops.",
+  "risk": "Needs careful causal shifting: only use current and previous rows for training features, never next-lap target information.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

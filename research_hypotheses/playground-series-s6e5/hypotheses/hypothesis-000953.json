@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Tyre-State Features From a Lightweight Sequential Degradation Model",
+  "summary": "A recent F1 degradation paper argues that tyre wear is better represented as a latent stochastic state with pit-stop resets than by naive rolling averages.",
+  "rationale": "A recent F1 degradation paper argues that tyre wear is better represented as a latent stochastic state with pit-stop resets than by naive rolling averages. That matches your history: simple rolling pace features were weak, but that does not rule out a better sequential state estimate.",
+  "implementation_hint": "For each `Year/Race/Driver/Stint`, fit a leakage-safe expanding model using only prior laps to estimate latent pace level, degradation slope, slope acceleration, residual uncertainty, and post-stop warm-up offset. Use simple Kalman/state-space or even recursive linear updates; feed the derived states into the tabular model.",
+  "expected_effect": "Could recover signal from pace deterioration, warm-up behavior, and uncertainty that raw `LapTime_Delta` and `Cumulative_Degradation` do not isolate well.",
+  "risk": "Easy to leak if current/future laps are used in the state estimate; overly fancy filtering may overfit given limited per-stint length.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

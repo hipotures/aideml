@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Raw-Categorical CatBoost Blend Instead Of More Manual Frequency Features",
+  "summary": "Your strongest solutions still handcraft many sparse interactions like `Race_Compound` and `Driver_Compound`.",
+  "rationale": "Your strongest solutions still handcraft many sparse interactions like `Race_Compound` and `Driver_Compound`. CatBoost’s ordered categorical statistics are specifically designed to extract signal from high-cardinality categories and combinations while reducing target leakage relative to naive encodings.",
+  "implementation_hint": "Train a CatBoostClassifier on mostly raw columns plus a limited set of numeric physics features, keeping `Driver`, `Race`, `Compound`, `Year`, `Stint`, and a few interaction strings as categorical. Use race-grouped folds and causal row ordering within each driver-race sequence for OOF predictions, then blend with the current tree model.",
+  "expected_effect": "Captures sparse entity interactions and conditional priors more efficiently than additional manual frequency/median encodings.",
+  "risk": "If folds are not grouped correctly, ordered stats can still look better locally than they generalize; CatBoost may also underperform if numeric heuristics already dominate.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/features/cross-validation"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

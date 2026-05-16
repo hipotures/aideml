@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Empirical-Bayes Stint Hazard Priors",
+  "summary": "The current best code is rich in static tyre-window heuristics, but recent F1 and survival literature points toward latent degradation plus sequential event-risk estimation.",
+  "rationale": "The current best code is rich in static tyre-window heuristics, but recent F1 and survival literature points toward latent degradation plus sequential event-risk estimation. A fold-local hazard prior can summarize how pit risk rises with stint age, compound, and laps remaining without fitting a full survival model.",
+  "implementation_hint": "For each CV fold, build shrinkage-smoothed hazard tables for P(pit next lap | compound, TyreLife bin, laps_remaining bin, stint, slick/wet, race/regime). Use only training rows, shrink race-specific tables toward global tables, then add prior logit, cumulative hazard, and residual-vs-global hazard features to the main booster.",
+  "expected_effect": "Better ranking on borderline pit-window rows, especially when raw TyreLife ratios are ambiguous but historical stop-risk shape is informative.",
+  "risk": "Easy leakage if hazard tables are computed on all rows or with same-race future laps. Must be strictly fold-local and chronologically causal within race.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.nips.cc/paper/7413-multitask-boosting-for-survival-analysis-with-competing-risks"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Concatenate train and test for causal sequence-state features",
+  "summary": "The ids are contiguous and the same Race/Year/Driver sequences may span the train/test boundary.",
+  "rationale": "The ids are contiguous and the same Race/Year/Driver sequences may span the train/test boundary. Current stateful features may reset when preprocessing train and test separately, losing prior pit count, prior slick compounds, last pit lap, and rolling pace history. This uses only observed covariates and PitStop, not PitNextLap.",
+  "implementation_hint": "Build an is_train flag, concatenate train and test, sort by Race_Year, Driver, LapNumber, id, compute only past-looking groupby cumsum/shift/rolling features, then split back. Validate with a final-id-block or grouped time split that mimics deployment.",
+  "expected_effect": "Likely small but high-quality AUC gain if any test sequences start mid-race or mid-session; also reduces public/private mismatch from state resets.",
+  "risk": "If each Race_Year/Driver sequence is fully contained within train or test, the gain will be negligible. Must avoid using future rows for features intended to be causal.",
+  "sources": [
+    "https://pandas.pydata.org/pandas-docs/stable/user_guide/groupby.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

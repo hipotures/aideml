@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Probe direct next-lap PitStop shift",
+  "summary": "Because the target is PitNextLap and the table includes PitStop for each row, rows may encode the label as the following same-driver same-race PitStop.",
+  "rationale": "Because the target is PitNextLap and the table includes PitStop for each row, rows may encode the label as the following same-driver same-race PitStop. This is a classic temporal leakage trap, but in Kaggle test tables it can also be exploitable if full future rows are provided.",
+  "implementation_hint": "Sort train and test separately by Race_Year/Race, Driver, LapNumber, id; create LeadPitStop, NextLapGap, SameDriverRaceNextRow and EndOfSequence flags. Validate the identity on train, then test a submission that blends model probability with LeadPitStop where the next row is unambiguous.",
+  "expected_effect": "Potentially very large public AUC gain if the table contains complete lap sequences; also clarifies whether current CV is underusing deterministic structure.",
+  "risk": "May be considered future-information leakage and may fail at race/driver boundaries, missing laps, or if public/private test rows are not complete sequences.",
+  "sources": [
+    "https://scikit-learn.org/stable/common_pitfalls.html",
+    "https://docs.fastf1.dev/time_explanation.html",
+    "https://docs.fastf1.dev/data_reference/index.html"
+  ]
+}

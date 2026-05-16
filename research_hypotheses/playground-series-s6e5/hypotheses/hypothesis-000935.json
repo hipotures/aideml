@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Specific Models For Wet, Testing, And Late Race",
+  "summary": "Wet/intermediate tyres, pre-season testing, and final-lap phases likely obey different pit logic from normal dry race stints.",
+  "rationale": "Wet/intermediate tyres, pre-season testing, and final-lap phases likely obey different pit logic from normal dry race stints. Existing solutions add wet/dry indicators but still train one global decision surface, which can dilute rare-regime ranking.",
+  "implementation_hint": "Train specialist models or add meta-features from separate LightGBM/CatBoost models for dry race rows, wet/intermediate rows, Pre-Season Testing, and RaceProgress>0.85. Blend specialist predictions with the global model only for matching rows, using OOF predictions for the blend weight search.",
+  "expected_effect": "May improve public score if rare regimes have enough test representation and global model currently miscalibrates their pit probabilities.",
+  "risk": "Small subsets can overfit and hurt AUC if blended too aggressively; Pre-Season Testing may have non-race behavior that is hard to validate.",
+  "sources": [
+    "https://www.thetimes.co.uk/article/formula-1-pirelli-tyres-pitstops-w3r8hzfjg",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.kaggle.com/datasets/akashrane2609/formula-1-pit-stop-dataset"
+  ]
+}

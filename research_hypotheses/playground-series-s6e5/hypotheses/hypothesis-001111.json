@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "OOF-only regime-wise Venn-Abers calibration for ensemble gating",
+  "summary": "AUC itself is rank-based, so calibration only matters here as an ensemble tool.",
+  "rationale": "AUC itself is rank-based, so calibration only matters here as an ensemble tool. Venn-Abers predictors are a strong public calibration method; using them only on OOF predictions can align score scales between XGB, CatBoost, ranking, and survival experts before a simple stacker decides which expert to trust by regime.",
+  "implementation_hint": "Calibrate each expert on inner-fold OOF predictions, optionally separately for broad regimes such as dry/wet and early/mid/late. Feed calibrated logits or intervals into a very small meta-learner or rule-based gate rather than blending raw ranks directly.",
+  "expected_effect": "May improve ensemble combination in regimes where experts have similar ordering but very different score scales, producing a small but real lift without new raw features.",
+  "risk": "Calibration will not improve a single model’s AUC and can overfit if regimes are too granular or calibration is not strictly OOF.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x"
+  ]
+}

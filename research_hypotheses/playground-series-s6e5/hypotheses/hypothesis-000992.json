@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint phase-change features to capture tyre warmup versus degradation cliff",
+  "summary": "F1 strategy sources emphasize that fresh tyres do not always peak immediately and that degradation is better viewed as a latent evolving state than a fixed linear slope.",
+  "rationale": "F1 strategy sources emphasize that fresh tyres do not always peak immediately and that degradation is better viewed as a latent evolving state than a fixed linear slope. The current baseline has rolling means but not explicit warmup/cliff regime markers inside a stint.",
+  "implementation_hint": "Within each Year-Race-Driver-Stint, fit causal piecewise summaries from past laps only: early-stint warmup slope, recent slope acceleration, deviation from expected linear wear, and a binary or continuous 'cliff proximity' score when lap-time residuals and degradation residuals both inflect. Test simple breakpoint heuristics before heavier state-space approximations.",
+  "expected_effect": "Should improve precision around borderline pit windows where raw tyre age is insufficient, particularly for overcut-capable situations and non-linear compound behavior.",
+  "risk": "Noisy short stints can create unstable breakpoints; overly complex latent-state estimation may overfit relative to simpler causal slope features.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1-dictionary.net/using_tires.html"
+  ]
+}

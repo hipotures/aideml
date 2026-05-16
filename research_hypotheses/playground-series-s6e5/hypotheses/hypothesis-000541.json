@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censoring-aware AFT sidecar for remaining laps to next stop",
+  "summary": "Rows near race end are naturally right-censored if no further pit stop occurs, which standard binary framing discards.",
+  "rationale": "Rows near race end are naturally right-censored if no further pit stop occurs, which standard binary framing discards. XGBoost’s AFT survival objective explicitly supports uncensored and right-censored labels, making it a clean way to predict remaining laps to next pit and then derive a next-lap stop probability or an expected-time feature.",
+  "implementation_hint": "Build labels as `time_to_next_pit` for rows with a future stop and right-censor rows that finish without another stop. Train `objective=survival:aft` on current features, then add OOF expected remaining laps / transformed 1-lap hazard as sidecar features or stack input.",
+  "expected_effect": "Can capture longer-horizon structure better than a one-step label alone, especially for cars clearly destined to stop later but not immediately.",
+  "risk": "AFT optimizes survival likelihood, not AUC directly, so gains may only appear after stacking; label construction must be strictly causal and race-bounded.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8232898/"
+  ]
+}

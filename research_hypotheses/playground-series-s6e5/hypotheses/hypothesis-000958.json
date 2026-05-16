@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dry-Only Monotone Booster on Physical Wear Signals",
+  "summary": "For normal dry running, next-lap pit hazard should usually rise as tyre-age ratio, degradation pressure, and pace loss worsen, but unconstrained tree models can learn non-physical reversals from noisy same-lap context.",
+  "rationale": "For normal dry running, next-lap pit hazard should usually rise as tyre-age ratio, degradation pressure, and pace loss worsen, but unconstrained tree models can learn non-physical reversals from noisy same-lap context. LightGBM monotone constraints give a direct way to regularize that shape.",
+  "implementation_hint": "Train a dry-only LightGBM expert with monotone increases on features like `TyreLife_ExpectedLife_Ratio`, `Wear_Pressure`, `LapTime_Loss`, and possibly `LapsRemaining_AfterExpectedLife`. Keep endgame/rule-pressure features either unconstrained or in a separate residual model. Select by grouped CV that keeps races separate.",
+  "expected_effect": "Smoother pit-window estimates and better public-LB robustness from reduced overfit to noisy field aggregates.",
+  "risk": "Wrong constraint directions will hurt, especially near finish/no-stop zones or Monaco-specific rule effects.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf"
+  ]
+}

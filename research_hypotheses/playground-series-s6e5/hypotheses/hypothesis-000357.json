@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train-to-test density-ratio weighting with weighted calibration",
+  "summary": "Your context already hints at shift: the train set has more drivers than test, and public/private splits may differ by year, race, and compound mix.",
+  "rationale": "Your context already hints at shift: the train set has more drivers than test, and public/private splits may differ by year, race, and compound mix. Under covariate shift, standard CV can mislead, and weighting train rows toward the unlabeled test distribution is a well-studied fix.",
+  "implementation_hint": "Fit a train-vs-test classifier on features available in both splits, convert its odds to clipped importance weights, and use those weights in model fitting or blend weighting. Evaluate with race-held-out IWCV-style folds, then apply a lightweight sigmoid calibrator on out-of-fold predictions using the same weights. Keep clipping aggressive to avoid variance blow-ups.",
+  "expected_effect": "Most useful if leaderboard composition differs from training history; can improve public-score alignment even when local CV is flat.",
+  "risk": "Poorly estimated weights can add variance and hurt both CV and LB, especially with many rare categories; weight clipping and a no-weight baseline are mandatory.",
+  "sources": [
+    "https://www.jmlr.org/beta/papers/v8/sugiyama07a.html",
+    "https://proceedings.mlr.press/v108/li20b.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV"
+  ]
+}

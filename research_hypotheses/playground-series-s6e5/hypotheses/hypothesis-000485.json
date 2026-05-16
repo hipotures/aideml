@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Segment-specialist rank ensemble",
+  "summary": "Dry slick races, wet/intermediate phases, fresh-post-pit rows, late mandatory-stop rows, and pre-season testing likely follow different mechanisms.",
+  "rationale": "Dry slick races, wet/intermediate phases, fresh-post-pit rows, late mandatory-stop rows, and pre-season testing likely follow different mechanisms. A single AutoGluon model may underfit minority regimes even if its overall CV is strong.",
+  "implementation_hint": "Train several small specialist models or feature subsets for dry-slick, wet-weather, early/mid/late race, PitStop==1/fresh-tyre, and high-stop-debt rows. Blend OOF predictions by segment gates using rank-normalized probabilities rather than raw calibration, and keep a strong global model as the fallback.",
+  "expected_effect": "Expected to gain on rare but high-signal regimes without disturbing the already strong global rank ordering.",
+  "risk": "Specialists can overfit small segments; require OOF blending and avoid segment definitions that use target-derived future information.",
+  "sources": [
+    "https://arxiv.org/abs/1706.09516",
+    "https://arxiv.org/abs/2601.19944",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ]
+}

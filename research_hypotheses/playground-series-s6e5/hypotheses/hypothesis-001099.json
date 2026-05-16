@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a true race-lap ranking expert",
+  "summary": "This target is inherently relative within each race-lap snapshot: only a few drivers are plausible next-lap pit candidates, so querywise ranking can learn who should be above whom better than plain logloss.",
+  "rationale": "This target is inherently relative within each race-lap snapshot: only a few drivers are plausible next-lap pit candidates, so querywise ranking can learn who should be above whom better than plain logloss. CatBoost and LambdaRank literature both support optimizing within-group order directly.",
+  "implementation_hint": "Create query groups as `Year_Race_LapNumber` or `Year_Race_LapNumber_CompoundRegime`. Train a ranking expert with CatBoost `YetiRankPairwise`, `LambdaMart`, or `QueryCrossEntropy` using the binary label, then blend its rank-normalized OOF with the classifier OOF. Evaluate both groupwise AUC within query and global ROC AUC.",
+  "expected_effect": "Most likely helps top-of-lap ordering, especially in laps with several old-tyre candidates where plain classifiers compress scores.",
+  "risk": "Global ROC AUC may not improve if queries with zero or one positive dominate; ranking objectives can also be noisier on tiny groups.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://www.microsoft.com/en-us/research/publication/learning-to-rank-with-non-smooth-cost-functions/",
+    "https://www.microsoft.com/en-us/research/publication/learning-to-rank-on-a-cluster-using-boosted-decision-trees/"
+  ]
+}

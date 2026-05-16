@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Ranking Auxiliary Model",
+  "summary": "F1 undercut/overcut decisions are relative: the attacking car usually needs to be within striking range, and at a given race-lap only a few cars are real next-lap pit candidates.",
+  "rationale": "F1 undercut/overcut decisions are relative: the attacking car usually needs to be within striking range, and at a given race-lap only a few cars are real next-lap pit candidates. A within-group ranker can learn who is most likely to pit at that lap even when absolute probability is hard to calibrate.",
+  "implementation_hint": "Train an XGBoost or CatBoost ranker with `qid`/`GroupId = Year+Race+LapNumber`, then use its score as an extra feature or blend it with the binary classifier. Prefer groups containing at least one positive during training, and keep validation grouped on the same `qid` definition.",
+  "expected_effect": "Orthogonal signal that improves within-lap ordering around synchronized pit windows and traffic responses.",
+  "risk": "Ranking scores are not calibrated probabilities, and all-negative groups contribute weak gradients unless filtered or reweighted.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

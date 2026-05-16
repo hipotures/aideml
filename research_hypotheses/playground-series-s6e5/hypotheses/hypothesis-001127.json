@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Strict-landmark FPCA trajectory features before the tree ensemble",
+  "summary": "Dynamic-prediction work shows landmarking plus functional PCA can compress longitudinal history without leaking future information.",
+  "rationale": "Dynamic-prediction work shows landmarking plus functional PCA can compress longitudinal history without leaking future information. For this task, the useful signal may be the shape of the prior stint trajectory, not just current lap ratios.",
+  "implementation_hint": "Within each CV fold, sort each Year-Race-Driver-Stint history and build causal summaries from prior laps only: FPCA or truncated basis coefficients for LapTime_Delta, Cumulative_Degradation, Position_Change, and TyreLife over the current stint up to t-1. Feed 3-8 coefficients per channel into XGB/CatBoost as extra numeric features.",
+  "expected_effect": "Should add a low-correlation view of stint evolution and improve boundary cases where current-lap features look similar but prior trajectory shape differs.",
+  "risk": "FPCA fit must be fold-local and causal; if histories are short or noisy, coefficients may be unstable and only help on longer stints.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/09622802231224631",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ]
+}

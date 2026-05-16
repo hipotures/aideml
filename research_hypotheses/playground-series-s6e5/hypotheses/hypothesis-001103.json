@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Time-ordered CatBoost expert with has_time and ordered boosting",
+  "summary": "CatBoost explicitly supports preserving sample order with `has_time`, avoiding random permutations during categorical transformation and tree building.",
+  "rationale": "CatBoost explicitly supports preserving sample order with `has_time`, avoiding random permutations during categorical transformation and tree building. For this task, rows are naturally chronological within race, so a strictly time-ordered CatBoost can be a materially different expert from the current shuffled grouped-CV CatBoost.",
+  "implementation_hint": "Sort each fold by true chronology such as Year, Race, LapNumber, Driver, then train a separate CatBoost expert with `has_time=True`, ordered boosting settings, and no globally precomputed encodings. Evaluate with fold-level forward ordering and keep it as a standalone model or stack input rather than forcing it into the same feature pipeline as XGB.",
+  "expected_effect": "Can reduce prediction shift on high-cardinality categorical structure and produce a decorrelated expert for ensembling.",
+  "risk": "Needs careful within-fold sorting; if chronology is mis-specified, performance can drop sharply.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://huggingface.co/papers/1706.09516"
+  ]
+}

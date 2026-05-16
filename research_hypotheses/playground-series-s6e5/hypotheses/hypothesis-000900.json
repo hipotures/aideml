@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model empirical undercut/overcut threat, not just tyre age",
+  "summary": "Official F1 strategy analysis emphasizes that undercut strength depends on degradation, warm-up penalty, and being within striking range, while recent AutoF1 work explicitly added surrounding-driver distance features for undercut/overcut decisions.",
+  "rationale": "Official F1 strategy analysis emphasizes that undercut strength depends on degradation, warm-up penalty, and being within striking range, while recent AutoF1 work explicitly added surrounding-driver distance features for undercut/overcut decisions. Your current best features include some same-lap tyre context, but not an explicit race-specific estimate of whether pitting now is advantaged or punished.",
+  "implementation_hint": "Create race-level or race-compound priors for fresh-tyre out-lap tax and expected undercut payoff from training data, then combine them with same-lap position-neighbor tyre age and pace deltas. Useful features: inferred undercut threat, overcut viability, and pit-benefit minus expected warm-up loss.",
+  "expected_effect": "Should improve ranking for borderline cases where tyre wear alone is insufficient and strategy is driven by track-specific out-lap behavior.",
+  "risk": "Without actual gap-to-car-ahead/behind, these are proxies and may be noisy or race-specific.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://eprints.whiterose.ac.uk/id/eprint/229478/1/PBRX_F1_IEEE_Conference_Version.pdf",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

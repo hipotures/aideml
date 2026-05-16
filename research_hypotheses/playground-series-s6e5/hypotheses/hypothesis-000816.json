@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap ranking specialist with monotonic post-calibration",
+  "summary": "AUC is a ranking metric, and CatBoost supports groupwise/pairwise ranking objectives.",
+  "rationale": "AUC is a ranking metric, and CatBoost supports groupwise/pairwise ranking objectives. In this problem, cars on the same race lap form a natural decision set, so a ranking model can learn relative pit urgency within a lap cohort; then a monotonic calibrator can convert that rank score into usable probabilities without harming ordering.",
+  "implementation_hint": "Create groups by (Year,Race,LapNumber) or a slightly broader race-local window; train a CatBoost ranking model such as YetiRank/PairLogit on within-group stop ordering, then stack its out-of-fold scores with the binary classifier. Apply beta or isotonic calibration on race-held-out OOF predictions only; monotonic calibration preserves ranking while improving probability quality.",
+  "expected_effect": "Should add complementary signal in crowded strategic moments where only a few cars are realistic pit candidates.",
+  "risk": "Group construction is delicate: too narrow yields tiny groups, too broad mixes unrelated contexts; ranking scores may help LB only if calibration is done leak-safely.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC3248752/"
+  ]
+}

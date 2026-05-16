@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Regime Mixture of Experts",
+  "summary": "Dry races, wet races, and special rule contexts do not share the same stopping logic.",
+  "rationale": "Dry races, wet races, and special rule contexts do not share the same stopping logic. Official rules and tyre guidance show different mandatory-compound behavior in dry conditions and a Monaco-specific 2025 two-stop exception.",
+  "implementation_hint": "Train separate experts for at least: dry slick races, wet/intermediate races, and dry-rule-pressure cases; optionally isolate Monaco 2025 if present. Gate by compound family, race identity/year, and rule-state features such as dry-compounds-used and laps-to-finish.",
+  "expected_effect": "Should reduce averaging across incompatible strategy regimes and improve tail cases where a single global model miscalibrates stop urgency.",
+  "risk": "Sample sizes for rare regimes may be small; only keep regimes that beat the global model on race-held-out CV.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

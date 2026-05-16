@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fold-safe hierarchical target encodings instead of global freq/factor codes",
+  "summary": "The current best code still builds category frequencies and interaction codes on train+test combined data, which is a classic leakage/drift trap for high-cardinality tabular problems.",
+  "rationale": "The current best code still builds category frequencies and interaction codes on train+test combined data, which is a classic leakage/drift trap for high-cardinality tabular problems. Regularized target encoding literature supports shrinkage-based encodings for sparse categories, and CatBoost’s docs reinforce that ordered target-derived statistics are the right inductive bias for categorical features.",
+  "implementation_hint": "Replace `*_freq` and global factorized interaction IDs with race-fold-local encodings such as `Driver`, `Driver×Compound`, `Driver×Race`, `Race×Compound`, `Year×Race`, using nested shrinkage to parent levels and leave-one-race-out or forward-only computation. Keep one model with raw CatBoost cats and one model with these encodings for XGBoost/LightGBM, then compare both grouped CV and forward event-block CV.",
+  "expected_effect": "Usually small but real lift from less optimistic CV and better generalization on unseen driver/race combinations; also likely reduces dependence on ad hoc adversarial weighting.",
+  "risk": "If shrinkage is weak or fold generation is imperfect, this can overfit worse than the current transductive statistics and hide the issue behind inflated grouped CV.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

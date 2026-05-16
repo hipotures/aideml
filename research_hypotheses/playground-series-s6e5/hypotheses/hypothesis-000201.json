@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Self-supervised contextual embeddings from unlabeled train+test rows",
+  "summary": "TabTransformer and SAINT report gains from contextual categorical embeddings and self-supervised/contrastive pretraining on tabular data.",
+  "rationale": "TabTransformer and SAINT report gains from contextual categorical embeddings and self-supervised/contrastive pretraining on tabular data. This competition has high-cardinality entities (`Driver`, `Race`, `Race_Year`) and abundant unlabeled test rows, which is exactly where pretraining can add diversity beyond trees.",
+  "implementation_hint": "Pretrain a small TabTransformer/SAINT-style encoder on combined train+test with masked-token or contrastive objectives over categorical and bucketed numeric features. Freeze or lightly finetune it, extract row embeddings, and feed those embeddings into a simple logistic head or a GBDT stacker together with current handcrafted features.",
+  "expected_effect": "Most likely useful as an ensemble-diversity model rather than a standalone winner; it can capture entity interactions that handcrafted thresholds miss.",
+  "risk": "Deep tabular models often trail boosted trees on single-model CV; runtime and implementation complexity are higher, so keep it as a narrow experiment.",
+  "sources": [
+    "https://huggingface.co/papers/2012.06678",
+    "https://huggingface.co/papers/2106.01342",
+    "https://www.nature.com/articles/s41586-024-08328-6"
+  ]
+}

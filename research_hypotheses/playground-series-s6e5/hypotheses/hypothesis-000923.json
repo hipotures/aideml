@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost Ordered CTR Ensemble",
+  "summary": "Current best AutoGluon run uses LightGBM/XGBoost; CatBoost is purpose-built for categorical variables and ordered target statistics that reduce prediction shift/leakage.",
+  "rationale": "Current best AutoGluon run uses LightGBM/XGBoost; CatBoost is purpose-built for categorical variables and ordered target statistics that reduce prediction shift/leakage. This dataset has important categorical interactions: driver, race, compound, year, stint, and pit count.",
+  "implementation_hint": "Train a separate CatBoostClassifier with categorical columns plus explicit interaction strings such as Race_Compound, Driver_Race, Year_Race, Compound_Stint, Driver_Compound. Use Logloss with eval_metric=AUC, class_weights or scale_pos_weight if positives are rare, and blend its rank-normalized predictions with the best GBM/XGB model.",
+  "expected_effect": "May improve ranking on sparse categorical strategy patterns that tree models with basic category handling underuse.",
+  "risk": "CatBoost can overfit high-cardinality interactions if validation is random; use grouped/OOF validation and early stopping.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://huggingface.co/papers/1706.09516"
+  ]
+}

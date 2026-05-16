@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Compact Public Track-Prior Table Per Race-Year",
+  "summary": "Pirelli and F1 publish track characteristics that directly affect stint length and stop timing: tyre stress, downforce demand, track evolution, compound hardness, and pit-lane time loss.",
+  "rationale": "Pirelli and F1 publish track characteristics that directly affect stint length and stop timing: tyre stress, downforce demand, track evolution, compound hardness, and pit-lane time loss. A small hand-built prior table may recover important omitted race context better than more generic nonlinear features.",
+  "implementation_hint": "Create a race-year lookup with a few scalar priors from official previews or stable track metadata: pit-lane loss bucket, tyre-stress bucket, expected one-stop/two-stop bias, and soft-to-hard degradation tendency. Interact these with Compound, TyreLife, RaceProgress, and estimated laps remaining.",
+  "expected_effect": "May improve generalization across circuits by shifting service-window thresholds in a race-specific way without needing many new raw features.",
+  "risk": "Manual metadata is brittle and can overfit if the table becomes too detailed or inconsistent across years.",
+  "sources": [
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue"
+  ]
+}

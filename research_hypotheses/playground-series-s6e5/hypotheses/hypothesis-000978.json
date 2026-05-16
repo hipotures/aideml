@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a within-lap ranking model for pit urgency",
+  "summary": "Pit calls are partly relative: teams react to competitors in the same race and lap, not just absolute tyre age.",
+  "rationale": "Pit calls are partly relative: teams react to competitors in the same race and lap, not just absolute tyre age. Ranking objectives are designed for learning within-group orderings, and CatBoost supports query/groupwise losses that can learn which driver is most likely to pit among cars sharing a lap context.",
+  "implementation_hint": "Train a second model with `GroupId=(Year,Race,LapNumber)` or a slightly wider race-lap bucket, target still binary, and optimize a ranking loss such as `QuerySoftMax`/`YetiRankPairwise` or LambdaRank in a library that supports grouped ranking. Blend its OOF scores with the standard binary classifier.",
+  "expected_effect": "Should improve relative ordering among simultaneous candidates, which can help ROC AUC even if absolute probabilities are imperfect.",
+  "risk": "Some groups may contain very few positives or none, making ranking noisy; it is a complement, not a replacement, for the binary model.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

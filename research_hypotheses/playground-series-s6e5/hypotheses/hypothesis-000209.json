@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Safety-Car / VSC Detector From Field-Wide Pace Shock",
+  "summary": "Pit timing changes sharply under neutralization because pit-loss economics change, but the dataset has no explicit SC/VSC flag.",
+  "rationale": "Pit timing changes sharply under neutralization because pit-loss economics change, but the dataset has no explicit SC/VSC flag. Motorsport simulation papers and F1 strategy analysis both emphasize yellow-flag windows as pivotal. A weakly supervised latent flag proxy built from synchronized field-wide lap-time shocks could recover part of this missing state without external joins.",
+  "implementation_hint": "Per `Race_Year x LapNumber`, compute robust field aggregates such as median/trimmed mean of `LapTime_Delta`, dispersion, fraction with extreme positive deltas, and abrupt changes versus previous lap. Convert these into a `NeutralizationProb` or binary latent state, then interact it with `LapsRemaining_Est`, `TyreLife`, `Compound`, and `PitStop` history; optionally downweight anomalous laps in main-model training.",
+  "expected_effect": "Could lift generalization on races where the current model misses abrupt strategic regime shifts.",
+  "risk": "Field shocks can also come from weather or local incidents, so the latent label will be noisy and may hurt if treated too confidently.",
+  "sources": [
+    "https://www.mdpi.com/2076-3417/10/12/4229",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

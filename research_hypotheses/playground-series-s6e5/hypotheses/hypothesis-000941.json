@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-Ensembled Categorical Hazard Models",
+  "summary": "Current best appears feature-engineering-heavy, likely with one dominant tabular learner.",
+  "rationale": "Current best appears feature-engineering-heavy, likely with one dominant tabular learner. CatBoost’s ordered categorical handling and monotonic/regularized GBMs can capture different biases for high-cardinality Driver/Race interactions and physically monotone tyre-wear effects.",
+  "implementation_hint": "Train several fold-consistent models on the same engineered table: CatBoost with native Driver/Race/Compound and combinations; LightGBM/XGBoost with monotone constraints on TyreLife, degradation, old-tyre ratios, and laps-remaining directions; optionally ExtraTrees for nonlinear diversity. Blend OOF-tuned rank-normalized predictions rather than raw probabilities.",
+  "expected_effect": "May gain small but reliable AUC by reducing model-specific ranking errors without requiring new labels or full script rewrite.",
+  "risk": "Monotone constraints can over-restrict valid cases such as late-race no-stop decisions; tune constrained models as ensemble members, not replacements.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html"
+  ]
+}

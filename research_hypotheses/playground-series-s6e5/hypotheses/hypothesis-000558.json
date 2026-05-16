@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual Stop-Now vs Stop-Later Features",
+  "summary": "F1 strategy literature emphasizes undercut/overcut payoffs, tyre warm-up, pit-loss, and competitor interaction rather than raw tyre age alone.",
+  "rationale": "F1 strategy literature emphasizes undercut/overcut payoffs, tyre warm-up, pit-loss, and competitor interaction rather than raw tyre age alone. A simple approximate cost-to-go margin can expose whether stopping now is strategically dominant even without a full simulator.",
+  "implementation_hint": "Estimate race-level pit-loss and fresh-tyre warm-up penalty from train data, then create features like `cost(stop_now)-cost(stop_next_lap)`, `undercut_gain_est`, `overcut_risk_est`, and adjacent-position threat scores using same-lap rivals’ tyre-age/compound percentiles.",
+  "expected_effect": "Should improve timing decisions near the pit window where static tyre-life ratios miss tactical context.",
+  "risk": "No true gap-to-car data is provided, so payoff approximations may be noisy or circuit-specific.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://econpapers.repec.org/article/sprcejnor/v_3a31_3ay_3a2023_3ai_3a1_3ad_3a10.1007_5fs10100-022-00806-4.htm",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

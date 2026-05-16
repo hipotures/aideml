@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost rank-ensemble with raw categoricals and segment specialists",
+  "summary": "The data has high-cardinality Driver plus interaction categories, and CatBoost’s ordered target statistics are designed to reduce target leakage from categorical encodings.",
+  "rationale": "The data has high-cardinality Driver plus interaction categories, and CatBoost’s ordered target statistics are designed to reduce target leakage from categorical encodings. A rank-averaged ensemble of CatBoost with the current LightGBM/AutoGluon-style model can add diversity without another large feature expansion.",
+  "implementation_hint": "Train CatBoostClassifier with raw Driver/Race/Compound and engineered numeric features, using ordered boosting, class weights or scale_pos_weight, AUC eval metric, and GroupKFold by Year/Race. Blend by rank averaging with the current best model; optionally add specialist models for wet compounds, dry compounds, early/mid/late race bins.",
+  "expected_effect": "Likely modest but robust AUC gain from better categorical handling and model diversity, especially for rare drivers/races and interaction-heavy contexts.",
+  "risk": "CatBoost may be slower; careless target/frequency encodings alongside CatBoost CTRs can duplicate leakage-prone signals, so compare raw-categorical and engineered-only variants.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://www.emergentmind.com/topics/catboost-modeling-pipeline"
+  ]
+}

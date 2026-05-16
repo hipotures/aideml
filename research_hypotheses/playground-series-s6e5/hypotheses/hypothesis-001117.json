@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a tiny sequence-model expert and blend only its OOF ranks",
+  "summary": "A recent F1 pit-stop study found sequence models, especially Bi-LSTM, outperform other deep architectures for pit timing because they capture stint history and temporal dependencies that trees compress poorly.",
+  "rationale": "A recent F1 pit-stop study found sequence models, especially Bi-LSTM, outperform other deep architectures for pit timing because they capture stint history and temporal dependencies that trees compress poorly. Your current stack is almost entirely boosted-tree plus post-hoc smoothing, so a lightweight sequential expert could add orthogonal signal without replacing the main tabular models.",
+  "implementation_hint": "Sort by `Year,Race,Driver,Stint,LapNumber`; train a small Bi-LSTM or TCN on per-driver stint sequences using only causal per-lap inputs and masks; emit next-lap pit probabilities OOF; use it only as a third ensemble expert via rank blending with XGB/Cat. Keep windows short (for example last 6-12 laps) and compare pure-driver sequences vs driver+race-lap context tokens.",
+  "expected_effect": "Small but real lift if the gain comes from history shape rather than single-row state; most likely helps edge cases near pit windows where recent pace/degradation trajectory matters.",
+  "risk": "Neural expert may overfit sparse drivers/races, and grouped CV can still flatter it if sequence boundaries are mishandled. Use strict chronology inside each fold and no future padding.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://research.ibm.com/publications/tabular-transformers-for-modeling-multivariate-time-series"
+  ]
+}

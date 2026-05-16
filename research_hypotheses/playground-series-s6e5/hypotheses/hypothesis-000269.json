@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use purged sequential validation and embargoed OOF encodings as model-selection guardrails",
+  "summary": "Because the label asks about the next lap, adjacent rows within a driver stint have overlapping information.",
+  "rationale": "Because the label asks about the next lap, adjacent rows within a driver stint have overlapping information. Standard grouped CV can still overstate performance if train rows sit immediately before/after test rows in the same chronological neighborhood.",
+  "implementation_hint": "Evaluate candidates with race-driver sequential splits that purge nearby laps around each validation block and build every target/frequency/group statistic strictly OOF. Compare this against current CV before trusting tiny gains above 0.9511.",
+  "expected_effect": "May not raise local CV directly, but should improve leaderboard transfer and help reject features that only exploit overlap leakage.",
+  "risk": "Stricter CV can lower apparent score and slow search; useful mainly as a filter for deciding which ideas are real.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4366573"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Permutation-invariant field-context model for opponent pressure, then blend under purged forward CV",
+  "summary": "Motorsport strategy papers emphasize that pit decisions depend on opponents and race situation, not just one car’s tyre state.",
+  "rationale": "Motorsport strategy papers emphasize that pit decisions depend on opponents and race situation, not just one car’s tyre state. Deep Sets and Set Transformer are built for exactly this kind of order-invariant group context. For this dataset, the natural set is all cars on the same race-lap.",
+  "implementation_hint": "Build a lightweight Deep Sets or Set Transformer expert over each race-lap set: per-car encoder on raw row features, pooled set context, then per-car prediction from self features plus pooled/attention context. Include relative features such as tyre-life percentile, degradation percentile, compound share, and nearby-position context. Select or stack this expert only using purged forward folds with a lap/race embargo.",
+  "expected_effect": "Adds a new opponent-aware view that tree models with hand-crafted aggregates may miss, and should be especially useful on synchronized pit windows.",
+  "risk": "More engineering and higher variance than tree models; if the set model is too small it adds nothing, too large it overfits.",
+  "sources": [
+    "https://proceedings.mlr.press/v97/lee19d.html",
+    "https://huggingface.co/papers/1703.06114",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

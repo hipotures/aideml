@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Lap-bag quantification and probability reconciliation",
+  "summary": "A pit decision is not only individual; each (Year,Race,LapNumber) slice has a latent pit-count/prevalence.",
+  "rationale": "A pit decision is not only individual; each (Year,Race,LapNumber) slice has a latent pit-count/prevalence. Quantification literature shows averaging or adjusting probabilities can estimate class prevalence under shift better than raw classify-and-count, which fits this competition because rows arrive in natural lap-sized bags.",
+  "implementation_hint": "Keep the current individual model, then add a second model that predicts expected pit prevalence or pit count for each lap bag. Reconcile row probabilities so each bag’s summed probability matches the bag estimate, with shrinkage toward the raw scores for small or noisy bags. Test both simple multiplicative scaling and a learned bag-level correction using OOF only.",
+  "expected_effect": "Should improve same-lap ordering consistency and reduce over/under-prediction on unusual laps, especially if public test pit frequency differs from train.",
+  "risk": "If the bag-count model is noisy, reconciliation can wash out useful individual discrimination and hurt AUC on sparse-pit laps.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10618-024-01014-1",
+    "https://pubmed.ncbi.nlm.nih.gov/11747533/",
+    "https://www.researchgate.net/publication/220765862_Quantification_via_Probability_Estimators"
+  ]
+}

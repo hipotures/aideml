@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recast as discrete-time hazard at the stint level instead of plain binary next-lap classification",
+  "summary": "This target is naturally a discrete event-time problem: each row is the hazard of a stop on the next lap given survival up to now.",
+  "rationale": "This target is naturally a discrete event-time problem: each row is the hazard of a stop on the next lap given survival up to now. Discrete-time survival work shows standard classifiers can outperform continuous-time alternatives when trained on person-period style hazard targets, and hazard parameterizations often beat PMF-style formulations.",
+  "implementation_hint": "Create stint-level sequences per `(Year,Race,Driver,Stint)` and train a hazard model with lap-bin features plus cumulative survival context, e.g. `p(stop next lap | not yet stopped this stint)`. Add monotone constraints on tyre-age or degradation-derived features if the learner supports them. Blend the hazard score with the current classifier rather than replacing it immediately.",
+  "expected_effect": "Should better model sharply rising end-of-stint risk and produce cleaner probabilities near pit windows.",
+  "risk": "If the current label already behaves almost Markovian with existing features, the reformulation may add complexity without clear gain.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8232898/"
+  ]
+}

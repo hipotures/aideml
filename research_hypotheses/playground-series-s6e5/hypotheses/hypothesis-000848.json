@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Neutralization Shock Detector 2.0",
+  "summary": "Official F1 guidance notes that Safety Car/VSC windows change pit economics immediately because stops become cheaper.",
+  "rationale": "Official F1 guidance notes that Safety Car/VSC windows change pit economics immediately because stops become cheaper. Prior research already pointed toward neutralization proxies; the stronger version is to infer hidden race control shocks from cross-sectional anomalies instead of only from single-car pace features.",
+  "implementation_hint": "For each race-lap, compute robust field-level shock features: median and dispersion jumps in LapTime (s), LapTime_Delta, Position_Change, and contemporaneous PitStop rate; then interact this shock score with pit-loss and stop-window features. Validate with strict race-level splits and an embargo gap around adjacent laps.",
+  "expected_effect": "Should improve detection of opportunistic cheap-stop laps that simple tyre-life heuristics miss.",
+  "risk": "Rain, incidents, and testing runs can create similar signatures, so the detector may conflate different regimes.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

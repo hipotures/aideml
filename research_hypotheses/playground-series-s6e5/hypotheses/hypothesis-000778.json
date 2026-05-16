@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-preserving OOF ensemble with regime-specific weights",
+  "summary": "Under shift, ensembles are often more reliable than single models, but isotonic calibration can change ROC-AUC by introducing ties.",
+  "rationale": "Under shift, ensembles are often more reliable than single models, but isotonic calibration can change ROC-AUC by introducing ties. For this competition, preserving ordering matters more than perfectly calibrated probabilities.",
+  "implementation_hint": "Blend orthogonal experts only from strict OOF predictions: current GBDT classifier, lap-ranker, survival expert, and CatBoost specialist. Optimize convex weights by regime (`dry slicks`, `wet/intermediate`, `Monaco 2025`, maybe early/mid/late race). Prefer rank averaging or sigmoid/temperature-style post-processing; avoid isotonic on the final submission blend unless it proves AUC-positive.",
+  "expected_effect": "Usually the safest way to harvest small gains from diverse objectives without overcommitting to one inductive bias.",
+  "risk": "If OOF generation is not perfectly clean, the blend will look better locally than on Kaggle; regime slicing can overfit when some subsets are small.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://papers.neurips.cc/paper/9547-can-you-trust-your-models-uncertainty-evaluating-predictive-uncertainty-under-dataset-shift",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE"
+  ]
+}

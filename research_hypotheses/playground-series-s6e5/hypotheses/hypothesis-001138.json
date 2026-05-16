@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Conditional Choice-Set Expert Instead Of Plain Binary Classification",
+  "summary": "Pit decisions are often relative choices among drivers available on a lap, not independent Bernoulli events.",
+  "rationale": "Pit decisions are often relative choices among drivers available on a lap, not independent Bernoulli events. Discrete-choice and Plackett-Luce models are designed for grouped alternatives and partial rankings, which is structurally closer to “who pits now?” than rowwise classification.",
+  "implementation_hint": "Build a compact expert where each race-lap is a choice set. Use conditional logit / conditional multinomial logit or a Plackett-Luce-style approximation on lap-level grouped candidates, with features expressed as relative-to-lap or relative-to-cohort deltas. Convert fitted group probabilities back to per-row scores and blend only on ambiguous slices.",
+  "expected_effect": "May capture field-relative utility and competition effects with different bias than boosted trees, improving ensemble diversity.",
+  "risk": "Choice-set misspecification is the main trap: some laps have zero or multiple pitters, and naive independence assumptions can break calibration.",
+  "sources": [
+    "https://www.statsmodels.org/stable/generated/statsmodels.discrete.conditional_models.ConditionalMNLogit.html",
+    "https://www.statsmodels.org/dev/generated/statsmodels.discrete.conditional_models.ConditionalLogit.html",
+    "https://link.springer.com/article/10.1007/s00180-020-00959-3",
+    "https://www.microsoft.com/en-us/research/publication/bayesian-inference-for-plackett-luce-ranking-model/"
+  ]
+}

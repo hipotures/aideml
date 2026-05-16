@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Empirical Fresh-Tyre Premium Features Instead Of Static Compound Lifespan Rules",
+  "summary": "Public F1 strategy writeups stress that undercut vs overcut depends on track-specific warm-up and degradation, not just nominal compound life.",
+  "rationale": "Public F1 strategy writeups stress that undercut vs overcut depends on track-specific warm-up and degradation, not just nominal compound life. Your current best features use fixed expected-life windows; a stronger test is to estimate the race-specific value of fresh tyres from observed laps in that same event.",
+  "implementation_hint": "For each `Race_Year x Compound x LapNumber` or broader race-phase bucket, estimate the recent pace residual of cars just after a pit stop versus cars staying out, using only past laps within fold-safe ordering. Build features like `FreshTyrePremium`, `OutLapPenalty`, `StaleTyrePenalty`, and `UndercutStrengthIndex`; interact them with the driver’s current stint age and position.",
+  "expected_effect": "Should capture why the same tyre age triggers a stop in one race but not another, especially across low-deg overcut tracks versus high-deg undercut tracks.",
+  "risk": "Requires strict causal construction; if computed with future laps or full-race statistics it will leak badly.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-mexico-city.7iKvaSoen2IUbB1S9LaaV"
+  ]
+}

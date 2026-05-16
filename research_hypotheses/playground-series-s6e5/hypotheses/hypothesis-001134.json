@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "True same-lap ranking expert with CatBoost query losses",
+  "summary": "Current code only post-processes classifier scores into query-aware ranks; it does not train a model with a ranking objective.",
+  "rationale": "Current code only post-processes classifier scores into query-aware ranks; it does not train a model with a ranking objective. CatBoost supports pairwise and groupwise ranking losses with `GroupId`, which is a more direct fit for choosing which drivers on a given race-lap are most likely to pit next.",
+  "implementation_hint": "Create groups by `(Year,Race,LapNumber)`. Train a separate CatBoost ranker with `PairLogit`, `YetiRankPairwise`, or `QueryCrossEntropy`; label positives as drivers who pit next lap within the same group. Start with pair generation limited to positive-vs-negative pairs inside each group, then blend the ranker output with the existing classifier ensemble by regime or disagreement.",
+  "expected_effect": "Should improve relative ordering within crowded race-laps, especially when absolute probabilities are noisy but intra-lap ordering is learnable.",
+  "risk": "Very easy to overfit sparse groups or distort global calibration. Small groups and all-negative groups need careful handling, and ranking outputs should be blended as ranks or z-scores rather than treated as calibrated probabilities.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/parameter-tuning.html"
+  ]
+}

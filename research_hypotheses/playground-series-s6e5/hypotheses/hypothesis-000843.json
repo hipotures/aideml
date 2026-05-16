@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model pit-now versus wait-one-lap as an explicit counterfactual value gap",
+  "summary": "Public F1 strategy explanations and recent game-theoretic F1 work both frame the decision as relative action value, not absolute pit probability.",
+  "rationale": "Public F1 strategy explanations and recent game-theoretic F1 work both frame the decision as relative action value, not absolute pit probability. The strongest missing signal may be whether waiting one more lap improves or harms the competitive outcome after warm-up, degradation, and pit-loss are considered.",
+  "implementation_hint": "Create two auxiliary predictions: expected cost of staying out one lap and expected benefit/cost of pitting now. Use inputs like compound, tyre age, race progress, local field pace context, and your existing finish-feasibility features, then feed the out-of-fold difference 'pit_now_value - wait_1_value' into the main classifier.",
+  "expected_effect": "Should sharpen the decision boundary near true pit windows where current features know pressure is rising but not whether the optimum is now or next lap.",
+  "risk": "Can collapse into a re-labeled version of the target if built with future-aware labels or non-causal aggregates; keep it strictly one-step and fold-safe.",
+  "sources": [
+    "https://www.motorsport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10500434/",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://f1chronicle.com/how-the-undercut-works-in-f1/"
+  ]
+}

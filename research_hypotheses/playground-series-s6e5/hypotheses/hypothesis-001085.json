@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Local competence-gated blending plus beta or Venn-Abers calibration",
+  "summary": "Dynamic ensemble selection literature shows that different classifiers dominate in different local regions of feature space.",
+  "rationale": "Dynamic ensemble selection literature shows that different classifiers dominate in different local regions of feature space. Your current blend is mostly global or coarse-regime based; a lightweight competence gate can route between XGB, CatBoost, sequence, or set models per sample, then calibrate the routed score with a method less brittle than Platt scaling.",
+  "implementation_hint": "Using OOF predictions, train a meta-model to predict which base learner is locally most competent from regime, density, and disagreement features. After gated blending, compare raw, beta-calibrated, and Venn-Abers-calibrated probabilities on embargoed OOF folds.",
+  "expected_effect": "Better use of complementary models under distribution shift and less overconfident tails, which can also improve any later pseudo-labeling or thresholded post-processing.",
+  "risk": "Easy to overfit if the gate is trained on the same folds it evaluates; calibration may not move AUC much unless it changes ranking through local reordering.",
+  "sources": [
+    "https://www.microsoft.com/en-us/research/publication/ngboost-natural-gradient-boosting-for-probabilistic-prediction/",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x",
+    "https://www.emergentmind.com/papers/1810.01270"
+  ]
+}

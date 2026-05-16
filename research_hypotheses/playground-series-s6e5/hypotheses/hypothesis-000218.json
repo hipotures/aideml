@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leakage-safe latent degradation state features",
+  "summary": "Recent F1 research models tyre pace as a latent state with pit stops as structural resets and shows rolling-origin gains over AR baselines.",
+  "rationale": "Recent F1 research models tyre pace as a latent state with pit stops as structural resets and shows rolling-origin gains over AR baselines. That suggests the current handcrafted degradation proxies are missing a hidden state capturing pace loss beyond raw `TyreLife` and `Cumulative_Degradation`.",
+  "implementation_hint": "Within each `Race_Year-Driver-Stint`, fit only backward-looking local state features such as EWMA pace loss, residualized lap-time delta after race-lap median removal, slope/acceleration of degradation, and post-reset recovery depth; feed those latent-state proxies into the existing tabular model.",
+  "expected_effect": "Should sharpen decision boundaries near true cliff laps and distinguish long but stable stints from long and collapsing stints.",
+  "risk": "Easy to leak if the smoother uses future laps; keep all calculations strictly causal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

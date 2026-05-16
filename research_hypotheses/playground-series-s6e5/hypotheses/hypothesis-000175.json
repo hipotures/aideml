@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only latent tyre-state feature via filtered degradation residuals",
+  "summary": "Recent F1 work models lap time as fuel effect plus latent tyre pace with pit-stop resets.",
+  "rationale": "Recent F1 work models lap time as fuel effect plus latent tyre pace with pit-stop resets. Your current features use observed degradation directly, but not a filtered hidden state that separates temporary noise from true stint decay.",
+  "implementation_hint": "For each driver-race stint, estimate a simple one-dimensional filtered state from past laps only: residual lap pace after subtracting race-lap median, compound baseline, and lap progress trend; reset state after `PitStop=1`; expose filtered level, slope, acceleration, and uncertainty. Use a lightweight Kalman/state-space approximation rather than a full Bayesian fit.",
+  "expected_effect": "Captures whether the car is genuinely ‘falling off the cliff’ versus just seeing one bad lap, improving stop timing precision.",
+  "risk": "Bad normalization can confound traffic or weather with tyre state; full-sample smoothing would leak, so filtering must be causal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.researchgate.net/publication/398227195_A_State-Space_Approach_to_Modeling_Tire_Degradation_in_Formula_1_Racing",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

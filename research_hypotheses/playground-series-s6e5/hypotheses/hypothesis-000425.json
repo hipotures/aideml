@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit SC/VSC and race-control enrichment via FastF1",
+  "summary": "FastF1 provides lap-aligned track-status and race-control streams, and official F1 strategy analysis notes that Safety Cars materially reduce pit-stop cost.",
+  "rationale": "FastF1 provides lap-aligned track-status and race-control streams, and official F1 strategy analysis notes that Safety Cars materially reduce pit-stop cost. Current features mostly infer caution state indirectly from lap-time anomalies.",
+  "implementation_hint": "Merge per-race lap status features such as current flag state, status changed this lap, laps since SC/VSC started, VSC-ending flag, and recent race-control events. Interact them with compound, TyreLife, and exact laps remaining.",
+  "expected_effect": "Should capture cheap-stop windows and sudden pit waves better than purely internal telemetry surrogates, especially in chaotic races.",
+  "risk": "Status-to-lap alignment must be causal; using messages first seen after the lap boundary would leak. Rare caution regimes can also overfit.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_3_-_2024-12-11.pdf",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8"
+  ]
+}

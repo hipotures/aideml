@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace raw degradation heuristics with a causal latent wear filter",
+  "summary": "Recent F1 tire-degradation work found Bayesian state-space modeling with pit-stop resets more predictive than an AR(1) benchmark.",
+  "rationale": "Recent F1 tire-degradation work found Bayesian state-space modeling with pit-stop resets more predictive than an AR(1) benchmark. That matches this task: pit probability is driven by latent tire state, not just observed `TyreLife`, `LapTime_Delta`, or cumulative degradation.",
+  "implementation_hint": "Create an online per-driver-race-stint filter with state reset on `PitStop`. Even a simple Kalman-style latent state can emit causal features: filtered wear level, one-step wear slope, innovation residual, and posterior uncertainty. Feed those into the existing tree pipeline instead of only hand-built window proxies.",
+  "expected_effect": "Should sharpen decision boundaries around undercut/overcut windows and late-stint nonlinear deterioration.",
+  "risk": "Safety-car laps, traffic, and outlier lap times can contaminate the latent state unless robust clipping or heavy-tail residual handling is added.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://docs.fastf1.dev/api_reference/api_autogen/fastf1.core.Laps.html",
+    "https://docs.fastf1.dev/_modules/fastf1/core.html"
+  ]
+}

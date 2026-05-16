@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Refine mandatory-compound debt with wet exemption",
+  "summary": "Current best solutions count prior slick compounds, but FIA rules exempt races where a driver used intermediate or wet tyres from the dry two-compound requirement.",
+  "rationale": "Current best solutions count prior slick compounds, but FIA rules exempt races where a driver used intermediate or wet tyres from the dry two-compound requirement. This regime switch can change late-race pit urgency, especially in mixed-condition races.",
+  "implementation_hint": "Per Race_Year-Driver, track whether any INTERMEDIATE/WET has appeared so far, number of distinct dry slick compounds used after pit-lane exit, current dry-compound debt only when no wet tyre has appeared, and interactions with LapsRemaining_Est and CurrentTyreCanReachFinish.",
+  "expected_effect": "Should reduce false positives in wet-affected races and improve late dry-race positives where the driver still owes a legal compound change.",
+  "risk": "The competition data may encode simplified or synthetic rules; validate whether wet-regime features help only on grouped folds before trusting them.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_1_-_2023-09-26.pdf",
+    "https://docs.fastf1.dev/data_reference/index.html"
+  ]
+}

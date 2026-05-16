@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal latent tire-state features from a state-space filter",
+  "summary": "A recent F1 tire-degradation paper models stint pace as a latent state with pit-stop resets and shows it beats an AR(1) benchmark across rolling-origin race validation.",
+  "rationale": "A recent F1 tire-degradation paper models stint pace as a latent state with pit-stop resets and shows it beats an AR(1) benchmark across rolling-origin race validation. Your current features use observed deltas and ratios, but not an explicit latent degradation level, slope, innovation shock, or reset strength.",
+  "implementation_hint": "Within each CV fold, fit a simple causal local-linear-trend/Kalman-style model per driver-stint using only past laps; emit fold-safe features such as latent tire pace, latent degradation slope, one-step-ahead residual, post-pit reset magnitude, and compound-specific slope. Feed those features into the existing tree stack; do not fit the filter on combined train+test.",
+  "expected_effect": "Low-correlation signal that should help especially on long stints, noisy laps, and compound transitions where observed lap-time deltas are unstable.",
+  "risk": "Easy to leak future information if smoothing is bidirectional or fit on full stints. A full Bayesian fit may be too slow; start with a lightweight causal filter.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

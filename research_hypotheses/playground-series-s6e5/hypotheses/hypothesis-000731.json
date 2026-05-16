@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recurrent-Event Frailty Specialist for Driver/Race Heterogeneity",
+  "summary": "Pit stops are repeated events, and recurrent-event literature emphasizes subject-specific heterogeneity and time-varying effects that plain global classifiers miss.",
+  "rationale": "Pit stops are repeated events, and recurrent-event literature emphasizes subject-specific heterogeneity and time-varying effects that plain global classifiers miss. In this dataset, drivers, races, and compounds plausibly have different latent stop propensities even after controlling for tyre age and race progress.",
+  "implementation_hint": "Train a discrete-time hazard or mixed-effects logistic specialist with spline-like terms for `TyreLife`, `RaceProgress`, and degradation, plus shrinkage random effects or cross-fitted empirical-Bayes encodings for `Driver`, `Race`, and `Compound x Stint`. Use it as an orthogonal model family and blend its OOF probabilities.",
+  "expected_effect": "Improved handling of rare drivers/races and repeated-stop behavior, especially where the main model currently uses only frequency encodings.",
+  "risk": "Mixed-effects fitting can be slower and brittle at this scale, and unseen IDs need strong shrinkage defaults to avoid noisy extrapolation.",
+  "sources": [
+    "https://pubmed.ncbi.nlm.nih.gov/11763543/",
+    "https://academic.oup.com/biometrics/article/75/4/1264/7529265",
+    "https://pubmed.ncbi.nlm.nih.gov/27142981/"
+  ]
+}

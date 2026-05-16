@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace random StratifiedKFold with purged race-wise walk-forward CV",
+  "summary": "`PitNextLap` uses a forward 1-lap horizon, so random folds likely leak adjacent-lap and same-race structure across train/valid.",
+  "rationale": "`PitNextLap` uses a forward 1-lap horizon, so random folds likely leak adjacent-lap and same-race structure across train/valid. Public time-series guidance recommends purge/embargo when labels overlap in time; here the analogous risk is same `Year/Race/Driver` trajectories appearing on both sides of the split.",
+  "implementation_hint": "Build folds by `Year,Race` or contiguous race blocks, keep lap order, and embargo at least one future lap for each `Year,Race,Driver` sequence around validation boundaries. Re-score existing feature sets under this CV before trusting any gain.",
+  "expected_effect": "Usually lowers local CV first, but should improve leaderboard correlation and prevent overfitting to same-race patterns.",
+  "risk": "If test is IID rather than future-like, stricter CV can understate achievable LB and slow iteration.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://ml4trading.io/docs/diagnostic/user-guide/cross-validation/"
+  ]
+}

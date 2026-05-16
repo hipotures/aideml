@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Race-lap ranking model blended by rank averaging",
+  "summary": "ROC AUC depends only on ordering, so a model trained to rank likely pitters within each race-lap context can complement probability models.",
+  "rationale": "ROC AUC depends only on ordering, so a model trained to rank likely pitters within each race-lap context can complement probability models. XGBoost and LightGBM both support pairwise/listwise ranking objectives over grouped samples, which is a natural adjacent-competition pattern for AUC-heavy tabular tasks.",
+  "implementation_hint": "Train a second model with groups defined by Year-Race-LapNumber so each lap ranks drivers by immediate pit likelihood. Use binary labels as relevance, test `rank:pairwise` or `rank:ndcg`, then blend its OOF ranks with CatBoost/XGBoost classifier OOF ranks instead of raw probabilities. Evaluate pure rank-average and a small stacked blend.",
+  "expected_effect": "Can improve ordering near ambiguous pit-wave laps even if calibration worsens, which is acceptable for ROC AUC.",
+  "risk": "Some groups may have zero positives, and ranking objectives can be unstable on sparse groups; implementation must skip or downweight empty-information groups.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

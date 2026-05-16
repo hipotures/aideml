@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fold-safe empirical pit-hazard tables",
+  "summary": "Pit timing is a discrete-time hazard problem, and public survival references suggest flexible discrete-time models often beat simpler continuous assumptions.",
+  "rationale": "Pit timing is a discrete-time hazard problem, and public survival references suggest flexible discrete-time models often beat simpler continuous assumptions. A shrinkage hazard table can learn real pit windows from data instead of relying on fixed 24/33/43-lap constants.",
+  "implementation_hint": "Create out-of-fold hazard features for binned `TyreLife`, `LapsRemaining_Est`, `Compound`, `Stint`, `RaceProgress`, and wet/slick regime. Smooth sparse cells hierarchically back to coarser bins and feed both raw hazards and hazard-minus-global-baseline features into the main tabular model.",
+  "expected_effect": "Better local ranking around true pit windows, especially where the current handcrafted life constants are too rigid by race phase or compound.",
+  "risk": "Easy to leak if tables are fit on full data; wet compounds and rare late-race bins need aggressive shrinkage.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

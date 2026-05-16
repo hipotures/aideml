@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Rank Calibration",
+  "summary": "Pit decisions are competitive events within a race lap: only a small subset of drivers pit next lap, and strategy sources emphasize gaps, traffic, undercut/overcut, and pit delta rather than independent row probabilities.",
+  "rationale": "Pit decisions are competitive events within a race lap: only a small subset of drivers pit next lap, and strategy sources emphasize gaps, traffic, undercut/overcut, and pit delta rather than independent row probabilities. ROC AUC rewards ordering, so rank-shaping within race context may help.",
+  "implementation_hint": "After prediction, within each Race-Year-LapNumber group compute percentile rank of model score and blend final_score = 0.8*raw + 0.2*group_rank_score, optionally damped for groups with very few cars. Also add pre-model features for race-lap score priors: tyre-life percentile, pace-residual percentile, and position percentile.",
+  "expected_effect": "Could improve global AUC by sharpening the ordering among drivers exposed to the same lap-level pit opportunity.",
+  "risk": "May hurt if test rows are not complete race-lap grids or if probability calibration matters for leaderboard despite AUC being rank-based.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html"
+  ]
+}

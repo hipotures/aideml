@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-preserving sigmoid/beta stack instead of isotonic final calibration",
+  "summary": "For ROC AUC, monotone transforms are safe but isotonic can introduce ties and alter ranking; scikit-learn notes this explicitly.",
+  "rationale": "For ROC AUC, monotone transforms are safe but isotonic can introduce ties and alter ranking; scikit-learn notes this explicitly. Beta calibration literature shows sigmoid can be misspecified, while beta calibration is a stronger parametric alternative. That makes the best low-risk ensemble path a logits-only stack with strictly monotone final calibration.",
+  "implementation_hint": "Train 2-4 diverse OOF base learners, such as the current feature-heavy GBDT, a native-categorical CatBoost variant, and a lighter model on mostly raw features. Stack their OOF logits with a tiny logistic or beta-calibration layer; avoid isotonic in the final submission path if leaderboard metric is pure AUC. Compare raw blend vs sigmoid vs beta on OOF AUC and tie counts.",
+  "expected_effect": "Can harvest complementary errors from model diversity without sacrificing ranking quality at the final calibration stage.",
+  "risk": "If base models are too correlated, stacking adds variance for negligible gain. Beta calibration may require a custom implementation.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ]
+}

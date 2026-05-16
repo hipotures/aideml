@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "FIA Rule-State Stop-Debt Automaton",
+  "summary": "The April 30, 2025 FIA Sporting Regulations encode hard strategic constraints that the current features only approximate: normal dry races require two dry specs, wet/intermediate usage changes that requirement, and Monaco 2025 uniquely requires three tyre sets.",
+  "rationale": "The April 30, 2025 FIA Sporting Regulations encode hard strategic constraints that the current features only approximate: normal dry races require two dry specs, wet/intermediate usage changes that requirement, and Monaco 2025 uniquely requires three tyre sets. A deterministic \"minimum stops still owed\" state should help on late-race rows where pace says stay out but rules still force a stop.",
+  "implementation_hint": "Build prior-only features per Driver x Race: slick compounds already used, pit-set count so far, current compound family, dry-vs-wet proxy, `must_use_new_compound`, `min_future_stops_owed`, `can_finish_but_owes_stop`, and a Monaco-2025-only branch for the three-set rule.",
+  "expected_effect": "Sharper ranking near race end and fewer false negatives on mandatory strategic stops.",
+  "risk": "Easy to misapply if Monaco 2025 rows are absent or if wet-race exemptions are encoded with future information; gate only on current-row race metadata and past stops.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.fia.com/news/first-world-motor-sport-council-2025-heralds-start-vision-2030-and-announces-strategic-overhaul"
+  ]
+}

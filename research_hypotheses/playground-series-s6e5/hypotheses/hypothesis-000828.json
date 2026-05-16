@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leak-Safe Hierarchical Categorical Expert",
+  "summary": "Driver, Race, Race_Year, and compound interactions are high-cardinality and likely carry strong priors, but naive encodings can leak badly in repeated sequential rows.",
+  "rationale": "Driver, Race, Race_Year, and compound interactions are high-cardinality and likely carry strong priors, but naive encodings can leak badly in repeated sequential rows. Ordered boosting and internal cross-fitting were designed exactly for this problem and are more principled than plain frequency features.",
+  "implementation_hint": "Test either CatBoost with ordered boosting or explicit cross-fitted target encodings for hierarchical keys such as Driver, Race, Race_Year, Driver_Compound, Driver_Race, and Race_Compound. Validate with grouped chronological folds plus a small embargo around held-out race segments so repeated near-duplicate states do not leak through encodings.",
+  "expected_effect": "Can recover signal from team/driver/circuit habits that current frequency features leave on the table, while reducing optimistic CV from category leakage.",
+  "risk": "If folds are not strictly grouped and causal, CV may look better than leaderboard reality; if grouped too harshly, the expert may underfit rare drivers.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://docs.mizar.com/mizar/mizarlabs/model/combinatorial-purged-cross-validation"
+  ]
+}

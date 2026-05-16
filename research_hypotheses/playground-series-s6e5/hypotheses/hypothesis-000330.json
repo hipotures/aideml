@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend specialists with regime-gated rank averaging, not generic calibration",
+  "summary": "Official scikit-learn docs note calibration generally should not improve ROC AUC, and isotonic can even change ranks via ties.",
+  "rationale": "Official scikit-learn docs note calibration generally should not improve ROC AUC, and isotonic can even change ranks via ties. For this metric, the better use of extra modeling complexity is regime-gated blending of orthogonal experts, not post-hoc calibration for its own sake.",
+  "implementation_hint": "Train a small set of decorrelated experts: baseline binary GBM, competing-risks hazard, and regime/cascade expert. Generate strictly out-of-fold predictions by race groups, then learn simple gate weights by inferred regime and race phase. Use rank averaging or sigmoid/logit stacking; avoid isotonic unless it proves LB-positive.",
+  "expected_effect": "Improves robustness by letting rare-regime experts contribute only when relevant while preserving the strong baseline ordering on ordinary green-flag dry laps.",
+  "risk": "Too many experts or flexible gates will overfit the CV split. Keep the gate low-capacity, require fold-pure meta-features, and verify that any blend beats the best single model on grouped CV.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-survival.readthedocs.io/en/latest/user_guide/competing-risks.html",
+    "https://www.formula1.com/en/latest/article/palmer-how-bad-timing-stopped-pole-sitter-perez-adding-to-his-win-tally-in.7CyCAlZg0UR2tJHXjfhI7i"
+  ]
+}

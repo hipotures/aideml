@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal sequence teacher as an ensemble feature",
+  "summary": "Public F1 pit-stop decision research uses time-series deep models because pit decisions depend on recent trajectory, not only a row snapshot.",
+  "rationale": "Public F1 pit-stop decision research uses time-series deep models because pit decisions depend on recent trajectory, not only a row snapshot. A causal sequence teacher can add diversity to the current tabular AutoGluon-style approach.",
+  "implementation_hint": "Build rolling windows of the last 5-8 laps per driver-race-stint with numeric deltas, compound, position, and pit history. Train a small GRU/TCN or lag-stacked LightGBM using race/year folds, then feed out-of-fold teacher probabilities into the main tabular model or blend predictions.",
+  "expected_effect": "May capture abrupt pre-pit signatures such as worsening residual pace or position loss that hand-built window features miss.",
+  "risk": "Bidirectional models or windows built before splitting can leak future information; class imbalance can make the teacher overconfident without grouped CV.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://arxiv.org/abs/1706.09516",
+    "https://arxiv.org/abs/2512.06932"
+  ]
+}

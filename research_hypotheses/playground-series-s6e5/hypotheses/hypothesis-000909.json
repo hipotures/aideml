@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-Stage Structural-Zero Gate For Pit Windows",
+  "summary": "Most laps are obvious non-pit laps, so treating every row as the same binary problem may dilute the rare-event signal.",
+  "rationale": "Most laps are obvious non-pit laps, so treating every row as the same binary problem may dilute the rare-event signal. Two-stage zero-inflated or hurdle formulations explicitly separate structural negatives from cases that are actually at risk.",
+  "implementation_hint": "Stage 1 predicts `pit within next 3-5 laps` or `in pit window` with high recall; Stage 2 predicts `PitNextLap` only on gated candidate laps; final probability is `P(window) * P(next_lap | window)`, trained with strict OOF gating.",
+  "expected_effect": "Can sharpen discrimination on the rare positives by removing easy negatives from the fine-grained model, often producing a complementary expert for blending.",
+  "risk": "If the gate misses positives, Stage 2 cannot recover them; threshold choice and OOF discipline are critical.",
+  "sources": [
+    "https://www.mdpi.com/2227-7390/14/5/800",
+    "https://link.springer.com/article/10.1007/s10994-024-06558-3"
+  ]
+}

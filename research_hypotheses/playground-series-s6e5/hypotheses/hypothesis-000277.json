@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "State-space degradation residuals instead of fixed tyre-life windows",
+  "summary": "Recent F1 tire research models latent degradation as a state that evolves through the stint with resets at pit stops.",
+  "rationale": "Recent F1 tire research models latent degradation as a state that evolves through the stint with resets at pit stops. That suggests using per-row residualized degradation state features rather than static expected-life constants by compound.",
+  "implementation_hint": "Estimate leakage-safe latent state proxies within each driver-race-stint using only past laps: cumulative positive lap-time drift, rolling residual from race-lap median pace, degradation acceleration, and post-pit reset-normalized state. Feed these to a specialist or append as compact features.",
+  "expected_effect": "Improves discrimination when identical TyreLife values mean different true wear states because of compound, track, weather, or traffic.",
+  "risk": "Sequence features can overfit noisy lap-time outliers and become validation-leaky if race-lap medians use future laps or same-fold full-race information.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

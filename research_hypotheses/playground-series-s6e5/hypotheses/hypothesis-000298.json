@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual pit-now value features from a one-lap game model",
+  "summary": "Game-theoretic F1 work emphasizes that pit timing depends on opponent interaction, overtaking, and risk, not just self degradation.",
+  "rationale": "Game-theoretic F1 work emphasizes that pit timing depends on opponent interaction, overtaking, and risk, not just self degradation. A strong feature family is the estimated gain/loss of pitting now versus staying out one more lap under simple competition assumptions.",
+  "implementation_hint": "Build cheap counterfactual features: estimated lap loss if staying out one more lap from current degradation slope, estimated gain from fresh tyres by compound, position-risk proxy from current Position and Position_Change, and race-lap field medians as traffic proxies. Encode margins like `pit_now_advantage`, `one_more_lap_penalty`, and `risk_adjusted_undercut_score` using only contemporaneous or past-lap information.",
+  "expected_effect": "Should capture undercut pressure and tactical urgency more directly than threshold rules tied only to expected tyre life.",
+  "risk": "Race-lap aggregates are easy leakage vectors if they use future or test-context information; traffic proxies may be noisy because true gaps are absent.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115",
+    "https://repositorio.uchile.cl/handle/2250/199664"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Time-Ordered CatBoost CTR Specialist",
+  "summary": "This dataset has very high-cardinality categorical structure (Driver, Race, Compound, Year) that the current frequency features likely underuse.",
+  "rationale": "This dataset has very high-cardinality categorical structure (Driver, Race, Compound, Year) that the current frequency features likely underuse. CatBoost’s ordered categorical statistics and feature combinations are a strong adjacent-tabular pattern for exactly this regime, and `has_time` lets it respect row order instead of random permutations.",
+  "implementation_hint": "Train a CatBoost classifier on mostly raw categorical columns plus the strongest numeric race-state features. Sort by `Race_Year`, `Driver`, `LapNumber`, set `has_time=True`, and let CatBoost learn combos such as `Race_Year x Driver`, `Race_Year x Compound x Stint`, and `LapBucket x Compound`. Compare standalone CatBoost and a simple rank blend with the current best model.",
+  "expected_effect": "Better use of sparse strategy archetypes and driver/track interactions, with a plausible modest CV/LB gain if current models are underfitting categorical structure.",
+  "risk": "If rows are not strictly time-sorted inside each driver-race, or if CV is random instead of grouped by Race_Year, the ordered statistics can still look better locally than they generalize.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://catboost.ai/docs/en/references/training-parameters/common#has_time",
+    "https://arxiv.org/abs/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

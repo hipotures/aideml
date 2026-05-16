@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Pace Residual State",
+  "summary": "Recent literature models tyre degradation as a latent state with pit-stop resets, and lap time should be separated from fuel burn, track evolution, and driver baseline.",
+  "rationale": "Recent literature models tyre degradation as a latent state with pit-stop resets, and lap time should be separated from fuel burn, track evolution, and driver baseline. The tried rolling pace features were simple; a normalized residual state may be cleaner.",
+  "implementation_hint": "Within each Year/Race/LapNumber compute field median lap time and robust z-score. Within Driver/Race/Stint compute EWMA residual trend, residual acceleration, residual versus first stint laps, and cumulative positive residual since stint start. Shift historical rolling features by one row within driver-race-stint where possible.",
+  "expected_effect": "Can capture degradation cliffs and abnormal performance loss while controlling for lap-wide conditions that affect every driver.",
+  "risk": "Rows must be sorted and restored carefully; using current-lap field aggregates is acceptable only if those features exist for all test rows, but target-derived future information must be avoided.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-constrained booster on compressed physical pressure features",
+  "summary": "Boosted trees can enforce monotonicity when domain knowledge is strong.",
+  "rationale": "Boosted trees can enforce monotonicity when domain knowledge is strong. Here, several engineered scalars already summarize physics cleanly: service-window pressure, finishability pressure, laps-since-pit, and tyre-age overage. Constraining only those compressed pressures may reduce shift-driven overfitting without over-constraining raw inputs.",
+  "implementation_hint": "Create a small feature subset of interpretable pressures/ratios, then train XGBoost/LightGBM/CatBoost with positive monotone constraints on risk-like features and negative constraints on safety-margin features. Keep this as a conservative specialist and blend by rank/probability with an unconstrained model.",
+  "expected_effect": "Usually modest CV gain at best, but can improve public-score stability by preventing pathological non-physical splits.",
+  "risk": "Wrong constraint direction on raw features will hurt; constraints should be applied only to already-sanitized pressure features, not broad raw columns.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html",
+    "https://catboost.ai/docs/en/references/training-parameters/common"
+  ]
+}

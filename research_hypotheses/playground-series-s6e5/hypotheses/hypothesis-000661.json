@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Degradation Residual State",
+  "summary": "Recent F1 tyre degradation research models lap time as fuel-adjusted latent tyre pace with pit stops as state resets.",
+  "rationale": "Recent F1 tyre degradation research models lap time as fuel-adjusted latent tyre pace with pit stops as state resets. The current features use raw degradation and ratios, but not a fitted per-stint residual state capturing whether a driver is degrading faster than expected for race, compound, and lap.",
+  "implementation_hint": "Within each Race-Driver-Stint sorted by LapNumber, fit simple expanding/rolling residual features: lap_time minus race-lap median, residual slope over last 3-5 laps, residual acceleration, cumulative positive residual, and residual z-score within Race-Compound. Shift rolling features by one lap where possible to preserve causality.",
+  "expected_effect": "May separate drivers approaching a stop because their pace trend is worsening, not just because TyreLife is high.",
+  "risk": "Sparse stints and safety-car/outlier laps can add noise; clipping or robust medians are needed.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.cool/arxiv/2501.04067",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-"
+  ]
+}

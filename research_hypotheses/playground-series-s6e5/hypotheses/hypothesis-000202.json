@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Direct AUC-oriented learner instead of pure logloss boosting",
+  "summary": "The competition metric is ROC AUC, and literature on AUC optimization plus CatBoost ranking docs both support pairwise formulations when ordering matters more than calibrated probabilities.",
+  "rationale": "The competition metric is ROC AUC, and literature on AUC optimization plus CatBoost ranking docs both support pairwise formulations when ordering matters more than calibrated probabilities. Your current pipeline appears feature-centric; changing the loss family is still a meaningful unexplored axis.",
+  "implementation_hint": "Train a second model with pairwise/ranking-style objectives aimed at ordering positives above negatives, for example CatBoost ranking losses or another pairwise AUC surrogate. Use groups such as `Race_Year` or `Race_Year x LapNumber` so pair construction respects race context, then rank-average or OOF-stack with the existing classifier.",
+  "expected_effect": "Can improve leaderboard if the current model is locally well calibrated but not optimally ordered on hard near-stop cases.",
+  "risk": "Some ranking objectives are sensitive to group definition and may overfit if groups are too small or too correlated with leakage-prone structure.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://doi.org/10.1016/j.patcog.2011.11.020"
+  ]
+}

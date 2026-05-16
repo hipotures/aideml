@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Selective Monotone Booster For Dry-Regime Hazard",
+  "summary": "XGBoost documents that monotonic constraints can improve predictive performance when strong directional priors are valid.",
+  "rationale": "XGBoost documents that monotonic constraints can improve predictive performance when strong directional priors are valid. In dry green-flag-like regimes, pit hazard should usually rise with tyre-age pressure, finish infeasibility, and degradation pressure; the noisy exceptions are more common in wet/transition laps.",
+  "implementation_hint": "Train a dry-only XGBoost specialist with monotone increasing constraints on features like `TyreLife`, `Service_Age_Distance`, `Cannot_Finish_On_Current_Tyre`, `Finish_Stop_Pressure`, and monotone decreasing constraints on `Finish_Life_Margin`. Blend it with an unconstrained model for wet/intermediate compounds.",
+  "expected_effect": "Can smooth implausible local inversions and improve out-of-race generalization without inventing new raw features.",
+  "risk": "True F1 strategy is not globally monotone because traffic, warm-up, and Safety Car effects can reverse the decision boundary.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

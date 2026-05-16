@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal latent degradation state with pit-stop resets",
+  "summary": "Recent F1 modeling work treats tyre pace as a latent state that evolves within a stint and resets after a pit stop.",
+  "rationale": "Recent F1 modeling work treats tyre pace as a latent state that evolves within a stint and resets after a pit stop. Predictive-maintenance literature also finds change-point features improve remaining-life prediction versus static degradation summaries.",
+  "implementation_hint": "Build per-`Race_Year x Driver` causal state features reset on `PitStop==1`: EWMA level of `LapTime_Delta`, EWMA slope, short-vs-long trend spread, cumulative positive delta streaks, and a simple change-point/cliff flag when recent pace deterioration accelerates. Robustly clip safety-car/red-flag outliers before filtering.",
+  "expected_effect": "Captures nonlinear tyre-cliff behavior that static `TyreLife` and `Cumulative_Degradation` miss; especially useful on ambiguous pre-stop laps.",
+  "risk": "Lap-time shocks from traffic or weather can masquerade as tyre cliffs. Needs robust filtering and possibly race-regime gating.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2401.04351"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

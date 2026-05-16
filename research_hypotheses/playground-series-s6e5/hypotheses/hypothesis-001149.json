@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Train a multi-horizon hazard tower from exact future pit distance",
+  "summary": "Survival/event-time work shows that discretizing time-to-event into multiple binary tasks is often stronger than a single next-step label.",
+  "rationale": "Survival/event-time work shows that discretizing time-to-event into multiple binary tasks is often stronger than a single next-step label. Here, the exact next pit distance is available in training, so `PitWithin1/2/3/5` or a discrete hazard target can smooth supervision and teach the model the shape of the pit window.",
+  "implementation_hint": "Create future-distance labels within each driver-race sequence, train either one multi-output model or several tied models for `within_k` targets, and convert outputs back to a next-lap probability or use them as stacker features. Enforce causal construction and ignore censored tail rows after the final observed pit if needed.",
+  "expected_effect": "Usually helps borderline rows near the pit window and reduces brittleness from treating `t+1` positives and `t+2` near-misses as equally unrelated.",
+  "risk": "If auxiliary horizons are weighted poorly, the model may optimize broader pit-window detection instead of the exact next-lap ranking needed for AUC.",
+  "sources": [
+    "https://papers.cool/arxiv/2601.22259",
+    "https://www.researchgate.net/publication/400339602_Tabular_Foundation_Models_Can_Do_Survival_Analysis"
+  ]
+}

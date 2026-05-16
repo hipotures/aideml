@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Full Regulation-Debt State Machine Features",
+  "summary": "FIA rules create explicit future stop pressure that simple tyre-age heuristics do not fully encode.",
+  "rationale": "FIA rules create explicit future stop pressure that simple tyre-age heuristics do not fully encode. The 2025 Monaco three-set rule and the dry-compound requirements create a causal 'compliance debt' that should sharply change next-lap pit propensity, especially late in races or after wet-tyre exemptions disappear.",
+  "implementation_hint": "For each driver-race, causally track sets used, distinct dry compounds used, whether wet/intermediate usage exempts dry-compound obligations, remaining mandatory dry-compound debt, and Monaco-specific remaining set debt. Convert these into features like mandatory_stops_remaining_min, compliant_if_finish_now, and rule_pressure_now.",
+  "expected_effect": "Likely most useful on Monaco 2025 and late-race edge cases; could improve generalization on regulation-driven stops that tyre-life proxies miss.",
+  "risk": "Rules differ by season/race condition; mis-specified state tracking will inject structured label noise.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

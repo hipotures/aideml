@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Tree-Distilled Deep Ensemble Member",
+  "summary": "All strong current models are tree-based.",
+  "rationale": "All strong current models are tree-based. Recent tabular DL work suggests parameter-efficient ensembles like TabM and tree-distilled encoders like DeepTLF can add useful diversity even when raw deep models are weaker than GBDTs.",
+  "implementation_hint": "Train the current best GBDT first, export leaf-index or tree-path encodings, and feed them into a compact TabM/MLP head. Use this only as an OOF ensemble member; rank-average or logistic-stack it with XGB/CatBoost rather than replacing them.",
+  "expected_effect": "May add orthogonal errors and improve blend robustness even if standalone CV is slightly below the best tree model.",
+  "risk": "Standalone score may disappoint; needs careful OOF generation and regularization to avoid simply relearning the same tree signal.",
+  "sources": [
+    "https://research.yandex.com/publications/tabm-advancing-tabular-deep-learning-with-parameter-efficient-ensembling",
+    "https://link.springer.com/article/10.1007/s41060-022-00350-z"
+  ]
+}

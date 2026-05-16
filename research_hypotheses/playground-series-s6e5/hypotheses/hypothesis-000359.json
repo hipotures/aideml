@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual undercut-value features instead of only finish-feasibility rules",
+  "summary": "Official F1 strategy sources repeatedly frame pit timing around undercut strength, pit-lane loss, warm-up, tyre offset, and clean-air windows.",
+  "rationale": "Official F1 strategy sources repeatedly frame pit timing around undercut strength, pit-lane loss, warm-up, tyre offset, and clean-air windows. The current best code mostly models whether a fresh tyre can finish, not whether stopping now is tactically worth more than waiting one lap.",
+  "implementation_hint": "Build race-safe proxies for `expected_undercut_gain_now`: estimate stint degradation slope from prior laps only, estimate race-specific pit-loss / out-lap penalty from earlier pit events in the same race or historical races only, and combine with clean-air / traffic proxies from lap-relative pace and position context. Add features like `stay_out_cost_1lap`, `pit_now_net_gain`, and `pit_now_vs_next_lap_margin`.",
+  "expected_effect": "Should improve ranking inside the ambiguous mid-window rows where many laps are mechanically feasible but only a few are strategically optimal to pit now.",
+  "risk": "Easy to leak if pit-loss or warm-up templates use future laps from the same race; compute from past-only events and validate by `Race_Year` or stricter race holdout.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-tactical-options-for-the-united-states-grand.1ZzOOUjb17dsbzjjYoHBIT/",
+    "https://www.formula1.com/en/latest/article/mercedes-explain-how-they-engineered-hamiltons-hungary-win.6boKz816SMYDaEPetkdWlq"
+  ]
+}

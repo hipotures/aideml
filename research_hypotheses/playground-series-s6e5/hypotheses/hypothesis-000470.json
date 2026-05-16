@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fuel-corrected pace residual degradation",
+  "summary": "Recent F1 tyre-degradation work models lap time as fuel mass plus latent tyre pace with pit-stop resets.",
+  "rationale": "Recent F1 tyre-degradation work models lap time as fuel mass plus latent tyre pace with pit-stop resets. Existing raw LapTime_Delta and median features can confuse lighter-fuel race evolution with tyre degradation.",
+  "implementation_hint": "Within each Race_Year and LapNumber, compute causal field pace baselines such as median valid LapTime excluding pit laps. For each driver-stint, add LapTimeMinusFieldLapMedian, rolling residual mean/slope over last 3-5 laps, and compound-specific residual-age interactions.",
+  "expected_effect": "Better ranking of laps where tyres are truly falling off versus laps that are simply slow due to global race conditions.",
+  "risk": "Same-lap field statistics assume all current-lap rows are available; using future laps or pit-affected laps can leak or add noise.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

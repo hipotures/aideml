@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "FastF1 Track-Status And Weather Join",
+  "summary": "Official F1 strategy material highlights Safety Car windows and pit-loss timing as direct triggers for pit calls, while FastF1 exposes per-session `track_status`, `weather_data`, and `total_laps`.",
+  "rationale": "Official F1 strategy material highlights Safety Car windows and pit-loss timing as direct triggers for pit calls, while FastF1 exposes per-session `track_status`, `weather_data`, and `total_laps`. The current best features only proxy these regimes indirectly through lap deltas and field aggregates.",
+  "implementation_hint": "Join each Year/Race to the FastF1 race session and derive per-lap features: SC/VSC/yellow flags, laps since status change, restart-lap indicator, AirTemp/TrackTemp/Rainfall/WindSpeed, and exact scheduled laps remaining from `total_laps`. Interact them with compound, tyre-life ratio, and position. Validate with grouped race folds and strict name-mapping checks.",
+  "expected_effect": "Should improve opportunistic next-lap pit detection in caution, restart, and weather-shift regimes, with more upside on public LB than on already-smooth local CV.",
+  "risk": "External data joins can fail silently from race-name mismatches or missing session fields; older or unusual sessions may have sparse status/weather coverage.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://docs.fastf1.dev/api_reference/api_autogen/fastf1.core.Laps.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

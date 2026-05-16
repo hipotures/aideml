@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost on raw categoricals instead of frequency-only encoding",
+  "summary": "The dataset has very high-cardinality Driver and Race interactions, and CatBoost’s ordered statistics were designed exactly for this leakage-prone setting.",
+  "rationale": "The dataset has very high-cardinality Driver and Race interactions, and CatBoost’s ordered statistics were designed exactly for this leakage-prone setting. The current best solutions mostly reduce categoricals to frequency features plus manual crosses, leaving target-conditional structure underused.",
+  "implementation_hint": "Train CatBoostClassifier directly on raw categorical columns and a small set of numeric features, preserving a chronological order such as Year -> Race -> LapNumber within driver sequence. Test raw categories plus crosses like Driver×Compound, Race×Compound, and Race×Stint, then blend CatBoost logits with the existing LightGBM/XGBoost-style model.",
+  "expected_effect": "Should recover informative historical priors for rare drivers/races and interact them with compound/stint without hand-built smoothing logic.",
+  "risk": "If folds are not grouped by race chronology, ordered target statistics can still look better locally than they generalize; use grouped OOF by Year-Race and compare to the current frequency baseline.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

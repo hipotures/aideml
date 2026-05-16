@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Augment With Neutralization And Weather Regime Features",
+  "summary": "Public F1 data sources expose track status, race-control messages, telemetry, and weather, all of which directly alter pit economics.",
+  "rationale": "Public F1 data sources expose track status, race-control messages, telemetry, and weather, all of which directly alter pit economics. Your current table has no explicit safety-car, VSC, or rainfall state, so it likely conflates very different strategic regimes.",
+  "implementation_hint": "Join FastF1 session data to each lap and add fold-safe features such as current flag state, laps since SC/VSC started or ended, restart lap indicator, rainfall, track temperature, and recent weather deltas. Start with coarse binary regime flags before adding richer telemetry-derived summaries.",
+  "expected_effect": "Should help especially on outlier laps where pit timing is driven by neutralizations or weather shifts rather than tyre wear alone.",
+  "risk": "Depends on competition rules allowing external data, and joins must be aligned to lap-local timestamps only; race-control events after the lap are leakage.",
+  "sources": [
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://docs.fastf1.dev/index.html",
+    "https://docs.fastf1.dev/api.html"
+  ]
+}

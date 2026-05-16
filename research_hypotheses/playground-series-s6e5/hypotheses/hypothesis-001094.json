@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Auxiliary stop-horizon head: predict time-to-next-pit alongside next-lap pit",
+  "summary": "Recent F1 pit-stop work reports a cascaded multi-task setup where a classification head is complemented by a regression head for laps-until-stop, and XGBoost’s AFT survival objective natively supports censored time-to-event labels.",
+  "rationale": "Recent F1 pit-stop work reports a cascaded multi-task setup where a classification head is complemented by a regression head for laps-until-stop, and XGBoost’s AFT survival objective natively supports censored time-to-event labels. That is a closer formulation to the real strategy problem than pure binary next-lap classification.",
+  "implementation_hint": "Within each driver-stint, derive `laps_to_next_pit` for training rows; use uncensored labels when a later pit exists and right-censored labels at race/stint end otherwise. Train either a separate AFT model or a two-stage model, then feed predicted remaining-laps/hazard summaries into the current boosters and blend OOF scores.",
+  "expected_effect": "Should add a smoother notion of imminence, improving ranking for laps 1-5 before a stop rather than only the final lap.",
+  "risk": "Label construction is easy to leak if you compute horizon features outside each training fold; all horizon labels and derived features must be built fold-locally.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

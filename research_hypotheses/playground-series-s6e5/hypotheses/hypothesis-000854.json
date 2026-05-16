@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Lap Ranker Sidecar",
+  "summary": "ROC AUC rewards ordering, and pit calls are often relative to nearby rivals rather than absolute thresholds.",
+  "rationale": "ROC AUC rewards ordering, and pit calls are often relative to nearby rivals rather than absolute thresholds. Official F1 strategy material emphasizes undercut, cover-stop, clean air, and pit-window timing, which are inherently within-lap competitive comparisons. A grouped ranker can learn who is most likely to pit next among cars on the same lap/race even if absolute probabilities are noisy.",
+  "implementation_hint": "Create per-(Year,Race,LapNumber) groups, add field-relative features such as tyre-life percentile, lap-delta percentile, degradation percentile, position bucket, distance to median field state, and nearest-neighbor gaps by position. Train an LGBMRanker with group ids equal to same-lap race groups, then blend its rank-normalized OOF scores with the current binary model.",
+  "expected_effect": "Better local ordering among borderline pit-window rows; likely small but real AUC lift if many errors are pairwise swaps within the same race state.",
+  "risk": "Groups are small and noisy; if labels are sparse on many laps, the ranker may overfit or just reproduce the base model.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

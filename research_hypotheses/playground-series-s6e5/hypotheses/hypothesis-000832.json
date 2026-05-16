@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Level Remaining-Stop Posterior As A Gating Feature",
+  "summary": "Official F1 strategy guides repeatedly frame races as one-stop vs two-stop decision regimes driven by degradation and pit-lane loss.",
+  "rationale": "Official F1 strategy guides repeatedly frame races as one-stop vs two-stop decision regimes driven by degradation and pit-lane loss. Your current features encode this indirectly; a stronger version is to estimate a race-state posterior over remaining stops and use that to gate the pointwise classifier.",
+  "implementation_hint": "Train an auxiliary model on training races to predict `stops_remaining_after_this_lap` or coarse classes like `{0,1,2+}` from current lap context. Use features such as estimated laps remaining, compound, tyre age, stint, race identity, and race-specific degradation proxies. Feed the OOF posterior probabilities into the main classifier or train separate experts for low-stop vs high-stop regimes.",
+  "expected_effect": "Can convert diffuse heuristics into an explicit regime variable, especially improving mid-race ambiguity where the same tyre age means different things on low-pit-loss vs high-pit-loss tracks.",
+  "risk": "Auxiliary labels depend on future pits, so fold construction must be strict; if regime model is noisy it may just add variance and duplicate what trees already infer.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

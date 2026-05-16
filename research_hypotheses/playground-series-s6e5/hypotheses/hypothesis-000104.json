@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a raw-categorical ordered CatBoost expert instead of more manual target encoding",
+  "summary": "The dataset has high-cardinality categories like Driver and Driver-Race combinations.",
+  "rationale": "The dataset has high-cardinality categories like Driver and Driver-Race combinations. CatBoost’s ordered target statistics and ordered boosting were designed specifically to reduce prediction shift from categorical leakage, which is exactly where the current pipeline is hand-engineered and fragile.",
+  "implementation_hint": "Train one expert using raw string categorical columns and a few explicit crosses such as `Driver+Race`, `Driver+Compound`, `Race+Stint`, with CatBoost handling CTRs internally. Keep numeric race-state features, but remove most manual target encodings for this branch. Blend its OOF predictions with the existing XGBoost branch rather than replacing the whole stack.",
+  "expected_effect": "Can recover signal from sparse drivers/races and unseen category combinations more cleanly than factorize-plus-TE, especially if current TE is slightly leaky or oversmoothed.",
+  "risk": "Training can be slower and CatBoost GPU/CPU behavior differs; if categories are too noisy, the branch may only help as a small-weight ensemble member.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers.html",
+    "https://catboost.ai/docs/en/references/training-parameters/"
+  ]
+}

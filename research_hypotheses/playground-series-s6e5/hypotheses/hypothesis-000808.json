@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hierarchical historical pit-window quantile priors",
+  "summary": "Official F1 glossary defines a pit window from tyre life data, and recent tyre-degradation work emphasizes degradation as a key driver of stop timing.",
+  "rationale": "Official F1 glossary defines a pit window from tyre life data, and recent tyre-degradation work emphasizes degradation as a key driver of stop timing. The current best code uses fixed global service/finish ages; a stronger prior is likely the empirical stop-age distribution conditioned on regime, because Monaco/Monza/Qatar-style tracks and wet compounds distort global tyre-life assumptions.",
+  "implementation_hint": "From training only and in chronological OOF fashion, estimate smoothed stop-age quantiles and stop-progress quantiles for groups such as (wet/dry, Compound), (Race, Compound), (Race, Compound, Stint), and (Year, Race, Compound). Add features like distance to P25/P50/P75 stop age, percentile rank of current TyreLife within historical stop ages, and residual to expected laps-remaining-at-stop. Use hierarchical backoff when counts are low.",
+  "expected_effect": "Should replace brittle hand-picked tyre-life constants with data-driven, race-specific pit-window pressure while staying compact enough for tree models.",
+  "risk": "If not built with expanding folds, these priors leak future races/laps. Sparse groups also need strong smoothing or they will overfit rare drivers/races.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE"
+  ]
+}

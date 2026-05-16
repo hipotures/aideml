@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Out-of-fold categorical hazard encodings",
+  "summary": "Regularized target encoding is strong for high-cardinality categorical predictors, and scikit-learn documents cross-fitting as important to avoid overfitting.",
+  "rationale": "Regularized target encoding is strong for high-cardinality categorical predictors, and scikit-learn documents cross-fitting as important to avoid overfitting. Current runs rely mainly on raw categorical columns and hand-built categorical crosses, not explicit OOF stop-rate priors.",
+  "implementation_hint": "Within CV folds, compute smoothed OOF mean `PitNextLap` for keys such as `Race+LapNumber`, `Race+Compound+TyreLifeBin`, `Driver+Stint+TyreLifeBin`, and `Year+Race+Stint`. For test, fit encodings on all train rows with shrinkage to global mean. Feed these numeric priors alongside raw categories.",
+  "expected_effect": "Can capture empirical pit windows and driver/race tendencies while staying target-safe inside validation.",
+  "risk": "Random row CV may still leak temporal/race information through fold mixing; use grouped or chronological folds for the encoder test if possible.",
+  "sources": [
+    "https://sklearn.org/1.7/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Traffic And Undercut/Overcut Opportunity Features",
+  "summary": "Official F1 strategy explainers emphasize that pit timing depends on undercut range, overcut viability, pit-window timing, and traffic gaps, not just own tire age.",
+  "rationale": "Official F1 strategy explainers emphasize that pit timing depends on undercut range, overcut viability, pit-window timing, and traffic gaps, not just own tire age. The current feature set has same-lap context, but not explicit rejoin-window or rival-pressure proxies.",
+  "implementation_hint": "Within each lap field, engineer features such as nearest-car pressure, count of rivals on older tires nearby, free-air rejoin slot proxy, boxed-in flag, teammate shadow, and whether staying out increases overcut risk. Use Position, same-lap ranks, LapTime_Delta, and race-progress bins as gap proxies.",
+  "expected_effect": "Improves ambiguous mid-race decisions where multiple drivers have similar wear but only some have a strategically viable stop next lap.",
+  "risk": "Without actual interval gaps, these are indirect proxies and may behave differently across circuits with unusual warmup or overtaking profiles.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-fitted hierarchical target encodings for driver/track strategy memory",
+  "summary": "The current best stack still relies mostly on numeric heuristics plus frequency encoding.",
+  "rationale": "The current best stack still relies mostly on numeric heuristics plus frequency encoding. Public encoding guidance shows high-cardinality categories can overfit badly without cross-fitting, while this dataset has many drivers and race/compound combinations with likely stable pit-style signal.",
+  "implementation_hint": "Build OOF encodings under Race-Year-held-out folds for Driver, Driver x Compound, Driver x Stint, Race x Compound, Race x LapBin, and Driver x RaceProgressBin, with shrinkage/fallback chains. Keep them as a separate specialist model or as additive features to the current booster.",
+  "expected_effect": "Should capture persistent team/driver/circuit tendencies that raw frequencies miss, with possible CV lift if leakage is fully controlled.",
+  "risk": "If folds are not grouped by race regime, these encodings will look great locally and fail on leaderboard; unseen drivers/races need strong smoothing fallback.",
+  "sources": [
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

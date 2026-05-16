@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model an exact tyre-rule state machine, including the Monaco two-stop exception dated February 26 and May 23, 2025",
+  "summary": "Official F1 sources confirm that dry races normally require two slick compounds, wet races relax that rule, and Monaco 2025 uniquely required at least three tyre sets and two stops.",
+  "rationale": "Official F1 sources confirm that dry races normally require two slick compounds, wet races relax that rule, and Monaco 2025 uniquely required at least three tyre sets and two stops. Prior work pointed at rule-state discontinuities, but the strongest testable extension is an explicit legal-state automaton rather than loose proxies like prior slick counts.",
+  "implementation_hint": "For each driver-race chronology, track sets/compound classes already used, dry-vs-wet legal debt, minimum remaining required stops, and `must_change_compound_before_finish`. Add a Monaco-2025 branch keyed to exact event/date logic. Useful features: `rule_debt_stops`, `rule_debt_compounds`, `legal_if_finish_now`, `laps_until_forced_legal_state`, and interactions with `laps_remaining`.",
+  "expected_effect": "Sharper late-race and unusual-regulation decisions, plus fewer false negatives when a driver is strategically boxed into a mandatory stop.",
+  "risk": "Only one Monaco 2025 sample regime exists, so the special-rule branch can overfit unless kept simple and backed by grouped temporal CV.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1/"
+  ]
+}

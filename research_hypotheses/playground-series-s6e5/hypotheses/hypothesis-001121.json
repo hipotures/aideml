@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Distill a fold-safe stop-vs-stay simulator advantage as one extra feature/expert",
+  "summary": "Motorsport strategy research repeatedly frames pit timing as a stop-vs-stay optimization under uncertain lap-time evolution and stochastic race events.",
+  "rationale": "Motorsport strategy research repeatedly frames pit timing as a stop-vs-stay optimization under uncertain lap-time evolution and stochastic race events. A previous naive counterfactual feature attempt in your history failed badly, but the failure is more likely due to leakage/noisy construction than because the idea is useless. A simpler, causal, fold-safe simulator-derived advantage could still be valuable.",
+  "implementation_hint": "Within each training fold only, fit coarse causal primitives such as expected tyre-wear pace loss by compound/stint-age, generic pit-loss proxy by race, and out-lap warmup penalty. For each row, simulate one-step expected race-time delta of stopping now vs one lap later using only past-derived primitives; feed that scalar as a feature or use it to create a small expert probability. Keep it deliberately simple and causal, with no same-race future medians.",
+  "expected_effect": "If well-specified, this can inject a strategy prior that trees can exploit, especially for borderline windows where raw features do not encode the trade-off cleanly.",
+  "risk": "Very easy to leak future race information or build an unstable proxy that looks clever but collapses OOF. Must be estimated per fold from training data only and audited against chronology-safe CV.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3769652",
+    "https://www.mdpi.com/2076-3417/10/12/4229",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

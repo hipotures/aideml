@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Importance-Weighted CV for Train-Test Shift",
+  "summary": "The train/test split spans multiple years, races, compounds, and many unseen or rare drivers, so standard CV may reward models that fit the training distribution rather than the hidden test mix.",
+  "rationale": "The train/test split spans multiple years, races, compounds, and many unseen or rare drivers, so standard CV may reward models that fit the training distribution rather than the hidden test mix. Importance-weighted cross-validation was proposed specifically because ordinary CV is biased under covariate shift.",
+  "implementation_hint": "Fit a lightweight classifier to distinguish train vs test rows using only features available at inference. Convert predicted odds into clipped density-ratio weights, then use those weights for fold scoring and optionally for training the final booster. Keep grouped splits by race or race-year so the weighting fixes shift rather than introducing leakage.",
+  "expected_effect": "Better model selection and hyperparameter choice even if raw local CV barely moves; the main gain is lower public-LB surprise.",
+  "risk": "If the density-ratio model is noisy, weights can add variance and destabilize tuning; clipping and simple shift models are important.",
+  "sources": [
+    "https://pure.korea.ac.kr/en/publications/covariate-shift-adaptation-by-importance-weighted-cross-validatio/",
+    "https://research.ibm.com/publications/direct-importance-estimation-for-covariate-shift-adaptation"
+  ]
+}

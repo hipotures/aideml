@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-constrained booster for wear and urgency variables",
+  "summary": "Official XGBoost and LightGBM docs note monotonic constraints can improve predictive performance when strong directional priors are valid.",
+  "rationale": "Official XGBoost and LightGBM docs note monotonic constraints can improve predictive performance when strong directional priors are valid. This task has several near-structural features where more wear or more finish infeasibility should not reduce stop urgency after conditioning on race phase.",
+  "implementation_hint": "Train a specialist XGBoost/LightGBM with monotone increases on features like `TyreLife_ToFinish_CompoundRatio`, `Compound_LapsBeyondFinishWindow`, `Positive_LapTime_Delta`, `Deg_Per_TyreLife`, and perhaps decreases on `LapsRemaining_Est` in specific formulations. Use only on carefully chosen engineered features, then blend with the unconstrained baseline.",
+  "expected_effect": "Better out-of-sample ordering under distribution shift by suppressing spurious non-monotone splits in small regimes.",
+  "risk": "Wrong constraints or over-constraining broad features can flatten useful interactions and reduce peak CV.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

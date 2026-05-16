@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-transition crossover specialist",
+  "summary": "Wet races behave differently from slick stints: the key decision is the crossover point, and being one lap early or late can cost several seconds.",
+  "rationale": "Wet races behave differently from slick stints: the key decision is the crossover point, and being one lap early or late can cost several seconds. Official F1/Pirelli material highlights that intermediate/full-wet/slick transitions are governed by crossover timing, not normal stint aging.",
+  "implementation_hint": "Create a separate model or gating branch for rows on INTERMEDIATE/WET or races showing mixed compound states. Features: fraction of field on wet-weather tyres that lap, fraction already back to slicks, same-lap compound diversity, peer lap-time improvement rate, and race-progress interaction. Also test a binary 'transition regime' feature for dry compounds immediately after wet laps.",
+  "expected_effect": "Should recover edge cases where current dry-tyre heuristics mis-rank rain crossover laps and mixed-condition stops.",
+  "risk": "Sample size for true wet transitions may be small, so the specialist should be shallow and only activated when compound/race context clearly indicates a crossover regime.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.strategy-guide-what-are-the-possible-race-strategies-for-the-russian-grand.292fIM7raBljiTrw2XRscl.html",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/when-it-s-time-to-change-from-slick-to-wet-tyres-in-formula-1-52943/",
+    "https://www.formula1.com/en/latest/article.palmer-the-dilemma-that-the-drivers-teams-and-pirelli-face-when-it-comes-to.6L4ZLys4JjchrrlgZa4wMw.html"
+  ]
+}

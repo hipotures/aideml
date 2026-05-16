@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Permutation-invariant field-context model for same-lap competitors",
+  "summary": "Whether a driver pits depends partly on the whole field state: nearby rivals, compound mix, and lap-wide stop pressure.",
+  "rationale": "Whether a driver pits depends partly on the whole field state: nearby rivals, compound mix, and lap-wide stop pressure. Deep Sets and Set Transformer are designed for set-valued inputs where order should not matter, which matches the per-lap roster much better than hand-made aggregates alone.",
+  "implementation_hint": "Build one expert where each sample is the focal driver plus the set of all other drivers in the same `Year/Race/LapNumber`; encode each competitor row, pool with Deep Sets or a small Set Transformer, and output a pit probability or rank score. Use OOF predictions only for stacking with the tabular ensemble.",
+  "expected_effect": "Adds interaction signal beyond current averages/top-k pressure features and may help especially on chaotic laps where handcrafted summaries miss which combination of cars is creating the stop window.",
+  "risk": "More engineering and tuning work than tree models; benefits may be modest if the tabular features already summarize most field context.",
+  "sources": [
+    "https://papers.neurips.cc/paper/6931-deep-sets",
+    "https://huggingface.co/papers/1810.00825"
+  ]
+}

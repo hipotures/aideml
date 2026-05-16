@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online Latent Wear Filter With Uncertainty Features",
+  "summary": "Recent F1 work models tyre degradation as a latent state with pit-stop resets instead of relying only on raw tyre age proxies.",
+  "rationale": "Recent F1 work models tyre degradation as a latent state with pit-stop resets instead of relying only on raw tyre age proxies. Your current features approximate wear, but not filtered wear level, wear slope, or uncertainty, which are likely closer to the true pit decision variable.",
+  "implementation_hint": "For each driver-race-stint, fit a simple causal state-space/Kalman-style filter on `LapTime_Delta`, `LapTime (s)`, or `Cumulative_Degradation`, resetting after pit/stint changes; feed posterior wear level, drift, one-step residual, and posterior variance into the tabular model.",
+  "expected_effect": "Adds a cleaner degradation signal than raw lags, especially for late-stint decisions and noisy races where observed lap times are volatile.",
+  "risk": "Without telemetry or explicit safety-car labels, the latent state can absorb unrelated pace shocks and become noisy on short stints.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

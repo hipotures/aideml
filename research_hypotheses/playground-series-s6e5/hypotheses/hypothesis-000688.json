@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Switch to race-held-out, chronology-aware validation and ordered categorical training",
+  "summary": "Repeated laps from the same race create strong within-race dependence, and high-cardinality categories like Driver/Race/Year are leakage-prone under naive row CV.",
+  "rationale": "Repeated laps from the same race create strong within-race dependence, and high-cardinality categories like Driver/Race/Year are leakage-prone under naive row CV. CatBoost explicitly supports preserving row order for ordered target statistics.",
+  "implementation_hint": "Sort rows by Year, Race, LapNumber, then compare `LeaveOneGroupOut` on `Race_Year` or forward-in-time year splits against current CV. If using CatBoost, test `has_time=True` and timestamps so CTRs are computed in sequence rather than from shuffled permutations.",
+  "expected_effect": "More trustworthy local CV and often better public-LB alignment; may also improve generalization on unseen race conditions.",
+  "risk": "Local CV may drop at first because the split is harder; rare races/drivers may become noisier.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/index",
+    "https://catboost.ai/docs/en/concepts/parameter-tuning.html",
+    "https://catboost.ai/docs/en/concepts/python-reference_pool_set_timestamp",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

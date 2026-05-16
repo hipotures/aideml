@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "Within each Year-Race-LapNumber group, sort by Position and compute leave-one-out rolling summaries for rivals within a small position window, including current-tyre finish pressure, next-stop feasibility, PitStop, and LapTime_Delta. Compare the current row to these local-rival summaries.",
   "expected_effect": "Small AUC gain with low-medium confidence.",
   "risk": "Position-window features are more complex and may overfit or fail on small same-lap groups. Keep only a few aggregates and test after the simpler same-lap peer block.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

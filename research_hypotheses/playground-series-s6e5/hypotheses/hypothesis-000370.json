@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-Dry Crossover Field-State Features",
+  "summary": "Public F1 strategy analysis and Pirelli material emphasize that the wet-to-intermediate-to-slick crossover is a major tactical trigger, often worth whole seconds per lap.",
+  "rationale": "Public F1 strategy analysis and Pirelli material emphasize that the wet-to-intermediate-to-slick crossover is a major tactical trigger, often worth whole seconds per lap. The current feature set uses tyre labels, but not the field-level crossover pressure that appears when many cars are on different wet compounds and the track is drying.",
+  "implementation_hint": "Per race-lap, compute field shares on WET/INTERMEDIATE/slicks, recent 1-2 lap transition counts between those classes, compound-specific median lap improvements, and a 'faster compound already proven' indicator relative to the current car. Interact those with position, tyre life, and race progress; optionally train a wet/changeable-race specialist.",
+  "expected_effect": "Should add lift on rare but high-signal weather laps, where pit decisions are driven less by tyre age and more by crossover timing.",
+  "risk": "Wet/changeable regimes are sparse and easy to overfit. Use heavy shrinkage, whole-race CV, and if the timing semantics are unclear, prefer lagged field-state aggregates.",
+  "sources": [
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article.monday-morning-debrief-why-nailing-the-strategy-was-so-tough-at-the-rain.6mVFnAE6LiMq5jK9IjN0gy.html",
+    "https://www.formula1.com/en/latest/article/new-intermediate-tyres-seven-seconds-quicker-pirelli.4No8O02JziuG02MayQcMKq/"
+  ]
+}

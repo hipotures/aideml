@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a lap-group ranking specialist and blend it with the classifier",
+  "summary": "Each race lap is effectively a small query set where only a few of ~20 drivers are plausible pit candidates.",
+  "rationale": "Each race lap is effectively a small query set where only a few of ~20 drivers are plausible pit candidates. CatBoost ranking objectives are designed for within-group ordering, and QueryAUC directly measures whether positives are ranked above negatives inside a group. This matches the competition better than treating all rows as iid, and is a more concrete version of the earlier ranking idea.",
+  "implementation_hint": "Create groups like (Year,Race,LapNumber) or (Year,Race,LapNumber,compound-regime). Train a CatBoost ranking model with `YetiRankPairwise`, `QueryCrossEntropy`, or optimize a standard loss while monitoring `QueryAUC`. Use the ranker only as an OOF meta-feature or low-weight blend with the strong binary booster; do not replace the classifier outright.",
+  "expected_effect": "Should improve relative ordering among same-lap drivers, especially when multiple cars are near a pit window but only one or two actually stop.",
+  "risk": "Ranking objectives can be slower and sometimes hurt global probability calibration; blending is safer than switching wholesale.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

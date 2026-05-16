@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Competition-Pressure Features From Same-Lap Field Context",
+  "summary": "Recent pit-strategy literature argues competition materially changes optimal stop timing, and official F1 analysis highlights undercut/overcut dependence on rival proximity and tyre warm-up context.",
+  "rationale": "Recent pit-strategy literature argues competition materially changes optimal stop timing, and official F1 analysis highlights undercut/overcut dependence on rival proximity and tyre warm-up context. Your current best set has some global medians, but not richer same-lap competitive pressure signals.",
+  "implementation_hint": "Within each `Race_Year x LapNumber`, compute leakage-safe relative features such as tyre-life percentile, degradation percentile, lap-delta percentile, position-band medians, and local pack summaries for cars within +/-2 positions. Derive `undercut_pressure_proxy`, `overcut_viability_proxy`, and `pack_pit_pressure` from these cross-sectional ranks rather than fixed thresholds.",
+  "expected_effect": "Can improve ranking among borderline stop candidates on the same lap, where absolute tyre age is less informative than relative strategic vulnerability.",
+  "risk": "Cross-sectional features may be noisy in thin groups or weird sessions like testing; use shrinkage toward race-level medians.",
+  "sources": [
+    "https://doi.org/10.1016/j.ejor.2024.07.011",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

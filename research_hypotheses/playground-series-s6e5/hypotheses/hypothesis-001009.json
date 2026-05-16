@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Analytic pit-economics features plus regime-specific sigmoid stacking",
+  "summary": "Strategy references emphasize undercut thresholds, traffic penalties, and approximate optimal stint length from pit-loss vs degradation slope.",
+  "rationale": "Strategy references emphasize undercut thresholds, traffic penalties, and approximate optimal stint length from pit-loss vs degradation slope. Those formulas give testable, interpretable features; separately, sigmoid calibration is monotone and preserves ranking better than isotonic, making it safer for ROC-AUC-focused blends.",
+  "implementation_hint": "Derive per-row features such as estimated degradation slope, `N*≈sqrt(2P/d)`, distance to optimal stop lap, and undercut margin using field-relative pace proxies and track-position context. Train separate dry and wet/intermediate specialists if needed, then blend their OOF scores with the baseline using logistic stacking or Platt scaling, not isotonic.",
+  "expected_effect": "Adds a more structural notion of ‘economic stop urgency’ and may improve leaderboard stability through safer monotone blending.",
+  "risk": "Pit-loss `P` is unobserved and must be approximated from race/lap context; bad approximations could make these features brittle. Overfitting the blender on non-held-out folds is also a real leakage path.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

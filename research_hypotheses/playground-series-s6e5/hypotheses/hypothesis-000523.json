@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a causal short-history sequence sidecar and use it only as an ensemble component",
+  "summary": "Public F1 pit-stop studies report that Bi-LSTM/TCN-style models outperform weaker sequence baselines because pit calls depend on recent temporal trends in tyre wear, lap-time drift, and stint evolution.",
+  "rationale": "Public F1 pit-stop studies report that Bi-LSTM/TCN-style models outperform weaker sequence baselines because pit calls depend on recent temporal trends in tyre wear, lap-time drift, and stint evolution. That pattern is missing from the current row-wise feature pipeline.",
+  "implementation_hint": "Create fixed-length windows from the last 5-10 laps for each `Race-Driver` using only past observations, with masking for short histories. Train a compact GRU/BiLSTM/TCN sidecar and keep the existing tree model as the anchor; stack or average OOF predictions rather than betting on the sequence model alone.",
+  "expected_effect": "Should recover local trend information around pit windows that static engineered features only approximate.",
+  "risk": "Sequence models are more brittle on tabular sports data and may overfit if the split is not race-purged or if bidirectional context accidentally includes future laps.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.researchgate.net/publication/397304397_Data-driven_pit_stop_decision_support_for_Formula_1_using_deep_learning_models"
+  ]
+}

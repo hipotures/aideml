@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Counterfactual undercut/overcut opportunity features",
+  "summary": "Race-strategy literature emphasizes competition effects and the value of stopping depends on relative, not absolute, state.",
+  "rationale": "Race-strategy literature emphasizes competition effects and the value of stopping depends on relative, not absolute, state. Your current features include field context, but not an explicit estimate of immediate strategic gain from pitting now versus staying out.",
+  "implementation_hint": "Create race-lap relative features such as driver pace residual vs same-compound field, tyre-age percentile, degradation percentile, gap-to-fresh-tyre proxy, and ‘pit discount opportunity’ proxies from laps where many peers just stopped. Add interaction terms like `old tyres + good track position`, `old tyres + worsening residual + peers already stopped`, and optionally train a small expert model only on plausible pit-window rows.",
+  "expected_effect": "Could improve ranking in the hard cases where pit calls are driven by opponent state and undercut threat rather than raw tyre age alone.",
+  "risk": "Without explicit gap/weather data, counterfactual proxies are noisy and may duplicate existing field features if not engineered carefully.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

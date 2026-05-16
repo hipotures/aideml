@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a censored survival specialist for time-to-next-stop",
+  "summary": "XGBoost AFT and discrete-time hazard models are designed for time-to-event problems with censoring, which is a better fit than flat binary labels for rows that reach race end without another stop.",
+  "rationale": "XGBoost AFT and discrete-time hazard models are designed for time-to-event problems with censoring, which is a better fit than flat binary labels for rows that reach race end without another stop. This is a concrete, testable extension of the earlier hazard idea rather than more manual thresholding.",
+  "implementation_hint": "Construct `time_to_next_pit` per row; use exact times for observed future stops and right-censor rows with no later stop. Train an `objective=\"survival:aft\"` XGBoost model or a discrete-time hazard model, then convert the predicted event-time distribution into `P(stop on next lap)` and blend as a specialist.",
+  "expected_effect": "Should especially help late-race and no-more-stop cases, where a plain classifier often overcalls because it lacks explicit censoring semantics.",
+  "risk": "More complex target engineering; an AFT distribution choice can underfit if the stop-time shape is badly misspecified.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/aft_survival_analysis.html",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/"
+  ]
+}

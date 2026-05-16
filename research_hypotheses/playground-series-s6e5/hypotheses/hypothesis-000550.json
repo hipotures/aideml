@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-task next-stop horizon buckets instead of pure binary only",
+  "summary": "Recent F1 work uses a classification head plus an auxiliary regression head for laps-to-stop, suggesting shared structure between imminent-stop classification and broader stop timing.",
+  "rationale": "Recent F1 work uses a classification head plus an auxiliary regression head for laps-to-stop, suggesting shared structure between imminent-stop classification and broader stop timing. Prior research in this run already considered event-time framing; the new testable direction is a lightweight auxiliary sidecar rather than a full survival rewrite.",
+  "implementation_hint": "For each training row, derive censored-safe auxiliary labels such as next-stop bucket {1, 2-3, 4-6, 7+ laps} where available; keep final censored rows in the binary task only. Train either a shared-network/tabular multi-task model or separate auxiliary model and feed OOF horizon probabilities back into the main GBDT as features.",
+  "expected_effect": "Can reduce false positives far from the real stop by teaching the model shape of the whole approach-to-stop curve, not only the final lap.",
+  "risk": "Auxiliary labels are censored near race end and after missing future stops; poor handling can inject bias and wash out gains.",
+  "sources": [
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Race-lap query ranker with top-k pair construction",
+  "summary": "This is naturally a within-lap ordering problem: at a given race-lap only a few drivers are realistic pit candidates.",
+  "rationale": "This is naturally a within-lap ordering problem: at a given race-lap only a few drivers are realistic pit candidates. Learning-to-rank methods explicitly optimize ordering within query groups and public XGBoost/CatBoost docs support groupwise objectives that may capture this structure better than plain binary classification.",
+  "implementation_hint": "Use `qid = Year_Race_LapNumber`, train an XGBoost `rank:ndcg` expert with `lambdarank_pair_method=topk` and small top-k, and/or a CatBoost ranking expert (`QueryCrossEntropy` or `YetiRankPairwise`). Blend its OOF ranks with the existing classifier ensemble rather than replacing it.",
+  "expected_effect": "Should add a distinct model view that improves separation inside true pit windows, especially when absolute probabilities are noisy but relative ordering within a lap is strong.",
+  "risk": "Many query groups may have few effective positive pairs, so ranking-only models can be unstable unless grouped carefully and blended with a classifier.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

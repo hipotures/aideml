@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Peer-Relative Pace Pressure Features",
+  "summary": "Official F1 undercut analysis emphasizes that strategy hinges on how fast fresh tyres are relative to rivals on used tyres, so pit calls should depend on losing pace versus same-lap peers, not only on absolute tyre age or raw lap time.",
+  "rationale": "Official F1 undercut analysis emphasizes that strategy hinges on how fast fresh tyres are relative to rivals on used tyres, so pit calls should depend on losing pace versus same-lap peers, not only on absolute tyre age or raw lap time. The current best code only uses coarse medians by race or compound, not contemporaneous cross-sectional pressure.",
+  "implementation_hint": "For each `Race_Year x LapNumber x Compound`, compute percentile/rank of `LapTime_Delta`, gap to same-compound median and fastest lap, and change versus the previous lap’s peer rank. Add position-bin versions to proxy dirty-air pressure and combine with `TyreLife` or `CurrentTyreFinishExcess`.",
+  "expected_effect": "Improves detection of undercut-vulnerable laps and track-specific wear windows where a driver suddenly becomes slow relative to the active compound cohort.",
+  "risk": "Cross-sectional features are noisy under traffic, blue flags, and mixed SC/VSC states; wet-tyre groups are sparse and need shrinkage.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L"
+  ]
+}

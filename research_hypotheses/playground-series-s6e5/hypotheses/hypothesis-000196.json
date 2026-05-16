@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit undercut-window and traffic-window opportunity features",
+  "summary": "Official F1 analysis says undercut strength depends on degradation, track position, overtaking difficulty, and being within striking range, while pit-loss variations can open windows earlier.",
+  "rationale": "Official F1 analysis says undercut strength depends on degradation, track position, overtaking difficulty, and being within striking range, while pit-loss variations can open windows earlier. Your best solutions already model tyre feasibility, but not the tactical opportunity to emerge ahead of nearby cars if pitting now.",
+  "implementation_hint": "Within each `(Race, Year, LapNumber)`, create relative features against nearby position rivals: tyre-life gap, degradation gap, lap-time-delta gap, and whether the car is inside an empirical undercut range to the car ahead/behind. Add lagged race-lap pit activity and a proxy for clear-air opportunity using position plus recent field pit rates. Keep all features current-lap or past-only.",
+  "expected_effect": "Adds the missing race-relative decision layer for why a team pits now rather than one lap later, especially in midfield traffic.",
+  "risk": "No true time-gap column exists, so proxies may be weak and can overfit specific races if too granular.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

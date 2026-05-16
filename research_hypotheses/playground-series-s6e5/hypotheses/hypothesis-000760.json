@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap relative context features instead of global race heuristics",
+  "summary": "Pit calls are relative decisions against the field, not just absolute tyre age.",
+  "rationale": "Pit calls are relative decisions against the field, not just absolute tyre age. Game-theoretic and race-strategy sources emphasize competition, traffic, and response behavior. A simpler way to capture this than full ranking models is to encode where a driver sits relative to the field at the same race-lap.",
+  "implementation_hint": "For each `Year/Race/LapNumber`, compute OOF field-relative percentile and z-score features for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, `Position`, and `Position_Change`, plus nearest-neighbor gaps to cars ahead/behind in tyre age and degradation. Add counts like 'how many peers on same compound/stint exceed this tyre age' and 'is this driver the most over-aged among same-compound runners'.",
+  "expected_effect": "Should sharpen undercut/cover-stop signals and create a more portable competitive-context layer than hand-picked track priors.",
+  "risk": "These cross-sectional features are leakage-prone if computed with validation rows mixed into training statistics; build them fold-wise and avoid any use of future laps.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leader-Follower Rivalry Expert for Undercut and Cover-Stop Behavior",
+  "summary": "Recent OR work shows that accounting for competition materially changes optimal pit timing, and official F1 strategy explainers emphasize undercut/overcut and cover-stop logic.",
+  "rationale": "Recent OR work shows that accounting for competition materially changes optimal pit timing, and official F1 strategy explainers emphasize undercut/overcut and cover-stop logic. Your current best features encode self state well, but they do not explicitly model leader-versus-follower pressure within a race-lap.",
+  "implementation_hint": "Build race-lap relative features such as local percentile of lap-time delta, tyre-life rank within race-lap, vulnerable-to-undercut flags, and close-rival pressure by position bands. Train a specialist only on rows where a nearby rival context exists, then blend with the global model.",
+  "expected_effect": "Should help rows near real strategic interactions, especially mid-race windows where many stops are responses rather than absolute tyre-life thresholds.",
+  "risk": "The dataset lacks explicit time gaps, so interaction must be proxied from rank/position/lap-time signals; weak proxies may add noise.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

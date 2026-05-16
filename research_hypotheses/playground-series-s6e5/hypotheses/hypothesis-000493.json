@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adjacent-rival undercut pressure features",
+  "summary": "F1 pit timing is often triggered by the car immediately ahead or behind, not only by a driver's own tyre age.",
+  "rationale": "F1 pit timing is often triggered by the car immediately ahead or behind, not only by a driver's own tyre age. Public strategy analyses emphasize undercut/overcut windows, clear air, traffic, and being within striking range of rivals.",
+  "implementation_hint": "For each Race_Year-LapNumber, join same-lap features from Position-1 and Position+1: neighbor tyre age, compound, stint, PitStop, lap-time residual, and position-change signal. Add relative terms such as older_than_car_ahead, fresher_than_car_behind, neighbor_just_pitted, and pace_delta_to_adjacent_position. Keep the join same-lap/current-lap only, with no next-row target leakage.",
+  "expected_effect": "Adds strategy-pressure signal where a driver pits next lap because a rival has just stopped, is about to undercut, or has created a pit window.",
+  "risk": "Without true time gaps, Position adjacency is a coarse proxy; noisy race-lap joins may hurt if sorting or duplicate positions are mishandled.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/"
+  ]
+}

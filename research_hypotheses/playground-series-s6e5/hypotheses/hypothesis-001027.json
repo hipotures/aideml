@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Specialized Experts With Monotone Sigmoid Blend",
+  "summary": "F1 strategy literature repeatedly highlights different behavior under dry vs wet tyres and under neutralization-like conditions because pit-loss economics and degradation dynamics change sharply.",
+  "rationale": "F1 strategy literature repeatedly highlights different behavior under dry vs wet tyres and under neutralization-like conditions because pit-loss economics and degradation dynamics change sharply. That argues for separate specialists rather than a single global model, with monotone post-blending that preserves ranking.",
+  "implementation_hint": "Define coarse regimes such as dry compounds, wet/intermediate compounds, and anomaly laps that proxy SC/VSC or traffic using extreme LapTime_Delta, lap gaps, and field-wide pace shocks. Train separate models per regime or a gating feature, then blend their OOF scores with logistic/sigmoid calibration only, not isotonic, to preserve AUC ranking.",
+  "expected_effect": "Reduces regime interference and should improve robustness on rare wet or disrupted race segments.",
+  "risk": "Regime labels are proxy-based and may be noisy; too many experts can fragment data and hurt stability.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wait-One-Lap Safety-Car Option Value",
+  "summary": "Both F1 coverage and the dynamic-programming literature note that yellow flags and Safety Cars materially cheapen pit stops; current features capture tyre stress but not the option value of waiting because a neutralization may arrive soon.",
+  "rationale": "Both F1 coverage and the dynamic-programming literature note that yellow flags and Safety Cars materially cheapen pit stops; current features capture tyre stress but not the option value of waiting because a neutralization may arrive soon.",
+  "implementation_hint": "Estimate train-only circuit-lap neutralization priors or pit-burst priors, then derive `expected_pit_loss_if_wait_1` versus `pit_now` features. Interact those with track position, laps remaining, and current tyre distress to model when teams rationally delay.",
+  "expected_effect": "Should reduce false positives on rows where a stop is due soon but the strategically correct action is to hold out for a cheaper window.",
+  "risk": "Historical neutralization priors can be unstable across seasons and must be built without peeking across the full race.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E.html"
+  ]
+}

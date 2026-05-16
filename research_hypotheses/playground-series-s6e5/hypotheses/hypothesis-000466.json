@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native CatBoost categorical-diversity blend",
+  "summary": "The public competition write-up used CatBoost but dropped Driver and one-hot encoded objects, while CatBoost documentation recommends native categorical handling and ordered target statistics to reduce target leakage.",
+  "rationale": "The public competition write-up used CatBoost but dropped Driver and one-hot encoded objects, while CatBoost documentation recommends native categorical handling and ordered target statistics to reduce target leakage. The current best pipeline uses frequencies/categories, but a dedicated CatBoost model with categorical combinations can add ensemble diversity.",
+  "implementation_hint": "Train a separate CatBoostClassifier on minimally encoded data with Driver, Race, Compound, Race_Year, Driver_Race, Race_Compound, Driver_Compound, and binned numerical interactions as categorical/string features. Use ordered boosting, AUC eval, class weights or scale_pos_weight only if CV helps, then blend OOF-calibrated ranks with the existing AutoGluon/GBM predictions.",
+  "expected_effect": "May capture high-cardinality driver/race strategy tendencies that frequency features miss, while providing a different error profile for a weighted rank blend.",
+  "risk": "Native CTRs can still overfit if validation is row-random or if categorical combinations are too granular. Blend by OOF AUC, not public score chasing.",
+  "sources": [
+    "https://tracyrenee61.medium.com/predict-on-the-probability-a-formula-1-driver-will-pit-on-the-next-lap-e6b8adb4a45f",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://arxiv.org/abs/1706.09516"
+  ]
+}

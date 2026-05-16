@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-Race Undercut/Overcut Gain Features",
+  "summary": "Official F1 strategy analysis emphasizes that pit timing depends on the balance between worn-tyre degradation and fresh-tyre warm-up penalty, and that this balance changes by circuit, car, and race phase.",
+  "rationale": "Official F1 strategy analysis emphasizes that pit timing depends on the balance between worn-tyre degradation and fresh-tyre warm-up penalty, and that this balance changes by circuit, car, and race phase. The current features model wear, but not race-specific fresh-tyre warm-up asymmetry.",
+  "implementation_hint": "Using only laps earlier than the current lap, estimate same-race fresh-tyre out-lap penalty and old-tyre in-lap decay from other drivers who have already pitted in the same Year-Race. Derive features like expected_undercut_gain, expected_overcut_gain, fresh_tyre_warmup_penalty, and clean_air_rejoin_proxy.",
+  "expected_effect": "Improves track-specific tactical calls, particularly where overcut is viable because fresh tyres warm slowly or degradation is low.",
+  "risk": "Sparse early-race evidence and noisy estimates on races with few observed stops. Needs backoff to global compound-level estimates.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

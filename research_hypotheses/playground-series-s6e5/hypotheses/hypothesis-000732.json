@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Conditional Bayesian Calibration on OOF Logits",
+  "summary": "Prior research already pointed toward calibration/blending, but a specific non-parametric post-processor is still untested here.",
+  "rationale": "Prior research already pointed toward calibration/blending, but a specific non-parametric post-processor is still untested here. Bayesian Binning into Quantiles and related Bayesian/nonparametric calibration methods are designed to improve probability quality as a post-processing layer, which is useful when blending heterogeneous specialists whose raw score scales differ.",
+  "implementation_hint": "Collect OOF logits from the main tabular model plus any specialists, then fit calibration only on OOF predictions, not in-fold scores. Test one global calibrator and separate calibrators for dry vs wet compounds or early vs late race, then average calibrated probabilities rank-safely if AUC holds.",
+  "expected_effect": "Small but real gain from cleaner tail probabilities and better combination of heterogeneous specialists, especially if public scoring is sensitive to overconfident extremes.",
+  "risk": "Calibration can flatten useful ranking signal if applied on noisy folds or very small regimes; it should be validated by AUC, not just calibration loss.",
+  "sources": [
+    "https://pubmed.ncbi.nlm.nih.gov/25927013/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC4657569/",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-"
+  ]
+}

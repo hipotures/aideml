@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Discrete Stint Hazard Priors",
+  "summary": "Pit windows are naturally discrete hazards: given the stint survived to tyre age t, what is the chance of stopping on the next lap?",
+  "rationale": "Pit windows are naturally discrete hazards: given the stint survived to tyre age t, what is the chance of stopping on the next lap? Discrete-time hazard literature and AWS’s Pit Window framing support replacing hand-set compound life maps with learned survival/hazard priors.",
+  "implementation_hint": "On each training fold only, estimate hazard and survival tables for stint end by TyreLife conditioned on Compound, wet/dry, Stint, and coarse race-length or progress bins. Add features such as hazard_now, survival_3laps, and excess_hazard_vs_global, with smoothing toward broader parent groups when cells are sparse.",
+  "expected_effect": "Should outperform fixed tyre-life heuristics by learning real compound-specific and regime-specific stop cliffs.",
+  "risk": "Sparse cells can overfit, especially if you condition too hard on track-year; tables must be computed out-of-fold by held-out races.",
+  "sources": [
+    "https://aws.amazon.com/sports/f1/",
+    "https://link.springer.com/article/10.1007/s11222-022-10196-x",
+    "https://pubmed.ncbi.nlm.nih.gov/31373358/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged race-sequence CV with embargo before trusting any CV lift",
+  "summary": "This target is a next-lap event inside driver-race sequences, so ordinary grouped CV can still leak through overlapping temporal context, same-race aggregates, or near-pit boundary effects.",
+  "rationale": "This target is a next-lap event inside driver-race sequences, so ordinary grouped CV can still leak through overlapping temporal context, same-race aggregates, or near-pit boundary effects. Purged/embargoed validation is recommended in temporally dependent settings specifically to remove overlap-driven optimism.",
+  "implementation_hint": "Split by `Race_Year`, keep all laps from a driver-race together, and purge/embargo laps around each validation block or around pit-event neighborhoods. Re-rank prior feature ideas only under this stricter CV; prefer ideas whose score survives rather than ideas with the highest raw CV.",
+  "expected_effect": "May lower reported local CV slightly but should improve leaderboard correlation and reduce false positives from feature mining.",
+  "risk": "If the competition split is more IID than expected, the stricter scheme can underuse data and hide small real gains.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3299597_code434076.pdf?abstractid=3177057"
+  ]
+}

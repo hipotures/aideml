@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add monotone-constrained booster on physical pit-window features",
+  "summary": "Pit probability should usually rise, not fall, as tyre age pressure, finish-tyre deficit, or pace-loss pressure worsen.",
+  "rationale": "Pit probability should usually rise, not fall, as tyre age pressure, finish-tyre deficit, or pace-loss pressure worsen. Monotone constraints are a good adjacent-competition trick for tabular problems with known directional structure, helping reduce spurious non-causal reversals.",
+  "implementation_hint": "Train a LightGBM monotone model using only features with credible signs, such as tyre_age_vs_expected, finish_tyre_deficit, lap_delta_loss, old_tyre_late_race_pressure, past_pit_count, and maybe negative monotonicity on laps_remaining when appropriate. Use it as a low-variance specialist and blend rather than forcing all features into the constrained model.",
+  "expected_effect": "Small standalone gain or stronger ensemble robustness, especially on rare strategy regimes where unconstrained trees overfit noise.",
+  "risk": "Wrong sign assumptions can hurt AUC; many race features are non-monotone globally, so constrain only a compact trusted subset.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://arxiv.org/abs/2011.00986",
+    "https://www.mdpi.com/2076-3417/10/21/7805/html"
+  ]
+}

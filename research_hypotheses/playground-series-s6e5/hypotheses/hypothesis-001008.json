@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fuel-adjusted latent tyre-state filter with reset and cliff features",
+  "summary": "Recent F1 degradation papers model tyre pace as a latent state with stint resets after pit stops; they also note roughly linear mid-stint decay but structural resets and observation noise from traffic/errors.",
+  "rationale": "Recent F1 degradation papers model tyre pace as a latent state with stint resets after pit stops; they also note roughly linear mid-stint decay but structural resets and observation noise from traffic/errors. That suggests a compact online filter may produce cleaner signals than raw `LapTime_Delta` and cumulative degradation alone.",
+  "implementation_hint": "For each driver-race stint, estimate latent clean-air pace and degradation slope with a simple Kalman/state-space approximation using lap time, tyre life, and race progress; reset state after `PitStop=1`. Feed the model filtered level, slope, acceleration, innovation residual, and a ‘cliff probability’ flag when residuals deteriorate faster than the fitted slope.",
+  "expected_effect": "May sharpen the separation between normal old-tyre operation and genuine pre-stop collapse, particularly when traffic makes raw lap times noisy.",
+  "risk": "If the filter assumptions are wrong, it can just repackage existing features and add noise; fuel and traffic are only indirectly observed in this dataset.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

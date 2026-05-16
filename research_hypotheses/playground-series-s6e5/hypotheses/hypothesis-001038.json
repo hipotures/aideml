@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "AFT survival model on laps-until-next-pit, then convert to next-lap risk",
+  "summary": "This target is naturally time-to-event.",
+  "rationale": "This target is naturally time-to-event. XGBoost’s AFT objective supports uncensored and right-censored labels, which fits rows whose next pit occurs later in the race versus rows censored at race end. That gives a different inductive bias than the current direct binary classifiers and the earlier hazard-style idea.",
+  "implementation_hint": "Within each Year/Race/Driver sequence, derive `laps_until_next_pit` from the next future `PitStop==1`; if no future pit exists, mark as right-censored at remaining laps. Train `xgb.train` with `objective='survival:aft'` on the existing tabular features plus stint history. Convert predicted event time to a next-lap score by calibrating `P(T<=1)` or by isotonic-mapping the raw AFT prediction to `PitNextLap` using OOF folds.",
+  "expected_effect": "Could add orthogonal signal on pit-window timing and improve blended AUC even if the standalone binary AUC is only similar to the baseline.",
+  "risk": "AFT optimizes time likelihood, not AUC directly; the mapping from predicted survival time to next-lap probability can be noisy if calibration is weak.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

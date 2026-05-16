@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Multi-Horizon Pit-Imminence Model",
+  "summary": "Discrete-time survival work shows time-to-event problems often improve when framed as several linked binary hazards over future intervals.",
+  "rationale": "Discrete-time survival work shows time-to-event problems often improve when framed as several linked binary hazards over future intervals. For pit strategy, “next lap” is noisy; jointly learning pit-in-1, pit-in-2, and pit-in-3-laps can stabilize the true pit-window signal.",
+  "implementation_hint": "From each driver-race sequence, derive auxiliary labels for pit within <=1, <=2, <=3 laps. Train a shared-head CatBoost/XGB stack or small neural multitask model, then use the 1-lap head directly or blend it with finite differences between horizons to sharpen ranking.",
+  "expected_effect": "Better separation near the pit window and a new OOF signal that is correlated but not identical to the current binary target.",
+  "risk": "Sequence labeling must be done strictly within each driver-race trajectory; naive construction can leak across folds or create inconsistent labels around session ends.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8232898/",
+    "https://www.researchgate.net/publication/310824905_A_Multi-Task_Learning_Formulation_for_Survival_Analysis"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Race-lap field context via Deep Sets or Set Transformer",
+  "summary": "Pit decisions are relative to the whole field, not just one car: undercut pressure, same-compound clusters, and pit waves are inherently set-structured.",
+  "rationale": "Pit decisions are relative to the whole field, not just one car: undercut pressure, same-compound clusters, and pit waves are inherently set-structured. Deep Sets and Set Transformer are built for permutation-invariant set inputs and can model cross-car interactions more directly than hand-built per-row aggregates.",
+  "implementation_hint": "For each `(Year, Race, LapNumber)` build a set of all cars with per-car features; predict each car’s `PitNextLap` from its own embedding plus pooled field context. Start with a small Deep Sets model; if it helps, try attention-based Set Transformer. Blend OOF ranks with the tree stack rather than replacing it.",
+  "expected_effect": "A more decorrelated ensemble member that captures pit-wave and relative-position effects the current row-wise models only approximate.",
+  "risk": "More engineering and GPU cost; gains may vanish if field snapshots are too noisy or if chronology-safe sequence batching is mishandled.",
+  "sources": [
+    "https://papers.neurips.cc/paper_files/paper/2017/hash/f22e4747da1aa27e363d86d40ff442fe-Abstract.html",
+    "https://huggingface.co/papers/1810.00825",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

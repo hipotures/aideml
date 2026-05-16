@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add pit-cycle cooldown and out-lap phase features",
+  "summary": "After a car has just stopped, an immediate next-lap stop is usually structurally unlikely except for penalties/damage/weather.",
+  "rationale": "After a car has just stopped, an immediate next-lap stop is usually structurally unlikely except for penalties/damage/weather. Existing top solutions count prior stops but do not fully encode lap_since_last_pit, post-stop out-lap warm-up, or cooldown regimes.",
+  "implementation_hint": "For each Race-Year/Driver sequence, derive laps_since_last_pit, laps_until_current_stint_start, previous_lap_pitstop, current_is_outlap_proxy, first_2_laps_after_stop, and long_stint_without_stop. Keep these causal and compute identically for train/test.",
+  "expected_effect": "Should reduce false positives immediately after stops and sharpen hazards as a stint matures.",
+  "risk": "If PitStop marks pit entry differently than expected, phase offsets may be off by one; test variants using current, lag-1, and lag-2 PitStop flags.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://sportsorca.com/f1/tire-warm-up-f1-undercut/",
+    "https://racingnews365.com/f1-pitstops"
+  ]
+}

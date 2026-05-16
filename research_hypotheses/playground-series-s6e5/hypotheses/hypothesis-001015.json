@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-Group Ranking Specialist Blended Into Binary Model",
+  "summary": "The target is a relative next-lap urgency signal inside each race-lap, and ranking objectives are built for query-level ordering.",
+  "rationale": "The target is a relative next-lap urgency signal inside each race-lap, and ranking objectives are built for query-level ordering. LightGBM documents `lambdarank` / `rank_xendcg` for grouped ranking, which fits the idea of ranking drivers within the same `(Year, Race, LapNumber)` query before blending back to the strong binary classifier.",
+  "implementation_hint": "Train a second model with query groups=`Year+Race+LapNumber`, label=`PitNextLap`, and features already engineered causally. Evaluate by converting rank scores directly to probabilities only for blending, not standalone calibration. Blend 10-30% of this specialist with the current best binary tree model.",
+  "expected_effect": "Could improve AUC by sharpening who is most likely to pit on a given lap, especially when absolute probabilities are noisy but within-lap ordering is informative.",
+  "risk": "If many laps have zero or one positive, ranking can be noisy; poor query construction or cross-validation that splits a race across folds will inflate CV.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://lightgbm.readthedocs.io/en/latest/_modules/lightgbm/engine.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

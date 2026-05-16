@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Venn-Abers-Calibrated OOF Specialist Blend",
+  "summary": "Your best nodes already cluster tightly, so the next gain may be from stabilizing blend tails rather than changing core features.",
+  "rationale": "Your best nodes already cluster tightly, so the next gain may be from stabilizing blend tails rather than changing core features. Venn-Abers calibration is a stronger alternative to simple sigmoid scaling when base learners are overconfident or regime-skewed, and can make a meta-blend more robust on rare high-pressure laps.",
+  "implementation_hint": "Train 2-4 diverse specialists already supported by your stack (e.g. plain GBDT, categorical-heavy model, regulation-feature model, sequence/renewal model). For each fold, fit Venn-Abers on OOF scores only, transform validation/test scores, then blend calibrated probabilities with a simple logit or rank-average meta-model.",
+  "expected_effect": "Small CV lift or flatter fold variance; more likely to help LB robustness than to create a huge local jump.",
+  "risk": "AUC is rank-based, so calibration alone may not help unless it improves the ensemble ordering between specialists.",
+  "sources": [
+    "https://proceedings.mlr.press/v60/manokhin17a.html",
+    "https://proceedings.mlr.press/v91/johansson18a.html"
+  ]
+}

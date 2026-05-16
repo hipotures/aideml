@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Time-aware CatBoost with native categorical combinations",
+  "summary": "CatBoost’s ordered statistics and `has_time` mode are designed to avoid target leakage in high-cardinality categoricals, which fits `Driver`, `Race`, `Compound`, `Year`, and their interactions better than manual frequency features alone.",
+  "rationale": "CatBoost’s ordered statistics and `has_time` mode are designed to avoid target leakage in high-cardinality categoricals, which fits `Driver`, `Race`, `Compound`, `Year`, and their interactions better than manual frequency features alone.",
+  "implementation_hint": "Train CatBoost on raw categorical columns plus a few crossed strings such as `Driver__Race`, `Driver__Compound`, `Race__Compound`, `Race__Year__Compound`; sort rows by Race-Year, Driver, LapNumber and enable `has_time=True` so ordered CTRs only use prior rows.",
+  "expected_effect": "Can capture driver/race/compound priors and interaction effects more cleanly than hand-built encodings, with less overfit on rare drivers.",
+  "risk": "If row order is wrong, ordered CTRs become noisy or leaky; compare against current baseline under race-group holdout, not random CV.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

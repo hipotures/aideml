@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-time-scale monotone hazard surface over tyre age and laps remaining",
+  "summary": "Pit propensity is naturally driven by at least two clocks: laps since stop and laps to finish.",
+  "rationale": "Pit propensity is naturally driven by at least two clocks: laps since stop and laps to finish. Discrete-time survival literature supports flexible hazard models on multiple time scales, and monotonic constraints can encode the strong prior that, away from cooldown laps, pit risk should generally rise with tyre age/degradation and fall right after a stop.",
+  "implementation_hint": "Build a compact expert using spline/binned surfaces on (TyreLife, LapsRemaining_Est) and optionally compound-specific surfaces, with cooldown as a separate feature. Either fit a proportional-odds/cloglog discrete-time hazard model or a monotone-constrained booster on a small feature set, then stack its OOF predictions with the current baseline.",
+  "expected_effect": "Adds a smoother, more physics-aligned bias that can improve extrapolation on rare long stints and late-race edge cases.",
+  "risk": "Over-constraining can hurt on wet tyres, safety-car laps, or circuits where overcut behavior breaks simple monotonicity.",
+  "sources": [
+    "https://www.mdpi.com/2075-1680/12/12/1102",
+    "https://journals.sagepub.com/doi/10.1177/09622802251367443",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html"
+  ]
+}

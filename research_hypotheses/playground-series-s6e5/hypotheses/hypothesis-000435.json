@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Retrieval features from historical analogous stints",
+  "summary": "Retrieval-augmented tabular models like TabR show that nearest-neighbor context can add signal beyond global tree rules.",
+  "rationale": "Retrieval-augmented tabular models like TabR show that nearest-neighbor context can add signal beyond global tree rules. Pit calls are highly local decisions, so similar historical laps/stints should provide useful empirical hazard information that fixed trees may miss.",
+  "implementation_hint": "Create a compact state vector from compound, tyre age, laps remaining, race progress, position, wet flag, and new trailing-slope features. For each row, retrieve nearest historical training laps within the same broad regime and add neighbor pit-rate, average laps-to-next-pit, and distance features, or train a small retrieval specialist and blend OOF ranks.",
+  "expected_effect": "Adds local analog signal, especially for sparse regimes such as wet tyres, odd degradation patterns, or unusual late-race windows.",
+  "risk": "Neighbor search must be fold-isolated to avoid same-race/future-lap leakage; naive retrieval can be memory-heavy and unstable under distribution shift.",
+  "sources": [
+    "https://arxiv.org/abs/2307.14338",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0031320320302260"
+  ]
+}

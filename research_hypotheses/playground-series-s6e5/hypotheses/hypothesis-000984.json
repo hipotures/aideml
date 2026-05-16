@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specialist ensemble with local calibration instead of one global model",
+  "summary": "F1 pit logic differs across dry vs wet, early vs late race, and first-stint vs later-stint regimes.",
+  "rationale": "F1 pit logic differs across dry vs wet, early vs late race, and first-stint vs later-stint regimes. Calibration literature shows global Platt/isotonic can miss region-specific distortions, while localized calibration trees can outperform single global calibrators; LightGBM also warns imbalance tricks can hurt probability quality.",
+  "implementation_hint": "Train 3-5 specialists on disjoint regimes such as dry first-stint, dry later-stint, wet/intermediate, and late-race mandatory-change pressure. Generate OOF predictions, stack with a simple meta-model, then apply regime-conditional beta/isotonic calibration or a lightweight local calibrator using phase/compound as calibration features.",
+  "expected_effect": "Usually small but real gain from better regime fit and cleaner probabilities, especially if current model is averaging incompatible strategy patterns.",
+  "risk": "Specialists reduce sample size and can overfit rare wet regimes unless heavily regularized and validated with strict OOF pipelines.",
+  "sources": [
+    "https://researchcommons.waikato.ac.nz/entities/publication/576f1a35-88ed-4ad9-ab4c-7fe71c85c9ad",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids%283f9dec1d-0afb-45f4-ba09-c1763232f976%29.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

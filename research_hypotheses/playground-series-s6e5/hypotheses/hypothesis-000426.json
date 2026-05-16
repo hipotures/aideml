@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join lap-level weather to model crossover and wet-race pit calls",
+  "summary": "FastF1 exposes rainfall, track temperature, humidity, and wind, while FIA rules explicitly treat wet-weather tyre usage differently.",
+  "rationale": "FastF1 exposes rainfall, track temperature, humidity, and wind, while FIA rules explicitly treat wet-weather tyre usage differently. The dataset has compound labels but not the external weather state that often triggers the pit call.",
+  "implementation_hint": "Join weather per driver-lap through FastF1 lap tables or session weather snapshots. Add features like rain_now, recent rain onset, track-temp drop, humidity surge, and compound-weather mismatch indicators for INTERMEDIATE/WET transitions.",
+  "expected_effect": "Most likely to help on wet or mixed-condition races where pure tyre-age heuristics are weak and pit timing is driven by crossover conditions.",
+  "risk": "Weather updates are minute-level and may be coarse for rapid transitions. Testing-session coverage and name matching need checking.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_3_-_2024-12-11.pdf"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-safe regime stack with sigmoid-only calibration",
+  "summary": "Scikit-learn notes isotonic calibration can change ROC-AUC by introducing ties, while sigmoid is strictly monotonic and preserves ranking.",
+  "rationale": "Scikit-learn notes isotonic calibration can change ROC-AUC by introducing ties, while sigmoid is strictly monotonic and preserves ranking. For this competition, that makes regime-specific stacking plus sigmoid calibration more aligned with the metric than generic isotonic post-processing.",
+  "implementation_hint": "Train 2-4 complementary specialists, for example current heuristic GBM, raw-cat CatBoost, and the ranking or latent-state model. Generate race-group OOF predictions, then fit a simple logistic stacker with interaction terms for regime flags such as wet vs slick, early vs late race, and legal-stop-pressure states. Use sigmoid calibration only on the final stack if needed; avoid isotonic unless it is evaluated solely on log loss.",
+  "expected_effect": "Should convert several small complementary gains into a safer public-LB improvement while preserving the AUC ordering behavior that matters.",
+  "risk": "Stacking can overfit if the meta-model sees in-fold base predictions or if regimes are too granular for only 26 races. The benefit depends on genuinely diverse specialists, not multiple near-duplicates of the same tree model.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Historical Next-Compound Transition Priors",
+  "summary": "Public F1 strategy guides repeatedly frame races as a small set of viable stint templates, not just independent stop/no-stop decisions.",
+  "rationale": "Public F1 strategy guides repeatedly frame races as a small set of viable stint templates, not just independent stop/no-stop decisions. The current baseline reasons about whether tyres can finish, but not about what tyre choice typically follows a stop in similar contexts.",
+  "implementation_hint": "From training only, learn past-only empirical priors for the next compound after a stop conditioned on current Compound, laps remaining, wet/dry regime, stint index, and compounds already used. Convert these into features for the current row: probability that a stop now would lead to a historically common next compound and probability that the resulting plan can finish legally.",
+  "expected_effect": "Can capture one-stop vs two-stop template preferences and compound-switch habits that plain tyre-life windows miss.",
+  "risk": "Sparse categories may overfit, so use hierarchical smoothing and leave-group-out estimation.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf"
+  ]
+}

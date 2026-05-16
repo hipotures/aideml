@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Distill a multi-task strategy teacher into tabular meta-features",
+  "summary": "Adjacent F1 papers report value from predicting pit timing jointly with auxiliary targets such as laps-to-stop and compound choice.",
+  "rationale": "Adjacent F1 papers report value from predicting pit timing jointly with auxiliary targets such as laps-to-stop and compound choice. Instead of replacing the current tabular stack, use that richer teacher to generate OOF strategy-intent features.",
+  "implementation_hint": "Train a small teacher with heads for `PitNextLap`, remaining laps until next pit, and next-compound class. Keep it leak-safe and OOF; feed its logits, expected remaining laps, and compound probabilities to the existing classifier as extra features.",
+  "expected_effect": "Injects strategy intent and horizon information without needing a full end-to-end sequence submission model.",
+  "risk": "More training complexity; weak teachers can just add noise if not generated OOF.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/download/700/1520/1434",
+    "https://res.mdpi.com/d_attachment/applsci/applsci-10-07805/article_deploy/applsci-10-07805.pdf",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

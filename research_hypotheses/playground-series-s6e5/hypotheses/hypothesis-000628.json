@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Smoothed Pit-Window Hazard Encoding",
+  "summary": "Race strategy guides describe compound-specific pit windows, and the data has repeated Race, Year, Compound, Stint, and TyreLife patterns.",
+  "rationale": "Race strategy guides describe compound-specific pit windows, and the data has repeated Race, Year, Compound, Stint, and TyreLife patterns. A target-safe survival-style prior can encode when each compound/stint usually becomes pit-eligible.",
+  "implementation_hint": "Build out-of-fold encodings using GroupKFold by Race or Race-Year: smoothed mean PitNextLap by Compound-Stint-TyreLife bucket, Race-Compound-Stint-TyreLife, and Driver-Compound-Stint. Add cumulative hazard up to current TyreLife and distance_to_peak_hazard. For test, fit encoders on full train with Bayesian smoothing/min-count fallback.",
+  "expected_effect": "May improve AUC by giving trees a direct but leakage-controlled prior for scheduled pit windows.",
+  "risk": "Random validation will overstate gains; encodings must be OOF for train rows and grouped to avoid memorizing race-specific labels.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-abu-dhabi-grand.6hiSWQGOq4LE0hQUTH5AHa",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

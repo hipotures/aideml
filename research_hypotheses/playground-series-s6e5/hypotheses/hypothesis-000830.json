@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered Hierarchical Target Priors For Strategy Context",
+  "summary": "The data has very high-cardinality strategy identifiers (`Driver`, `Race`, `Year`, compound/stint combos).",
+  "rationale": "The data has very high-cardinality strategy identifiers (`Driver`, `Race`, `Year`, compound/stint combos). Public encoder docs show cross-fitted or ordered target encoding is specifically meant to keep this signal without catastrophic leakage. This is a more concrete extension of simple frequency features and should be stronger than global means because pit timing is highly conditional on race, compound, and stint context.",
+  "implementation_hint": "Build leak-safe encodings in chronological order within each training fold for keys such as `Driver`, `Race`, `Race_Year`, `Race_Compound`, `Driver_Compound`, plus hierarchical fallbacks like `Driver->Driver_Compound->Driver_Compound_Stint` and `Race->Race_Compound->Race_LapBucket`. Export both posterior and posterior-minus-parent-prior features. Compare CatBoost native categoricals vs explicit ordered encoders.",
+  "expected_effect": "Small but realistic CV lift if current model is underusing categorical structure; biggest gain should be on rare drivers/races where hierarchical shrinkage beats one-hot/frequency counts.",
+  "risk": "Easy to leak if encodings are not strictly fold-local and time-ordered; public LB may drop if rare-category priors overfit historical race identity.",
+  "sources": [
+    "https://contrib.scikit-learn.org/category_encoders/catboost.html",
+    "https://sklearn.org/1.7/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

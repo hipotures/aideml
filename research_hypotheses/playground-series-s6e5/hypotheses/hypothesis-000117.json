@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Cross-Fitted Circuit-Specific Pit-Window Priors",
+  "summary": "F1 strategy guides repeatedly frame races in terms of circuit- and compound-specific pit windows.",
+  "rationale": "F1 strategy guides repeatedly frame races in terms of circuit- and compound-specific pit windows. A shrinkage prior for expected stop timing by race/compound/stint/regime should give the model a stronger baseline than inferring every window from raw continuous features alone.",
+  "implementation_hint": "Build out-of-fold empirical-Bayes encodings such as expected remaining stint length and `P(pit next lap | Race, Compound, Stint, RaceProgressBin, TyreLifeBin)`, with heavy smoothing and race-level group folds. Use deltas to the typical pit lap/window as new features rather than raw target encodings alone.",
+  "expected_effect": "Adds interpretable strategy priors, especially for tracks where one-stop and two-stop windows are consistently narrow and compound-dependent.",
+  "risk": "High-cardinality priors can leak badly if not fully cross-fitted; sparse race/compound combinations may collapse to noise without strong smoothing.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-mexico-city.7iKvaSoen2IUbB1S9LaaV",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

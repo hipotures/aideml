@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "Create cumulative prior wet/intermediate seen flags, current weather-class switch indicators, laps since entering wet class, and interactions between wet-state and stop-debt or compound-obligation features. Keep constants coarse and test as a small add-on to slick-diversity state.",
   "expected_effect": "Small AUC gain with low-medium confidence; likely improves rare-condition ranking more than global AUC.",
   "risk": "Sparse wet data can overfit. Avoid detailed wet target priors unless they are smoothed and fold-safe.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

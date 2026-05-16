@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purge-aware race-sequence CV before any new feature test",
+  "summary": "Your current best features are heavily sequential.",
+  "rationale": "Your current best features are heavily sequential. `GroupKFold` prevents race leakage across groups, while `TimeSeriesSplit` explicitly warns that future observations can leak into past without ordered splits and supports a `gap`. For this task, rows adjacent to actual pit events are especially leak-prone because lag/rolling features can encode stop resets too directly.",
+  "implementation_hint": "Benchmark every candidate under a stricter splitter: hold out full `Race_Year` groups, sort within each train fold by `Race_Year/Driver/LapNumber`, and add a small purge gap around fold boundaries or around rows immediately after `PitStop=1` when generating lagged features. Keep the model unchanged first; treat CV drop vs LB gain as the signal.",
+  "expected_effect": "Lower local CV but better public-LB alignment; reduces false positives from overfit sequential features.",
+  "risk": "May look worse locally and slow iteration if the existing CV was optimistic.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

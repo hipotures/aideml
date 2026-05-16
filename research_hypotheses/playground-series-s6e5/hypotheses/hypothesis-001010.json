@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Opponent-aware undercut/overcut counterfactual features",
+  "summary": "F1 strategy references consistently frame pit timing as an interaction problem driven by traffic, out-lap delta, and the gap to the nearest pit-window rival, while game-theoretic work models each lap’s stop/continue choice as dependent on the opponent’s action.",
+  "rationale": "F1 strategy references consistently frame pit timing as an interaction problem driven by traffic, out-lap delta, and the gap to the nearest pit-window rival, while game-theoretic work models each lap’s stop/continue choice as dependent on the opponent’s action. The current best code is mostly self-state plus field averages; it appears to lack explicit nearest-rival pit-window economics.",
+  "implementation_hint": "Within each Year-Race-LapNumber, compute gaps to nearest cars ahead/behind in Position or lap time, then add counterfactual urgency features such as expected net gain from pitting now vs staying out one lap: LapTime_Delta relative to nearby rivals, tyre-age differential vs nearest rival, same-compound rival old-tyre flags, and clean-air proxies after a hypothetical stop. Validate with GroupKFold/leave-race-out so same-race future rows never inform aggregates.",
+  "expected_effect": "Could add orthogonal signal near ambiguous pit windows where self-tyre features alone cannot separate cover-the-rival stops from delayed stops.",
+  "risk": "Easy to leak same-lap or future race information if rival aggregates use future rows; counterfactual features may be noisy without exact gap telemetry.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115",
+    "https://www.gpfans.com/us/f1-news/1016513/f1-undercut-overcut-explained/"
+  ]
+}

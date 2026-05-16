@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leak-safe empirical hazard priors",
+  "summary": "The current best solution hand-codes tyre life windows.",
+  "rationale": "The current best solution hand-codes tyre life windows. Public F1 strategy research treats pit timing as a lap-level decision driven by tyre degradation and race context, so smoothed empirical next-lap hazard tables can learn circuit-, stint-, compound-, and race-progress-specific stopping windows directly.",
+  "implementation_hint": "Generate out-of-fold Bayesian target encodings for bins such as Race x Compound x Stint x TyreLifeBin, Race x LapsRemainingBin, Year x Compound x Stint, and WetRegime x RaceProgressBin. Use strong smoothing toward global and group parents; fit encoders only on training folds and map test using full-train encoders.",
+  "expected_effect": "Can capture non-obvious circuit/stint pit timing patterns beyond fixed soft/medium/hard expected-life constants, improving AUC if CV is race-aware.",
+  "risk": "High leakage risk if encodings are not OOF. With only 26 races, fine-grained tables can overfit; smoothing and fallback hierarchy are essential.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

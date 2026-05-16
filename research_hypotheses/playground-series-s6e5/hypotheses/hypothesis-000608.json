@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver-Team Strategy Prior Proxies",
+  "summary": "Public F1 pit datasets emphasize driver/team behavior, average stop patterns, stint length, and pit frequency as predictive strategy variables.",
+  "rationale": "Public F1 pit datasets emphasize driver/team behavior, average stop patterns, stint length, and pit frequency as predictive strategy variables. The current data lacks Team, but Driver/Race/Year combinations can still encode conservative vs aggressive stop tendencies.",
+  "implementation_hint": "Build smoothed OOF priors: driver_pit_rate, driver_compound_pit_age_median, race_pit_lap_density, year_compound_pit_rate, stint_count_prior, and interaction encodings for Driver x Compound and Race x Stint. Feed these alongside raw categorical columns into CatBoost and LightGBM.",
+  "expected_effect": "Adds strategic tendency information beyond instantaneous tyre and pace variables.",
+  "risk": "High-cardinality priors can memorize random splits; require race/year grouped validation to estimate leaderboard robustness.",
+  "sources": [
+    "https://www.kaggle.com/datasets/akashrane2609/formula-1-pit-stop-dataset",
+    "https://www.kaggle.com/datasets/eshummalik/pitstop-pulse-formula-1-performance-data",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

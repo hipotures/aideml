@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF latent degradation state instead of more fixed tyre thresholds",
+  "summary": "Recent F1 work models tyre energy or latent degradation as a hidden state, which is closer to the real decision variable than raw `TyreLife` or static compound life tables.",
+  "rationale": "Recent F1 work models tyre energy or latent degradation as a hidden state, which is closer to the real decision variable than raw `TyreLife` or static compound life tables. Your current best solutions already exploit explicit windows heavily; a causal hidden-state summary is a more orthogonal addition.",
+  "implementation_hint": "Train an out-of-fold causal teacher per driver-race-stint that predicts next-lap pace or residual tyre life from past `LapTime (s)`, `LapTime_Delta`, `TyreLife`, `Cumulative_Degradation`, `Compound`, and `RaceProgress`. Export only OOF features such as latent wear level, wear slope, and uncertainty into the main tabular model.",
+  "expected_effect": "Better handling of non-linear wear and track/compound interactions, especially where the same tyre age means different pit pressure.",
+  "risk": "Easy to leak future laps if the teacher is not strictly causal and race-grouped OOF.",
+  "sources": [
+    "https://arxiv.org/abs/2501.04067",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

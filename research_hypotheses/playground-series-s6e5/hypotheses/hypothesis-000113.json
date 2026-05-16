@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Same-Lap Query Ranker Expert",
+  "summary": "Inference from XGBoost/CatBoost ranking docs: this task is partly relative within each (Year, Race, LapNumber) field, where teams choose who is most likely to pit among contemporaries.",
+  "rationale": "Inference from XGBoost/CatBoost ranking docs: this task is partly relative within each (Year, Race, LapNumber) field, where teams choose who is most likely to pit among contemporaries. A querywise ranker can optimize within-lap ordering directly instead of only global ROC ranking.",
+  "implementation_hint": "Train one extra expert with qid=(Year,Race,LapNumber), using XGBoost `rank:pairwise`/`rank:ndcg` or CatBoost `QuerySoftMax`/`YetiRankPairwise`. Keep the current classifier stack, then blend the ranker score as another OOF meta-feature. Filter or downweight queries with no positive labels.",
+  "expected_effect": "Better separation among near-threshold cars on the same lap; likely most useful for public-LB robustness when race-level ordering matters more than absolute calibration.",
+  "risk": "Many lap-groups may have zero or one positive, so ranking gradients can be sparse; naive random folds can also leak query structure and overstate gains.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend orthogonal experts with rank-based OOF ensembling",
+  "summary": "ROC AUC rewards ranking, not calibrated probability scale.",
+  "rationale": "ROC AUC rewards ranking, not calibrated probability scale. That makes direct probability averaging fragile when experts have different score distributions, while rank-based OOF blending is usually safer; calibration is only useful when a probability-level stacker needs comparable scales.",
+  "implementation_hint": "Train 3 orthogonal experts: current engineered-feature tree model, a raw-categorical CatBoost specialist, and one new horizon/set/sequence specialist. Convert OOF predictions to within-fold ranks or normalized logits, learn a tiny blender on OOF outputs, and use beta calibration only if you stack on raw probabilities rather than ranks.",
+  "expected_effect": "Often yields a cleaner public-score gain than adding one more heuristic to a single model.",
+  "risk": "Little benefit if experts are too correlated; fold misalignment can silently leak and overstate CV.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic"
+  ]
+}

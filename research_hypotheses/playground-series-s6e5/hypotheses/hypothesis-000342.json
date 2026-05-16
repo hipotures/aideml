@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Prior-Only Degradation Residual Features",
+  "summary": "Official F1 tyre analytics frame tyre condition as relative performance loss, not just age, and recent F1 research models degradation as a latent state inferred from lap times.",
+  "rationale": "Official F1 tyre analytics frame tyre condition as relative performance loss, not just age, and recent F1 research models degradation as a latent state inferred from lap times. That supports replacing fixed compound-life heuristics with residuals to an estimated degradation curve.",
+  "implementation_hint": "Within each `Race_Year x Compound` or `Driver x Race_Year x Stint`, fit a prior-only spline/isotonic/Kalman-like curve of `LapTime_Delta` or pace loss versus `TyreLife`, using only earlier laps. Feed the model the current residual-to-curve, local slope, curvature, and distance to the inferred performance cliff or reset.",
+  "expected_effect": "Should catch imminent stops when the tyre is degrading faster or differently than the nominal compound window, especially where the current handcrafted life maps are too static.",
+  "risk": "Neutralized laps and fuel/load effects can distort the curve unless you filter or model regimes separately; OOF generation is mandatory.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L",
+    "https://arxiv.org/abs/2512.00640",
+    "https://docs.fastf1.dev/index.html"
+  ]
+}

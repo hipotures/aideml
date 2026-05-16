@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "Within each training fold, compute smoothed means for Race-Year, Race, Compound, Year, Race-Compound, and Year-Compound using only fold-training rows; map validation and test rows with fallback to global prior. Compare against pure categorical trees under grouped folds.",
   "expected_effect": "Medium AUC gain possible; confidence medium because encodings can be powerful but validation-sensitive.",
   "risk": "Leakage risk is high if encodings are computed on the full training data before validation. They may also overfit exact Race-Year contexts under random holdout.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

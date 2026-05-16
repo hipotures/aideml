@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regime-local beta calibration plus logit stacking",
+  "summary": "Calibration papers show that a single global sigmoid can be too rigid, while beta calibration is often a stronger binary post-hoc map.",
+  "rationale": "Calibration papers show that a single global sigmoid can be too rigid, while beta calibration is often a stronger binary post-hoc map. ROC AUC itself is rank-based, so calibration will not rescue a single model’s ordering, but regime-local calibrated logits can materially help stacking and blend stability when experts are mis-scaled differently across dry/wet, race phase, or season.",
+  "implementation_hint": "Fit OOF beta calibrators separately for a few coarse regimes such as dry/wet x early/mid/late or by season, with fallback to global calibration when counts are small. Stack calibrated logits from XGB, CatBoost, and any new expert using a tiny regularized meta-model; select by blocked/grouped OOF only.",
+  "expected_effect": "Small direct CV gain, but useful if current blends are limited by misaligned score scales rather than missing signal.",
+  "risk": "Because calibration is monotone, standalone AUC may not move at all; over-segmented local calibrators can overfit and make the stack less stable.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

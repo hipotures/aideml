@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer hidden neutralization and pit-wave context from lap-level anomalies",
+  "summary": "Public F1 strategy sources repeatedly treat Safety Car/VSC and track-status changes as first-order pit triggers, and FastF1 explicitly exposes session-status data because timing quality and behavior differ around SC/VSC laps.",
+  "rationale": "Public F1 strategy sources repeatedly treat Safety Car/VSC and track-status changes as first-order pit triggers, and FastF1 explicitly exposes session-status data because timing quality and behavior differ around SC/VSC laps. Your table has no flag/status column, so the model is likely missing a major latent driver. A proxy can be inferred from race-lap aggregates: sudden field-wide lap-time inflation, compressed position changes, and synchronized pit activity by multiple cars.",
+  "implementation_hint": "Build fold-safe race-lap features using only current-lap information: per (Year,Race,LapNumber) median/iqr of LapTime(s), LapTime_Delta, count of PitStop==1, share on wet/intermediate, and z-scores versus nearby laps. Add indicators for mass-pit waves, abnormal slow laps, and one-lap-after-wave recovery. Interact these with TyreLife, Compound, Position, and Laps_Remaining_Est.",
+  "expected_effect": "Should improve recall on externally triggered stops and reduce noise where current tyre-window heuristics misfire, especially around atypical race-control periods.",
+  "risk": "If features are built with future laps or race-global normalization they will leak badly; they need to be computed causally or within fold only.",
+  "sources": [
+    "https://docs.fastf1.dev/core.html",
+    "https://www.mdpi.com/2076-3417/10/12/4229",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

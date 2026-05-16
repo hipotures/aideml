@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Blend A Tree Model With A Tabular Transformer Specialist",
+  "summary": "The current search seems dominated by handcrafted GBDT-style heuristics.",
+  "rationale": "The current search seems dominated by handcrafted GBDT-style heuristics. A contextual tabular transformer can model sparse, high-cardinality categorical interactions like `Driver x Race x Year x Compound x Stint` differently from trees, and the literature reports strong robustness on tabular classification. The key is to use it only as a diversity source in an OOF ensemble, not as a monolithic replacement.",
+  "implementation_hint": "Train a small TabTransformer/FT-Transformer style model on raw categorical tokens plus normalized numeric inputs, with embeddings for `Driver`, `Race`, `Compound`, `Year`, `Stint`, `Position`. Use strong regularization and early stopping, then blend only OOF predictions with the current best tree model; apply sigmoid calibration if needed to preserve ranking.",
+  "expected_effect": "Even a weaker standalone model can improve public score if its errors are different from the handcrafted baseline.",
+  "risk": "Deep tabular models often underperform trees on medium-size tables; if not regularized היט may add noise rather than diversity.",
+  "sources": [
+    "https://www.researchgate.net/publication/347124498_TabTransformer_Tabular_Data_Modeling_Using_Contextual_Embeddings",
+    "https://huggingface.co/papers/2012.06678",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-Optimized OOF Stacking With Sigmoid-Only Calibration",
+  "summary": "Because the metric is ROC AUC, the final blend should optimize ranking directly.",
+  "rationale": "Because the metric is ROC AUC, the final blend should optimize ranking directly. AUC-maximizing metalearners are designed for this, while scikit-learn notes isotonic calibration can change AUC by introducing ties; sigmoid calibration preserves ranking.",
+  "implementation_hint": "Collect OOF logits/probabilities from diverse specialists, optionally sigmoid-calibrate each model fold-locally, then fit a simple AUC-oriented meta-learner on OOF predictions such as pairwise/logit rank optimization or constrained linear blending tuned on AUC. Avoid isotonic unless it clearly helps despite tie risk.",
+  "expected_effect": "Often yields small but real leaderboard lift by exploiting complementary ranking errors without degrading AUC through tie-heavy calibration.",
+  "risk": "Overfitting is easy when the base models are highly correlated; enforce nonnegative weights or strong regularization and validate on race-grouped folds only.",
+  "sources": [
+    "https://www.degruyter.com/document/doi/10.1515/ijb-2015-0035/html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html"
+  ]
+}

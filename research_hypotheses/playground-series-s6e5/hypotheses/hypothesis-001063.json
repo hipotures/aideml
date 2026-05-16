@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Within-lap ranking with soft relevance based on remaining laps to stop",
+  "summary": "Public ranking docs show CatBoost supports querywise and pairwise objectives inside groups.",
+  "rationale": "Public ranking docs show CatBoost supports querywise and pairwise objectives inside groups. The current rank-style attempts appear to use hard next-lap labels; that throws away ordering information among cars that will stop in 2, 3, or 4 laps. Treating each race-lap as a choice set with graded relevance is closer to the real strategist decision.",
+  "implementation_hint": "Group by Year-Race-LapNumber. Define soft relevance from future stop distance, e.g. 1.0 for next lap, then decaying values for 2-4 laps, or direct inverse remaining-laps. Train CatBoost with QuerySoftMax, YetiRankPairwise, or PairLogitPairwise; compare against hard-binary ranking and blend only if OOF gain survives the stricter CV above.",
+  "expected_effect": "Can improve local ordering among imminent stoppers without needing a full sequence model, especially in crowded pit windows.",
+  "risk": "If soft labels are poorly shaped, the model may optimize broader stop-window ranking at the expense of exact next-lap discrimination.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6"
+  ]
+}

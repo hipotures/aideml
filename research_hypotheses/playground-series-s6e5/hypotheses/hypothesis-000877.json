@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer cheap-stop neutralization regimes from field-synchronized lap shocks",
+  "summary": "F1 strategy sources stress that VSC/SC periods materially reduce pit-loss and create immediate pit windows.",
+  "rationale": "F1 strategy sources stress that VSC/SC periods materially reduce pit-loss and create immediate pit windows. Your current features mostly approximate circuit priors, but not race-state shocks where many cars suddenly become viable pit candidates at once.",
+  "implementation_hint": "Create same-lap field features by Year-Race-LapNumber: median/quantile LapTime_Delta, share of cars with huge positive deltas, variance collapse in positions, and one-lap persistence. Use these to classify green vs likely VSC/SC-like laps, then interact that flag with tyre age, finish margin, and current pit-window features.",
+  "expected_effect": "Should improve recall on abrupt next-lap pit waves and reduce false negatives when a stop becomes cheap for everyone.",
+  "risk": "Outlier laps from weather or local incidents may mimic neutralization; validate with leave-race-out folds to avoid overfitting to single events.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/",
+    "https://www.formula1.com/en/latest/article.albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E.html"
+  ]
+}

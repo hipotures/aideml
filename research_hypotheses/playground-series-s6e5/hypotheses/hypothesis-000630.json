@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dry-vs-wet regime gating",
+  "summary": "Public F1 pit-stop modeling work notes that dry tyre stops are largely strategic while wet/intermediate stops are reactive to weather and field conditions.",
+  "rationale": "Public F1 pit-stop modeling work notes that dry tyre stops are largely strategic while wet/intermediate stops are reactive to weather and field conditions. The current best ordinally maps wet/intermediate compounds but trains one global model, which may blur two different decision processes.",
+  "implementation_hint": "Create `is_dry_compound`, `is_wet_or_inter`, and compound-regime interaction features. Test a two-model blend: one GBM/XGB trained on dry rows, one on wet/intermediate rows, falling back to global predictions for sparse regimes. Add race-lap slowdown and same-lap pit-count features only to the reactive regime.",
+  "expected_effect": "May improve rank ordering around rare wet/intermediate laps and reduce noise in dry strategic pit-window learning.",
+  "risk": "Wet/intermediate rows may be too sparse; a separate model can overfit unless blended conservatively with the global model.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ]
+}

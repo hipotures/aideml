@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking auxiliary model",
+  "summary": "At a given race lap, only a small subset of drivers are realistic next-lap pit candidates.",
+  "rationale": "At a given race lap, only a small subset of drivers are realistic next-lap pit candidates. Learning-to-rank objectives are designed for exactly this grouped 'who is most likely now' problem and may complement binary AUC models.",
+  "implementation_hint": "Create groups by `Year,Race,LapNumber`; train a CatBoost or LightGBM ranker to rank drivers by pit likelihood within each lap, then blend its scores with the binary model. Test top-heavy query objectives and use group-aware folds only.",
+  "expected_effect": "Often improves ordering among hard borderline cases even when standalone calibration is weaker.",
+  "risk": "Ranking loss optimizes intra-lap ordering, not absolute probability, so it may need careful blending and calibration.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/stable/pythonapi/lightgbm.LGBMRanker.html",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

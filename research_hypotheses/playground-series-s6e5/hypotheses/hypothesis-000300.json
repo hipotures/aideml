@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specific sigmoid stacking instead of isotonic calibration",
+  "summary": "For ROC AUC, preserving rank matters.",
+  "rationale": "For ROC AUC, preserving rank matters. Scikit-learn notes isotonic calibration can change AUC because it introduces ties, while sigmoid is strictly monotonic. Since this competition scores ranking, a better path is a small OOF stacker or sigmoid calibrator per strategic regime rather than global isotonic smoothing.",
+  "implementation_hint": "Train 2-4 specialists or use existing diverse models, collect out-of-fold predictions, then fit a simple logistic stacker or `CalibratedClassifierCV(method=\"sigmoid\")` separately for regimes such as wet vs slick, can-finish vs cannot-finish, or early vs late race. Use only OOF base predictions for calibrator fitting.",
+  "expected_effect": "Often converts similar-CV models into a better LB submission by fixing regime-specific mis-scaling without damaging ranking.",
+  "risk": "Too many regimes or isotonic calibration can overfit; calibrating on in-fold predictions is pure leakage.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.calibration_curve.html"
+  ]
+}

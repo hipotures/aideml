@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stackelberg-Style Rival Response Features",
+  "summary": "Public F1 strategy sources emphasize that undercut/overcut value depends on rival state, traffic, and warm-up.",
+  "rationale": "Public F1 strategy sources emphasize that undercut/overcut value depends on rival state, traffic, and warm-up. Game-theoretic pit-stop research finds that neglecting competition materially worsens outcomes, so relative rival incentives are likely more informative than absolute tyre heuristics alone.",
+  "implementation_hint": "Within each Year-Race-Lap, create nearest-ahead and nearest-behind rival features: tyre-age gap, lap-delta gap, same-compound flag, pit-count gap, and a leader/follower role indicator. Add compact undercut-threat and overcut-exposure scores rather than broad traffic feature sets.",
+  "expected_effect": "Could add signal exactly where next-lap pit calls are tactical rather than purely degradation-driven.",
+  "risk": "No explicit time-gap column means rival-response proxies may be noisy at dense midfield laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

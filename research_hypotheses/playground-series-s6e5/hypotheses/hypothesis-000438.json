@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal tyre-cliff detector instead of static degradation totals",
+  "summary": "F1’s tyre-performance graphic and recent state-space work both frame tyre pace as a latent process that evolves through the stint and resets at pit stops.",
+  "rationale": "F1’s tyre-performance graphic and recent state-space work both frame tyre pace as a latent process that evolves through the stint and resets at pit stops. The state-space paper reports better predictive behavior than a simpler AR(1) benchmark, suggesting that raw cumulative degradation is too blunt to detect the last few laps before a stop.",
+  "implementation_hint": "Within each `driver-race-stint`, sort causally and compute rolling slope, acceleration, EWMA residuals, and short-horizon change scores for `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation`. Add warm-up-reset features after a pit and a simple one-step latent-pace proxy that restarts on each new stint.",
+  "expected_effect": "Should sharpen discrimination on ambiguous pre-stop laps, especially where degradation turns nonlinear late in a stint.",
+  "risk": "Short stints are noisy, and any use of pit-entry/out-laps or across-stint smoothing will leak reset information.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

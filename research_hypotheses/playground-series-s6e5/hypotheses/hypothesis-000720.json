@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use dry-race and wet/transition specialists with a learned gate",
+  "summary": "Recent F1 pit-stop work explicitly dropped intermediate/wet laps because those stops are governed by immediate track wetness and driver feedback rather than normal degradation logic.",
+  "rationale": "Recent F1 pit-stop work explicitly dropped intermediate/wet laps because those stops are governed by immediate track wetness and driver feedback rather than normal degradation logic. Your current best features treat all compounds with one shared structure, which likely blurs two different decision processes. Since the competition includes INTERMEDIATE and WET rows, a mixture-of-experts split is more plausible than a single global model.",
+  "implementation_hint": "Train at least two specialists: dry-only (SOFT/MEDIUM/HARD) and wet-transition (INTERMEDIATE/WET plus laps adjacent to compound/weather shifts). Gate by compound plus inferred transition context such as race-lap wet-share, recent pit-wave intensity, and abrupt lap-time inflation. Blend specialist probabilities rather than hard-switching; compare against a simple binary `IsWetCompound` baseline.",
+  "expected_effect": "Should preserve strong dry-regime performance while reducing calibration error and false positives in rare but structurally different wet/transition laps.",
+  "risk": "Wet rows are sparse, so the wet specialist can overfit unless simplified or heavily regularized.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

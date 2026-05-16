@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap ranking specialist instead of only global binary AUC models",
+  "summary": "Pit calls are relative decisions within a small same-lap candidate set.",
+  "rationale": "Pit calls are relative decisions within a small same-lap candidate set. CatBoost ranking supports `GroupId`/pairwise objectives, and within a `Race-Year-LapNumber` group the useful question is often which drivers are most pit-likely now, not just each row’s absolute probability. This complements current threshold-style features.",
+  "implementation_hint": "Train a second model with group id = `Race_Year x LapNumber` (or `Race x Year x LapNumber`) and labels = `PitNextLap`, using CatBoost ranking loss (`YetiRankPairwise`/`PairLogitPairwise`). Blend its OOF ranks with the existing classifier. Add only leakage-safe within-group relative features such as percentile TyreLife, percentile LapTime_Delta, and gap from group medians.",
+  "expected_effect": "Better ordering among same-lap contenders, improving ROC AUC even if absolute calibration is unchanged.",
+  "risk": "If many groups have zero or one positive, ranking can be noisy; grouping too coarsely can dilute signal, and fold leakage is easy if group statistics use future rows.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

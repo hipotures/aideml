@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-status and weather delta enrichment, not just static flags",
+  "summary": "FastF1 exposes track status, race control messages, and minute-level weather; official F1 strategy coverage explicitly notes Safety Car windows and wet-grip calls as direct pit triggers.",
+  "rationale": "FastF1 exposes track status, race control messages, and minute-level weather; official F1 strategy coverage explicitly notes Safety Car windows and wet-grip calls as direct pit triggers. The missing signal is probably change dynamics: recent SC/VSC onset, yellow-to-green transitions, rainfall onset, and track-temperature trend.",
+  "implementation_hint": "Externally join FastF1 session data by race/year/lap window and build lagged features such as current status, laps since SC/VSC started/ended, rain onset within last 1-3 laps, track-temp delta over 1/3/5 minutes, and whether the current lap sits inside a low-cost pit window regime.",
+  "expected_effect": "Should add lift on rare but high-information pit decisions that current row-wise tyre features cannot explain.",
+  "risk": "Join quality and lap-time alignment are the main failure modes; broad race-level enrichment without careful timing may add noise.",
+  "sources": [
+    "https://docs.fastf1.dev/index.html",
+    "https://docs.fastf1.dev/api.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

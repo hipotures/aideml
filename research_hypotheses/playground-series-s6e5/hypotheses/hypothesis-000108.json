@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged Group-Time CV With Fold-Safe Feature Rebuild",
+  "summary": "Your best code still learns several preprocessors and same-lap/context statistics on concatenated data, which can make random StratifiedKFold optimistic for a panel problem with repeated race-driver trajectories.",
+  "rationale": "Your best code still learns several preprocessors and same-lap/context statistics on concatenated data, which can make random StratifiedKFold optimistic for a panel problem with repeated race-driver trajectories. Group-aware and time-aware splits with a gap are the main validation trap to test before trusting small CV gains.",
+  "implementation_hint": "Use groups such as `(Year, Race)` or `(Year, Race, Driver)` and compare `GroupKFold`, leave-one-race-out, and chronological `TimeSeriesSplit(gap=1-2 laps)` on rows sorted within race. Recompute same-lap means, frequency/count encodings, bins, and any TE maps inside each fold only; treat any CV drop paired with stabler public LB as a positive signal.",
+  "expected_effect": "May reduce local CV slightly but should improve leaderboard correlation and prevent over-selecting leaky feature variants.",
+  "risk": "If the test set is IID across races, stricter CV may be too pessimistic and slow iteration without improving score.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/common_pitfalls.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add same-lap field regime features",
+  "summary": "Pit decisions are race-state decisions, not only driver-stint decisions.",
+  "rationale": "Pit decisions are race-state decisions, not only driver-stint decisions. Strategy literature emphasizes traffic, safety-car/VSC, weather, and field interactions; even without external joins, same race-lap aggregates can expose mass pit windows, wet transitions, and pack disruption.",
+  "implementation_hint": "Within each Race_Year-LapNumber, compute field counts and percentiles: number currently pitting, share on each compound, wet-weather share, median TyreLife, own TyreLife percentile, own LapTime_Delta z-score, Position_Change volatility, and whether nearby positions changed/pitted on the same lap.",
+  "expected_effect": "Should improve detection of synchronized pit waves, safety-car-like disruptions, and compound-transition laps not captured by individual tyre age alone.",
+  "risk": "If validation randomly splits rows, same-lap aggregates can look too good; use race-year grouped CV to estimate public behavior.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://optimization-online.org/2026/02/a-simulation-framework-for-formula-1-race-strategy-based-on-pit-stop-optimization/"
+  ]
+}

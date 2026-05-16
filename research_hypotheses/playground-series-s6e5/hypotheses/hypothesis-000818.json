@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Competing-Risk Discrete Hazard Instead Of Plain Next-Lap Binary",
+  "summary": "This develops the earlier hazard idea into a more testable form: discrete-time survival directly models interval hazard with censoring, and this problem has an obvious competing terminal state when a stint ends by race finish rather than a pit stop.",
+  "rationale": "This develops the earlier hazard idea into a more testable form: discrete-time survival directly models interval hazard with censoring, and this problem has an obvious competing terminal state when a stint ends by race finish rather than a pit stop. That structure is more faithful than treating each row as independent binary classification.",
+  "implementation_hint": "Create person-period data within each stint or driver-race trajectory, labeling each lap as `pit next interval`, `survive`, or `finish before pit`. Fit either a cause-specific hazard pair of models or a single discrete-time hazard model with time-varying covariates; use only the current-lap hazard as the submission score.",
+  "expected_effect": "More temporally coherent probabilities near stint end, with better handling of rows that are close to race finish and should be low-risk despite old tyres.",
+  "risk": "Larger training table and more engineering. If not carefully weighted, the expanded data can overemphasize long easy-survival stretches.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1/",
+    "https://www.formula1.com/en/latest/article/watch-the-insiders-guide-to-f1-strategists.6VT3445ugVd0bh85Pw5slO"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking sidecar for pit imminence",
+  "summary": "F1 strategy is relative: official analysis says undercut/overcut decisions depend on rival position, traffic, and being within striking range, often around two seconds.",
+  "rationale": "F1 strategy is relative: official analysis says undercut/overcut decisions depend on rival position, traffic, and being within striking range, often around two seconds. That implies the model should learn who is most pit-likely within each `Year-Race-LapNumber` snapshot, not only independent binary risk. A LambdaMART/YetiRank sidecar is a concrete way to inject this competition structure.",
+  "implementation_hint": "Create query groups by `Year, Race, LapNumber`. Train a ranking model with `PitNextLap` as relevance using LightGBM `lambdarank` or CatBoost ranking. Use its OOF score as a feature or blend it with the binary classifier by rank-averaging or logistic stacking.",
+  "expected_effect": "Better ordering among cars sharing the same strategic window; likely small but real AUC lift from capturing relative pit priority the current absolute-feature model misses.",
+  "risk": "Ranking objectives are not probability-calibrated and may underperform if many lap groups contain no positives or multiple simultaneous positives.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

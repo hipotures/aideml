@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Engineer a latent degradation state with explicit pit-reset dynamics",
+  "summary": "Recent F1 research models tyre wear as a latent state with pit-stop resets and shows better predictive behavior than simpler autoregressive baselines.",
+  "rationale": "Recent F1 research models tyre wear as a latent state with pit-stop resets and shows better predictive behavior than simpler autoregressive baselines. That matches this task better than using only raw `Cumulative_Degradation` or short lags.",
+  "implementation_hint": "Create online-only state features per driver-race sequence: EWMA lap-time residual versus race-compound median, residual slope/curvature over the last 3-5 laps, residual since stint start, and a reset flag after pit/stint change. Exclude pit laps and extreme outliers when updating the state.",
+  "expected_effect": "Should help distinguish genuinely collapsing tyres from long but still stable stints, improving rank around pit windows.",
+  "risk": "Lap times are confounded by traffic, weather, and pit in/out laps; poor residualization can add noise instead of signal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

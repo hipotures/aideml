@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-first greedy rank stacking across heterogeneous experts",
+  "summary": "ROC AUC is a ranking metric, so the biggest ensemble gains usually come from combining diverse rankers rather than re-calibrating one probability scale.",
+  "rationale": "ROC AUC is a ranking metric, so the biggest ensemble gains usually come from combining diverse rankers rather than re-calibrating one probability scale. Open stacking literature shows greedy weighting is more stable than linear stacking when base predictions are highly correlated, which is likely here.",
+  "implementation_hint": "Save OOF predictions from structurally different models only: baseline tabular tree, hazard/auxiliary model, latent-state variant, and any regime expert. Convert each fold’s predictions to ranks or within-race percentiles, then fit a simple positive-weight greedy stack on OOF AUROC. Prefer low-correlation members over many similar boosters.",
+  "expected_effect": "Small but plausible AUROC lift and better robustness than probability averaging of near-duplicate models.",
+  "risk": "If all base learners are minor variations of the same tree model, stack gains will vanish; leakage in OOF generation will produce fake CV improvements.",
+  "sources": [
+    "https://journals.plos.org/plosone/article/file?id=10.1371%2Fjournal.pone.0316019&type=printable",
+    "https://link.springer.com/article/10.1186/s13104-020-4931-7"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Sequence Sidecar, Not Bidirectional/SMOTE Public Pipelines",
+  "summary": "A recent pit-stop paper reports Bi-LSTM results with SMOTE and stratified validation, but those choices are risky for online next-lap prediction because bidirectional context and weak splits can inflate performance.",
+  "rationale": "A recent pit-stop paper reports Bi-LSTM results with SMOTE and stratified validation, but those choices are risky for online next-lap prediction because bidirectional context and weak splits can inflate performance. Adjacent validation literature shows dependent-data leakage can materially overstate AUC. A safer bet is a small causal sequence model used only as an ensemble sidecar.",
+  "implementation_hint": "Create fixed-length past-only sequences per driver-race and train a causal TCN/GRU or unidirectional LSTM under grouped chronological folds with purge/embargo between adjacent validation segments. Do not oversample with SMOTE across sequences; prefer class weights or focal loss. Blend its OOF probabilities with the existing tree model rather than replacing it.",
+  "expected_effect": "May recover temporal patterns from recent lap evolution that static engineered features miss, while keeping leakage risk lower than public Bi-LSTM pipelines. Best use is as a diversity model in an ensemble.",
+  "risk": "Higher engineering cost and easy to get validation wrong; sequence models may underperform strong tabular boosters if data volume per driver/race is effectively small.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://sciety.org/articles/activity/10.21203/rs.3.rs-9357577/v1",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

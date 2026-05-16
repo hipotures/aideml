@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join external FastF1 lap-status and weather data as causal race-state features",
+  "summary": "Next-lap pit calls are highly sensitive to Safety Car, VSC, yellow-flag, restart, and weather context, but the provided table does not expose those signals.",
+  "rationale": "Next-lap pit calls are highly sensitive to Safety Car, VSC, yellow-flag, restart, and weather context, but the provided table does not expose those signals. FastF1 publicly exposes session status, track status, weather, and race-control data for modern seasons, which aligns with the 2022-2025 coverage here.",
+  "implementation_hint": "Offline-join FastF1 race data by Year/Race/LapNumber/Driver and add only causal features available by lap end: current track status, previous-lap status transition, laps since SC/VSC start/end, current-lap weather, and incident/message counts. Keep a strict no-future-info audit around timing alignment.",
+  "expected_effect": "Likely strongest on wet or interrupted races; may add orthogonal signal that hand-built tyre-life features cannot infer.",
+  "risk": "Name/lap alignment errors can silently poison features; some status feeds may be recorded with slight timing jitter, so causal cutoff discipline matters.",
+  "sources": [
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://docs.fastf1.dev/api_reference/api_autogen/fastf1.core.Laps.html",
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://docs.fastf1.dev/_modules/fastf1/_api.html"
+  ]
+}

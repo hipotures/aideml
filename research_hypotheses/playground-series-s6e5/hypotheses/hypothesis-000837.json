@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use Causal Trend Features As A Cheap Latent Tyre-State Proxy",
+  "summary": "Recent F1 tyre-degradation work models tyre pace as a latent state that evolves over laps and resets at pit stops.",
+  "rationale": "Recent F1 tyre-degradation work models tyre pace as a latent state that evolves over laps and resets at pit stops. The current best solutions mostly use snapshot values plus a few lags; they do not fully exploit causal trend, acceleration, and filtered residual structure along each driver-race stint.",
+  "implementation_hint": "Sort by `Year,Race,Driver,LapNumber` and create strictly causal EWM means/slopes/second differences for `LapTime_Delta`, `LapTime (s)`, `Cumulative_Degradation`, and `Position_Change`, resetting on pit stops. Add residual-to-stint-trend features, e.g. current lap delta minus EWM baseline, recent deterioration rate, and post-pit warmup trajectory over the first 1-3 laps.",
+  "expected_effect": "Can capture latent cliff behavior before a pit without needing a full sequential deep model, especially in ambiguous one-stop vs two-stop zones.",
+  "risk": "Trend features are easy to overfit if resets and missing chronology are mishandled; noisy races may dilute the signal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.cool/arxiv/2501.04067",
+    "https://academic.oup.com/jrsssa/article/184/1/3/7056431"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

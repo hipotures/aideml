@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Permutation-Invariant Field-State Model",
+  "summary": "Pit calls are not purely driver-local; they depend on the whole race-lap state.",
+  "rationale": "Pit calls are not purely driver-local; they depend on the whole race-lap state. Deep Sets / Set Transformer style models are designed for permutation-invariant set inputs, which fits the set of cars present on a given lap better than hand-built race-lap aggregates.",
+  "implementation_hint": "Build one sample per driver-lap, but encode all cars from the same Year-Race-Lap as a set. Concatenate the focal driver embedding with a pooled field embedding and predict PitNextLap. Use only same-lap information and OOF predictions as an ensemble member beside XGB/CatBoost.",
+  "expected_effect": "Could capture higher-order interaction patterns missed by current mean/std/rank features and add strong blend diversity.",
+  "risk": "More engineering and memory cost; if the field-state tensor is built carelessly it can leak fold information or overfit to race identity.",
+  "sources": [
+    "https://papers.nips.cc/paper/6931-deep-sets",
+    "https://proceedings.mlr.press/v162/zhang22ac.html"
+  ]
+}

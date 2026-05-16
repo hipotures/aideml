@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-space specialist blend with regime gating, not probability averaging",
+  "summary": "AUC depends on pair ordering, so preserving and blending ranks can outperform naive probability averaging when specialists are calibrated differently across regimes.",
+  "rationale": "AUC depends on pair ordering, so preserving and blending ranks can outperform naive probability averaging when specialists are calibrated differently across regimes. Public AUC literature and CatBoost’s AUC definition both support focusing on ordering rather than absolute score scale.",
+  "implementation_hint": "Train 2-4 complementary specialists such as base tabular, ordered-cat specialist, wet-weather specialist, and late-race specialist. Blend out-of-fold predictions by percentile rank, with simple regime gates on wet vs slick, pre-season testing vs GP, and early/mid/late race; only apply calibration after model selection if needed for submission stability.",
+  "expected_effect": "Low-risk ensemble lift from complementary models without forcing incompatible probability scales together.",
+  "risk": "Too many specialists can overfit CV if gates or weights are tuned on the same folds. Rank blending can also hide a broken specialist if not ablated cleanly.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10994-008-5070-x",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://research.ibm.com/publications/auc-dominant-unsupervised-ensemble-of-binary-classifiers"
+  ]
+}

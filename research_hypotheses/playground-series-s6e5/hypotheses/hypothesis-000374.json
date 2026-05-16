@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Inject external circuit-strategy metadata per Race",
+  "summary": "Pirelli explicitly chooses compounds from circuit factors such as abrasiveness, grip, traction, braking, lateral load, stress and track evolution, while F1 strategy analysis shows undercut strength changes sharply with degradation, overtaking difficulty and track position value.",
+  "rationale": "Pirelli explicitly chooses compounds from circuit factors such as abrasiveness, grip, traction, braking, lateral load, stress and track evolution, while F1 strategy analysis shows undercut strength changes sharply with degradation, overtaking difficulty and track position value. The current features use near-global tyre-life heuristics, so race-specific static metadata is a plausible missing conditioner.",
+  "implementation_hint": "Create a small Race lookup table with coarse tags or scores: street/permanent, high/medium/low tyre stress, undercut-friendly, overtaking-hard, high Safety-Car risk. Interact these tags with TyreLife, LapTime_Delta, Position and LapsRemaining_Est rather than using them standalone.",
+  "expected_effect": "Better cross-track generalization, especially separating Monaco/Singapore/Jeddah-like races from Bahrain/Suzuka-style degradation races.",
+  "risk": "Manual mapping can be noisy or overfit to known tracks; keep tags coarse and validate only on held-out Race_Year blocks.",
+  "sources": [
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/palmer-how-bad-timing-stopped-pole-sitter-perez-adding-to-his-win-tally-in.7CyCAlZg0UR2tJHXjfhI7i"
+  ]
+}

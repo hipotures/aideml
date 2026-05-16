@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Weakly supervised stop-motive experts with gated blending",
+  "summary": "A single binary model mixes different mechanisms: degradation-driven stops, mandatory/finishability stops, wet-transition/legality stops, and competitive response stops.",
+  "rationale": "A single binary model mixes different mechanisms: degradation-driven stops, mandatory/finishability stops, wet-transition/legality stops, and competitive response stops. Prior work and strategy literature suggest these motives behave differently. Separating them with weak labels is a concrete extension of generic stop-type heterogeneity.",
+  "implementation_hint": "Create pseudo-cause labels from observables only: `cannot_finish`/service-window overage for degradation-driven, wet-dry compound transitions and stint-1 dry-race logic for legality/weather, and high field-relative pressure with feasible tyres for competitive response. Train 3 compact specialists plus a gating model that blends them from current-lap context; final prediction is the weighted sum.",
+  "expected_effect": "Can improve calibration of extreme cases and recover signal currently blurred by one-size-fits-all thresholds.",
+  "risk": "Pseudo-labels will be noisy and may encode your assumptions too strongly; keep experts simple and test whether they add ensemble diversity rather than standalone CV only.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

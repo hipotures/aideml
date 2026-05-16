@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reframe `PitNextLap` as a discrete-time hazard model with auxiliary `laps_to_next_pit` supervision",
+  "summary": "This target is naturally a time-to-event problem, not just an iid binary row classification task.",
+  "rationale": "This target is naturally a time-to-event problem, not just an iid binary row classification task. Discrete-time survival models are explicitly designed to estimate conditional event probabilities at each time step, and recent F1 pit-stop papers also report gains from jointly modeling next-stop timing and stop/no-stop decisions.",
+  "implementation_hint": "Within each `Race-Driver` sequence, compute `laps_to_next_pit` causally from the future stop marker in train only. Train either (a) a hazard-style binary model on expanded per-lap records with stint/race history features, or (b) a multi-task model with heads for `PitNextLap` and `laps_to_next_pit`. Blend its OOF probabilities with the current best GBDT rather than replacing it first.",
+  "expected_effect": "Should improve discrimination near pit windows and reduce the current model’s tendency to treat adjacent laps independently.",
+  "risk": "Easy to leak future information when building `laps_to_next_pit`; censoring the final observed stint and keeping feature generation strictly causal is mandatory.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One"
+  ]
+}

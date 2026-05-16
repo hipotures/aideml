@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use density-ratio buckets for robust model selection, not just adversarial sample weights",
+  "summary": "Importance-weighted cross-validation is specifically motivated by covariate shift, and region-based shift analysis shows models can look good globally while failing in low-density target regions.",
+  "rationale": "Importance-weighted cross-validation is specifically motivated by covariate shift, and region-based shift analysis shows models can look good globally while failing in low-density target regions. The current stack already uses adversarial weights; the missing step is to select blends by how they behave across estimated test-like regions.",
+  "implementation_hint": "Estimate train-row density ratios with adversarial validation, then bucket validation rows by predicted test-likeness. Report per-bucket AUC and choose hyperparameters/blend weights using a robust criterion such as `0.7 * global_AUC + 0.3 * worst_bucket_AUC` or a weighted average over the most test-like buckets. Also compare fold schemes where the most test-like races are preferentially held out during tuning.",
+  "expected_effect": "May not raise naive CV much, but can improve leaderboard transfer by reducing overfitting to easy, train-dense regions.",
+  "risk": "Bucket metrics are noisy if too fine-grained; overly pessimistic selection can sacrifice true signal.",
+  "sources": [
+    "https://pure.korea.ac.kr/en/publications/covariate-shift-adaptation-by-importance-weighted-cross-validation/",
+    "https://link.springer.com/article/10.1007/s00521-023-08622-w"
+  ]
+}

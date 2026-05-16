@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Independent-race score-space stack with sigmoid calibration only on OOF predictions",
+  "summary": "Calibration itself should not create AUC lift unless it changes ranks, but stacking heterogeneous models can.",
+  "rationale": "Calibration itself should not create AUC lift unless it changes ranks, but stacking heterogeneous models can. Scikit-learn notes calibrators must be fit on independent data; sigmoid preserves ranking, while isotonic can create ties and change AUC. This matters if you combine binary GBDT, AFT-derived risk, and ranker scores.",
+  "implementation_hint": "Build fold-local OOF predictions from the current binary model, the AFT model, the ranker, and CatBoost. Train a simple meta-learner on those OOF scores using strict race-blocked folds. If probability calibration is needed, fit only a sigmoid calibrator on the stack’s OOF scores, never on in-fold predictions.",
+  "expected_effect": "More stable leaderboard transfer than averaging raw probabilities from misaligned model families; likely modest but real gain if model errors are complementary.",
+  "risk": "If the base models are too correlated, the stack adds noise. Avoid isotonic unless you verify it does not hurt AUC via ties.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

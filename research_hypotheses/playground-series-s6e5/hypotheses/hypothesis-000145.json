@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Query-level ranking by race lap instead of pure binary logloss",
+  "summary": "At each lap, only a small subset of cars are realistic pit candidates.",
+  "rationale": "At each lap, only a small subset of cars are realistic pit candidates. CatBoost supports `QueryAUC` and pairwise/groupwise ranking, so grouping by race-lap can optimize who should be ranked highest for an immediate stop rather than only global class likelihood.",
+  "implementation_hint": "Create query groups like `(Race_Year, LapNumber)` or `(Race_Year, LapNumber, compound_regime)` and train a ranking model or a classifier monitored by `QueryAUC`; optionally blend its OOF scores with the existing probability model.",
+  "expected_effect": "Should help in crowded decision points where many rows share similar static heuristics but only a few drivers are true next-lap pitters.",
+  "risk": "If queries are too small or noisy, ranking may underperform plain classification; only keep it if OOF and public LB both improve.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

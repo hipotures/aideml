@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost categorical diversity",
+  "summary": "CatBoost is designed for categorical features through ordered target statistics and ordered boosting, reducing prediction shift from categorical leakage.",
+  "rationale": "CatBoost is designed for categorical features through ordered target statistics and ordered boosting, reducing prediction shift from categorical leakage. The existing best uses AutoGluon GBM/XGB only, so CatBoost can provide orthogonal rankings for Driver/Race/Compound combinations.",
+  "implementation_hint": "Train a standalone CatBoostClassifier with native categorical columns plus engineered categorical crosses, eval_metric='AUC', class_weights or scale_pos_weight if imbalanced, early stopping, and multiple seeds. Blend its rank-normalized predictions with the best GBM/XGB predictions.",
+  "expected_effect": "Improves ensemble diversity and high-cardinality categorical handling without extensive manual one-hot encoding.",
+  "risk": "CatBoost can underperform if categorical crosses are too sparse or validation split is random; its gain is most likely through blending, not replacement.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://huggingface.co/papers/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

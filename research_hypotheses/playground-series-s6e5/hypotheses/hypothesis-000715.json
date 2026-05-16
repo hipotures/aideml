@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add regulation-aware dry/wet and session-type specialists",
+  "summary": "FIA rules create hard strategic asymmetries: dry races require two dry compounds, while wet/intermediate usage changes that requirement; Sprints have no mandatory stop requirement.",
+  "rationale": "FIA rules create hard strategic asymmetries: dry races require two dry compounds, while wet/intermediate usage changes that requirement; Sprints have no mandatory stop requirement. Those rules imply different base rates and different meanings of stint/compound features.",
+  "implementation_hint": "Create specialist models or gating features for dry-only rows versus wet/intermediate rows, and for likely grand-prix-style sessions versus atypical sessions such as testing. Add legality features like dry-compound-switch-needed, already-used-wet-tyre proxy, and stint-stage relative to mandatory-stop satisfaction.",
+  "expected_effect": "Should reduce regime mixing and make probabilities more coherent in late-race dry stints, wet races, and atypical sessions.",
+  "risk": "Session-type inference may be imperfect if metadata is incomplete, and hard rules can mislead when races are suspended or strategy is heavily disrupted.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-were-russell-albon-and-hulkenberg-right-to-gamble-on-tyre.2Ma9PhqxO9Vhb6YAYcSZR6"
+  ]
+}

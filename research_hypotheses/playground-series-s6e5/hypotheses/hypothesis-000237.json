@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "First-Stop vs Later-Stop Decomposition",
+  "summary": "The strategic logic for the opening stop differs from later stops: the first stop is constrained by start compound, traffic, and opening stint degradation, while later stops are closer to endgame window management.",
+  "rationale": "The strategic logic for the opening stop differs from later stops: the first stop is constrained by start compound, traffic, and opening stint degradation, while later stops are closer to endgame window management. Public F1 pit-decision work also reports gains from multi-task horizon-aware setups rather than one undifferentiated binary head.",
+  "implementation_hint": "Create a `PitCountSoFar` or `IsFirstStintStopCandidate` feature from within-race driver history, then train separate heads/models for `pit count so far == 0` and `>=1`. Optionally add an auxiliary regression target for laps-until-next-stop only within each branch, using its OOF prediction as a feature for the binary classifier.",
+  "expected_effect": "Cleaner decision boundaries and better calibration around early-race versus end-of-race pit logic.",
+  "risk": "Branching reduces sample size; if split too finely, later-stop specialists may become unstable on rare wet or long-race regimes.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

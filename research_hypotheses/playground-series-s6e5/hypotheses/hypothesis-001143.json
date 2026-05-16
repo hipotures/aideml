@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Graded same-lap LambdaRank with pit-imminence labels",
+  "summary": "XGBoost’s ranking objectives support query-group training with pair construction focused on top positions.",
+  "rationale": "XGBoost’s ranking objectives support query-group training with pair construction focused on top positions. Prior research already pointed toward same-lap ranking; the stronger variant is to rank drivers by pit imminence, not just a binary next-lap flag, using graded labels like pit in 1/2/3 laps.",
+  "implementation_hint": "Create qid = Year/Race/LapNumber. On train only, derive graded labels such as 3 if pit next lap, 2 if pit in 2 laps, 1 if pit in 3 laps, 0 otherwise. Train `XGBRanker` with `objective='rank:ndcg'` and test both `lambdarank_pair_method='topk'` and `mean`. Blend its within-lap rank output with the current classifier OOF ranks.",
+  "expected_effect": "Better separation among the few same-lap pit candidates; likely strongest in late-race and clustered-stop laps where absolute probabilities are less stable than ordering.",
+  "risk": "Can overfit if query groups with very few positives dominate or if ranking output is used without a fold-safe blend. Public CV may rise while LB stays flat if query leakage remains.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

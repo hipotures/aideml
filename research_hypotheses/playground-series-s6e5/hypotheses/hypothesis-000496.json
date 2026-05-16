@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone physics-constrained rank stabilizer",
+  "summary": "F1 tyre degradation is physically structured, but flexible ensembles can learn fold-specific reversals around tyre age, degradation, and finish-window margins.",
+  "rationale": "F1 tyre degradation is physically structured, but flexible ensembles can learn fold-specific reversals around tyre age, degradation, and finish-window margins. XGBoost and LightGBM support monotonic constraints that can enforce broad physical trends while leaving categorical/race interactions unconstrained in the main model.",
+  "implementation_hint": "Train a small XGBoost or LightGBM model on robust numeric features with constraints such as positive for TyreLife, Deg_Per_TyreLife, CurrentTyreFinishPressure, LapsBeyondFinishWindow and negative for CurrentTyreFinishMargin or LapsRemaining_Est where appropriate. Rank-average this constrained model with the unconstrained best model rather than replacing it.",
+  "expected_effect": "May improve public leaderboard robustness by reducing overfit local reversals while preserving AUC-relevant ordering in high-confidence pit-window regions.",
+  "risk": "Pit strategy is not globally monotone because safety cars, wet weather, and overcuts can invert relationships; constraints should be limited to a sidecar model with low ensemble weight.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

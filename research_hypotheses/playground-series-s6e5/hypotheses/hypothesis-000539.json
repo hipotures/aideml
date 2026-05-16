@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary Multi-Horizon Stop Heads",
+  "summary": "Discrete-time hazard literature supports predicting a sequence of future event probabilities rather than only the next step, and transformer hazard work shows benefits when dynamics are non-proportional.",
+  "rationale": "Discrete-time hazard literature supports predicting a sequence of future event probabilities rather than only the next step, and transformer hazard work shows benefits when dynamics are non-proportional. For this competition, predicting pit-within-2/3/5-laps or next-stop timing bucket can regularize the model and expose stronger strategy structure than a single next-lap label.",
+  "implementation_hint": "Create auxiliary labels such as PitWithin2, PitWithin3, PitWithin5, and maybe NextStopInBucket (1, 2-3, 4-6, 7+ laps) using only training data. Train separate OOF side models or a compact multi-output learner, then feed their OOF probabilities into the final classifier/stacker.",
+  "expected_effect": "Usually improves stability around the pit window and gives the final model smoother early-warning signals before the exact next-lap event.",
+  "risk": "Label construction must be strictly causal and race-bounded; if the auxiliary tasks are too easy they can collapse into redundant versions of current tyre-life heuristics.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1186/s12859-024-05799-2",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

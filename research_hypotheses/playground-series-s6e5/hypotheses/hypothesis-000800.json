@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rival-aware undercut/overcut opportunity features",
+  "summary": "F1 strategy references emphasize that undercut/overcut only matter when a driver is within striking distance, tyre warm-up is favorable, and traffic/clean air cooperate.",
+  "rationale": "F1 strategy references emphasize that undercut/overcut only matter when a driver is within striking distance, tyre warm-up is favorable, and traffic/clean air cooperate. The current top features model tyre state well, but it does not explicitly encode same-lap local rivalry or clean-air opportunity.",
+  "implementation_hint": "Within each `(Year, Race, LapNumber)` snapshot, derive local field features: gap in `LapTime (s)` or `LapTime_Delta` to nearest cars ahead/behind in position order, percentile ranks of degradation and lap delta within the lap, local traffic density around a driver’s position, and binaries like `Within_Undercut_Window` when pace gap proxies are small. Feed these to a classifier or a small query model grouped by lap snapshot or nearby-car subsets only.",
+  "expected_effect": "Could recover missed pit calls driven by tactical battles rather than absolute tyre age, especially on tracks where undercut sensitivity is high.",
+  "risk": "No explicit interval timing gaps are provided, so proxies may be noisy and group rankers can still underperform if queries are too broad.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ]
+}

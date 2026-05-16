@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dry-slick core model with separate wet/testing fallback",
+  "summary": "FIA rules make dry-race pit logic structurally different because two slick compounds are mandatory, while wet races remove that constraint.",
+  "rationale": "FIA rules make dry-race pit logic structurally different because two slick compounds are mandatory, while wet races remove that constraint. Recent pit-stop modeling work explicitly dropped wet/intermediate laps as reactive noise, and pre-season testing articles note teams may run unrealistic compound programs.",
+  "implementation_hint": "Train the main model on slick race laps only, or heavily upweight them. Route `INTERMEDIATE`/`WET` rows and `Race == Pre-Season Testing` through a small fallback expert or simple heuristic layer; include explicit domain flags if full exclusion is too aggressive.",
+  "expected_effect": "Should sharpen the main decision boundary by removing small, heterogeneous regimes that contaminate dry-race ranking.",
+  "risk": "Fallback subsets are small, so their estimates may be unstable; if the test set contains many wet/testing rows, over-pruning could hurt.",
+  "sources": [
+    "https://api.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full",
+    "https://www.motorsportmagazine.com/articles/single-seaters/f1/is-this-thing-working-what-f1-teams-actually-do-in-pre-season-testing/"
+  ]
+}

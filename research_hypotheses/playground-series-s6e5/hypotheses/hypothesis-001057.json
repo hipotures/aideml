@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace pairwise rank side-model with true groupwise CatBoost ranking on race-lap choice sets",
+  "summary": "The target is a next-lap decision among cars sharing the same race/lap context, so within-lap ordering matters.",
+  "rationale": "The target is a next-lap decision among cars sharing the same race/lap context, so within-lap ordering matters. CatBoost supports groupwise ranking objectives beyond simple pairwise loss, including `YetiRankPairwise`, `QuerySoftMax`, `LambdaMart`, and `QueryAUC`, which better match choice-set structure than the current XGBoost `rank:pairwise` add-on.",
+  "implementation_hint": "Create groups as `Year_Race_LapNumber`. Train a ranking model only on rows where at least one positive exists in the group, optionally weighting groups by pit-wave size or late-race importance. Blend its rank-normalized OOF predictions with the binary classifiers rather than raw probabilities.",
+  "expected_effect": "A more complementary ensemble member than current pairwise XGB, especially for pit-wave laps where relative ordering inside a lap matters most.",
+  "risk": "Ranking objectives can underperform if many groups have zero positives, and some CatBoost ranking modes are CPU-only/slower. Needs careful group filtering to avoid noisy supervision.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification.html"
+  ]
+}

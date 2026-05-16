@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Whole-grid lap snapshot encoder instead of row-local features",
+  "summary": "Official F1 strategy explanations emphasize that pit calls depend on the bigger race picture, not just one car.",
+  "rationale": "Official F1 strategy explanations emphasize that pit calls depend on the bigger race picture, not just one car. Set Transformer gives a permutation-invariant way to model all cars present on a lap and learn pit-wave, cover-off, and traffic pressure effects without hand-coding many rival features.",
+  "implementation_hint": "For each `Race_Year x LapNumber`, build a set of car states using current lap features for all drivers. Feed the focal driver plus pooled set context into a small DeepSets/SetTransformer specialist, then use its OOF probabilities as an ensemble feature rather than replacing the tabular baseline.",
+  "expected_effect": "Adds orthogonal signal around synchronized stop waves and local competitive pressure that single-row boosters only approximate with medians.",
+  "risk": "Higher engineering cost and easier leakage if same-race snapshots appear in both train and validation folds.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://arxiv.org/abs/1810.00825"
+  ]
+}

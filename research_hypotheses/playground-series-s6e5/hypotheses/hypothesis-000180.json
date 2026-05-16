@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap ranking specialist blended with probability model",
+  "summary": "Public ranking docs show CatBoost and LightGBM can optimize within-group ordering.",
+  "rationale": "Public ranking docs show CatBoost and LightGBM can optimize within-group ordering. Pit decisions are inherently relative: on a given race lap, only some cars are truly in the stop window. A ranking specialist can learn who is most likely to pit among peers even if absolute probabilities are mis-scaled.",
+  "implementation_hint": "Train a separate model with groups such as Race-Year-LapNumber or Race-Year-LapNumber-CompoundRegime using CatBoost PairLogit/QueryCrossEntropy or LightGBM lambdarank; evaluate QueryAUC in grouped CV; blend its OOF scores with the main binary model, then calibrate the blend back to probabilities.",
+  "expected_effect": "Improves pairwise ordering inside pit waves and may convert similar CV into better public AUC when pit events cluster by lap.",
+  "risk": "Groups with very few positives can make ranking unstable. Ranking scores are not calibrated, so direct submission without blending/calibration is risky.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

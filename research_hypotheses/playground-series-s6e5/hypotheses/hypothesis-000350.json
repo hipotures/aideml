@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Right-Censored Remaining-Stint AFT Model",
+  "summary": "`PitNextLap` is the one-step hazard of an unobserved time-to-next-stop process.",
+  "rationale": "`PitNextLap` is the one-step hazard of an unobserved time-to-next-stop process. XGBoost’s AFT survival objective directly supports uncensored and right-censored labels, which is a clean way to learn remaining laps until next pit without forcing every row into a noisy binary target.",
+  "implementation_hint": "For each driver-race sequence, label each row with remaining laps to next pit as `[d,d]`; if no later stop occurs before race end, use right-censoring `[d,+inf)`. Train `xgboost.train` with `objective='survival:aft'`, then convert predicted survival to next-lap hazard `P(T<=1)` or `S(0)-S(1)`. Keep all feature generation strictly past-only within driver-race order and validate by held-out races.",
+  "expected_effect": "Can learn smoother pit-window timing, especially late in stints and near race end, where binary labels are sparse but the underlying countdown signal is strong.",
+  "risk": "Converting race-end cases into censored labels needs care because finishing and pitting are different terminal events; a poor conversion can mis-shape late-race hazards.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_1_-_2023-09-26.pdf"
+  ]
+}

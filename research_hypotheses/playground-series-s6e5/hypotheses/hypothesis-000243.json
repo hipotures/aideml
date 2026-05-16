@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Nonlinear wear-phase features from recent slope and acceleration",
+  "summary": "F1 tyre behavior is not purely linear with age; warm-up, thermal saturation, and late-stint drop-off create phase changes.",
+  "rationale": "F1 tyre behavior is not purely linear with age; warm-up, thermal saturation, and late-stint drop-off create phase changes. Recent F1 tyre-energy and tyre-management work emphasizes nonlinear degradation and temperature-window effects, which your current features only approximate with ratios and thresholds.",
+  "implementation_hint": "Within each driver-race stint, compute leakage-safe recent slopes over the last 2-4 laps for `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation`; then add acceleration/curvature terms, piecewise break indicators (e.g. slope turned positive after being flat), and interactions with `Compound`, `RaceProgress`, and wet/slick. Keep everything based only on prior laps within the same stint.",
+  "expected_effect": "Should capture the ‘cliff’ before stops better than static `TyreLife` and cumulative wear features, improving ranking among cars with similar tyre ages.",
+  "risk": "Noisy lap times from traffic or incidents can contaminate short-window slopes; robust clipping or median-based deltas may be needed.",
+  "sources": [
+    "https://papers.cool/arxiv/2501.04067",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

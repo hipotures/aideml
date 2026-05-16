@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-intermediate gated modeling",
+  "summary": "Published pit-stop modeling work notes that dry tyre strategy is predictable from degradation and track position, while wet/intermediate stops are more reactive and noisy.",
+  "rationale": "Published pit-stop modeling work notes that dry tyre strategy is predictable from degradation and track position, while wet/intermediate stops are more reactive and noisy. The dataset includes Compound, so one global model may blur regimes.",
+  "implementation_hint": "Train either separate dry and wet/intermediate models or add a regime gate feature with interactions: Is_Dry, Is_WetLike, Compound_Ordinal within regime, wet-specific tyre-life bins, and separate hazard priors. Blend predictions by regime rather than forcing one shared hazard curve.",
+  "expected_effect": "May reduce false positives/negatives for INTERMEDIATE/WET rows and improve ranking within rare but strategically different regimes.",
+  "risk": "Wet/intermediate sample size may be small; separate models can overfit unless heavily regularized or blended back toward the global model.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

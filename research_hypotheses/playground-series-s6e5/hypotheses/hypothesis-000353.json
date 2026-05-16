@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF Rank-Average Blend With Beta/Sigmoid Calibration",
+  "summary": "If you add a ranking model, a survival model, and a categorical specialist, the main remaining lift is likely in how they are combined.",
+  "rationale": "If you add a ranking model, a survival model, and a categorical specialist, the main remaining lift is likely in how they are combined. Scikit-learn notes sigmoid calibration preserves ranking while isotonic can change AUC via ties, and beta calibration is a stronger parametric alternative to plain Platt scaling on skewed score distributions.",
+  "implementation_hint": "Generate out-of-fold predictions from heterogeneous base models, combine them by rank-average or a tiny held-out logistic stack, then calibrate only on disjoint OOF predictions using beta calibration or sigmoid calibration. Prefer this over isotonic if public-LB ROC AUC stability matters more than perfect probability calibration.",
+  "expected_effect": "Usually a small but durable gain from diversity, with better CV-to-LB stability than uncalibrated averaging or isotonic-heavy postprocessing.",
+  "risk": "A second-stage blender/calibrator can overfit if folds are not strictly disjoint by race or if the base models are too correlated to add real diversity.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

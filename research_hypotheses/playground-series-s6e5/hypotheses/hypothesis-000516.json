@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reverse-Engineer Synthetic Strategy Thresholds",
+  "summary": "The competition appears inspired by a generated F1 strategy dataset whose public description emphasizes adapted distributions and leakage prevention.",
+  "rationale": "The competition appears inspired by a generated F1 strategy dataset whose public description emphasizes adapted distributions and leakage prevention. If labels come from a simulator or heuristic, hidden breakpoints in TyreLife, RaceProgress, Stint, and degradation may matter more than hand-set tyre-life constants.",
+  "implementation_hint": "Fit a shallow EBM/GAM/RuleFit or highly binned HistGradientBoosting model on core numeric features plus pairwise interactions. Use PDP/SHAP to find sharp cutpoints, add those threshold flags to the main GBDT/AutoGluon stack, and blend the rule model raw scores.",
+  "expected_effect": "Can recover target-generation thresholds missed by smooth ratio features; likely small but direct AUC lift near the plateau.",
+  "risk": "May overfit random CV unless checked with Race_Year/Driver grouped validation.",
+  "sources": [
+    "https://in.linkedin.com/in/aadi-gupta-600605247",
+    "https://tracyrenee61.medium.com/predict-on-the-probability-a-formula-1-driver-will-pit-on-the-next-lap-e6b8adb4a45f"
+  ]
+}

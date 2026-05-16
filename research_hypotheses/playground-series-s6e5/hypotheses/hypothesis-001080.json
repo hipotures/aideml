@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Soft-regime DRO using adversarially estimated group probabilities",
+  "summary": "Adversarial weighting is already present, but recent PG-DRO work suggests moving from global reweighting to worst-group robustness with probabilistic group membership.",
+  "rationale": "Adversarial weighting is already present, but recent PG-DRO work suggests moving from global reweighting to worst-group robustness with probabilistic group membership. This fits the competition because regimes are fuzzy rather than hard: wet vs dry, early vs late, testing vs GP, and unusual races. Instead of one domain weight, optimize more against samples likely to belong to hard-shift groups.",
+  "implementation_hint": "Train a lightweight classifier to estimate soft membership over regime buckets such as `wet/dry x race_phase x tyre_age_bin x year/race cluster`. Use those probabilities to compute probabilistic worst-group weights or to upweight fold losses for samples with high mass on historically weak groups. Compare against the current adversarial weights under the same folds.",
+  "expected_effect": "Could reduce overfitting to dominant dry-midrace patterns and improve stability on minority regimes without needing fully separate experts.",
+  "risk": "Weighting may become too noisy and over-focus on tiny groups; needs clipping, shrinkage toward uniform, and strict forward-gap CV to avoid rewarding synthetic robustness.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/26394",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

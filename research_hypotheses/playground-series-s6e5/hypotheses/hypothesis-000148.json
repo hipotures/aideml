@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete hazard head with quantile lap bins, not just next-lap binary",
+  "summary": "Recent survival references favor discrete hazard parameterization over PMF and show person-period reformulations let standard classifiers learn event-time structure.",
+  "rationale": "Recent survival references favor discrete hazard parameterization over PMF and show person-period reformulations let standard classifiers learn event-time structure. For this task, predicting only `PitNextLap` wastes the ordered nature of pit timing; a small auxiliary hazard target over future lap bins can regularize the next-lap score.",
+  "implementation_hint": "Create an auxiliary label for `time_to_next_pit` within each driver-race stint, right-censor at finish, bin by quantiles or lap buckets, and train either a multi-output GBDT/MLP or two-stage model to estimate per-bin hazard. Use the first-bin hazard as the submission score and optionally add cumulative-survival-derived features back into the main tabular model.",
+  "expected_effect": "Better ranking near pit windows, especially for ambiguous laps where several consecutive laps are plausible stop points.",
+  "risk": "Can overcomplicate labels and hurt if bins are too fine or if censoring logic leaks future laps across folds.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://docs.xgboost.com.cn/en/stable/tutorials/aft_survival_analysis.html"
+  ]
+}

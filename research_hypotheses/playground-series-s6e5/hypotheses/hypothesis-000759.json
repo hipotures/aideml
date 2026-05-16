@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost specialist on raw high-cardinality categoricals",
+  "summary": "The dataset has many unseen/rare drivers and race-driver-compound combinations.",
+  "rationale": "The dataset has many unseen/rare drivers and race-driver-compound combinations. Current code reduces them mostly to frequencies and manual concatenations. CatBoost’s ordered boosting and categorical statistics are designed to reduce prediction shift and exploit category interactions more directly than one-hot/frequency engineering.",
+  "implementation_hint": "Train a separate CatBoost classifier on mostly raw columns plus a compact numeric core. Preserve lap order within each race-driver sequence if possible, test `has_time`, and let CatBoost form category combinations such as `Race x Compound x Stint` or `Driver x Compound`. Blend this specialist with the current heuristic-heavy GBDT rather than replacing it outright.",
+  "expected_effect": "Useful diversity gain in an ensemble, particularly on rare drivers/races and interaction-heavy cases where manual priors are too rigid.",
+  "risk": "Easy to overfit if CV is not grouped strictly; `has_time` ordering and any target-stat features must respect fold boundaries.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/references/training-parameters/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

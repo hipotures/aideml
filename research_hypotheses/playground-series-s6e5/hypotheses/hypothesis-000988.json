@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime experts with beta calibration on OOF scores",
+  "summary": "Sources on calibration suggest flexible post-hoc mapping can improve probability quality, and F1 strategy is clearly regime-dependent: dry mandatory-compound logic, wet/intermediate behavior, and late-race no-stop zones differ materially.",
+  "rationale": "Sources on calibration suggest flexible post-hoc mapping can improve probability quality, and F1 strategy is clearly regime-dependent: dry mandatory-compound logic, wet/intermediate behavior, and late-race no-stop zones differ materially. A single global model can blur those regimes.",
+  "implementation_hint": "Train specialist models for regimes such as dry vs wet/intermediate, early/mid vs late race, or first-stop vs later-stop situations; blend their OOF predictions through a simple meta-model, then apply held-out beta calibration to the final score.",
+  "expected_effect": "Should sharpen probabilities in heterogeneous regions and make blends safer than raw averaging.",
+  "risk": "More moving parts; if regime definitions are weak or calibration is not strictly out-of-fold, leakage can erase gains.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/",
+    "https://academic.oup.com/jrsssb/article/69/2/243/7109375",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

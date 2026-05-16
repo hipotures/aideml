@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Anomaly-censored training to suppress SC/VSC and pit-lane distortion",
+  "summary": "The same state-space F1 paper explicitly removes pit in/out laps and safety-car or VSC laps because they distort degradation signals.",
+  "rationale": "The same state-space F1 paper explicitly removes pit in/out laps and safety-car or VSC laps because they distort degradation signals. Your dataset does not expose those flags directly, so the model may be learning spurious stop correlations from extreme lap-time shocks that are not genuine wear signals.",
+  "implementation_hint": "Create inferred anomaly flags using race-lap robust z-scores of `LapTime (s)`, `LapTime_Delta`, fieldwide dispersion, and abrupt position changes. Then test two variants: down-weight anomalous rows in training, or train a clean specialist on non-anomalous rows and blend with the full-data model.",
+  "expected_effect": "Cleaner signal for true pit intent, especially late-race and wet/chaotic segments where raw lap-time deltas are misleading.",
+  "risk": "Over-filtering can remove precisely the decisive laps before stops; anomaly detection errors may hurt if races are naturally heterogeneous.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.motorsport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10500434/"
+  ]
+}

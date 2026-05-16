@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use local contest ranking and AUC-safe blending instead of generic calibration",
+  "summary": "Pit decisions are often relative contests against nearby cars; F1 strategy notes undercut/overcut usually matters only when rivals are within striking range.",
+  "rationale": "Pit decisions are often relative contests against nearby cars; F1 strategy notes undercut/overcut usually matters only when rivals are within striking range. For ROC AUC, monotone post-calibration adds little, and scikit-learn notes isotonic can even change AUC by introducing ties.",
+  "implementation_hint": "Create race-lap groups and train a CatBoost pairwise/query model only on plausible contest pairs, e.g. nearby position or small lap-time-gap proxies, then blend its OOF percentile ranks with the main classifier and survival model. If post-processing is used, prefer sigmoid or pure rank averaging over isotonic.",
+  "expected_effect": "Should improve ordering among ambiguous same-lap candidates while keeping ensemble gains AUC-focused rather than probability-focused.",
+  "risk": "Pair construction may be noisy without exact gap features, and an over-aggressive query model can hurt isolated obvious cases.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

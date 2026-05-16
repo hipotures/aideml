@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Similarity-weighted undercut pressure features",
+  "summary": "Public F1 strategy literature stresses that ignoring competitors materially changes optimal pit timing; the game-theory paper reports large odds losses when competition is ignored.",
+  "rationale": "Public F1 strategy literature stresses that ignoring competitors materially changes optimal pit timing; the game-theory paper reports large odds losses when competition is ignored. Your current field features are broad averages and simple pit-wave counts, but undercut risk is local: nearby rivals on fresher tyres or who just pitted matter more than the whole field.",
+  "implementation_hint": "Within each Year/Race/Lap, construct local opponent features for cars in nearby positions or with similar lap pace/tyre age: count of nearby rivals who pitted in last 1-2 laps, weighted average of rivals' tyre-life deficit, fraction of nearby cars on fresher compound, and a soft kNN score over position plus lap-delta plus tyre-life similarity. Add interactions with current position and positive lap-time loss.",
+  "expected_effect": "Can capture tactical stop triggers that broad race aggregates miss, improving recall on competitive pit calls around undercut/overcut windows.",
+  "risk": "No true interval gaps are available, so proximity is only approximated by position and pace; noisy local features may overfit if not smoothed.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary censored time-to-next-pit survival model",
+  "summary": "This task is a one-lap hazard slice of a broader time-to-next-stop problem.",
+  "rationale": "This task is a one-lap hazard slice of a broader time-to-next-stop problem. Survival literature and XGBoost’s AFT objective are designed for dynamic event timing with censoring, which fits rows near race end that may never pit again.",
+  "implementation_hint": "Derive fold-local labels for laps-until-next-pit within each driver-race sequence, right-censor at race finish when no further pit occurs, and fit an auxiliary survival model (`survival:aft` or discrete-time landmarked hazard). Feed predicted 1-lap event probability, 2-3 lap survival mass, or residuals into the main ROC-AUC model.",
+  "expected_effect": "Sharper probability ordering around ambiguous medium-horizon windows where next-lap labels alone are noisy.",
+  "risk": "Target construction is easy to leak if future laps from validation races inform encoders or calibrators; all auxiliary predictions must be strict OOF.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://journals.sagepub.com/doi/10.1177/09622802231224631",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-019-0677-0"
+  ]
+}

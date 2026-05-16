@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use race-archetype metadata for strategy priors",
+  "summary": "Undercut and overcut strength depends on degradation, warm-up difficulty, overtaking difficulty, and track position.",
+  "rationale": "Undercut and overcut strength depends on degradation, warm-up difficulty, overtaking difficulty, and track position. Race name is currently mostly treated as a category; explicit circuit archetype features can help models generalize across years and rare drivers.",
+  "implementation_hint": "Create a small manual Race metadata table: street/temporary circuit, high degradation, low warm-up/overcut-friendly, overtaking difficulty, typical pit-loss band, and wet-prone flag. Interact these with TyreLife, Compound, Position, LapsRemaining_Est, and field-density features.",
+  "expected_effect": "May improve transfer to sparse race-year combinations and sharpen pit-window timing where categorical Race_Year frequency is too blunt.",
+  "risk": "Manual metadata can inject noise if the synthetic data does not follow real F1 behavior; keep it low-dimensional and ablate as a feature block.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.gpfans.com/us/f1-news/1016513/f1-undercut-overcut-explained/",
+    "https://www.formula1-dictionary.net/strategy_race.html"
+  ]
+}

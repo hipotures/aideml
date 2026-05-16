@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-CatBoost raw-category specialist",
+  "summary": "The dataset has very high-cardinality entities (`Driver`, `Race`, `Year`, compound interactions).",
+  "rationale": "The dataset has very high-cardinality entities (`Driver`, `Race`, `Year`, compound interactions). CatBoost’s ordered boosting and ordered categorical statistics are designed to exploit such features while reducing target-leakage bias from naive encodings.",
+  "implementation_hint": "Train a CatBoost classifier on mostly raw columns plus a few simple interactions (`Race_Year`, `Driver_Compound`, `Race_Compound`, `Stint`, peer-relative numerics). Avoid manual target encoding; let ordered CTRs and category combinations do the work. Compare plain logloss vs AUC-optimized selection, then ensemble OOF scores with the incumbent model.",
+  "expected_effect": "Potentially stronger generalization on sparse drivers/races and a meaningfully different error pattern for blending.",
+  "risk": "May underperform if CV grouping is weak or if too many handcrafted features drown out CatBoost’s categorical advantages; runtime and tuning can be touchy.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

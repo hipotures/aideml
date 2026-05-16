@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Interaction-aware neighbor-gap features from game-theoretic pit timing",
+  "summary": "Recent F1 strategy literature emphasizes that pit decisions depend on opponents, traffic, and track-position interactions, and neglecting competition can materially reduce strategy quality.",
+  "rationale": "Recent F1 strategy literature emphasizes that pit decisions depend on opponents, traffic, and track-position interactions, and neglecting competition can materially reduce strategy quality. Your current best features are mostly self-state features, so explicit local-rival context is still underused.",
+  "implementation_hint": "Within each `Race_Year` and lap, create relative features versus nearby cars: percentile/rank of `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, position-local gaps (cars ahead/behind by 1-2 places), neighbor compound/stint mismatches, and 'pit now vs rivals still out' proxies such as own tyre-age minus median of top-5 nearby positions. Train as extra features in the existing tree model first.",
+  "expected_effect": "Could improve discrimination on borderline strategic laps where raw wear is ambiguous but local traffic/undercut pressure makes a stop more or less likely.",
+  "risk": "Position is not a true time-gap signal, so some traffic proxies may be noisy; gains depend on careful past-only grouping within race-lap slices.",
+  "sources": [
+    "https://doi.org/10.1016/j.ejor.2024.07.011",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Shared Event Signals",
+  "summary": "Safety Car/VSC or race-wide disruption can change pit incentives by reducing pit-loss cost; even without explicit flags, shared lap-time anomalies across many drivers can proxy these events.",
+  "rationale": "Safety Car/VSC or race-wide disruption can change pit incentives by reducing pit-loss cost; even without explicit flags, shared lap-time anomalies across many drivers can proxy these events.",
+  "implementation_hint": "Within each Race-Year-LapNumber, compute median LapTime, median LapTime_Delta, count of large slowdowns, lap-time dispersion, and each driver's deviation from race-lap median/rank. Add lagged race-lap anomaly features to avoid using same-lap artefacts too aggressively.",
+  "expected_effect": "Captures synchronized pit-stop hazard spikes that individual driver features miss.",
+  "risk": "May overfit if test race distributions differ; same-lap global aggregates should be validated with GroupKFold by race/year.",
+  "sources": [
+    "https://racemate.io/tyre-strategy-simulator",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

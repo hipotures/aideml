@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recurrent-event hazard model with shared frailty",
+  "summary": "Pit stops are recurrent time-to-event decisions, not isolated IID rows.",
+  "rationale": "Pit stops are recurrent time-to-event decisions, not isolated IID rows. Survival literature emphasizes discrete hazards with time-varying covariates and shared latent effects for repeated events; here that latent effect is likely team/driver/race strategy aggressiveness, especially for later stints.",
+  "implementation_hint": "Reframe each row as a discrete next-lap hazard example, add baseline hazard bins over `TyreLife` or `laps_since_last_stop`, and include cross-fitted frailty proxies such as prior stint-length residuals by `Driver`, `Race`, `Year`, and `Compound`. Blend this hazard model with the current best GBDT rather than replacing it.",
+  "expected_effect": "Sharper probabilities around 2nd/3rd stop windows and fewer race-specific calibration misses than a plain binary classifier.",
+  "risk": "High overlap with prior hazard ideas if implemented too similarly; validation must purge within-race chronology so frailty features do not peek forward.",
+  "sources": [
+    "https://pubmed.ncbi.nlm.nih.gov/23729866/",
+    "https://journals.sagepub.com/doi/10.1177/1471082X1001100503",
+    "https://www.researchgate.net/publication/332193994_CRESA_A_Deep_Learning_Approach_to_Competing_Risks_Recurrent_Event_Survival_Analysis"
+  ]
+}

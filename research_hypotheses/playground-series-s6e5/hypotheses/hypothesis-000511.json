@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Map Weekend Labels to Absolute Pirelli Compounds",
+  "summary": "SOFT/MEDIUM/HARD are relative weekend labels; Pirelli nominates three slick compounds from a wider C-range, so a weekend HARD can be C1, C2, or C3 with different durability.",
+  "rationale": "SOFT/MEDIUM/HARD are relative weekend labels; Pirelli nominates three slick compounds from a wider C-range, so a weekend HARD can be C1, C2, or C3 with different durability. The current best solutions use global soft/medium/hard life constants, which can blur race-specific tyre windows.",
+  "implementation_hint": "Add a small Race_Year-to-absolute-compound table mapping each weekend's HARD/MEDIUM/SOFT to C-index. Create AbsoluteCompoundIndex, AbsoluteCompoundLife, softness gap to current weekend hard/soft, and interactions with TyreLife, LapsRemaining_Est, Stint, and Race.",
+  "expected_effect": "Should improve ranking near pit windows where nominal labels are misleading, especially races using C1-C3 versus C3-C5 selections.",
+  "risk": "Manual mapping may be incomplete for synthetic or pre-season rows; wrong mappings can hurt more than coarse nominal labels.",
+  "sources": [
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.autosport.com/f1/news/f1-tyres-what-are-the-compounds-and-what-do-they-mean/10344284/",
+    "https://www.f1technical.net/news/24147"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap quota model plus within-group renormalization",
+  "summary": "A next-lap pit event is partly a competition within each Year-Race-Lap group: only a small subset of drivers pit on the following lap.",
+  "rationale": "A next-lap pit event is partly a competition within each Year-Race-Lap group: only a small subset of drivers pit on the following lap. Public F1 strategy material frames pit windows and strategy as field-level phenomena shaped by traffic and rival actions. A separate group-level estimate of how many cars are likely to pit next lap can regularize overconfident independent binary scores.",
+  "implementation_hint": "Train a secondary model to predict the expected count or rate of next-lap pitters for each Year-Race-Lap regime using leakage-safe aggregates only. At inference, rescale driver-level probabilities within each race-lap via temperature/softmax or rank-preserving normalization so their group sum matches the expected count. Blend this postprocessed score with the raw binary model instead of replacing it.",
+  "expected_effect": "Small-to-moderate leaderboard gain through better ordering near pit windows and reduced false positives on laps where almost nobody should stop.",
+  "risk": "If normalization is too aggressive it can hurt global AUC, since AUC is not a per-group metric. The group prior must be estimated out-of-fold; using actual group target counts from train folds would leak badly.",
+  "sources": [
+    "https://aws.amazon.com/sports/f1/",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

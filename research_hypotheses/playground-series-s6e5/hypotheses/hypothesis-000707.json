@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rejoin-traffic and undercut-feasibility proxies from position congestion",
+  "summary": "Public F1 strategy references emphasize traffic, warm-up, and undercut/overcut economics, but your strongest features mostly encode tire-life service windows.",
+  "rationale": "Public F1 strategy references emphasize traffic, warm-up, and undercut/overcut economics, but your strongest features mostly encode tire-life service windows. A driver may delay a stop not because tires are fine, but because pitting now would rejoin into traffic or destroy an overcut.",
+  "implementation_hint": "Derive proxies from currently available columns only: local position congestion (density of cars by position bucket within race-lap), whether the driver is in a train (small recent position volatility plus poor lap-delta rank), clean-air proxy for front-runners, and undercut-feasibility score combining bad current lap_delta with high relative tyre age and favorable position band. Also test compound-specific warm-up interactions so overcut-friendly compounds/races are treated differently.",
+  "expected_effect": "Can add orthogonal signal around borderline calls where tire wear alone is ambiguous.",
+  "risk": "These are indirect proxies because explicit time gaps are absent, so too many handcrafted traffic scores may overfit specific races.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

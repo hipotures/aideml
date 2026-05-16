@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Shape-constrained monotone specialist for tyre-age and finish-window logic",
+  "summary": "XGBoost monotonic constraints can improve performance when domain priors are strong.",
+  "rationale": "XGBoost monotonic constraints can improve performance when domain priors are strong. Here, some effects should mostly move one way within regime: higher latent wear, larger positive lap-time loss, or greater infeasibility-to-finish should generally not decrease stop risk. A constrained model can act as a lower-variance specialist that complements freer tree models.",
+  "implementation_hint": "Train a second booster or EBM with monotone constraints on a compact feature set such as `TyreLife`, filtered wear state, positive `LapTime_Delta`, `Cumulative_Degradation`, and `TyreLife + LapsRemaining - expected_compound_life`. Blend only through OOF ranks/probabilities with the unconstrained baseline.",
+  "expected_effect": "Regularizes brittle threshold behavior and can improve LB robustness by adding a smoother physics-consistent vote.",
+  "risk": "Wrong monotone assumptions, especially around overcut windows or wet compounds, can flatten useful local reversals.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://interpret.ml/docs/ebm.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

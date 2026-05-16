@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Exact sporting-rule regime expert for wet exemption and Monaco-2025",
+  "summary": "The FIA regulations create hard discontinuities: dry races require two dry specs unless wets/inters were used, and Monaco 2025 adds a mandatory three-set/two-stop structure.",
+  "rationale": "The FIA regulations create hard discontinuities: dry races require two dry specs unless wets/inters were used, and Monaco 2025 adds a mandatory three-set/two-stop structure. Generic circuit priors blur these rule edges.",
+  "implementation_hint": "Create explicit regime flags and/or a small gated expert for `wet_rule_exempt`, `dry_rule_still_unsatisfied`, `monaco_2025_forced_extra_stop`, and `remaining_required_stops_min`. Interact them with progress, stint, prior compounds used, and current compound family rather than only using broad race-name priors.",
+  "expected_effect": "Should improve rows where a stop is strategically or legally forced even if tyre degradation signals are only moderate.",
+  "risk": "Affected regimes are sparse, so naive global fitting can overfit unless handled as a gated sidecar or regularized interactions.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq.html.UUe16nwpOcqBe9f6PYgkq"
+  ]
+}

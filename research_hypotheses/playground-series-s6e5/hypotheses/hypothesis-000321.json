@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add auxiliary time-to-stop targets, not just next-lap labels",
+  "summary": "Pit-now is the sharp edge of a broader time-to-stop process.",
+  "rationale": "Pit-now is the sharp edge of a broader time-to-stop process. Recent pit-stop work and event-forecasting papers report gains from jointly modeling immediate classification with remaining horizon, which should help separate true negatives from rows that are simply 2-5 laps early.",
+  "implementation_hint": "Create fold-safe auxiliary targets such as `pit_within_2`, `pit_within_3`, `pit_within_5`, and/or `laps_until_next_pit` inside each driver-race sequence after splitting by race groups. Train shared or specialist models, then feed only OOF auxiliary predictions into the final `PitNextLap` model.",
+  "expected_effect": "Better ranking on borderline laps near the pit window; fewer false negatives just before actual stops.",
+  "risk": "Easy leakage trap if horizons are built before fold splitting or if future labels from held-out races are touched.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://ojs.aaai.org/index.php/AAAI/article/view/39413",
+    "https://arxiv.org/abs/2410.10648"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-time hazard model with survival-consistent features",
+  "summary": "Pit-on-next-lap is naturally a one-step hazard: probability of stopping at lap t+1 conditional on having not stopped yet in the current stint.",
+  "rationale": "Pit-on-next-lap is naturally a one-step hazard: probability of stopping at lap t+1 conditional on having not stopped yet in the current stint. Survival literature suggests discrete-time hazard formulations are better aligned than plain independent row classification for event timing problems.",
+  "implementation_hint": "Create stint-relative hazard features such as lap-in-stint, current stint survival age, time-since-last-stop, and piecewise lap bins; train a compact hazard specialist (logistic/CatBoost) only on rows before the terminal pit of each stint, then blend its rank with the current best classifier. Validate with rolling or grouped folds by race-driver so future laps never inform earlier hazards.",
+  "expected_effect": "Better ranking near true stop windows and fewer false spikes on laps that are impossible or too early for a stop.",
+  "risk": "This overlaps prior event-time ideas, so it must be a stricter survival-consistent implementation rather than just adding more lag features.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8232898/"
+  ]
+}

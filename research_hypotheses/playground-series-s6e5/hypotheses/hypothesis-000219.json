@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost with raw high-cardinality categorical interactions",
+  "summary": "Train/test contain hundreds of drivers and race-year context combinations; CatBoost was built to handle categorical leakage via ordered statistics and often wins when manual frequency encodings plateau.",
+  "rationale": "Train/test contain hundreds of drivers and race-year context combinations; CatBoost was built to handle categorical leakage via ordered statistics and often wins when manual frequency encodings plateau. This is meaningfully different from the current mostly numeric-threshold feature stack.",
+  "implementation_hint": "Train a CatBoostClassifier on mostly raw columns plus a few causal numeric features, enabling ordered boosting; explicitly try interactions like `Driver x Race`, `Driver x Compound`, `Race x Compound`, `Year x Compound`, and compare against the current GBM using purged OOF.",
+  "expected_effect": "Can recover sparse strategy priors and driver-track behavior without fragile handcrafted target encoders.",
+  "risk": "If validation is weak, CatBoost can look unrealistically strong; also may underperform if the true signal is mostly continuous and already captured.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://catboost.ai/docs/en/concepts/faq",
+    "https://catboost.ai/docs/en/concepts/r-reference_catboost-train"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Self-Supervised Tyre-Energy Teacher Model As A Feature Generator",
+  "summary": "Mercedes/Imperial’s tyre-energy paper argues that tyre energy is a strategic latent quantity upstream of pit timing.",
+  "rationale": "Mercedes/Imperial’s tyre-energy paper argues that tyre energy is a strategic latent quantity upstream of pit timing. Even without telemetry, a surrogate teacher can be learned from public data by predicting near-future pace loss or degradation acceleration, then distilled into the pit classifier.",
+  "implementation_hint": "Create OOF surrogate targets such as next-2/3-lap cumulative `LapTime_Delta`, future degradation gain, or remaining useful stint length. Train a separate regressor on current-row features only, generate OOF/test predictions, and use those predictions as compact teacher features in the main pit model.",
+  "expected_effect": "Can inject multi-lap sequence signal without switching the whole pipeline to a sequence model, and may be more stable than directly hand-crafting many higher-order lag features.",
+  "risk": "If the surrogate target is weakly coupled to actual pit decisions, the extra model adds noise and correlation without lift.",
+  "sources": [
+    "https://doi.org/10.1145/3672608.3707765",
+    "https://doi.org/10.1177/22150218261446170"
+  ]
+}

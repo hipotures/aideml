@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add Same-Lap Field Percentiles And Local Traffic Features",
+  "summary": "F1 strategy is relative, not absolute: undercut/overcut value depends on clean air, nearby rivals, and whether a driver is unusually slow or old-tyred versus the field on that exact lap.",
+  "rationale": "F1 strategy is relative, not absolute: undercut/overcut value depends on clean air, nearby rivals, and whether a driver is unusually slow or old-tyred versus the field on that exact lap. Current code has some race-level medians, but not dense same-lap field-relative ranks or neighbor context.",
+  "implementation_hint": "Within each `Year,Race,LapNumber`, compute percentile or robust-z features for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, and `Position`; also add local-neighbor gaps using cars at positions +/-1 to +/-2 and counts of rivals with fresher tyres or lower degradation nearby. Feed these into a tree model as relative-context specialists.",
+  "expected_effect": "Should improve discrimination around real pit windows where absolute tyre age is ambiguous but relative pace/traffic pressure is decisive.",
+  "risk": "Field-relative transforms can be noisy in laps with pit cycles or weather chaos, and careless use of future-derived ranking within a lap must stay strictly row-local.",
+  "sources": [
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/",
+    "https://www.motorsport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10500434/",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

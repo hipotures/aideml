@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-pressure gate for mandatory compound completion in dry races",
+  "summary": "FIA rules require two different dry compounds in a dry race, which creates a late-race strategic pressure absent in wet/intermediate contexts.",
+  "rationale": "FIA rules require two different dry compounds in a dry race, which creates a late-race strategic pressure absent in wet/intermediate contexts. The best current code uses simple prior-slick counts, but a sharper legality-pressure gate can model when a driver is effectively forced into a stop soon.",
+  "implementation_hint": "Add dry-race legality features: still-missing mandatory dry compound count, whether the current compound can satisfy the rule if no further stop occurs, legality pressure only when on slicks and no wet tyres have been used, and interaction with laps remaining and stint number. Use these as gating features, not hard rules, because some rows may already reflect exceptional race contexts.",
+  "expected_effect": "Sharper late-race ranking in dry sessions, especially for one-stop versus forced-two-compound edge cases.",
+  "risk": "Can hurt if pre-season testing or wet-affected races behave differently, so it likely needs regime flags or a specialist blend.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_2_-_2023-10-25.pdf",
+    "https://www.scribd.com/document/734951136/fia-2023-formula-1-sporting-regulations-issue-5-2023-04-25-0"
+  ]
+}

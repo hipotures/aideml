@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Next-Lap Plus Horizon Multi-Task Specialist",
+  "summary": "A recent lap-level F1 preprint uses a cascaded multi-task design: next-lap pit classification plus laps-until-stop regression.",
+  "rationale": "A recent lap-level F1 preprint uses a cascaded multi-task design: next-lap pit classification plus laps-until-stop regression. That is a good fit here because the next-lap label is noisy near the pit window edge; auxiliary horizon targets can stabilize ranking without replacing the main tabular model.",
+  "implementation_hint": "From training labels, derive auxiliary targets such as `pit_within_2`, `pit_within_3`, and `laps_until_next_pit` (censored at finish). Train a compact specialist or separate models, then feed out-of-fold auxiliary predictions into the main model or blend by OOF rank averaging; if probabilities matter, apply sigmoid calibration only to the final OOF blend.",
+  "expected_effect": "Smoother ordering around borderline rows and better recall on imminent but not perfectly timed stops.",
+  "risk": "Auxiliary targets must be built fold-locally, with race-end censoring handled consistently; calibrators must never see in-fold predictions.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

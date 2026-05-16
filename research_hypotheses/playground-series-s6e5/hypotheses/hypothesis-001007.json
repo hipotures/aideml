@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap LambdaRank specialist over the active risk set",
+  "summary": "At each lap, only a few cars are truly near a stop, so relative urgency inside the same race-lap may matter more than absolute probability.",
+  "rationale": "At each lap, only a few cars are truly near a stop, so relative urgency inside the same race-lap may matter more than absolute probability. LambdaRank is built for grouped ranking problems and can learn who should be highest-risk within each query, which matches the strategist decision frame better than global classification alone.",
+  "implementation_hint": "Create ranker queries as `(Year, Race, LapNumber)` or `(Year, Race, LapNumber, dry/wet regime)`, label pitters on the next lap as relevant, train `LGBMRanker` with causal features only, and blend its normalized scores with the existing classifier. Evaluate both pure rank AUC and blended AUC.",
+  "expected_effect": "Can improve ordering among contemporaneous candidates, which is exactly what ROC AUC rewards when many negatives are easy and only local comparisons are hard.",
+  "risk": "Some laps may have zero or multiple positives, and ranker outputs need careful scaling before blending into probability space.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://lightgbm.readthedocs.io/en/v4.5.0/pythonapi/lightgbm.LGBMRanker.html"
+  ]
+}

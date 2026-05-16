@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap query ranker",
+  "summary": "Pit calls are relative within a lap: teams decide against the field state, not in isolation.",
+  "rationale": "Pit calls are relative within a lap: teams decide against the field state, not in isolation. Learning-to-rank frameworks explicitly optimize ordering inside query groups, which matches ROC AUC well when grouped by a common decision context.",
+  "implementation_hint": "Train an `XGBRanker` or LightGBM ranker with query/group=`Year,Race,LapNumber` and binary labels `PitNextLap`. Keep existing numeric features, add within-group deltas/percentiles versus lap peers, then blend its scores with the current classifier rather than replacing it.",
+  "expected_effect": "Better ordering among borderline same-lap candidates, especially around undercut/traffic windows; likely small CV gain and stronger ensemble diversity.",
+  "risk": "Ranking loss is not identical to global AUC, and sparse positive labels per lap can make some groups weak; needs careful group construction and OOF evaluation.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

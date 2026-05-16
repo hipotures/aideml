@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Try learning-to-rank objectives grouped by race-lap or driver-race windows",
+  "summary": "ROC AUC is pairwise ranking, and pit decisions are sparse within each lap group.",
+  "rationale": "ROC AUC is pairwise ranking, and pit decisions are sparse within each lap group. XGBoost and CatBoost both support ranking objectives that may fit the \"who is most likely to pit now\" structure better than plain logloss.",
+  "implementation_hint": "Train a ranking model with query groups such as Year-Race-LapNumber or short driver-race windows, using `rank:pairwise`/`rank:map` in XGBoost or CatBoost pairwise/group losses. Convert scores to probabilities afterward with OOF isotonic or Platt calibration if needed for blending.",
+  "expected_effect": "May improve ordering quality among contemporaneous candidates even if raw calibration is weak, which can translate directly into better ROC AUC.",
+  "risk": "Query design is critical; bad group definitions can hurt because global negative-vs-positive discrimination may be stronger than within-query ranking.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Peer-Relative Clean-Air / Dirty-Air Features Instead Of Global Means",
+  "summary": "F1 strategy sources emphasize traffic, clean air, track position, and rival interaction, not just absolute tyre age.",
+  "rationale": "F1 strategy sources emphasize traffic, clean air, track position, and rival interaction, not just absolute tyre age. Current best code already uses some field means, but public strategy descriptions imply the sharper signal is local: who is just ahead/behind, how old their tyres are, and whether pitting now releases the driver into traffic or clean air.",
+  "implementation_hint": "Within each `Year/Race/LapNumber`, compute ranks, percentiles, and nearest-neighbor gaps for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, and `Position`. Add local window summaries for cars within +/-2 positions, plus `ahead_older/ahead_slower`, `behind_undercut_threat`, and `field_quantile` features. Test these in the existing tree model first before any new model family.",
+  "expected_effect": "Should help distinguish similar absolute tyre states that imply different pit calls because of traffic or undercut exposure; likely more robust than adding more fixed tyre-life formulas.",
+  "risk": "The dataset lacks explicit time gaps, so position-based proximity is only a proxy for traffic; gains may be modest if same-lap ordering is noisy or if train/test race composition differs.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

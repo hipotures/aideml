@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leak-safe circuit-specific hazard priors from prior seasons",
+  "summary": "Official F1 strategy interviews describe teams using previous years, historical degradation, and pre-race simulations to estimate likely stop counts and windows.",
+  "rationale": "Official F1 strategy interviews describe teams using previous years, historical degradation, and pre-race simulations to estimate likely stop counts and windows. The dataset spans repeated races across four years, so smoothed prior-year hazard tables should be a strong signal if built temporally and fold-safely.",
+  "implementation_hint": "For each fold, compute prior-only tables such as `P(PitNextLap=1 | Race, Compound, Stint, TyreLife_bin, RaceProgress_bin)` and `expected laps until next stop` using earlier seasons or excluded-race data only. Feed these priors as features into the existing model rather than using pooled all-years target encoding.",
+  "expected_effect": "Provides strong circuit-specific stop-window priors for tracks with repeatable strategy patterns, while staying simpler than full external joins.",
+  "risk": "Only four seasons are available and regulations shifted across 2022-2025, so pooled priors can mislead unless they are time-aware and heavily smoothed.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/watch-the-insiders-guide-to-f1-strategists.6VT3445ugVd0bh85Pw5slO",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

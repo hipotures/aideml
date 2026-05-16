@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-wave field pressure features",
+  "summary": "F1 stops cluster around strategy windows; once comparable cars pit, competitors often respond to undercut/overcut pressure.",
+  "rationale": "F1 stops cluster around strategy windows; once comparable cars pit, competitors often respond to undercut/overcut pressure. Current best only adds one rival-ahead tyre feature, not whole-field pit-wave state.",
+  "implementation_hint": "Within each Race/LapNumber, derive causal features from PitStop distribution: count/share of cars with PitStop incremented or high PitStop, cumulative stopped share by stint, same-compound stopped share, and lagged lap pit counts. Add interactions with Position, TyreLife, and RaceProgress.",
+  "expected_effect": "May improve AUC by capturing synchronized stop windows that tyre age alone misses.",
+  "risk": "If PitStop semantics are cumulative rather than per-lap, increment detection must be grouped by Race/Driver and sorted by LapNumber; careless use of future laps would leak.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://en.wikipedia.org/wiki/Pit_stop",
+    "https://www.kaggle.com/datasets/eshummalik/pitstop-pulse-formula-1-performance-data"
+  ]
+}

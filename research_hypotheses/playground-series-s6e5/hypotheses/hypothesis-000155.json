@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a race-lap ranking auxiliary model grouped by race context",
+  "summary": "Pit calls are partly relative decisions: on a given lap, only a few cars are plausible stoppers.",
+  "rationale": "Pit calls are partly relative decisions: on a given lap, only a few cars are plausible stoppers. Learning-to-rank is built for ordering candidates within a query group, and XGBoost/LightGBM support LambdaMART-style objectives over grouped samples.",
+  "implementation_hint": "Create query groups such as `Race_Year x LapNumber` or `Race_Year x LapNumber x compound_regime`; train a ranking model (`rank:ndcg`, `rank:pairwise`, or `lambdarank`) to score which drivers are most likely to pit next lap. Blend its OOF predictions with the binary classifier, especially in dry races where tactical ordering matters most.",
+  "expected_effect": "Should improve relative ordering within each lap and recover signal missed by independent row-wise classification.",
+  "risk": "Some groups may have very few positives or unstable size; ranking loss may help AUC only after careful blending, not as a standalone model.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hard-window AUC specialist with pairwise ranking loss",
+  "summary": "ROC AUC is the competition metric, and AUC-optimization literature shows error-rate or log-loss training is not always best for ranking.",
+  "rationale": "ROC AUC is the competition metric, and AUC-optimization literature shows error-rate or log-loss training is not always best for ranking. In this task, the hardest distinctions are late-stint laps that look similar but differ in immediate pit probability, so a small specialist focused on these pairs may add rank signal even if global calibration is unchanged.",
+  "implementation_hint": "Train a second-stage model only on ambiguous windows, e.g. positives plus hard negatives from similar `RaceProgress`, `Compound`, and `TyreLife` ranges, using pairwise/ranking or explicit AUC-surrogate loss. Blend it only on rows where the base model is uncertain or late-stint.",
+  "expected_effect": "Improves ordering among near-decision laps, where public-LB movement is often driven by subtle ranking errors rather than average probability quality.",
+  "risk": "May help local AUC but hurt global robustness if the ambiguity slice is defined too narrowly or with leakage-prone labels.",
+  "sources": [
+    "https://papers.nips.cc/paper/6065-stochastic-online-auc-maximization",
+    "https://papers.nips.cc/paper/2518-auc-optimization-vs-error-rate-minimization"
+  ]
+}

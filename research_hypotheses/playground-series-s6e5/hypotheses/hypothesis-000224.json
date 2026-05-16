@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regularized OOF target encoding stack for high-cardinality IDs",
+  "summary": "Benchmarks on high-cardinality categoricals found regularized target encoding consistently strong.",
+  "rationale": "Benchmarks on high-cardinality categoricals found regularized target encoding consistently strong. Here `Driver` has 800+ levels, and interaction IDs like `Driver x Race`, `Driver x Compound`, and `Race x LapBucket` are likely informative if encoded with strict out-of-fold shrinkage rather than naive frequency counts.",
+  "implementation_hint": "Build leakage-safe encoders only from training folds: empirical-Bayes / GLMM / CatBoost-style encodings for `Driver`, `Race_Year`, `Driver_Compound`, `Driver_Race`, `Compound_Stint`, and coarse lap buckets. Compare adding them to LightGBM/XGBoost against current frequency features.",
+  "expected_effect": "Stronger entity priors and interaction signal with less variance than one-hot or raw frequency features, especially for medium-frequency drivers and race contexts.",
+  "risk": "Easy to overstate CV if the encoding is not fully fold-pure or time-aware within race sequences.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://papers.nips.cc/paper_files/paper/2018/file/14491b756b3a51daac41c24863285549-Paper.pdf",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ]
+}

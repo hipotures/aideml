@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only Kalman tire-state residuals",
+  "summary": "A 2026 F1 tire-degradation paper shows state-space models outperform simple AR baselines and treat pit stops as reset events.",
+  "rationale": "A 2026 F1 tire-degradation paper shows state-space models outperform simple AR baselines and treat pit stops as reset events. The current baseline uses static degradation heuristics but not an online latent state. A fold-safe version can infer driver-race-stint latent wear, pace drift, and uncertainty from past laps only, then feed those states into the tabular model.",
+  "implementation_hint": "Within each Race-Year-Driver sequence, fit a lightweight local-level/Kalman filter on lap-time residuals after removing race/lap medians; reset at PitStop=1; emit filtered state, state slope, innovation, and state variance at each lap. Refit/estimate using train folds only, then generate features forward-only for validation/test.",
+  "expected_effect": "Better separation of true tire collapse vs noisy slow laps, especially late in stints and on atypical compounds; likely small CV gain with better leaderboard robustness.",
+  "risk": "Easy to leak if smoothed states or full-race normalization are used. Overly complex filtering may add noise if lap-time residualization is weak.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Minimax shift-robust validation selection",
+  "summary": "Official docs for grouped CV stress non-overlapping groups, and uncertainty literature shows performance/calibration degrade under shift.",
+  "rationale": "Official docs for grouped CV stress non-overlapping groups, and uncertainty literature shows performance/calibration degrade under shift. With only 4 years and 26 races, mean CV can hide brittle race-specific overfit.",
+  "implementation_hint": "Run a stress suite with at least two split families: `StratifiedGroupKFold` on `Year_Race` and leave-one-year-out or `GroupKFold` on `Year`. Pick features/hyperparameters by worst-fold or lower-quantile AUC, not only mean AUC. Use this as model-selection logic, not as a new model.",
+  "expected_effect": "May slightly lower headline local CV while improving public-LB reliability and avoiding race/year leakage traps.",
+  "risk": "Can reject genuinely strong but variable models; with few groups, variance of the estimate is itself high.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://papers.neurips.cc/paper/9547-can-you-trust-your-models-uncertainty-evaluating-predictive-uncertainty-under-dataset-shift"
+  ]
+}

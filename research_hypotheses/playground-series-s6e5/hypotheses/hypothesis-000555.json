@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost on Raw High-Cardinality Categorical Structure",
+  "summary": "This dataset has many drivers and race-driver-compound interactions.",
+  "rationale": "This dataset has many drivers and race-driver-compound interactions. CatBoost’s ordered boosting and ordered target statistics are specifically designed to reduce prediction shift and leakage from categorical encodings, which is relevant because the current baseline hand-builds many frequency features.",
+  "implementation_hint": "Run a CatBoostClassifier on mostly raw categorical columns and a compact numeric set, using strict race-aware folds. Compare against the current engineered GBDT as a diversity model, not necessarily a replacement. Test raw combos like Driver x Race, Driver x Compound, and Race x Compound via native categorical handling instead of manual frequency encoding.",
+  "expected_effect": "May recover signal from high-cardinality interactions with less leakage and provide a meaningfully different model for blending.",
+  "risk": "If CV is not race-aware and chronologically sensible, CatBoost can still look better locally than it generalizes; keep validation strict.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://huggingface.co/papers/1706.09516",
+    "https://sklearn.org/1.6/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

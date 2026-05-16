@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pack-Density And Clean-Air Rejoin Proxies",
+  "summary": "F1 strategy analysis emphasizes that undercut/overcut depends on being in range of rivals and on whether a stop drops the car into traffic.",
+  "rationale": "F1 strategy analysis emphasizes that undercut/overcut depends on being in range of rivals and on whether a stop drops the car into traffic. The current best features use medians, but not explicit pack-density or local rejoin-pressure proxies.",
+  "implementation_hint": "Within each Race_Year x LapNumber, create ordered-field features: position percentile, local neighborhood density, lap-time and delta gaps to adjacent position ranks, field dispersion, and whether the driver sits near a probable rejoin pocket based on estimated pit-loss classes from track-level priors. Add interactions with LapTime_Delta, Position_Change, and compound warmup regime.",
+  "expected_effect": "Should capture pit timing driven by traffic and strategic windows rather than tyre life alone, especially on tracks where track position is decisive.",
+  "risk": "The dataset lacks true time gaps, so these are proxies; if approximated too crudely they may add noise or duplicate existing group-median features.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual rejoin-pressure and opponent-response features",
+  "summary": "Recent F1 strategy papers emphasize that pit decisions depend on competitors’ actions, not just self tyre state.",
+  "rationale": "Recent F1 strategy papers emphasize that pit decisions depend on competitors’ actions, not just self tyre state. A more concrete testable version is to approximate whether pitting now or next lap would rejoin into traffic or gain undercut leverage on nearby rivals.",
+  "implementation_hint": "Within each Race_Year x Race x LapNumber, reconstruct the field snapshot and derive traffic proxies: nearby cars by position and pace residual, number of rivals in the likely rejoin band, local clean-air score, undercut-target count, and whether a one-lap delay changes the rejoin band. Feed these into a tree model or a small specialist blended with the base model.",
+  "expected_effect": "Adds signal in mid-race battles where identical tyre states imply different stop decisions because traffic cost differs.",
+  "risk": "Without exact gaps these are proxies, so noisy field reconstruction can hurt; prefer coarse bands and OOF blending over hard rules.",
+  "sources": [
+    "https://arxiv.org/abs/2602.23056",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115"
+  ]
+}

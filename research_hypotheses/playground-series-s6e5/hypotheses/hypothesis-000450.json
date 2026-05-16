@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Stint Pairwise Ranker Plus AUC-Safe Blend",
+  "summary": "ROC AUC rewards ordering.",
+  "rationale": "ROC AUC rewards ordering. In each driver-race-stint, the few imminent-stop laps should outrank the rest; pairwise ranking can learn that local ordering better than plain log-loss.",
+  "implementation_hint": "Train an `XGBRanker` or equivalent with `qid=(Race,Year,Driver,Stint)` or `(Race,Year,Driver)`, keeping only groups that contain both positive and negative rows. Use the ranker score as an extra feature or blend by OOF rank averaging/logit averaging with the classifier. Keep the ensemble simple and strictly OOF to avoid fragile stacked meta-models.",
+  "expected_effect": "Sharper separation among ambiguous pre-stop laps, improving AUC without requiring perfectly calibrated probabilities.",
+  "risk": "Many groups are tiny and sparse; careless CV/stacking can create misleading gains.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.researchgate.net/publication/220519957_On_Cross-Validation_and_Stacking_Building_seemingly_predictive_models_on_random_data"
+  ]
+}

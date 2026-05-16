@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add A Fold-Safe Latent 'Remaining Stops' Strategy State",
+  "summary": "Heilmeier’s VSE reports that remaining pit stops materially improves pit-call quality, and their pit probabilities differ by intended stop count.",
+  "rationale": "Heilmeier’s VSE reports that remaining pit stops materially improves pit-call quality, and their pit probabilities differ by intended stop count. This is adjacent to but not the same as prior time-to-pit work: the useful state is not exact horizon, but the coarse strategic template still left in the race.",
+  "implementation_hint": "Create an auxiliary multiclass target per row such as future tire-change stops remaining in {0,1,2,3+}, computed within each driver-race on train only. Train an OOF auxiliary model with race-grouped folds, then feed the OOF class probabilities and argmax into the main AUC model. Test especially on dry laps, with a separate fallback for wet/intermediate compounds.",
+  "expected_effect": "Should help separate late-stint 'must stop soon' rows from long one-stop rows that currently look similar on raw wear features.",
+  "risk": "If the auxiliary target is too correlated with fold leakage or too noisy in wet/testing sessions, it can simply repackage the current signal without adding generalization.",
+  "sources": [
+    "https://res.mdpi.com/d_attachment/applsci/applsci-10-07805/article_deploy/applsci-10-07805.pdf",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

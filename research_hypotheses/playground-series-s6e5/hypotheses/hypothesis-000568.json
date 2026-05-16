@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Select ideas with purged race-blocked forward CV, not only mean random fold AUC",
+  "summary": "Cross-validation literature is explicit that temporal and hierarchical dependence causes optimistic error estimates when ignored, and the new tyre-state paper itself uses rolling-origin evaluation.",
+  "rationale": "Cross-validation literature is explicit that temporal and hierarchical dependence causes optimistic error estimates when ignored, and the new tyre-state paper itself uses rolling-origin evaluation. In this dataset, laps within a race-driver trajectory are highly dependent, so overly friendly CV can reward brittle features.",
+  "implementation_hint": "Run a stricter secondary validator: leave-one-race-out by Year-Race, plus forward-year or rolling-origin splits, and optionally purge a few laps around fold boundaries for any sequential features. Rank experiments by worst-fold robustness and gap between standard CV and blocked CV, not just mean local AUC.",
+  "expected_effect": "Fewer false positives in research iteration and better odds that a small local gain survives leaderboard evaluation.",
+  "risk": "Scores will look lower and noisier, so it may slow search unless used as a confirmation gate rather than the only metric.",
+  "sources": [
+    "https://research.wright.edu/en/publications/cross-validation-strategies-for-data-with-temporal-spatial-hierar/",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

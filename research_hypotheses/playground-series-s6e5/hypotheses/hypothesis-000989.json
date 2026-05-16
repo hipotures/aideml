@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cascaded Multitask Stop-Horizon Model",
+  "summary": "A recent pit-stop paper reports a cascaded setup where next-lap classification is complemented by a regression head for laps until stop.",
+  "rationale": "A recent pit-stop paper reports a cascaded setup where next-lap classification is complemented by a regression head for laps until stop. That auxiliary target matches the competition structure better than pure binary classification because rows close to a stop should share signal.",
+  "implementation_hint": "Train a second model on future stop horizon for train rows, capped at a small window such as 0-8 laps. Feed its OOF predictions or bucketized horizon classes into the final PitNextLap classifier, or jointly train a simple neural/tabular model with binary plus horizon losses. Compare raw blend vs cascade.",
+  "expected_effect": "Should improve ordering near the positive boundary by forcing the model to learn distance-to-stop geometry instead of only a hard threshold at one lap.",
+  "risk": "Horizon labels can be noisy around race end or unusual pit sequences; multitask neural models may underperform strong trees if not regularized carefully.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

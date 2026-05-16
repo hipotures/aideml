@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Nonparametric discrete-time survival expert converted to next-lap hazard",
+  "summary": "Discrete-time survival modeling lets any binary learner model conditional event risk across time bins, and survival forests/boosted survival trees provide a different inductive bias from standard binary trees.",
+  "rationale": "Discrete-time survival modeling lets any binary learner model conditional event risk across time bins, and survival forests/boosted survival trees provide a different inductive bias from standard binary trees. That gives a low-correlation expert: predict time-to-next-pit with censoring at race end or stint end, then extract the implied hazard for the next lap instead of training only a direct one-step classifier.",
+  "implementation_hint": "Reconstruct time-to-next-pit for train rows, censor rows with no later stop in race, and fit a discrete-time survival forest or survival boosting model on person-period style data or directly with survival libraries. Convert the estimated survival curve to next-lap hazard and blend this expert with the current XGB/Cat stack by rank or logit.",
+  "expected_effect": "Probably modest alone, but attractive as a decorrelated expert for ensemble gains and for better late-stint behavior.",
+  "risk": "This is computationally heavier and can underperform if label reconstruction is noisy or if person-period expansion is not carefully validated by grouped race splits.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10618-020-00682-z"
+  ]
+}

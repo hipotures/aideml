@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Local leader-follower cover/undercut features, not global pit-wave counts",
+  "summary": "Game-theoretic F1 strategy work emphasizes asymmetric leader/follower decisions rather than symmetric field averages.",
+  "rationale": "Game-theoretic F1 strategy work emphasizes asymmetric leader/follower decisions rather than symmetric field averages. That suggests the next opponent-aware test should focus on the nearest relevant cars ahead/behind on the same lap, with separate cover and undercut pressures, instead of only aggregate pit-wave features.",
+  "implementation_hint": "For each row, derive nearest one or two cars ahead and behind within the same Year/Race/LapNumber, then create asymmetric features: ahead-pitted-cover flag, behind-fresher-undercut threat, same-compound nearest-rival age gap, and position-conditioned pressure scores. Blend this into the existing tree stack rather than building a separate model family.",
+  "expected_effect": "Could recover signal missed by global field summaries, especially for front-runners and tightly packed midfield strategy battles.",
+  "risk": "If gaps or pace context are too weak in the available columns, these features may just add noisy local comparisons; keep the set sparse.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

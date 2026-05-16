@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Embargoed forward CV with variance-penalized model selection",
+  "summary": "Pit-stop labels are event-time dependent, so grouped CV by race can still look optimistic if train folds contain neighboring laps/races that leak future regime information.",
+  "rationale": "Pit-stop labels are event-time dependent, so grouped CV by race can still look optimistic if train folds contain neighboring laps/races that leak future regime information. Purged/embargoed CV is designed for overlapping-label settings, and the recent tire state-space paper also evaluates with rolling-origin splits rather than random grouping.",
+  "implementation_hint": "Replace model selection CV with forward Year/Race ordering plus a small embargo around each validation race; score each candidate by mean AUC minus a fold-variance penalty, then keep the old CV only as a secondary diagnostic.",
+  "expected_effect": "May not raise local CV, but should reduce false-positive research directions and improve public LB transfer for sub-0.001 AUC tweaks.",
+  "risk": "Could lower headline local CV and slow iteration if the competition split is less shift-heavy than expected.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

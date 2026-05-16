@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Ambiguous-slice foundation/deep tabular residual expert",
+  "summary": "A full-sequence expert has already been suggested, but a cheaper and more different view is to reserve a non-GBDT model for only the uncertain rows where tree ensembles disagree.",
+  "rationale": "A full-sequence expert has already been suggested, but a cheaper and more different view is to reserve a non-GBDT model for only the uncertain rows where tree ensembles disagree. Recent tabular foundation/deep methods can be strong on moderate-size slices and often produce low-correlation errors even when they are not best globally.",
+  "implementation_hint": "Define a hard slice per fold, for example rows with XGB/CatBoost rank disagreement, middle-range probabilities, or old-tyre late-race cases. On that slice only, train either TabPFN/TuneTables-style small-data expert or a compact DeepGBM-style residual model on dense numerics plus encoded cats; predict residual rank improvement relative to the base blend and only apply it on the slice, defaulting to base elsewhere.",
+  "expected_effect": "Adds diversity without forcing a deep/foundation model to compete with GBDTs on all 439k rows; best case is a modest lift concentrated on ambiguous decision boundaries.",
+  "risk": "Engineering complexity is higher, and some methods may not scale or may underperform badly if the selected slice is still too large/noisy.",
+  "sources": [
+    "https://www.nature.com/articles/s41586-024-08328-6",
+    "https://nyuscholars.nyu.edu/en/publications/tunetables-context-optimization-for-scalable-prior-data-fitted-ne",
+    "https://www.microsoft.com/en-us/research/publication/deepgbm-a-deep-learning-framework-distilled-by-gbdt-for-online-prediction-tasks/?locale=ja"
+  ]
+}

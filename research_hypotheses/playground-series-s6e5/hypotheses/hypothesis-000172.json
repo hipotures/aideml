@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap group ranking model stacked with classifier OOF scores",
+  "summary": "ROC AUC is a ranking metric, and official XGBoost/CatBoost ranking docs support groupwise or pairwise training by query.",
+  "rationale": "ROC AUC is a ranking metric, and official XGBoost/CatBoost ranking docs support groupwise or pairwise training by query. Here, each race-lap can be treated as a query where the task is to rank which cars are most likely to pit on the next lap; this complements a pointwise classifier rather than replacing it.",
+  "implementation_hint": "Train an `XGBRanker` or CatBoost ranking model with query/group ID = `(Race, Year, LapNumber)` or `(Race, Year, LapNumber, regime bucket)`, using current engineered features plus traffic/hazard features. Generate strict OOF rank scores, rank-normalize them, and blend with the pointwise model via a tiny fold-safe stacker.",
+  "expected_effect": "Can improve ordering among simultaneously exposed cars and add diversity for ensemble gain even if standalone AUC is only similar.",
+  "risk": "If many laps have zero or one positives, ranking objectives can be unstable; restrict to informative groups or weight groups by number of effective pairs.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/input-data_pairs-description"
+  ]
+}

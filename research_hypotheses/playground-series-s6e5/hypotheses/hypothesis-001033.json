@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Discrete hazard reframing with survival-consistent features",
+  "summary": "Pit-on-next-lap is naturally a discrete-time hazard problem: the event can happen once per stint segment, and hazard should rise as tyre age, degradation, and race context evolve.",
+  "rationale": "Pit-on-next-lap is naturally a discrete-time hazard problem: the event can happen once per stint segment, and hazard should rise as tyre age, degradation, and race context evolve. Survival literature shows person-period hazard modeling often beats simpler static binary framing, and recent F1 pit-stop work found sequence models strong because they exploit temporal dependence.",
+  "implementation_hint": "Keep the binary target, but engineer hazard-style features per driver-race-stint: laps since last pit, normalized stint age percentile within race, rolling slope of LapTime_Delta and Cumulative_Degradation over the last 2-5 laps, and a post-pit reset flag. Test complementary-log-log or standard GBM/CatBoost on this enriched table without using future rows.",
+  "expected_effect": "Should improve recall on late-stint positive rows and reduce noisy early-lap positives; likely incremental CV gain if temporal trend features are the missing signal.",
+  "risk": "A weaker version of sequential modeling was already suggested historically; gains depend on implementing genuinely causal lagged trends rather than more static ratios.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

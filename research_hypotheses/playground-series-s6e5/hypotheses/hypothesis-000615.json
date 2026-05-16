@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-heldout validation gate",
+  "summary": "Current random row validation can overstate performance because laps from the same race/driver/stint are highly dependent.",
+  "rationale": "Current random row validation can overstate performance because laps from the same race/driver/stint are highly dependent. A group-aware CV score by Race or Year-Race should better match public LB behavior and prevent selecting features that memorize event-specific pit windows.",
+  "implementation_hint": "Add a lightweight evaluation mode using StratifiedGroupKFold with groups=Race or Year+'_'+Race, preserving class balance where possible. Use it only for model/feature selection, then retrain final model on all train rows.",
+  "expected_effect": "Lower but more trustworthy CV; may improve public score by rejecting leaky or race-specific features even if random CV drops.",
+  "risk": "If Kaggle test races overlap heavily with train races, strict heldout-race validation may be too pessimistic and discard useful race identity signals.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/cross_validation.html",
+    "https://sklearn.org/1.8/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html"
+  ]
+}

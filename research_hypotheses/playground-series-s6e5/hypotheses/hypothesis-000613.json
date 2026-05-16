@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation slope and stint reset features",
+  "summary": "Recent F1 tyre-degradation research models tyre state as a latent process with pit stops as structural resets, and strategy models often use degradation slope/convexity rather than only tyre age.",
+  "rationale": "Recent F1 tyre-degradation research models tyre state as a latent process with pit stops as structural resets, and strategy models often use degradation slope/convexity rather than only tyre age. Prior attempts used simple rolling pace drops; a more explicit per-stint state estimate is a distinct next step.",
+  "implementation_hint": "Within Race-Driver-Stint ordered by LapNumber, compute lag-only expanding and rolling features: previous-lap residual vs race-lap median, rolling slope over last 3/5 laps, rolling std, acceleration of degradation, cumulative positive residual, and distance from compound-specific expected stint optimum. Avoid full-stint means that see future laps.",
+  "expected_effect": "Should help identify the tyre cliff and differentiate gradual fuel-burn effects from true degradation-driven pit likelihood.",
+  "risk": "Requires careful sorting and reindexing; early-stint rows have missing histories that must be filled consistently.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://papers.cool/arxiv/2501.04067"
+  ]
+}

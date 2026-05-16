@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Uncertainty-aware ensemble gating instead of fixed blend weights",
+  "summary": "CatBoost supports posterior-sampling virtual ensembles to estimate knowledge uncertainty, and Venn-style calibration literature shows uncertainty estimates can improve decision quality even when raw ranking is similar.",
+  "rationale": "CatBoost supports posterior-sampling virtual ensembles to estimate knowledge uncertainty, and Venn-style calibration literature shows uncertainty estimates can improve decision quality even when raw ranking is similar. In this task, uncertainty is likely highest on rare drivers/regimes and shifted test rows, where a fixed blend is brittle.",
+  "implementation_hint": "Train at least one CatBoost expert with `posterior_sampling=True` on CPU to get per-row uncertainty. Use that uncertainty to shrink toward the most stable base model, or to gate between classifier and ranker experts by regime. If adding calibration, do it per expert on OOF only and use it for gating/confidence rather than expecting a pure monotone calibration lift in AUC.",
+  "expected_effect": "Better robustness under covariate shift and fewer catastrophic mis-rankings on rare regimes; may help public LB more than local CV.",
+  "risk": "Pure calibration alone will not improve ROC AUC if it is strictly monotone, and posterior-sampling is slower on CPU.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/uncertainty",
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x"
+  ]
+}

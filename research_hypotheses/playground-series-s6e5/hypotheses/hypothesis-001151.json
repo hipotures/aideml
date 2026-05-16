@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a shape-constrained expert and stack with an AUC-focused metalearner",
+  "summary": "Current gains come from flexible trees plus heuristic rank blending.",
+  "rationale": "Current gains come from flexible trees plus heuristic rank blending. A monotone/interaction-constrained expert can encode physical priors like older tires and worse latent wear not reducing pit risk all else equal, while an AUC-focused Super Learner can combine that expert with existing models more cleanly than fixed grids.",
+  "implementation_hint": "Train either monotone-constrained XGBoost or an EBM on physically ordered features (`TyreLife`, latent wear, degradation rate, laps left, race progress) with restricted interactions; generate OOF predictions and feed all base OOFs into a convex metalearner chosen to maximize ROC AUC rather than logloss.",
+  "expected_effect": "Often adds a small but useful low-correlation signal and makes final ensembling less ad hoc than raw/rank weight sweeps.",
+  "risk": "Monotone priors can be wrong in wet/SC-like edge cases, and a metalearner can leak if base OOF predictions are not generated on identical folds.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/feature_interaction_constraint.html",
+    "https://interpret.ml/docs/ebm.html",
+    "https://www.researchgate.net/publication/303552481_AUC-Maximizing_Ensembles_through_Metalearning"
+  ]
+}

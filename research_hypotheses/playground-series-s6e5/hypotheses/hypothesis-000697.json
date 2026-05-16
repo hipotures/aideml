@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specialist mixture of experts",
+  "summary": "Official strategy guides repeatedly separate low-degradation one-stop races, high-degradation two-stop races, and wet/intermediate races.",
+  "rationale": "Official strategy guides repeatedly separate low-degradation one-stop races, high-degradation two-stop races, and wet/intermediate races. A single global model can blur these distinct decision policies.",
+  "implementation_hint": "Train specialist models for regimes such as dry-low-deg, dry-high-deg, wet/intermediate, and late-race finish-window states. Use a simple gating model driven by `Compound`, wet flag, race-level median degradation, estimated total laps, and race identity to blend expert outputs.",
+  "expected_effect": "Higher robustness across circuit/year shifts, especially where one global set of splits underfits rare but structurally different strategy regimes.",
+  "risk": "Rare regimes, especially wet, may be too small; regularize heavily and fall back to the global model when gate confidence is weak.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Empirical Pit-Window Hazard Features",
+  "summary": "Pit stopping is a hazard/event-timing problem: probability spikes at common stint ages and race-progress windows rather than varying smoothly with tyre life alone.",
+  "rationale": "Pit stopping is a hazard/event-timing problem: probability spikes at common stint ages and race-progress windows rather than varying smoothly with tyre life alone. Public race-strategy models frame pit epochs as the central decision variables.",
+  "implementation_hint": "For each Race/Year/Compound/Stint/PitStop bucket, build smoothed out-of-fold target/hazard rates by TyreLife bin, LapNumber bin, and RaceProgress bin. Add features like bucket historical stop rate next lap, cumulative non-pit survival, distance to modal pit lap, and distance to modal tyre life.",
+  "expected_effect": "Should add high-signal priors beyond generic degradation interactions, especially around the narrow laps where positive labels cluster.",
+  "risk": "Target encoding must be out-of-fold/group-aware; naive full-data rates can leak target distribution and overfit rare race-compound buckets.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.kaggle.com/datasets/akashrane2609/formula-1-pit-stop-dataset"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

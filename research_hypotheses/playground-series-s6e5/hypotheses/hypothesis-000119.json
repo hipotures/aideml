@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Sequential degradation-state features via rolling slopes and residual resets",
+  "summary": "Recent F1 tire modeling work uses latent state/degradation with pit-stop resets.",
+  "rationale": "Recent F1 tire modeling work uses latent state/degradation with pit-stop resets. Your current features use cumulative degradation and lap deltas, but not the recent trend or deviation from expected stint trajectory, which is often what triggers the stop window.",
+  "implementation_hint": "Within each `Race_Year x Driver`, sorted by lap, create pre-stop only features: rolling 2-5 lap slope of `LapTime (s)`, slope of `LapTime_Delta`, slope of `Cumulative_Degradation`, acceleration terms, and residuals versus driver-stint baseline after each pit reset. Prefer lagged/causal windows only.",
+  "expected_effect": "Should help detect the undercut-ready or cliff phase that static tyre-life ratios miss, especially when compounds behave differently by circuit.",
+  "risk": "If the rows are not strictly sorted within race/driver or if windows accidentally peek across pit resets, the features become noisy or invalid.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

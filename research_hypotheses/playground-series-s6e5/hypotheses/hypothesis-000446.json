@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Grouped ranking model plus AUC-first OOF rank stacking",
+  "summary": "ROC AUC rewards ordering, and CatBoost has grouped ranking/classification objectives designed for data with internal group structure.",
+  "rationale": "ROC AUC rewards ordering, and CatBoost has grouped ranking/classification objectives designed for data with internal group structure. A stint naturally forms a group where only the last pre-stop lap should rank highest. Public docs also show AUC accepts decision values, so rank blending is more aligned than early probability calibration.",
+  "implementation_hint": "Train a CatBoost grouped model with `group_id = Race_Year + Driver + Stint` using `QueryCrossEntropy` or a pairwise ranking objective, then blend its out-of-fold ranks with the best existing classifier using simple rank averaging or greedy stacking. Keep calibration optional and late; prioritize diversity and OOF correlation reduction over probability sharpness.",
+  "expected_effect": "Can improve within-stint ordering of imminent-stop laps and add low-correlation signal to the current absolute-feature classifier.",
+  "risk": "Bad group definitions or sparse positive groups can hurt. Ranking objectives may improve local ordering while degrading global discrimination if blended poorly.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/querycrossentropy",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://link.springer.com/article/10.1186/s13104-020-4931-7"
+  ]
+}

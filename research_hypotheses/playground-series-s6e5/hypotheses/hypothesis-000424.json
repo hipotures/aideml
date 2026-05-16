@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace estimated total laps with causal FastF1 lap-count state",
+  "summary": "The best current code infers total race length from LapNumber/RaceProgress.",
+  "rationale": "The best current code infers total race length from LapNumber/RaceProgress. FastF1 exposes the intended TotalLaps during the session and notes that it can change, so a causal join should give cleaner finish-window and mandatory-stop features than a rounded back-calculation.",
+  "implementation_hint": "Build a Year/Race/CurrentLap map from FastF1 lap_count, using the total-lap value known at that lap, not the final post-race total. Recompute LapsRemaining, can-finish margins by compound, and stop-debt features from this exact state.",
+  "expected_effect": "Should reduce noise in all finishability features and help most in shortened races, testing sessions, and late-race one-stop/two-stop boundary cases.",
+  "risk": "Using final TotalLaps instead of the value known at the current lap would leak future race-control outcomes. Race-name alignment may also be messy.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_3_-_2024-12-11.pdf"
+  ]
+}

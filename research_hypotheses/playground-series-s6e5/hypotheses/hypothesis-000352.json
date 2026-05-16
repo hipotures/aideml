@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Raw-Categorical Ordered CatBoost Specialist",
+  "summary": "The current best solutions still hand-engineer categorical information into frequencies and a few composites.",
+  "rationale": "The current best solutions still hand-engineer categorical information into frequencies and a few composites. CatBoost’s docs explicitly discourage manual one-hot preprocessing and describe ordered boosting plus ordered categorical statistics, which are often stronger for high-cardinality fields like `Driver`, `Race`, `Year`, and their interactions.",
+  "implementation_hint": "Train a separate CatBoost binary specialist on raw categorical columns (`Driver`, `Race`, `Year`, `Compound`, `Stint`, plus simple interaction columns such as `Driver_Race`, `Race_Compound`, `Driver_Compound`). Keep numerical physics/rule features, but remove most manual categorical frequency engineering in this branch. Use GroupKFold by `Race_Year` so held-out races are never seen in training.",
+  "expected_effect": "Can recover signal from sparse driver-track-history patterns and categorical interactions that frequency encoding likely smooths away too aggressively.",
+  "risk": "Rare categories and train/test support mismatch can still overfit or collapse; this branch should be regularized and treated as a specialist for blending, not a guaranteed standalone winner.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial-Validation Weighting With Harder CV Gates",
+  "summary": "The data spans multiple years and the test distribution likely differs in race, driver, and regime mix.",
+  "rationale": "The data spans multiple years and the test distribution likely differs in race, driver, and regime mix. Dataset-shift literature recommends adversarial validation to identify train rows closest to test, while scikit-learn explicitly recommends time-aware and group-aware splits to avoid optimistic validation.",
+  "implementation_hint": "Train a train-vs-test classifier on the full feature set and use predicted test-likeness as capped sample weights for the main model. Accept changes only if they hold under both rolling TimeSeriesSplit-style evaluation and LeaveOneGroupOut by Year or Year_Race, not just a single random/group CV.",
+  "expected_effect": "May slightly reduce overfit to stale regimes and make local CV closer to eventual leaderboard behavior.",
+  "risk": "If shift is weak, reweighting can hurt AUC by discarding useful older rows. Needs capped weights and ablation versus unweighted training.",
+  "sources": [
+    "https://link.springer.com/chapter/10.1007/978-3-031-20862-1_35",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Estimate elapsed-time pit-window margins to nearby cars",
+  "summary": "Pit calls depend on whether a driver can rejoin into clean air or avoid losing position, not only on tyre age.",
+  "rationale": "Pit calls depend on whether a driver can rejoin into clean air or avoid losing position, not only on tyre age. Public F1 strategy explanations emphasize pit-loss, undercut/overcut, and gap management as central to stop timing.",
+  "implementation_hint": "Sort by Race-Year, Driver, LapNumber; cumulatively sum cleaned LapTime to approximate elapsed race time. For each current lap, compute gap_to_ahead, gap_to_behind, estimated_rejoin_position_after_pit_loss, clean_air_margin, and undercut_margin_to_ahead using only rows up to the current lap.",
+  "expected_effect": "Improves discrimination among drivers with similar tyre state but different strategic incentives to pit now.",
+  "risk": "LapTime outliers and missing safety-car context can distort cumulative gaps; validate with robust clipped lap times and compare with/without wet-weather rows.",
+  "sources": [
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/",
+    "https://f1briefing.com/how-delta-time-shapes-pit-stop-strategies/",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

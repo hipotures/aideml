@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Deterministic stint-geometry windows",
+  "summary": "F1 race strategy is organized into stints constrained by race distance and mandatory tyre-use rules.",
+  "rationale": "F1 race strategy is organized into stints constrained by race distance and mandatory tyre-use rules. Current solutions estimate total laps and tyre finish margins, but they do not explicitly encode where the current stint lies relative to one-stop, two-stop, or three-stop race partition geometry.",
+  "implementation_hint": "Create StintStartLap=LapNumber-TyreLife+1, StintProgressWithinRace, projected current-stint length if no stop, and distance-to-ideal stop laps for 1-stop, 2-stop, and 3-stop templates using EstimatedTotalLaps. Interact these distances with Stint, Compound, Is_WetWeather, and remaining mandatory stop/spec debt.",
+  "expected_effect": "May capture planned strategy timing even before tyres look over-age, especially for early first stops and second-stop windows.",
+  "risk": "Template assumptions can hurt unusual wet, safety-car, or testing rows; gate by wet/pre-season flags and let trees ignore weak templates.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/",
+    "https://podiumprophets.com/blog/f1-tyre-strategy-guide"
+  ]
+}

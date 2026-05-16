@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use race-lap ranking as a side model and stack it with binary/survival models",
+  "summary": "At each race-lap, only a small subset of drivers are realistic pit candidates, so query-wise ranking is a natural adjacent formulation.",
+  "rationale": "At each race-lap, only a small subset of drivers are realistic pit candidates, so query-wise ranking is a natural adjacent formulation. Ranking objectives often capture relative ordering better than plain binary loss, and a rank model is likely to diversify errors versus both binary GBDT and survival AFT. A simple OOF stacker can then exploit that diversity.",
+  "implementation_hint": "Build a LightGBM `lambdarank` side model with query groups = `(Year,Race,LapNumber)` and labels = `PitNextLap`; optionally upweight positives or top positions within each query. Generate OOF predictions from three families: current best binary model, CatBoost ordered-cat model, and AFT model; then fit a fold-safe logistic or isotonic calibrator/stacker on OOF scores only.",
+  "expected_effect": "Main benefit is ensemble diversification: the rank model should improve relative ordering within each lap, while the stacker converts complementary views into a modest AUC lift.",
+  "risk": "Some queries have zero or many positives, so ranking setup needs care; calibration itself will not help AUC unless used as part of a genuine OOF stack.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://sklearn.org/stable/api/sklearn.calibration.html",
+    "https://ml4trading.io/docs/diagnostic/user-guide/cross-validation/"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Small OOF stack with sigmoid-only regime calibration",
+  "summary": "Calibration docs note that isotonic can change ROC-AUC by introducing ties, while sigmoid preserves ranking.",
+  "rationale": "Calibration docs note that isotonic can change ROC-AUC by introducing ties, while sigmoid preserves ranking. Given this competition is scored by ROC-AUC, a narrow stack that blends genuinely different models is safer than aggressive isotonic post-processing.",
+  "implementation_hint": "Build a 2-3 model OOF stack from the current best GBDT, the survival auxiliary, and a categorical-heavy model. Calibrate each base learner with fold-local sigmoid/Platt scaling only, then learn a tiny meta-model or regime-specific linear blend using `Year_Race`-blocked OOF predictions. Keep raw-vs-calibrated ablations because AUC may already be optimal without calibration.",
+  "expected_effect": "Better public-board robustness from diversified decision boundaries while preserving AUC ranking.",
+  "risk": "If the base models are too correlated, the stack adds noise; isotonic should be avoided unless it proves neutral on AUC in OOF.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

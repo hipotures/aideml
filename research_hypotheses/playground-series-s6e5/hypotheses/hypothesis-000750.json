@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace raw wear proxies with a filtered latent degradation state",
+  "summary": "Recent F1 tyre research shows state-space models with pit-stop resets outperform simpler autoregressive baselines and give interpretable latent degradation estimates.",
+  "rationale": "Recent F1 tyre research shows state-space models with pit-stop resets outperform simpler autoregressive baselines and give interpretable latent degradation estimates. That is a concrete upgrade over hand-crafted `TyreLife` and `LapTime_Delta` ratios.",
+  "implementation_hint": "Fit a lightweight per-stint filter offline: observed lap time as baseline pace plus latent degradation state with reset on pit stop and optional compound-specific transition rates. Export only a few derived features to the tabular model, such as filtered degradation level, one-step-ahead deterioration, residual-to-filter, and uncertainty proxy. Compare against the current best feature set rather than rebuilding the pipeline.",
+  "expected_effect": "Should improve robustness when raw degradation columns are noisy, nonlinear, or distorted by driver error, especially near crossover laps where pit timing becomes ambiguous.",
+  "risk": "More modeling complexity and potential mismatch between public-paper telemetry assumptions and this dataset’s columns. If the filter is badly estimated, it can add noise instead of signal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://papers.cool/arxiv/2501.04067"
+  ]
+}

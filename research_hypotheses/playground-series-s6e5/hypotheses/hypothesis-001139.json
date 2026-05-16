@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Probabilistic-Group DRO Over Soft Regimes",
+  "summary": "Earlier hard worst-group ideas underperformed, but newer PG-DRO work argues that soft group membership is better when regimes are ambiguous.",
+  "rationale": "Earlier hard worst-group ideas underperformed, but newer PG-DRO work argues that soft group membership is better when regimes are ambiguous. F1 pit states are naturally fuzzy near compound/age/phase boundaries, so soft memberships should be more stable than hard buckets.",
+  "implementation_hint": "Define 6-12 soft groups from race phase, compound family, tyre-age band, and season-shift score using smooth kernels instead of hard cuts. Reweight training loss toward high-loss soft groups each round, or approximate PG-DRO with iterative sample weights on the current XGB/CatBoost stack. Compare against current adversarial weights under strict event-held-out CV.",
+  "expected_effect": "Could improve robustness on shifted seasons/races without the variance hit of brittle hard-group weighting.",
+  "risk": "If soft groups are poorly designed, this becomes noisy reweighting and can hurt the already-strong baseline.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/26394",
+    "https://huggingface.co/papers/1911.08731"
+  ]
+}

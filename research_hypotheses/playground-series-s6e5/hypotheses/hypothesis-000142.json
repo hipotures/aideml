@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF calibration-aware stacking with rank-preserving calibrators",
+  "summary": "This is an AUC task, so calibration should not destroy ranking.",
+  "rationale": "This is an AUC task, so calibration should not destroy ranking. Scikit-learn notes sigmoid calibration preserves ranking while isotonic can introduce ties; beta calibration often handles skewed score distortions better than Platt alone. That makes fold-safe calibrated stacking a practical ensemble path without changing core feature logic.",
+  "implementation_hint": "Generate out-of-fold predictions from 2-3 diverse models such as CatBoost, LightGBM/XGBoost, and a sequence-aware model. Fit calibrators on OOF scores only: try sigmoid or beta calibration per model globally, and isotonic only inside broad high-sample regimes like dry vs wet or early vs late race. Then train a simple logistic stacker on calibrated OOF predictions.",
+  "expected_effect": "Small but reliable lift from complementary error patterns, with less leaderboard volatility than raw averaging.",
+  "risk": "Calibration can reduce AUC if isotonic creates many ties or if regime buckets are too small; prefer rank-preserving calibrators first and require gains on grouped OOF AUC, not only log loss.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-",
+    "https://pubmed.ncbi.nlm.nih.gov/28316511/"
+  ]
+}

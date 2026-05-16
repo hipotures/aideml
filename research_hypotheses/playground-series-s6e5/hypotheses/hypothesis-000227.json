@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary laps-to-next-stop target with probability-horizon consistency",
+  "summary": "A recent pit-stop paper reports a multi-task setup where next-lap classification is helped by a horizon regression head.",
+  "rationale": "A recent pit-stop paper reports a multi-task setup where next-lap classification is helped by a horizon regression head. This directly matches your label structure and is a sharper version of generic auxiliary supervision because the two outputs can be tied by discrete-time consistency.",
+  "implementation_hint": "Create an auxiliary target `laps_until_next_pit` within each driver-race sequence. Train a shared model with binary `PitNextLap` plus ordinal/bucketed horizon prediction; at inference, feed OOF horizon logits or expected remaining laps into the main model, or enforce consistency so shorter predicted horizons imply higher next-lap risk.",
+  "expected_effect": "Can reduce myopic errors where rows are correctly identified as 'pit soon' but misranked within the final few laps before the stop.",
+  "risk": "Auxiliary labels are censored at race end and after missing stops; noisy construction can hurt more than help unless masking/censor handling is careful.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

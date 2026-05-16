@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-Diverse Ensemble",
+  "summary": "ROC AUC rewards ordering, not calibrated probability accuracy.",
+  "rationale": "ROC AUC rewards ordering, not calibrated probability accuracy. A blend of models with different inductive biases may improve ranking beyond the saturated engineered-feature LightGBM/AutoGluon style baseline: native categorical CatBoost, monotone-constrained LightGBM, and LightGBM rank_xendcg/lambdarank grouped by race.",
+  "implementation_hint": "Train CatBoost with raw Driver/Race/Compound and key interactions as categorical features, LightGBM binary with monotone constraints on TyreLife_ExpectedLife_Ratio/RaceProgress where sensible, and LGBMRanker with query groups Year_Race or Year_Race_Stint. Blend OOF rank-normalized predictions; use sigmoid calibration only if a submission requires smoother probabilities, since monotone calibration should preserve AUC ranking.",
+  "expected_effect": "Small but testable AUC lift from model diversity and rank-focused optimization.",
+  "risk": "Rank objectives need careful group construction and may underperform if positives are too sparse per query; isotonic calibration can introduce ties and hurt AUC.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone",
+    "https://sklearn.org/stable/modules/calibration.html"
+  ]
+}

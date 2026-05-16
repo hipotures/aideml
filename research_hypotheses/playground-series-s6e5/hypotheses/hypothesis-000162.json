@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed race-level CV plus fold-safe logit blending with beta calibration",
+  "summary": "Adjacent laps from the same driver-race have overlapping label horizons, so naive grouped CV can still overstate quality.",
+  "rationale": "Adjacent laps from the same driver-race have overlapping label horizons, so naive grouped CV can still overstate quality. Separately, beta calibration is a lightweight post-processing method that often behaves better than isotonic when scores are skewed; applied on OOF logits it can stabilize blends even when AUC itself is unchanged by monotone calibration.",
+  "implementation_hint": "Evaluate models with Race_Year holdout or grouped time splits plus a 1-lap embargo around test windows for the same Driver x Race sequence. Train two complementary models, generate OOF logits, fit per-regime beta calibrators or a simple logistic stacker on OOF only, then blend for submission.",
+  "expected_effect": "Better model selection discipline and a more leaderboard-stable ensemble; it may not lift raw CV much, but can improve generalization and reduce public/private drift.",
+  "risk": "Embargoed CV usually lowers local scores, making progress look worse before it gets more honest; calibration alone will not improve AUC unless used inside selection or blending.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/"
+  ]
+}

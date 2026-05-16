@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-CTR CatBoost binary expert for high-cardinality race context",
+  "summary": "The current best pipelines mostly reduce `Driver`/`Race`/interaction categories to frequency counts.",
+  "rationale": "The current best pipelines mostly reduce `Driver`/`Race`/interaction categories to frequency counts. CatBoost’s ordered categorical statistics are designed to use target-aware category combinations without the usual leakage from naive target encoding, which is especially relevant here because `Driver`, `Race`, `Year_Race`, and compound/stint interactions are high-cardinality and strategy-specific.",
+  "implementation_hint": "Add a separate CatBoostClassifier expert on the same numeric features plus raw categorical columns (`Driver`, `Race`, `Compound`, `Year_Race`, `Driver_Race`, `Race_Compound`, `Compound_Stint`). Keep race-blocked folds, let CatBoost handle category combinations directly, and blend its OOF probabilities with the existing GBDT baseline rather than replacing the baseline first.",
+  "expected_effect": "Better use of sparse strategic identities and cross-feature interactions, especially for driver-track-specific stop tendencies that frequency encoding cannot express.",
+  "risk": "If folds are not strictly race-blocked and fold-local, ordered CTR benefits can turn into hidden leakage; GPU/CPU parameter differences can also change behavior materially.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

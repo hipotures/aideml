@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lag-only latent tyre degradation state",
+  "summary": "Recent F1 tyre-degradation research emphasizes state-space degradation dynamics rather than single cumulative values.",
+  "rationale": "Recent F1 tyre-degradation research emphasizes state-space degradation dynamics rather than single cumulative values. The dataset already has lap time, delta, tyre life, and cumulative degradation, but current features mostly use instantaneous ratios rather than smoothed causal state estimates.",
+  "implementation_hint": "Within each Race_Year/Race + Driver + Stint ordered by LapNumber, compute only-past EMA/Kalman-like states: residual pace level, degradation slope, degradation acceleration, volatility over last 3-5 laps, and shock flags after abnormal slow laps. Shift all rolling features by one row before using them.",
+  "expected_effect": "Could separate planned stops caused by gradual degradation from noisy lap-time spikes, improving AUC near end-of-stint decisions.",
+  "risk": "Easy to leak if rolling windows include the current target lap or future rows; also sparse stints may make estimates noisy, requiring defaults for short histories.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/"
+  ]
+}

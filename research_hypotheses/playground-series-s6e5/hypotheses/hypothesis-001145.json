@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged-embargoed CPCV for blend and feature selection, scored by worst-path not mean AUC",
+  "summary": "Public time-series validation references emphasize purging and embargo when labels overlap temporally, and CPCV gives a distribution of out-of-sample paths instead of one average score.",
+  "rationale": "Public time-series validation references emphasize purging and embargo when labels overlap temporally, and CPCV gives a distribution of out-of-sample paths instead of one average score. Earlier research already suspected optimistic CV; the actionable extension is to use path-robust selection for ensemble weights and risky features.",
+  "implementation_hint": "Split chronologically by event blocks, purge rows near test boundaries by at least the short pit horizon, add an embargo buffer, and generate several CPCV-style paths. Re-score every candidate model/blend by CVaR or mean-minus-std across paths, then choose ensemble weights and optional feature subsets by that robust score instead of plain mean ROC AUC.",
+  "expected_effect": "May lower local CV slightly but should reduce leaderboard fragility and help decide between many near-tied blend variants around 0.936.",
+  "risk": "Less training data per fold and more compute. If the purge window is too aggressive, variance can swamp the signal.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation"
+  ]
+}

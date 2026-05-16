@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Soft-gated regime mixture for undercut-friendly vs overcut-friendly races",
+  "summary": "Official F1 strategy explainers emphasize that undercut strength depends on degradation, tyre warm-up difficulty, low-grip tracks, and whether fresh tyres switch on immediately.",
+  "rationale": "Official F1 strategy explainers emphasize that undercut strength depends on degradation, tyre warm-up difficulty, low-grip tracks, and whether fresh tyres switch on immediately. That implies one global model is averaging across distinct stop-timing regimes. A small mixture-of-experts can let one specialist learn high-deg undercut behavior and another learn low-deg/cool/warm-up-limited overcut behavior.",
+  "implementation_hint": "Build 2-3 experts with the same base learner but different feature emphases, then blend them with a learned gate from `Compound`, wet/dry flag, `LapTime_Delta`, `Cumulative_Degradation`, `RaceProgress`, `Race`, and race-level priors. Start with experts for `high-deg undercut`, `low-deg overcut/go-long`, and `wet/transition` rather than a large ensemble.",
+  "expected_effect": "Should sharpen probabilities around tracks where identical tyre ages imply different stop incentives, improving edge cases the current single-rule service-window features smooth over.",
+  "risk": "If the gate is too noisy, this becomes variance-heavy and may just repackage the same signal without real regime separation.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://link.springer.com/article/10.1007/s10182-023-00486-8"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Self-exciting pit-wave intensity features",
+  "summary": "Pit stops cluster in waves around undercut/overcut windows, VSC/SC reactions, and compound crossover moments.",
+  "rationale": "Pit stops cluster in waves around undercut/overcut windows, VSC/SC reactions, and compound crossover moments. Self-exciting point-process literature is built for event clustering, and here a lightweight approximation can encode how recent stops by nearby competitors raise immediate stop probability.",
+  "implementation_hint": "Create decayed counts of pit stops in the previous 1-3 laps for the same race, split by position bands, same compound, and same stint age bucket; also add race-lap shock features like sudden field-wide pace variance jumps interacting with those decayed counts.",
+  "expected_effect": "Should capture contagious stop waves better than static race-lap aggregates and improve ranking within crowded decision windows.",
+  "risk": "Can overlap with prior pit-wave ideas; needs careful ablation to prove the explicit decay kernels add signal beyond simple race-lap pit rates.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.108.015303"
+  ]
+}

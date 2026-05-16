@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored Laps-To-Pit Survival Model",
+  "summary": "This target is naturally a discrete event process: each row is a state with a remaining time-to-next-stop, and many final stints are right-censored by the finish.",
+  "rationale": "This target is naturally a discrete event process: each row is a state with a remaining time-to-next-stop, and many final stints are right-censored by the finish. Public survival work with time-varying covariates suggests hazard/AFT models can use the same tabular features but learn event timing more directly than plain binary classification.",
+  "implementation_hint": "Create a secondary target `laps_until_next_pit` within each driver-race sequence, right-censor rows that never pit again, and train a survival model (`CatBoost SurvivalAft` or `XGBoost survival:aft`) with grouped OOF by race-year. Convert predicted remaining-life to `P(stop in 1 lap)` or blend its rank with the current classifier.",
+  "expected_effect": "Better ordering on ambiguous late-stint rows and cleaner handling of finish-censored negatives; likely complementary to the current classifier.",
+  "risk": "Needs leakage-safe forward construction of next-stop labels within each race sequence; poor probability conversion from survival score to next-lap risk can erase gains.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-regression.html",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://arxiv.org/abs/2103.01355"
+  ]
+}

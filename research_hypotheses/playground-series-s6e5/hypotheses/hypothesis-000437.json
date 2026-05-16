@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-level pit-loss and stop-count priors from official F1 results",
+  "summary": "Official F1 pit-stop summaries show circuit-dependent total pit-loss and stop patterns, while Pirelli selects compounds based on track characteristics and climate.",
+  "rationale": "Official F1 pit-stop summaries show circuit-dependent total pit-loss and stop patterns, while Pirelli selects compounds based on track characteristics and climate. Palmer’s strategy analysis also emphasizes that undercut strength depends on degradation, overtaking difficulty, and track position, so race-specific priors are likely missing from the current mostly row-local feature set.",
+  "implementation_hint": "From prior seasons only, build ex-ante `RaceMeta` features such as median green-flag pit-stop total, IQR of pit-loss, historical one-stop/two-stop rate, and a simple compound-hardness bucket from Pirelli nominations. Join by `Race` or race archetype and interact with `LapsRemaining_Est`, `Compound`, and `TyreLife`.",
+  "expected_effect": "Improves generalization across circuits and reduces reliance on hand-tuned universal tyre-life thresholds.",
+  "risk": "High leakage risk if same-race summaries are used inside validation folds; Monaco/lap-1 red-flag anomalies need explicit filtering.",
+  "sources": [
+    "https://www.formula1.com/en/results/2024/races/1247/united-states/pit-stop-summary",
+    "https://www.formula1.com/en/latest/article/pirelli-confirm-tyre-choices-for-first-three-f1-races-of-2023-as-new.1xlpcTVaLqw0NeM3aYoyCt",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

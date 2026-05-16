@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Degradation Trend Features",
+  "summary": "Recent F1 tyre research models degradation as a latent state evolving over laps with pit stops as resets; current attempts use simple deltas/rolling means but not explicit within-stint trend estimates.",
+  "rationale": "Recent F1 tyre research models degradation as a latent state evolving over laps with pit stops as resets; current attempts use simple deltas/rolling means but not explicit within-stint trend estimates.",
+  "implementation_hint": "For each Driver-Race-Stint sorted by LapNumber, fit cheap expanding/rolling slope features: lap_time_slope_3_5, degradation_slope, residual_vs_stint_linear_fit, acceleration_of_laptime, and normalized residual after removing race-lap median pace. Use only past laps via shift/expanding windows.",
+  "expected_effect": "Better detects tyres falling off before a stop, especially when absolute lap time is confounded by fuel burn and track evolution.",
+  "risk": "Early-stint rows have missing slopes; improper sorting or unshifted rolling windows can leak current/future information.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

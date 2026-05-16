@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Peer-relative pit-wave and undercut pressure features",
+  "summary": "F1 strategy references emphasize that stops are not chosen in isolation: undercut/overcut value depends on nearby rivals, traffic, and whether a pit window is opening for the field.",
+  "rationale": "F1 strategy references emphasize that stops are not chosen in isolation: undercut/overcut value depends on nearby rivals, traffic, and whether a pit window is opening for the field. The current best features are mostly self-state features; they underuse same-lap competitive context.",
+  "implementation_hint": "Within each `Race x Year x LapNumber`, create lag-safe peer features such as percentile rank of `TyreLife`, `Cumulative_Degradation`, and `LapTime_Delta` among cars on the same compound; counts of nearby-position rivals with older tyres; prior-lap pit-wave intensity; and whether a stop now likely gains clean air versus rejoining traffic. Use only current-lap peer state or previous-lap aggregates, never future laps.",
+  "expected_effect": "Adds game-theoretic context for synchronized pit waves and undercut defense, likely improving ranking of borderline late-stint cases.",
+  "risk": "Easy to leak if race-lap aggregates include post-event information or are computed with future ordering assumptions. Some available columns are only proxies for true gaps, so gains may be modest unless features are carefully normalized by race and compound.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://es.motorsport.com/f1/news/que-es-undercut-overcut-neumaticos-parada-boxes-pitlane/9024865/"
+  ]
+}

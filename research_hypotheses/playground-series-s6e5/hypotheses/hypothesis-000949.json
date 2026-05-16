@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rival Undercut Pressure",
+  "summary": "Pit calls are often reactive: drivers pit to undercut, cover, or avoid being undercut by nearby rivals.",
+  "rationale": "Pit calls are often reactive: drivers pit to undercut, cover, or avoid being undercut by nearby rivals. Public F1 strategy explanations emphasize tyre degradation, track position, and being within striking range, but prior best features mostly describe the driver and field averages, not direct rivals.",
+  "implementation_hint": "Within each Year_Race_LapNumber, join nearest position neighbors: car ahead, car behind, and maybe +/-2 positions. Add neighbor tyre-life differences, compound differences, whether neighbor PitStop occurred this lap or previous lap, relative lap-time delta, position gap proxy from rank adjacency, and interactions with high-degradation/low-overtake race names where available.",
+  "expected_effect": "Improves ranking around clustered pit windows where individual tyre age alone cannot distinguish who pits first.",
+  "risk": "Without true time gaps, position adjacency is only a proxy; careless same-lap pit-wave features can leak or collapse CV if row order is changed.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

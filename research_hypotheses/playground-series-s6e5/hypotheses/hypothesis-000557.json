@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-Query LambdaMART Blend",
+  "summary": "Pit calls are locally competitive: on most laps only a small subset of drivers are realistic pit candidates, so learning relative ordering inside each (Year, Race, LapNumber) group can complement global binary AUC models.",
+  "rationale": "Pit calls are locally competitive: on most laps only a small subset of drivers are realistic pit candidates, so learning relative ordering inside each (Year, Race, LapNumber) group can complement global binary AUC models. Learning-to-rank methods are designed for query-group ordering and are a closer fit to this structure than plain classification alone.",
+  "implementation_hint": "Train an XGBoost ranker with qid=(Year,Race,LapNumber), using current numerical features plus field-relative features; try `rank:pairwise` and `rank:ndcg`, then blend its OOF scores with the existing binary model via a monotone sigmoid stacker.",
+  "expected_effect": "Better discrimination among same-lap candidates, especially medium-probability cases where only 1-3 cars are truly in-window.",
+  "risk": "Many lap groups have zero positives, so grouping and weighting need care; standalone ranker may underperform if blended improperly.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

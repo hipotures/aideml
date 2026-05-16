@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a graded imminence ranking sidecar over future pit distance and blend by OOF ranks",
+  "summary": "Learning-to-rank docs from XGBoost, LightGBM, and CatBoost support grouped pairwise/query objectives.",
+  "rationale": "Learning-to-rank docs from XGBoost, LightGBM, and CatBoost support grouped pairwise/query objectives. Instead of binary `PitNextLap` alone, create a relevance target such as {pit in 1 lap > 2 laps > 3 laps > no near stop} within each driver-race stint or race-lap query. This develops the prior event-time idea into a sharper, testable objective that is still compatible with ROC AUC via score blending.",
+  "implementation_hint": "Label each row by distance-to-next-pit capped at K laps, then train a ranking model with groups like `Year-Race-Driver-Stint` or `Year-Race-LapNumber`. Use `rank_xendcg`, `rank:ndcg`, or CatBoost pairwise ranking. Blend its OOF raw scores with the main binary model using foldwise rank averaging or a monotone OOF blender, since ROC AUC accepts decision scores directly.",
+  "expected_effect": "Improves ordering around the pit window even when exact next-lap timing is noisy, which should lift AUC more reliably than another hand-tuned heuristic block.",
+  "risk": "Group design matters: poor grouping can dilute signal, and a ranking sidecar may underperform if many stints have only one informative positive neighborhood.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html"
+  ]
+}

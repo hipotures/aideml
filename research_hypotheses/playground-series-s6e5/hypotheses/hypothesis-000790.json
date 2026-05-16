@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Overcut-vs-Undercut Regime Experts",
+  "summary": "Official F1 strategy analysis shows Monaco-like low-energy tracks can favor overcuts because new tyres warm slowly, while high-degradation venues favor earlier undercuts.",
+  "rationale": "Official F1 strategy analysis shows Monaco-like low-energy tracks can favor overcuts because new tyres warm slowly, while high-degradation venues favor earlier undercuts. That implies the sign of some interactions changes by circuit regime, which a single global tree model may blur.",
+  "implementation_hint": "Define a small set of race regimes from `Race` and simple priors: low-warmup/track-position circuits, high-degradation/undercut circuits, and one-stop-biased circuits. Train separate boosters or a gated mixture-of-experts, then OOF-blend them with the baseline model.",
+  "expected_effect": "Should reduce race-shift error by letting the model learn different meanings for tyre age, lap delta, and stint depth across track types.",
+  "risk": "Only 26 races are available, so too many regimes or overly bespoke rules will overfit fast.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-possible-race-strategies-for-the-2024.149KllzWtB6CJIHyNcDMnE"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

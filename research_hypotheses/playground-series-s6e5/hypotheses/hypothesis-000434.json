@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer hidden race regimes from internal lap aggregates",
+  "summary": "Public pit-stop work explicitly uses track-status information and notes that SC/VSC/yellow periods make stops strategically cheaper.",
+  "rationale": "Public pit-stop work explicitly uses track-status information and notes that SC/VSC/yellow periods make stops strategically cheaper. Since the competition data omits explicit race-control flags, a hidden-state layer inferred from observable field behavior could recover part of that missing signal.",
+  "implementation_hint": "Build per-race-lap aggregates available at prediction time: median and dispersion of `LapTime_Delta`, share of wet tyres, contemporaneous `PitStop` count, and position churn. Use thresholds or a small HMM to label laps as green, neutralized, wet-transition, or restart, then interact those states with stop-pressure features.",
+  "expected_effect": "Recovers cheap-stop windows and explains many otherwise strange long-lap/pit-cluster cases without external joins.",
+  "risk": "State inference can become race-specific leakage if validation splits do not leave whole race weekends out; thresholds may also confuse weather shocks with neutralizations.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://arxiv.org/abs/2603.01290"
+  ]
+}

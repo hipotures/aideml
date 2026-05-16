@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cheap-stop and neutralization proxies",
+  "summary": "F1 strategy models treat Safety Car/VSC and traffic as major pit-stop timing shocks because they reduce pit-loss opportunity cost.",
+  "rationale": "F1 strategy models treat Safety Car/VSC and traffic as major pit-stop timing shocks because they reduce pit-loss opportunity cost. The dataset lacks explicit flags, but synchronized abnormal lap times and field compression can proxy these regimes.",
+  "implementation_hint": "For each Race-LapNumber, create features: fraction of drivers with LapTime_Delta above race quantile, lap-time IQR/median absolute deviation, number of very slow laps, position-change entropy, and lap-to-lap field compression proxy using Position_Change aggregation. Interact these with RaceProgress, TyreLife, and Stint.",
+  "expected_effect": "Could lift AUC on clustered pit-stop laps caused by safety-car-like or incident-like conditions rather than tyre wear alone.",
+  "risk": "Some abnormal laps may be pit in/out laps, so proxies can become circular if computed from current lap timing; test versions excluding extreme individual row contribution where possible.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://github.com/rembertdesigns/pit-stop-simulator"
+  ]
+}

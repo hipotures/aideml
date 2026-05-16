@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-Constrained Booster For Pit-Window Physics",
+  "summary": "Several engineered features should have mostly one-direction effects in realistic regimes: larger tyre-age pressure, larger finish-tyre deficit, and larger positive lap-time loss should not usually reduce pit risk.",
+  "rationale": "Several engineered features should have mostly one-direction effects in realistic regimes: larger tyre-age pressure, larger finish-tyre deficit, and larger positive lap-time loss should not usually reduce pit risk. XGBoost supports monotone constraints specifically for injecting that prior and reducing implausible oscillations.",
+  "implementation_hint": "Train an XGBoost companion model with monotone `+1` on features like `tyre_age_vs_expected`, `finish_tyre_deficit`, `lap_delta_loss`, `compound_pit_window_pressure`, and maybe `estimated_laps_remaining` only where sign is defensible. Keep unconstrained features for context and compare against the same feature set without constraints.",
+  "expected_effect": "Likely a small but robust gain via better extrapolation to unseen drivers/races and less overfit on noisy pit-window edges.",
+  "risk": "Wrong-sign constraints can cap performance; the constraint set must stay narrow and only cover features with strong physical priors.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

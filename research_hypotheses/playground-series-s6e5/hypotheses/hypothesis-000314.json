@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use Query-Ranking Only As An OOF Meta-Feature",
+  "summary": "Race strategy is relative: a driver often pits because they are becoming the most vulnerable car in a local race context.",
+  "rationale": "Race strategy is relative: a driver often pits because they are becoming the most vulnerable car in a local race context. Ranking objectives are designed for within-group ordering, but prior research already explored rankers as standalone specialists. A less brittle variant is to train a race-lap grouped ranker and feed its OOF score into the stronger classifier as one more feature.",
+  "implementation_hint": "Create query groups at `(Race, Year, LapNumber)` or `(Race, Year, Lap bucket)` and train CatBoost ranking with group IDs and target `PitNextLap`. Generate strict OOF rank scores or percentile ranks, then add them to the main classifier together with simple peer-relative features. Evaluate whether the meta-feature helps only in dry races or only when many cars share the same compound.",
+  "expected_effect": "Should capture local 'who is most pit-ready right now?' information without forcing the whole pipeline into a pure ranking objective.",
+  "risk": "If group size is small or many laps have zero positives, the ranker may add noise; use it as an auxiliary feature, not the final predictor.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

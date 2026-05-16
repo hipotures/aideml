@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Opponent-window features focused on undercut/overcut context",
+  "summary": "F1 strategy articles stress that pit calls depend on rival pressure, traffic windows, and whether new tyres can undercut or must avoid cold-tyre overcut loss.",
+  "rationale": "F1 strategy articles stress that pit calls depend on rival pressure, traffic windows, and whether new tyres can undercut or must avoid cold-tyre overcut loss. The current best solution models only self-state; a cleaner set of race-context features could add the missing game-theory signal.",
+  "implementation_hint": "Within each `Race_Year x LapNumber`, add causal context features such as percentile rank/z-score of `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, count/share of cars currently on each compound, count of same-lap pitters, and position-bucket context (`P1-3`, `P4-10`, `11+`). Test only a compact set, not a wide noisy block.",
+  "expected_effect": "Should add lift mainly in marginal decision zones where self tyre wear alone is ambiguous.",
+  "risk": "Some field-context features can overfit specific races or duplicate noisy signals. Keep the feature set small and validate on held-out races.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

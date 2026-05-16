@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace naive frequency features with ordered or cross-fitted historical priors for high-cardinality categoricals",
+  "summary": "The data has hundreds of drivers and many sparse interactions.",
+  "rationale": "The data has hundreds of drivers and many sparse interactions. scikit-learn documents that target encoding without cross-fitting catastrophically overfits high-cardinality features, while CatBoost documents `has_time` specifically to preserve input order instead of random permutations. This directly matches the competition’s sequential driver-race structure.",
+  "implementation_hint": "Sort by `Year, Race, Driver, LapNumber` and test two variants: `CatBoostClassifier` with `has_time=True` on raw categoricals, and a leakage-safe `TargetEncoder.fit_transform` pipeline for interactions like `Driver x Race`, `Driver x Compound`, `Race x Stint`, `Driver x Race x StintBin`. Prefer priors built only from past folds or past laps, not global encodings.",
+  "expected_effect": "Higher signal from sparse categories without leaking future laps of the same driver/race into the present row.",
+  "risk": "If folds are not strictly chronology-aware, encoded priors can look great locally and fail publicly.",
+  "sources": [
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://catboost.ai/docs/en/references/training-parameters/common.html",
+    "https://catboost.ai/docs/en/concepts/parameter-tuning.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

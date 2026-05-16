@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Soft-Group DRO for Race-Regime Robustness",
+  "summary": "The public test likely mixes distinct regimes: dry one-stop races, high-deg undercut tracks, wet races, Monaco-2025 special rules, and pre-season testing.",
+  "rationale": "The public test likely mixes distinct regimes: dry one-stop races, high-deg undercut tracks, wet races, Monaco-2025 special rules, and pre-season testing. Group DRO is designed to avoid over-optimizing average loss while failing on rare groups; probabilistic groups make sense when regime boundaries are fuzzy.",
+  "implementation_hint": "Define soft group memberships from observable regimes: wet vs dry, Monaco-2025, pre-season testing, early/mid/late race, high vs low estimated tyre stress, high vs low pit-loss tracks. Reweight training loss toward worst-performing groups with stronger regularization or early stopping, then compare mean CV and worst-group CV.",
+  "expected_effect": "May sacrifice a tiny amount of average fold score for better shift robustness and stronger worst-race behavior.",
+  "risk": "If groups are poorly chosen, DRO just adds noise and underfits the dominant regime.",
+  "sources": [
+    "https://arxiv.org/abs/1911.08731",
+    "https://ojs.aaai.org/index.php/AAAI/article/view/26394"
+  ]
+}

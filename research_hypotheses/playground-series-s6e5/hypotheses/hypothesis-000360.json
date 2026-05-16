@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Competing-risk next-lap hazard: mandatory-rule stop vs performance/tactical stop",
+  "summary": "FIA rules create a distinct stop motive in dry races: teams may stop because they still owe a second slick compound, separately from stops caused by degradation, undercut defense, or weather.",
+  "rationale": "FIA rules create a distinct stop motive in dry races: teams may stop because they still owe a second slick compound, separately from stops caused by degradation, undercut defense, or weather. Public survival literature also supports modeling heterogeneous event mechanisms rather than one pooled hazard.",
+  "implementation_hint": "Train a 2-head discrete-time hazard or mixture-of-experts model: one head for rule/compound-debt pressure and one head for tactical/performance pressure, with a gate driven by wet/dry compound, prior slick count, prior pit count, race progress, and late-race context. Final `PitNextLap` is the summed hazard. Use only out-of-fold pseudo-regime labels if you derive them from target-linked transitions.",
+  "expected_effect": "Should reduce label-noise from pooling qualitatively different pit decisions into one classifier and improve late-race dry-race ranking where rule debt matters.",
+  "risk": "If the regime split is badly specified, this collapses back to the existing stop-debt features with extra variance. Keep the gate simple and cross-fitted.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://arxiv.org/abs/1805.00917",
+    "https://arxiv.org/abs/2003.01176"
+  ]
+}

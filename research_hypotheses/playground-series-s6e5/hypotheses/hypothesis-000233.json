@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-stage candidate-window model instead of scoring every row equally",
+  "summary": "Most laps are obviously not pit laps, so the main classifier may spend capacity separating easy negatives instead of ordering realistic pit candidates.",
+  "rationale": "Most laps are obviously not pit laps, so the main classifier may spend capacity separating easy negatives instead of ordering realistic pit candidates. F1 strategy logic and tyre models imply stops occur when a feasible stop window opens, not uniformly across all laps.",
+  "implementation_hint": "Stage 1: high-recall filter for plausible pit windows using broad conditions such as non-fresh tyres, enough laps remaining, stint maturity, and race-progress bands. Stage 2: train a sharper classifier only inside candidate rows, then combine with Stage 1 probability or multiply scores. Keep the filter deliberately permissive and validate recall of positives.",
+  "expected_effect": "Often improves AUC by concentrating model resolution near ambiguous decision boundaries instead of the easy majority class.",
+  "risk": "A too-aggressive filter will hard-cap recall and silently hurt leaderboard performance.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

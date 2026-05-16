@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Right-censored time-to-next-stop model converted to next-lap hazard",
+  "summary": "XGBoost’s AFT survival objective is designed for time-to-event labels with censoring.",
+  "rationale": "XGBoost’s AFT survival objective is designed for time-to-event labels with censoring. This maps naturally to rows near race end where the next stop is unobserved because the stint finishes without another pit. That is a cleaner formulation than plain binary classification when the same driver contributes many pre-stop rows with different horizons.",
+  "implementation_hint": "For each row, build `time_to_next_pit` within `(Race, Year, Driver)`; if no later pit exists, mark it right-censored at laps remaining. Train an AFT model on the same tabular features plus current baseline features, then convert predicted survival to `P(stop on next lap)` or stack its raw score with the binary GBDT model using OOF predictions only.",
+  "expected_effect": "Better handling of horizon information and end-of-race censoring; likely strongest on long stints and late-race rows where binary labels are noisy.",
+  "risk": "If the AFT-to-next-lap conversion is crude, it may improve CV but not leaderboard. Needs strict race-wise sequence construction.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/stable/python/survival-examples/"
+  ]
+}

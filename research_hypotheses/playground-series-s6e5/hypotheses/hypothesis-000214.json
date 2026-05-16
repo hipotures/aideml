@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hazard-parameterized time-to-stop reformulation",
+  "summary": "This target is naturally a discrete time-to-event problem: each row asks whether the event happens on the next lap.",
+  "rationale": "This target is naturally a discrete time-to-event problem: each row asks whether the event happens on the next lap. Survival literature reports that discrete hazard parameterization is often slightly stronger than PMF-style formulations and handles censoring cleanly.",
+  "implementation_hint": "Create a side model over driver-race sequences that predicts hazard for stop in 1,2,...,H laps using discrete bins until next observed pit or sequence end; use hazard formulation rather than PMF, then extract the 1-lap hazard as the competition prediction and optionally feed longer-horizon hazards back into the main tabular model as features.",
+  "expected_effect": "May capture consistency across adjacent laps and reduce noisy one-step decisions around ambiguous windows.",
+  "risk": "This is more engineering-heavy and could miss if most of the lift already comes from simple next-lap signals; sequence construction must be strictly causal.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://pubmed.ncbi.nlm.nih.gov/34618267/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6348952/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

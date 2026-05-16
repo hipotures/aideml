@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged race-level walk-forward CV with embargo",
+  "summary": "`PitNextLap` uses a forward 1-lap horizon, so adjacent laps from the same driver/race create overlapping label windows and can make ordinary grouped CV mildly optimistic.",
+  "rationale": "`PitNextLap` uses a forward 1-lap horizon, so adjacent laps from the same driver/race create overlapping label windows and can make ordinary grouped CV mildly optimistic. Financial ML literature treats this as a purging/embargo problem, and the same logic applies here because nearby laps are highly autocorrelated and label-overlapping.",
+  "implementation_hint": "Split by chronological race blocks, keep whole races intact, and add a small embargo around fold boundaries or remove boundary rows per driver/race where train rows are within 1-2 laps of test rows. Use this CV for model selection and for any OOF stacking features.",
+  "expected_effect": "May not raise raw CV immediately, but should reduce leaderboard surprise and make small gains from other ideas more trustworthy.",
+  "risk": "If the competition test set is IID across races rather than chronological, stricter CV can lower local scores and understate achievable public LB performance.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://ml4trading.io/docs/diagnostic/user-guide/cross-validation/",
+    "https://pypi.org/project/wfvkit/"
+  ]
+}

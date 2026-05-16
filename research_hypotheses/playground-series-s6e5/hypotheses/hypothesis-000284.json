@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-Conditioned Dry vs Wet Strategy State Features",
+  "summary": "Official regulations and tyre docs imply structurally different pit logic in dry versus wet races: dry races require two dry compounds unless intermediates/wets are used, while wet conditions change both legality pressure and degradation/warm-up behavior.",
+  "rationale": "Official regulations and tyre docs imply structurally different pit logic in dry versus wet races: dry races require two dry compounds unless intermediates/wets are used, while wet conditions change both legality pressure and degradation/warm-up behavior. The current best features flag wet weather but do not appear to model the rule/state transition explicitly.",
+  "implementation_hint": "Split strategy state into dry-legal and wet-exempt regimes. In dry conditions, add features for 'mandatory second dry compound still needed', 'currently on first/second unique slick', and 'laps remaining after hypothetical stop with a different slick'. In wet conditions, instead emphasize warm-up/degradation asymmetry and downweight dry-compound completion logic. Test a regime-specialized blend or simple interaction features rather than one global heuristic.",
+  "expected_effect": "Reduces noise from applying dry-race tyre-completion logic to wet/intermediate scenarios and sharpens end-of-race stop pressure in dry races.",
+  "risk": "The dataset may not expose full compound-allocation legality, so the rule proxy can be approximate; wet samples may be sparse.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_2_-_2023-10-25.pdf",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

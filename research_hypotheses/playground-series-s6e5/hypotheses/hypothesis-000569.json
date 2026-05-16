@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use a narrow OOF stack: feature-heavy GBDT + ordered CatBoost + hazard model, then regime-wise monotone calibration",
+  "summary": "Stacking helps when base learners have different biases, and ordered CatBoost is specifically designed to reduce prediction shift from categorical leakage.",
+  "rationale": "Stacking helps when base learners have different biases, and ordered CatBoost is specifically designed to reduce prediction shift from categorical leakage. A small ensemble of genuinely different views of the problem is more promising than blending many similar tree models, especially if calibration is done strictly on OOF predictions.",
+  "implementation_hint": "Train three branches only: current engineered tabular model, a lean CatBoost on raw categorical/time-order inputs with ordered boosting, and the multi-horizon hazard model. Build OOF predictions, then fit a simple second-level logistic or near-isotonic calibrator separately for dry vs wet and early/mid/late race regimes; skip branches whose OOF correlation is too high.",
+  "expected_effect": "Incremental AUC lift from complementary inductive biases and better probability ordering within specific race regimes.",
+  "risk": "Wet-regime sample sizes may be too small for separate calibrators, and any non-OOF stacking will overfit immediately.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdfNeurIPS.Papers%2B1NeurIPS.Papers%2B1",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://pubmed.ncbi.nlm.nih.gov/28316511/"
+  ]
+}

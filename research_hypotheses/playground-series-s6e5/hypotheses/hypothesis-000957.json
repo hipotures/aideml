@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet/Dry Mixture-of-Experts With Crossover Logic",
+  "summary": "The FIA dry-tyre rule stops mattering once intermediates or wets are used, and Pirelli notes that missing the slick/intermediate crossover by one lap can cost 5-6 seconds.",
+  "rationale": "The FIA dry-tyre rule stops mattering once intermediates or wets are used, and Pirelli notes that missing the slick/intermediate crossover by one lap can cost 5-6 seconds. Wet or drying laps are therefore a different prediction regime from standard dry-stint wear management.",
+  "implementation_hint": "Train separate experts for dry rows (`SOFT/MEDIUM/HARD`) and wet-transition rows (`INTERMEDIATE/WET`, plus optional anomaly-gated drying laps using large `LapTime_Delta` or lap-time spikes). Blend them with a simple gate based on `Compound`, `LapTime_Delta`, `RaceProgress`, and degradation features; calibrate each expert separately.",
+  "expected_effect": "Cleaner signals on rare but strategically distinct wet segments, with less interference between mandatory-compound logic and crossover logic.",
+  "risk": "Wet samples may be sparse, and heuristic gating can misclassify borderline drying-track laps.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/when-it-s-time-to-change-from-slick-to-wet-tyres-in-formula-1-52943/",
+    "https://www.formula1.com/en/latest/article.strategy-guide-what-are-the-possible-race-strategies-for-the-japanese-grand.3tkN9ZYL6FqmCPoFjPAE3z.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Local-rival undercut opportunity features instead of only global race context",
+  "summary": "F1 strategy literature emphasizes undercut/overcut and opponent interaction, not just standalone tyre life.",
+  "rationale": "F1 strategy literature emphasizes undercut/overcut and opponent interaction, not just standalone tyre life. Your current best features are mostly self-state plus coarse race medians; adjacent gains may come from encoding whether a stop right now creates a strategic advantage versus nearby cars.",
+  "implementation_hint": "Within each `Race-Year-LapNumber`, build features against drivers in positions `-2..+2`: relative tyre life, relative lap-time delta, relative degradation, whether neighbors are on different compounds, and whether the driver is older-slower than cars immediately ahead/behind. Add interaction flags for late-race plus different-compound plus worn-tyre cases.",
+  "expected_effect": "Should help identify pit waves and strategic reaction stops that depend on nearby competitors rather than absolute wear alone.",
+  "risk": "Without gap-to-car timings, position-only proxies are crude; noisy rival features may help only in certain race phases and require a specialist model or strong regularization.",
+  "sources": [
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1"
+  ]
+}

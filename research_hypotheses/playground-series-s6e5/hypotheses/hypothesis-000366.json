@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-Only Stint-Shape Cliff Features",
+  "summary": "Recent F1 degradation work models latent tyre state, and recent pit-stop deep-learning work highlights local motifs such as sharp lap-time changes.",
+  "rationale": "Recent F1 degradation work models latent tyre state, and recent pit-stop deep-learning work highlights local motifs such as sharp lap-time changes. Your best solutions are mostly level-based; they appear to underuse the shape of the last few laps within a stint.",
+  "implementation_hint": "Within each Driver x Race x Stint, create past-only rolling features: 2-5 lap slope and curvature of `LapTime_Delta`, EWMA acceleration, recent max positive jump, `Cumulative_Degradation` slope, first-lap-on-tyre settling signature, and deviation from race-lap median pace after masking pit in/out laps.",
+  "expected_effect": "Earlier detection of the tyre \"cliff\" before coarse tyre-life or degradation totals become extreme.",
+  "risk": "Including pit in-laps, out-laps, or improperly sorted rows will inject noise or leakage; sequence order must be exact.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2501.04067",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

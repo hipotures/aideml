@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Lap Pairwise Ranking Sidecar",
+  "summary": "ROC AUC is a ranking metric, and CatBoost supports pairwise/groupwise ranking objectives when GroupId is provided.",
+  "rationale": "ROC AUC is a ranking metric, and CatBoost supports pairwise/groupwise ranking objectives when GroupId is provided. In this task, many hard decisions are relative within the same race-lap field state, so a sidecar trained to rank which cars are most pit-likely within a (Year,Race,LapNumber) group could add useful diversity versus pure Logloss models.",
+  "implementation_hint": "Build a second model with GroupId=(Year,Race,LapNumber) and either PairLogit or a ranking objective, generating pairs only within each lap group. Blend its OOF scores with the existing classifier rather than replacing the baseline; keep standard binary models as anchors.",
+  "expected_effect": "Can sharpen ordering among same-lap candidates and improve AUC even if absolute probabilities remain imperfect.",
+  "risk": "This reframes the task and may underperform on laps with very few positives; keep it as an ensemble member, not the only model.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231"
+  ]
+}

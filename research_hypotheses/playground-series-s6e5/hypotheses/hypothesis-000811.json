@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged chronological CV with lap embargo around pit transitions",
+  "summary": "This target is effectively a one-step-ahead event label, so contiguous laps from the same driver/race make leakage easy: lag features, expanding priors, and field aggregates can all see information from immediately adjacent future states.",
+  "rationale": "This target is effectively a one-step-ahead event label, so contiguous laps from the same driver/race make leakage easy: lag features, expanding priors, and field aggregates can all see information from immediately adjacent future states. scikit-learn's TimeSeriesSplit supports an explicit gap, which is a direct way to test whether recent gains are real or boundary leakage.",
+  "implementation_hint": "Sort by (Year,Race,Driver,LapNumber) or by race chronology, validate on future blocks or held-out races, and apply at least a 1-2 lap embargo between train and validation windows for each driver-race sequence. Recompute all encodings and historical priors inside each fold only. Keep only feature families that still help under the purged scheme.",
+  "expected_effect": "May lower local CV but should improve trustworthiness and reduce over-optimizing to adjacent-lap leakage, giving a better chance of positive public-LB transfer.",
+  "risk": "If the test distribution is iid rather than chronological, this can be overly harsh and discard useful signal. The main gain may be measurement quality rather than a direct score increase.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

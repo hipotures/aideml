@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Monotone plus interaction-constrained XGBoost",
+  "summary": "XGBoost documents that monotonic and interaction constraints can improve predictive performance when domain priors are strong.",
+  "rationale": "XGBoost documents that monotonic and interaction constraints can improve predictive performance when domain priors are strong. Pit likelihood should usually rise with tyre age/degradation and late-race pressure within a regime, while many cross-feature interactions in unrestricted trees are probably spurious.",
+  "implementation_hint": "Build a constrained XGB variant with monotone constraints on a small trusted subset such as TyreLife, Cumulative_Degradation, and late-race remaining-laps proxies, then restrict interactions so tyre-state features mainly interact with compound/race context and local position features. Increase max_bin because XGBoost notes constrained hist trees can become too shallow otherwise.",
+  "expected_effect": "Better generalization across races and years; most likely gain is improved LB robustness rather than a big CV jump.",
+  "risk": "Wrong-sign constraints can suppress real wet-race or edge-case behavior, and over-tight interaction blocks can underfit.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/feature_interaction_constraint.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

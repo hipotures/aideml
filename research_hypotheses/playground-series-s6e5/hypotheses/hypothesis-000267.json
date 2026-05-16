@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recast the target as a discrete-time hazard specialist",
+  "summary": "Pit-next-lap is a one-step event hazard.",
+  "rationale": "Pit-next-lap is a one-step event hazard. Discrete-time survival models are designed for per-interval event probabilities and often outperform plain binary framing when risk rises sharply near event time.",
+  "implementation_hint": "Train a specialist on stacked horizon labels such as pit in 1, 2, or 3 laps, or a discrete-time hazard model on current row with causal features only. Blend its next-lap hazard with the main classifier rather than replacing the classifier outright.",
+  "expected_effect": "Better monotone event-timing behavior near stint end; may improve ranking around borderline rows where binary trees flatten probabilities.",
+  "risk": "If horizons are generated carelessly, label overlap can make CV optimistic; all horizon-derived labels and folds must respect race-driver chronology.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

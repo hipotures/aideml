@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver-Race LambdaRank Specialist",
+  "summary": "ROC AUC is a ranking metric, and pairwise AUC optimization is well aligned with ordering imminent pit laps above safe laps.",
+  "rationale": "ROC AUC is a ranking metric, and pairwise AUC optimization is well aligned with ordering imminent pit laps above safe laps. LightGBM’s ranking API gives a direct way to train on grouped timelines instead of pointwise binary loss only.",
+  "implementation_hint": "Train an `LGBMRanker` on groups defined by each Driver x Race sequence in causal order. Use integer relevance like next-lap stop > 2-3-lap imminent > others, then blend the ranker score with the existing classifier via out-of-fold rank averaging rather than raw probability averaging.",
+  "expected_effect": "Improves ordering inside ambiguous stop windows where the current model finds the right region but misranks the exact lap.",
+  "risk": "Ranker outputs are not calibrated, and bad group design can overweight long no-stop stretches.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRanker.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://arxiv.org/abs/1208.0645"
+  ]
+}

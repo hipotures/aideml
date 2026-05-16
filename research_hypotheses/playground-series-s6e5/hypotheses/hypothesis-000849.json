@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Analytic Stint-Clock Features From Pit-Loss vs Degradation Theory",
+  "summary": "Strategy theory gives a first-order optimal stint length of roughly sqrt(2P/d), where P is pit-loss and d is degradation slope; undercut logic also depends on the next-lap pace tradeoff between old and fresh tyres.",
+  "rationale": "Strategy theory gives a first-order optimal stint length of roughly sqrt(2P/d), where P is pit-loss and d is degradation slope; undercut logic also depends on the next-lap pace tradeoff between old and fresh tyres. Current solutions use hand-set service ages, but not an explicit analytic stint clock.",
+  "implementation_hint": "Estimate degradation slope d from recent lap-delta and degradation proxies, combine it with track-level pit-loss priors P, and derive features such as TyreLife_over_Nstar, NextLap_Undercut_Gain, and Distance_to_Analytic_Stop. Keep the formulaic features simple and let the tree model learn when they matter.",
+  "expected_effect": "Could sharpen stop timing near true decision boundaries without adding a large new model family.",
+  "risk": "The theory is approximate and depends on noisy proxies for both degradation slope and pit-loss.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

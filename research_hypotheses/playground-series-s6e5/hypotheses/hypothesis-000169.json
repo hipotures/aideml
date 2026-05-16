@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-gap and pit-window feasibility features",
+  "summary": "F1 strategy sources repeatedly emphasize that pit timing depends not just on tyre age but on undercut range, out-lap warmup, and whether the car can rejoin into clean air after the pit-loss delta.",
+  "rationale": "F1 strategy sources repeatedly emphasize that pit timing depends not just on tyre age but on undercut range, out-lap warmup, and whether the car can rejoin into clean air after the pit-loss delta. Your current best features model tyre finish windows, but not rejoin-window feasibility against surrounding traffic.",
+  "implementation_hint": "Within each race-lap, estimate local field density and projected rejoin slot using lap position, nearby rivals' lap pace, and a race-specific pit-loss proxy inferred from historical `PitStop==1` laps. Add features like projected positions lost if pitting now, clean-air flag after stop, undercut-cover margin, and traffic-blocked stop window.",
+  "expected_effect": "Should improve discrimination around borderline stops where tyre wear says 'pit soon' but traffic makes 'this lap' suboptimal.",
+  "risk": "Pit-loss proxies are noisy without explicit gap times; overly aggressive approximations can add variance.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB"
+  ]
+}

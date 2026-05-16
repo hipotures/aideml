@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer latent tyre-degradation state and innovation shocks",
+  "summary": "Recent F1 work models tyre pace as a latent state with pit-stop resets rather than relying only on observed cumulative degradation.",
+  "rationale": "Recent F1 work models tyre pace as a latent state with pit-stop resets rather than relying only on observed cumulative degradation. For this task, the most useful signal may be not the latent level alone but the one-lap innovation: an unexpectedly bad lap given tyre age, compound, and race progress often precedes a stop.",
+  "implementation_hint": "Fit a lightweight per-compound or per-race Kalman/state-space smoother offline on `LapTime (s)` or `LapTime_Delta` using `TyreLife`, `LapNumber`, `RaceProgress`, and reset on `PitStop==1`. Feed the classifier latent degradation estimate, filtered slope, innovation residual, and time-since-last-positive-innovation spike.",
+  "expected_effect": "Captures hidden wear/thermal collapse that handcrafted window thresholds miss, especially when `Cumulative_Degradation` is noisy or race-specific.",
+  "risk": "Too much per-race fitting can become brittle or leak if future laps inform current-row features; use causal filtering or train-only parameter estimation.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.researchgate.net/publication/398227195_A_State-Space_Approach_to_Modeling_Tire_Degradation_in_Formula_1_Racing",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

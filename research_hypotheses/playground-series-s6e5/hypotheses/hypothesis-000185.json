@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Swap manual frequency encoding for ordered categorical boosting",
+  "summary": "The dataset has very high-cardinality identifiers (`Driver`, `Race`, race-year combinations) and likely useful category interactions.",
+  "rationale": "The dataset has very high-cardinality identifiers (`Driver`, `Race`, race-year combinations) and likely useful category interactions. CatBoost’s ordered boosting and ordered categorical statistics were designed to reduce prediction shift and leakage from categorical encodings, and the docs explicitly advise against manual one-hot preprocessing for such features.",
+  "implementation_hint": "Run a clean CatBoostClassifier baseline with raw categorical columns (`Driver`, `Race`, `Compound`, `Year`, `Stint`) plus the strongest numeric feasibility features already working. Let CatBoost form category combinations such as `Race x Compound`, `Driver x Compound`, `Race x Stint`, and compare against the current manual freq-encoded GBDT under the same grouped CV. Keep preprocessing minimal and avoid pre-OHE.",
+  "expected_effect": "Can improve robustness on sparse driver/race combinations and reduce the need for brittle hand-built frequency features.",
+  "risk": "May underperform if validation is too small per fold or if hyperparameters are not tuned for class imbalance and many categories.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/concepts/faq"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

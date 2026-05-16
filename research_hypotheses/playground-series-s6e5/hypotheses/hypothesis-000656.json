@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Group-CV rank-stacked model family blend",
+  "summary": "Current solutions rely mainly on AutoGluon GBM/XGB under random holdout.",
+  "rationale": "Current solutions rely mainly on AutoGluon GBM/XGB under random holdout. Public tabular gains often come from diverse learners and validation that detects group leakage; CatBoost also handles categorical combinations natively.",
+  "implementation_hint": "Build OOF predictions under Race-Year GroupKFold for LightGBM, XGBoost, CatBoost, and a simple logistic/hazard baseline. Train a shallow meta-model or rank-average only models that improve both random holdout and group CV. If calibrating, prefer sigmoid over isotonic when preserving AUC ranking is important.",
+  "expected_effect": "Expected to improve public robustness more than local random CV by reducing race memorization and adding categorical model diversity.",
+  "risk": "Group CV scores may look worse and slow search; rank averaging can dilute a single best model if candidates are too correlated.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

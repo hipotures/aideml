@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cover-off and box-to-overtake neighbor features",
+  "summary": "Official F1 sources explicitly describe undercut, cover-off behavior, and box-to-overtake instructions.",
+  "rationale": "Official F1 sources explicitly describe undercut, cover-off behavior, and box-to-overtake instructions. That suggests next-lap pit probability is partly a local game against nearby rivals, not just a solo tyre-aging process. Prior research mentioned field-relative context broadly, but the most actionable version here is position-neighbor reaction features.",
+  "implementation_hint": "Within each (Year,Race,LapNumber), sort by Position and create features from cars at positions +/-1 and +/-2: their compound, tyre life, stint, whether they pitted this lap or previous lap, and whether they look inside their own empirical pit window. Add counts such as 'adjacent rivals recently boxed', 'ahead on older tyres', and 'behind attempting undercut risk'. Feed these into the existing classifier rather than a separate ranking model.",
+  "expected_effect": "Should capture tactical reaction stops and defensive pits that are invisible to single-row tyre-life features, especially in track-position-sensitive races.",
+  "risk": "Position is an imperfect proxy for true gap/traffic; neighbor features may add noise on spread-out fields or after incidents.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

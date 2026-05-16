@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Same-lap choice expert via query-level ranking loss",
+  "summary": "Public ranking docs emphasize that learning-to-rank works on grouped queries, and each lap naturally defines a query where several drivers are competing for a limited number of near-term pit decisions.",
+  "rationale": "Public ranking docs emphasize that learning-to-rank works on grouped queries, and each lap naturally defines a query where several drivers are competing for a limited number of near-term pit decisions. This is more specific than generic classification and more concrete than prior generic ranking suggestions: train an explicit same-lap choice model with GroupId/qid=(Year,Race,LapNumber), then blend only its within-lap score ordering with the current global classifiers.",
+  "implementation_hint": "Train one specialist with CatBoost QuerySoftMax or YetiRankPairwise, or XGBoost rank:ndcg / rank:pairwise, using per-lap groups. Keep labels binary, evaluate with standard OOF ROC AUC, and blend the expert mainly through within-query ranks or query-centered logits rather than raw probabilities.",
+  "expected_effect": "Likely small-to-medium but orthogonal gain, especially if leaderboard/test rows differ more in field composition than in marginal feature distributions.",
+  "risk": "Query objectives optimize within-group ordering, not calibrated probabilities; if most lap groups have very few positives, the model can become noisy unless groups are large enough and blend weight is conservative.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ]
+}

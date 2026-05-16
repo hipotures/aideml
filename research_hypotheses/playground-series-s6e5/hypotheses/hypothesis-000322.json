@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Learn a historical out-lap warm-up tax instead of fixed undercut rules",
+  "summary": "Official F1 and Pirelli sources emphasize that overcuts happen when fresh tyres, especially harder compounds or cold-track cases, are slow to switch on.",
+  "rationale": "Official F1 and Pirelli sources emphasize that overcuts happen when fresh tyres, especially harder compounds or cold-track cases, are slow to switch on. A learned warm-up penalty should be more faithful than static finishability heuristics.",
+  "implementation_hint": "From training races only, collect laps immediately after `PitStop=1` and estimate OOF warm-up penalties by race/year/compound/stint phase versus same-race baselines. Merge shrinkage-smoothed features like `FreshHard_OutlapTax`, `PitNow_ExpectedGainMinusWarmupTax`, and `OvercutFriendlyRegime` back into the row model.",
+  "expected_effect": "Cuts false positives on old-tyre laps where pitting now is strategically bad because the out-lap is likely weak.",
+  "risk": "Sparse post-stop samples for wet tyres or rare circuits; needs hierarchical smoothing to avoid noisy priors.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/essential-guide-how-to-read-bahrain-pre-season-testing-with-f1-strategy.2CkqwrzR0PSA013BRRnOQR"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Group-Aware Model Diversity and Rank Blending",
+  "summary": "AUC rewards ordering, and previous runs rely on a single random split AutoGluon GBM/XGB family.",
+  "rationale": "AUC rewards ordering, and previous runs rely on a single random split AutoGluon GBM/XGB family. For race strategy data, random row CV can overstate generalization if adjacent laps from the same race/driver appear in both train and validation.",
+  "implementation_hint": "Train a small ensemble of diverse models: current AutoGluon GBM/XGB, CatBoost with native categorical features, and a shallow logistic or GAM-style model on hazard/window features. Validate with GroupKFold by Race-Year or leave-one-year/race groups, then blend predictions by rank averaging or weighted average chosen on grouped OOF AUC.",
+  "expected_effect": "Could improve public robustness even if random local CV changes little, and rank averaging may stabilize probability scale differences without hurting ROC AUC.",
+  "risk": "Grouped CV may score lower and be noisier; if Kaggle split is random-like, conservative blending might underperform the current high local CV model.",
+  "sources": [
+    "https://www.kaggle.com/datasets/akashrane2609/formula-1-pit-stop-dataset",
+    "https://f1briefing.com/how-machine-learning-predicts-f1-tire-degradation/"
+  ]
+}

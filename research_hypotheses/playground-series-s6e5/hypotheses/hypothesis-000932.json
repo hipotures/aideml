@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Pit Wave Prior",
+  "summary": "F1 pit timing often clusters into strategy windows because teams react to the same tyre degradation, traffic, and undercut incentives.",
+  "rationale": "F1 pit timing often clusters into strategy windows because teams react to the same tyre degradation, traffic, and undercut incentives. The best prior solutions use individual tyre/wear signals but do not appear to encode how common pitting is for the field at a given race lap or nearby laps.",
+  "implementation_hint": "Create leakage-safe out-of-fold target-rate features by Year/Race/LapNumber, Race/LapNumber, RaceProgress bin, Compound/Stint/LapNumber bin, and +/-1 lap smoothed windows. For test, fit encoders on all train with smoothing toward global mean; for CV, compute within folds only. Add counts/frequencies and smoothed pit hazard, not raw target leakage.",
+  "expected_effect": "May improve AUC by capturing collective strategy waves that individual car features miss, especially at canonical one-stop/two-stop windows.",
+  "risk": "High leakage risk if target rates are computed before splitting; CV may inflate if same race-lap groups appear in both train and validation without proper OOF encoding.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://metricgate.com/blogs/cross-validation-pitfalls/"
+  ]
+}

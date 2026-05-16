@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-averaged model-diversity ensemble",
+  "summary": "The strongest snippets appear feature-focused, likely with one dominant GBDT setup.",
+  "rationale": "The strongest snippets appear feature-focused, likely with one dominant GBDT setup. Public tabular practice supports mixing LightGBM, CatBoost, and XGBoost because they handle categorical interactions and splits differently; CatBoost is especially useful for high-cardinality categoricals such as Driver and Driver_Race.",
+  "implementation_hint": "Train several leakage-safe OOF models over the same engineered table: LightGBM with categorical features, CatBoost with native categories/ordered boosting, XGBoost or HistGradientBoosting on encoded features, and a simple hazard-prior-only model. Average OOF/test predictions as ranks or logits with weights tuned on grouped OOF AUC. Use repeated seeds and keep categorical/target encodings fold-local.",
+  "expected_effect": "Could add small but valuable AUC gains through complementary errors, likely more robust than adding more arithmetic features to an already saturated feature set.",
+  "risk": "Random CV weight tuning can overfit; grouped Race/Year OOF is needed. Calibration alone will not improve AUC for a single model if monotonic, so the benefit must come from ensemble diversity and rank blending.",
+  "sources": [
+    "https://tildalice.io/xgboost-lightgbm-catboost-kaggle-tabular-benchmark/",
+    "https://engineersofai.com/docs/ml/tree-models/lightgbm-and-catboost",
+    "https://pypi.org/project/cv-score-predict/"
+  ]
+}

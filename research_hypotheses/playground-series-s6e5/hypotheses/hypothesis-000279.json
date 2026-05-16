@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-boosting categorical specialist with raw IDs and pairwise race-lap context",
+  "summary": "Your data has very high-cardinality Driver and race identifiers.",
+  "rationale": "Your data has very high-cardinality Driver and race identifiers. CatBoost explicitly uses ordered categorical statistics to reduce target leakage, making it a strong complementary specialist when many entities are rare or unseen in test.",
+  "implementation_hint": "Train a separate CatBoost model on mostly raw categorical columns plus a small set of numeric features and categorical crosses such as Driver x Compound, Race x Compound, and Race x Lap bucket. Keep all target-stat-like features out unless generated strictly out-of-fold; compare plain Logloss vs AUC metric tuning.",
+  "expected_effect": "Often gives complementary rank gains over feature-heavy tree models by handling sparse categorical interactions more cleanly.",
+  "risk": "If external preprocessing frequency/target encodings are built globally, leakage will erase any benefit. Rare unseen drivers may still make gains fragile.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

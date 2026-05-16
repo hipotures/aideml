@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censoring-aware time-to-next-pit model, then convert back to next-lap risk",
+  "summary": "This develops the earlier hazard/survival idea into a directly testable target.",
+  "rationale": "This develops the earlier hazard/survival idea into a directly testable target. The next pit is inherently a time-to-event problem with right-censoring for rows after the final stop. Survival models are built for exactly this setup, whereas plain binary labels discard timing information.",
+  "implementation_hint": "For each driver-race sequence, derive `laps_until_next_pit`; use right-censoring when no future pit exists. Train an XGBoost AFT model or Random Survival Forest. Convert predicted survival/hazard at horizon 1 lap into a sidecar probability, or use predicted remaining laps to next stop as an additional OOF feature for the main classifier.",
+  "expected_effect": "Should sharpen predictions around pit windows by using the full future stop-time structure instead of a one-step label only.",
+  "risk": "If the conversion from survival output to 1-lap probability is noisy, CV may not improve despite a sensible event-time model.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://scikit-survival.readthedocs.io/en/stable/user_guide/random-survival-forest.html"
+  ]
+}

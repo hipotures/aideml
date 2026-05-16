@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reframe as discrete-time remaining-stint modeling and convert to next-lap hazard",
+  "summary": "This target is naturally a one-step hazard.",
+  "rationale": "This target is naturally a one-step hazard. Survival stacking and discrete-time survival models often outperform plain binary framing when event timing matters, because they learn the full time-to-stop structure instead of only the next step.",
+  "implementation_hint": "Create an auxiliary label for laps_until_next_pit within each driver-race stint history. Train either a survival-stacked classifier or a regression/classification model over remaining laps bins, then derive P(stop next lap) from the predicted hazard or survival curve and blend with the baseline classifier.",
+  "expected_effect": "May improve ranking near pit windows by separating ‘not now but soon’ from ‘nowhere near a stop,’ which binary labels blur together.",
+  "risk": "Label construction must be strictly causal and exclude post-stop leakage. Added complexity may not beat a strong direct classifier unless the hazard estimate is smooth.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12247786/",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

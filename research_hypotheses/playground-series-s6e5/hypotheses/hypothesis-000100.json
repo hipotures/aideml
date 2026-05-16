@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Reframe the target as discrete-time survival on remaining stint length",
+  "summary": "This is naturally a time-to-event problem: each row asks whether the next event is a pit on the following lap.",
+  "rationale": "This is naturally a time-to-event problem: each row asks whether the next event is a pit on the following lap. Survival models are designed for event timing with censoring, which matches rows that never pit again before race end.",
+  "implementation_hint": "Create a stint-end label per row: time-until-next-pit in laps, right-censor rows with no future pit before race end, then train a discrete hazard model (`LogisticHazard`/MTLR) or XGBoost `survival:aft`. Convert predictions back to one-step hazard `P(pit at t+1 | alive at t)` for submission or blending.",
+  "expected_effect": "Often improves temporal consistency and calibration over independent row-wise binary classification, while using the same base covariates plus lags.",
+  "risk": "More plumbing and harder validation; a survival model can underperform if the censoring setup is wrong or if the competition metric rewards only local discrimination.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://pypi.org/project/pycox/",
+    "https://rdrr.io/cran/survivalmodels/src/R/loghaz.R"
+  ]
+}

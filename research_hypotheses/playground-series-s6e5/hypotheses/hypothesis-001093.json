@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Direct race-lap ranking model instead of post-hoc query rank blending",
+  "summary": "Your code already exploits within-`Year/Race/LapNumber` structure after training, but public ranking literature and CatBoost ranking objectives suggest learning that structure directly.",
+  "rationale": "Your code already exploits within-`Year/Race/LapNumber` structure after training, but public ranking literature and CatBoost ranking objectives suggest learning that structure directly. In each lap-group, the model should learn which drivers are most likely to pit next, not just independent probabilities.",
+  "implementation_hint": "Build a separate ranker with group/query id = `Year_Race_LapNumber`; start with CatBoost `QuerySoftMax` or `YetiRankPairwise`, and optionally a LambdaMART baseline. Evaluate both query metrics and downstream ROC AUC from the ranker’s scores; then blend ranker OOF with the current classifier OOF.",
+  "expected_effect": "A genuinely different expert that can improve relative ordering inside each lap, where many of the hard mistakes likely live.",
+  "risk": "Most lap-groups have few positives, sometimes zero; ranking objectives can become unstable unless you filter/weight queries carefully and keep a classifier expert in the ensemble.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/"
+  ]
+}

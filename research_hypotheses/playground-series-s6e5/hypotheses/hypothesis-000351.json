@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-Evolution Detrended Pace-Change Features",
+  "summary": "Pirelli explicitly notes that abrasiveness, expected temperatures, and especially track evolution change tyre behavior over a weekend, while F1’s official tyre-performance graphics rely on relative tyre performance from live timing and stint context.",
+  "rationale": "Pirelli explicitly notes that abrasiveness, expected temperatures, and especially track evolution change tyre behavior over a weekend, while F1’s official tyre-performance graphics rely on relative tyre performance from live timing and stint context. The current pipeline uses coarse medians, but not same-lap detrending that separates true tyre drop-off from global track-speed changes.",
+  "implementation_hint": "Within each `Race_Year`, compute causal same-lap baselines such as `LapNumber x Compound`, `LapNumber x Is_Slick`, and full-field lap medians/ranks. Add residuals like driver lap-time delta versus same-lap compound median, versus own 3-lap EWM, and second-difference curvature in those residuals. Back off hierarchically when subgroup counts are small.",
+  "expected_effect": "Should sharpen the signal for genuine in-lap degradation cliffs or crossover behavior that precedes a stop, while reducing noise from rubbering-in, ambient changes, and circuit-specific pace drift.",
+  "risk": "Wet/intermediate subgroups can be thin, so same-lap residual features may become unstable unless they back off to broader baselines.",
+  "sources": [
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/",
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L",
+    "https://www.formula1.com/en/latest/article/f1-glossary-a-e.1MFONigMlQSbSQtpP7YCy2"
+  ]
+}

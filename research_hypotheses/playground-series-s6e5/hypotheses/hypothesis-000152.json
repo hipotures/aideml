@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specific blending with beta calibration on OOF logits",
+  "summary": "Public calibration work suggests isotonic can overfit smaller slices, while beta calibration is a lighter fix for skewed score distributions.",
+  "rationale": "Public calibration work suggests isotonic can overfit smaller slices, while beta calibration is a lighter fix for skewed score distributions. In this competition, different regimes likely behave differently: wet vs slick, early vs late race, and first stint vs later stints.",
+  "implementation_hint": "Train 2-4 diverse branches such as current feature-heavy LightGBM/XGBoost, CatBoost categorical branch, and hazard/sequence branch. Produce strictly OOF logits, then fit a simple blender whose weights depend on coarse regimes (`Is_WetWeather`, `RaceProgress` band, `Stint`, `LapsRemaining_Est`). Apply beta calibration per broad regime or on final blended logits only if calibration improves OOF AUC/logloss without slice overfit.",
+  "expected_effect": "More robust public LB transfer by letting different models dominate where they are structurally strongest.",
+  "risk": "AUC is rank-based, so over-calibration can be neutral or harmful; regime splitting must stay coarse to avoid fitting noise.",
+  "sources": [
+    "https://www.researchgate.net/publication/321830249_Beyond_sigmoids_How_to_obtain_well-calibrated_probabilities_from_binary_classifiers_with_beta_calibration",
+    "https://journals.sagepub.com/doi/full/10.1177/24518492261436231",
+    "https://www.researchgate.net/publication/400963775_A_Gradient_Boosting_Analytics_Framework_for_Predictive_Pit_Stop_Decision_Making_in_Formula_One_Racing"
+  ]
+}

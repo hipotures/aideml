@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join external FastF1 race-control and weather context by race-year-lap",
+  "summary": "Your current best features are mostly single-row tyre-state heuristics.",
+  "rationale": "Your current best features are mostly single-row tyre-state heuristics. FastF1 exposes lap timing plus track status, safety car/VSC, race control, and weather; F1 strategy articles explicitly note Safety Car windows trigger pit decisions. Those signals should explain many abrupt pit calls that tyre-life proxies miss.",
+  "implementation_hint": "Build a left join on `Year` + `Race` + `LapNumber` (and driver where needed) using FastF1 race sessions. Add lap-level flags for safety car/VSC/red/yellow, recent status change, rain/wet track proxies, session messages, and possibly race-lap total pit counts. Keep it causal: only same-lap-or-earlier external info.",
+  "expected_effect": "Should improve recall on sudden strategy pivots and wet/safety-car regimes; likely helps LB more than local CV if current folds underrepresent those regimes.",
+  "risk": "Race-name alignment and lap indexing can be messy; external data could introduce silent join errors or leakage if post-lap messages are attached too early.",
+  "sources": [
+    "https://docs.fastf1.dev/index.html",
+    "https://docs.fastf1.dev/api.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

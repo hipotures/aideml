@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model nearest-rival undercut pressure instead of only field-level context",
+  "summary": "Recent operations-research work argues that ignoring competition meaningfully reduces strategy quality, and F1 strategy analysis emphasizes that undercut value depends on rival-specific tyre state and out-lap tradeoffs.",
+  "rationale": "Recent operations-research work argues that ignoring competition meaningfully reduces strategy quality, and F1 strategy analysis emphasizes that undercut value depends on rival-specific tyre state and out-lap tradeoffs. Your current best features use field aggregates; the missing signal is likely local opponent pressure around adjacent positions.",
+  "implementation_hint": "Within each Year-Race-LapNumber, sort by Position and build features against the nearest 1-3 cars ahead/behind: tyre-life gap, lap-delta gap, compound mismatch, relative degradation slope, estimated fresh-tyre swing after one pit-loss heuristic, and a binary 'pit now likely jumps rival' indicator.",
+  "expected_effect": "Sharper capture of tactical pit triggers when a driver reacts to a direct opponent rather than the whole field.",
+  "risk": "Position ordering can be noisy around pit entry/exit laps, so neighbor features may need cooldown masking around observed pit events.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

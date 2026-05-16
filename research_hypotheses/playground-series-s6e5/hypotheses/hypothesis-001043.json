@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Ordered Hierarchical Target Statistics for XGB",
+  "summary": "Current XGB side mostly uses category codes/frequencies, while CatBoost literature shows ordered target statistics and ordered boosting reduce prediction shift for high-cardinality categoricals.",
+  "rationale": "Current XGB side mostly uses category codes/frequencies, while CatBoost literature shows ordered target statistics and ordered boosting reduce prediction shift for high-cardinality categoricals. This dataset has strong Driver/Race/Compound/Stint structure that simple codes likely underuse.",
+  "implementation_hint": "Create fold-safe ordered empirical-Bayes encodings with nested fallbacks such as Driver, Driver x Compound, Race x Compound, Driver x Stint, and Year x Race x Compound. Within each training fold, compute them in race-time order or via multiple random permutations, then feed them to XGB/linear heads.",
+  "expected_effect": "Should strengthen the non-CatBoost branch, especially on sparse drivers/compounds, and reduce variance from brittle category coding.",
+  "risk": "Easy to leak validation targets if encodings are not strictly OOF; overly deep combinations may overfit because some keys are very sparse.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://www.researchgate.net/publication/400963775_A_Gradient_Boosting_Analytics_Framework_for_Predictive_Pit_Stop_Decision_Making_in_Formula_One_Racing"
+  ]
+}

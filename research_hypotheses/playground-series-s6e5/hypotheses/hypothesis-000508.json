@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend a recurrent discrete-time hazard model",
+  "summary": "Pit stops are recurrent time-to-event decisions within stints, not independent row labels.",
+  "rationale": "Pit stops are recurrent time-to-event decisions within stints, not independent row labels. Discrete-time survival models directly estimate conditional event hazard given no event yet, matching PitNextLap better than a generic classifier and complementing tree ensembles.",
+  "implementation_hint": "Build a sidecar model on driver-race stint risk sets with baseline hazards by TyreLife, LapNumber, RaceProgress bin, Stint, PriorPitCount, Compound, and rule debt. Use logistic/cloglog regression, GAM/EBM, or shallow LightGBM, then OOF-blend its hazard probabilities with the AutoGluon predictor.",
+  "expected_effect": "Likely modest AUC gain from better ordering around early-stint zeros, final-window spikes, and repeat-stop cooldowns.",
+  "risk": "If the main GBDT already learns the hazard shape, the blend may add little; censoring and reset logic must be fold-safe.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0377221724005484",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf"
+  ]
+}

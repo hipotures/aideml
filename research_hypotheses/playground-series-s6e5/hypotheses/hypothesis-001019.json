@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-Safe Stacker With Sigmoid Calibration Only",
+  "summary": "For ROC AUC, preserving ranking matters more than perfect probability calibration.",
+  "rationale": "For ROC AUC, preserving ranking matters more than perfect probability calibration. Scikit-learn notes sigmoid calibration is strictly monotonic and therefore preserves ranking, while isotonic can introduce ties and change AUC. That makes sigmoid the safer post-processing for this competition.",
+  "implementation_hint": "Generate out-of-fold predictions from 2-4 diverse models, fit a very small logistic stacker or Platt-style sigmoid on OOF scores only, and apply the learned monotonic combiner to test predictions. Prefer this over isotonic unless leaderboard evidence clearly favors ties.",
+  "expected_effect": "Improves blend reliability and leaderboard transfer without sacrificing the ranking signal that drives the metric.",
+  "risk": "A stacker trained on leaky OOF predictions or same-race mixed folds will overstate gains; isotonic may still help log loss but hurt AUC via ties.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/1.7/auto_examples/calibration/plot_calibration_curve.html",
+    "https://scikit-learn.org/stable/common_pitfalls.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Permutation-Invariant Field-Context Expert",
+  "summary": "Current field context is mostly hand-engineered means/ranks plus a small adjacent-driver proxy, but pit timing is inherently multi-agent.",
+  "rationale": "Current field context is mostly hand-engineered means/ranks plus a small adjacent-driver proxy, but pit timing is inherently multi-agent. Set-based models are built for permutation-invariant group inputs and recent F1 strategy work explicitly models competitor interaction modules.",
+  "implementation_hint": "Build a small Deep Sets style expert per `Year-Race-LapNumber`: encode every other car's current state with a shared MLP, sum/mean-pool to a field context vector, optionally add a separate teammate token, then concatenate with the focal driver's features and blend its OOF predictions with the tree model.",
+  "expected_effect": "Captures pit-wave, undercut, and teammate/opponent interaction patterns that simple race-level aggregates miss, giving a differentiated ensemble member.",
+  "risk": "More engineering and batching complexity than another tree model; gains depend on having enough grouped context signal per lap.",
+  "sources": [
+    "https://arxiv.org/abs/1703.06114",
+    "https://arxiv.org/abs/2602.23056"
+  ]
+}

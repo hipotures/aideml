@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Out-Of-Fold Hazard Encodings",
+  "summary": "Discrete-time survival framing treats next-lap stop probability as conditional hazard.",
+  "rationale": "Discrete-time survival framing treats next-lap stop probability as conditional hazard. Smoothed historical hazard by lap, race, stint, compound, and tyre-age bin can capture schedule-like pit windows that tree splits may not learn cleanly from sparse categories.",
+  "implementation_hint": "Create OOF target encodings only within training folds for groups such as Race-LapNumber, RaceProgressBin-Compound, Stint-TyreLifeBin, Year-Race-Stint, Driver-Race. Use Bayesian smoothing toward global PitNextLap rate; apply learned maps to validation/test with global fallback.",
+  "expected_effect": "Adds compact prior probabilities for pit windows and high-cardinality interactions, potentially lifting AUC if validation is leakage-safe.",
+  "risk": "Naive target encoding will leak badly; all encodings must be fold-aware, and validation should group or time-split by race/year where possible.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://catboost.ai/docs/en/features/categorical-features.html"
+  ]
+}

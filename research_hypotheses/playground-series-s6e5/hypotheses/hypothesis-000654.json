@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF empirical pit-window density",
+  "summary": "Pit decisions have strong race/compound/stint timing priors.",
+  "rationale": "Pit decisions have strong race/compound/stint timing priors. Instead of only raw TyreLife and RaceProgress, estimate where comparable cars historically pit and feed distance-to-window features.",
+  "implementation_hint": "Using out-of-fold train statistics, compute smoothed positive rates by Race, Year, Compound, Stint, rounded TyreLife, and binned RaceProgress/LapNumber. Add hazard, cumulative hazard, distance to peak hazard, and percentile-of-stint-window features; for test, fit statistics on all train only.",
+  "expected_effect": "Can add a strong calibrated prior while preserving model freedom to override it with pace and position context.",
+  "risk": "Random CV may overstate gains if exact races repeat; use grouped race/year validation to confirm robustness.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

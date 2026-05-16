@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Full opponent-response pressure features",
+  "summary": "F1 pit calls are reactive to competitors: undercut, overcut, and covering rivals.",
+  "rationale": "F1 pit calls are reactive to competitors: undercut, overcut, and covering rivals. A prior attempt used only one rival-ahead tyre-life feature; broader local-field context should be more informative.",
+  "implementation_hint": "For each Race-Lap, sort by Position and add lag/lead features for cars ahead and behind: TyreLife, Compound, Stint, LapTime_Delta, Position_Change, and whether they pitted on the current/previous lap. Add band counts such as top-3/top-5 same-stint old-tyre count and immediate rival older/newer tyre flags.",
+  "expected_effect": "Should capture cover-the-undercut and react-to-nearby-car patterns that static driver/race features miss.",
+  "risk": "Requires careful index alignment after sorting; noisy if Position is post-pit rather than on-track order at decision time.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut pressure proxy from position-neighborhood context",
+  "summary": "Official F1 strategy explanations emphasize undercut, overcut, and go-long decisions, with the following car often needing to be within striking range.",
+  "rationale": "Official F1 strategy explanations emphasize undercut, overcut, and go-long decisions, with the following car often needing to be within striking range. The dataset lacks gaps, but Position, LapTime_Delta, relative pace, and recent nearby pit events can proxy whether a driver is vulnerable to being undercut or likely to respond next lap.",
+  "implementation_hint": "For each race-lap, create features comparing a driver to adjacent positions: previous/current lap PitStop of cars at Position-1 and Position+1, relative LapTime and LapTime_Delta versus position band median, lost_position_recently, behind_car_pitted_recently, ahead_car_pitted_recently, and interaction with track/race and tyre age.",
+  "expected_effect": "Adds strategic opponent pressure not captured by tyre degradation alone; may help distinguish drivers with similar tyre life but different tactical urgency.",
+  "risk": "Without true time gaps, position-neighborhood proxies are noisy. Needs strict same-lap leave-one-out handling and grouped validation to avoid memorizing race templates.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.wolff-explains-why-mercedes-couldnt-contend-with-red-bulls-super-aggressive.2aCQzb7XRTzyJ5yCDTh8kG.html"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online state-space tyre-state features",
+  "summary": "A new F1 tyre-degradation paper models latent tyre pace and degradation as an online state-space process with pit-stop resets, which is closer to the real decision variable than static tyre-life thresholds.",
+  "rationale": "A new F1 tyre-degradation paper models latent tyre pace and degradation as an online state-space process with pit-stop resets, which is closer to the real decision variable than static tyre-life thresholds. That should add signal beyond the current hand-built finish-window heuristics.",
+  "implementation_hint": "For each Driver x Race_Year sequence, fit a simple causal Kalman/state-space filter on lap-time residuals using only current/past laps; emit latent degradation level, latent degradation slope, filtered residual variance, and post-stop reset strength as features. Build all train features prefix-only inside each fold.",
+  "expected_effect": "Better discrimination near ambiguous stop windows, especially when TyreLife is similar but actual pace loss differs.",
+  "risk": "Easy to leak if the filter is smoothed with future laps; keep it strictly filtered, not bidirectional, and validate by held-out Race_Year/race groups.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

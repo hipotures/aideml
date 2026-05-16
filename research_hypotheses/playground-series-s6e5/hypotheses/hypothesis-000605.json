@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint Hazard Features From Empirical Pit Windows",
+  "summary": "F1 strategy models frame pit timing around optimal stint length, pit-loss tradeoffs, and compound-specific degradation.",
+  "rationale": "F1 strategy models frame pit timing around optimal stint length, pit-loss tradeoffs, and compound-specific degradation. Instead of only raw TyreLife interactions, encode how close a row is to historically typical stop ages for that Race/Compound/Stint/Year bucket.",
+  "implementation_hint": "Create out-of-fold aggregates on training rows where PitNextLap=1: median/quantile TyreLife and LapNumber by Race, Compound, Stint, Year and fallback buckets. Add distance_to_median_pit_age, pct_of_pit_window, above_q75_window, and hazard_prior features; train GBM/CatBoost on these features.",
+  "expected_effect": "Improves rank ordering near likely pit windows, especially for common one-stop/two-stop strategy patterns.",
+  "risk": "If computed without OOF discipline, target encodings leak. Sparse buckets need smoothing/fallbacks.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://racemate.io/tyre-strategy-simulator"
+  ]
+}

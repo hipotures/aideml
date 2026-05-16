@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Exact Rule-State Automaton With Monaco 2025 Override",
+  "summary": "The FIA rulebook creates explicit strategy states that the current features only approximate.",
+  "rationale": "The FIA rulebook creates explicit strategy states that the current features only approximate. In dry races drivers normally need at least two slick specs, but on February 26, 2025 the FIA approved a Monaco-only mandatory two-stop rule requiring at least three tyre sets; that can materially change next-lap pit incentives for Monaco 2025 rows.",
+  "implementation_hint": "Add a deterministic legal-state machine per driver-race: slick compounds used so far, tyre sets used so far, dry/wet exemption, and remaining mandatory-stop debt. Include Monaco-2025-specific features such as `needs_two_more_stops`, `needs_one_more_stop`, and `current_stop_would_complete_rule`.",
+  "expected_effect": "Direct lift on rule-driven pits, especially late-race dry stints and Monaco-specific behavior that generic tyre-life heuristics miss.",
+  "risk": "Requires precise race/year matching and careful handling of wet-race exemptions; if Monaco rows are few, CV lift may look small while LB lift is larger.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_3_-_2024-12-11.pdf",
+    "https://api.fia.com/news/first-world-motor-sport-council-2025-heralds-start-vision-2030-and-announces-strategic-overhaul"
+  ]
+}

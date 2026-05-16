@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Short-horizon sequential stint dynamics",
+  "summary": "Public F1 models repeatedly use rolling mean/std/gradient features over recent laps, implying that immediate trajectory change matters more than absolute tyre age alone; the current top local recipes mostly use static ratios and hand-set windows.",
+  "rationale": "Public F1 models repeatedly use rolling mean/std/gradient features over recent laps, implying that immediate trajectory change matters more than absolute tyre age alone; the current top local recipes mostly use static ratios and hand-set windows.",
+  "implementation_hint": "Within each Year/Race/Driver/Stint, create lag-1/2/3 features and rolling slope/volatility for `LapTime_Delta`, lap-time z-score, incremental degradation, and position change; reset all windows at pit stops and generate features with strict past-only transforms.",
+  "expected_effect": "Captures undercut/overcut pressure and sudden performance drop-offs before the stop, complementing the existing service-window heuristics.",
+  "risk": "If the underlying rows are not perfectly ordered by lap within driver-race sequences, these features can silently leak or become noisy.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/abstract"
+  ]
+}

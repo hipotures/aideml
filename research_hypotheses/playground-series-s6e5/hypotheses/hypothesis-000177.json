@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Fold-safe specialist stack with rank blending, not raw-prob averaging",
+  "summary": "Stacked generalization helps when base learners have different biases.",
+  "rationale": "Stacked generalization helps when base learners have different biases. Here, one model can specialize in normal slick stints, another in wet compounds or endgame laps, and another in rare-driver/high-cardinality categorical structure; AUC usually benefits more from OOF rank blending than from over-tuned probability calibration.",
+  "implementation_hint": "Train 2-3 diverse OOF models with disjoint inductive biases: current heuristic-rich GBDT baseline, native-categorical CatBoost, and the hazard/ranking variant above. Blend OOF predictions by regime (`slick`, `wet`, `late race`, `stint<=3 laps after last stop`) using rank averages or a very small logistic meta-model trained only on OOF folds. Validate with purged/grouped race CV.",
+  "expected_effect": "Should improve robustness and public LB transfer by combining complementary ranking behavior instead of chasing one global model.",
+  "risk": "If CV is not purged by race and temporal neighborhood, the stacker will overstate gains; regime gating can overfit small subsets.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

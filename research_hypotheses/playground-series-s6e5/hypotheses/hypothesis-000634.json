@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-normalized ensemble blending",
+  "summary": "ROC AUC depends on ordering, not probability calibration.",
+  "rationale": "ROC AUC depends on ordering, not probability calibration. Public Kaggle ensembling practice often benefits from averaging diverse model ranks, while calibration/logit blending can still help probability shape after rank diversity is established.",
+  "implementation_hint": "Train several diverse tabular variants: current AutoGluon GBM/XGB, CatBoost with categorical columns, LightGBM with OOF encodings, and a shallow regularized logistic or ExtraTrees model. Blend validation/test predictions by percentile rank or logit average, tune only 3-5 blend weights on OOF AUC, then optionally apply isotonic/Platt calibration without changing rank-heavy behavior.",
+  "expected_effect": "May add small but meaningful AUC gains by combining models that order edge cases differently around pit windows.",
+  "risk": "Without proper OOF predictions, blend tuning overfits quickly; rank averaging can also hurt if all models share the same leakage or validation bias.",
+  "sources": [
+    "https://portal.fis.tum.de/en/publications/the-impact-of-averaging-logits-over-probabilities-on-ensembles-of/",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Switch from manual frequency encodings to CatBoost ordered CTRs on high-cardinality interactions",
+  "summary": "The current best solutions still handcraft categorical summaries.",
+  "rationale": "The current best solutions still handcraft categorical summaries. CatBoost’s ordered boosting and ordered target statistics were designed to reduce prediction shift and leakage for sparse/high-cardinality categoricals, which fits `Driver`, `Race`, `Race_Year`, compound transitions, and their interactions better than static frequency features.",
+  "implementation_hint": "Train a CatBoost classifier on mostly raw columns plus a few robust numerics, letting it form ordered CTRs over combos such as `Driver x Race_Year`, `Driver x Compound`, `Race_Year x Stint`, `Driver x Stint x Compound`. Compare against the current LightGBM/XGBoost-style baseline and keep it as either a replacement or ensemble member.",
+  "expected_effect": "Best chance of capturing driver- and circuit-specific pit priors without fragile manual target encoding.",
+  "risk": "If folds are not strictly temporal/group-safe, CatBoost can still look better offline than online; tuning can also be slower than the current baseline.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdfNeurIPS.Papers%2B1NeurIPS.Papers%2B1",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ]
+}

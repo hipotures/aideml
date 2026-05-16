@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Query Ranking Objective Instead Of Pure BCE",
+  "summary": "A pit call is relative to the other candidate laps in the same driver-race context.",
+  "rationale": "A pit call is relative to the other candidate laps in the same driver-race context. Ranking objectives are built for within-group ordering and CatBoost explicitly supports groupwise losses such as QuerySoftMax, YetiRank, and QueryAUC-style evaluation.",
+  "implementation_hint": "Define groups as driver-race or driver-race-stint, train a CatBoost ranker with QuerySoftMax or YetiRankPairwise on the same features, and compare OOF race-group AUC against the current classifier. Use the ranker as an ensemble member or as a feature feeding the probabilistic model.",
+  "expected_effect": "Often helps when the main failure mode is picking the wrong lap inside the correct pit window rather than missing the window entirely.",
+  "risk": "Groups with very few positives or long stretches of all-zero labels can make ranking unstable; bad grouping choices can hurt more than help.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

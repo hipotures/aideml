@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stack auxiliary next-state tasks with the main PitNextLap model",
+  "summary": "Recent F1 pit-stop work uses cascaded multi-task heads, combining next-lap stop classification with a remaining-laps-to-stop target.",
+  "rationale": "Recent F1 pit-stop work uses cascaded multi-task heads, combining next-lap stop classification with a remaining-laps-to-stop target. The dataset exposes natural auxiliary labels such as next Stint increment, next Compound change, TyreLife reset, and laps-until-next PitStop that can make the pit decision boundary sharper.",
+  "implementation_hint": "Generate fold-safe OOF predictions for auxiliary tasks: WillStintIncreaseNextLap, WillCompoundChangeNextLap, TyreLifeResetNextLap, and LapsToNextPit bucket. Feed these OOF probabilities/regression outputs into the final AutoGluon/GBM stack, and create test auxiliaries from models unless the shifted-observation identity is validated.",
+  "expected_effect": "Could improve ranking where PitNextLap is ambiguous but correlated next-state transitions are easier to learn.",
+  "risk": "Auxiliary labels can leak if built with future rows inside folds; gains depend on clean OOF stacking discipline and enough training time.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://auto.gluon.ai/stable/tutorials/tabular/tabular-indepth.html"
+  ]
+}

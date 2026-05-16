@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Approximate pit-utility and rejoin-slot features",
+  "summary": "Real pit calls depend on whether stopping now is actually advantageous given pit-loss, traffic gap, and undercut/overcut conditions, not just tyre wear.",
+  "rationale": "Real pit calls depend on whether stopping now is actually advantageous given pit-loss, traffic gap, and undercut/overcut conditions, not just tyre wear. F1 strategy analysis repeatedly highlights clean-air rejoin windows, tyre warm-up asymmetry, and track-specific undercut/overcut balance.",
+  "implementation_hint": "Build simple context features such as estimated pit-loss affordability by race, whether current position is inside an approximate rejoin gap, relative pace vs race-lap median, and whether current conditions favor undercut or overcut (`positive LapTime_Delta` on worn tyre vs low-energy tracks where fresh tyres may warm slowly). Use coarse race-level constants learned from train OOF summaries rather than hardcoded external values.",
+  "expected_effect": "Adds decision-context signal missing from pure tyre-state features, especially around the ambiguous pit window where several cars have similar wear.",
+  "risk": "Without explicit field gaps this must be approximate, and poorly estimated race constants can add noise. It may help public LB more than local CV if race mixes differ.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

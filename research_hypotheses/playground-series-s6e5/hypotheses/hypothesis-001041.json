@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged rolling-origin OOF stacker with regime gates instead of global blend weights",
+  "summary": "Public CV literature on dependent data warns that clustered/temporal leakage can inflate AUC.",
+  "rationale": "Public CV literature on dependent data warns that clustered/temporal leakage can inflate AUC. Your current fixed-weight blending is global, but pit logic changes by regime: wet vs dry, early vs late race, and likely by season/race archetype. A leakage-aware stacker can learn where each base model is reliable.",
+  "implementation_hint": "Generate OOF predictions using race-level rolling-origin or purged group splits with a small embargo around fold boundaries. Train a simple second-level logistic/isotonic stacker on OOF base predictions from XGB, CatBoost, AFT, monotone XGB, and ranker, plus gating features like `IsWetCompound`, `RaceProgressBin`, `Stint`, and `EstimatedLapsLeft`. Select models by worst-fold or year-holdout robustness, not only mean CV.",
+  "expected_effect": "Best chance to convert several small orthogonal gains into a real improvement while reducing local-CV optimism.",
+  "risk": "Local CV may drop when leakage is removed, and an over-flexible stacker can overfit if OOF generation is not strictly fold-pure.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://link.springer.com/article/10.1007/s00477-024-02715-1",
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231"
+  ]
+}

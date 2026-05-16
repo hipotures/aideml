@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use causal degradation slope and volatility",
+  "summary": "State-space tyre degradation research highlights latent, time-varying degradation dynamics.",
+  "rationale": "State-space tyre degradation research highlights latent, time-varying degradation dynamics. Existing features use cumulative degradation and simple ratios, but not causal local slope, curvature, or volatility within the current stint.",
+  "implementation_hint": "For each driver-race-stint sorted by lap, compute lagged rolling/EWMA features for LapTime_Delta, Cumulative_Degradation, Deg_Per_TyreLife, and Position_Change: last value, 3-lap slope, acceleration, volatility, and worsening-streak length. Never use centered or future windows.",
+  "expected_effect": "May improve detection of the lap before a stop, when pace drop-off or instability accelerates before the binary PitStop indicator appears.",
+  "risk": "Rolling features are fragile with missing laps, pit/out-laps, and extreme lap-time outliers; needs robust clipping and group-boundary handling.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2501.04067",
+    "https://docs.fastf1.dev/api_reference/api_autogen/fastf1.core.Laps.html"
+  ]
+}

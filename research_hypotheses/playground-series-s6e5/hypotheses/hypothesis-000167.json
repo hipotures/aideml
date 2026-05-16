@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-native ranker plus rank-averaged ensemble instead of probability-focused calibration",
+  "summary": "CatBoost ranking objectives support groupwise optimization with `GroupId`, and ROC AUC depends only on ordering, not calibration.",
+  "rationale": "CatBoost ranking objectives support groupwise optimization with `GroupId`, and ROC AUC depends only on ordering, not calibration. For this task, ranking candidate laps within each driver-race-stint and rank-averaging diverse OOF models is more aligned with the metric than spending effort on isotonic/sigmoid calibration.",
+  "implementation_hint": "Train a ranker with groups=`Driver`+`Race_Year`+`Stint` and one positive lap near each true stop/end, using CatBoost ranking or LightGBM LambdaRank as a side model; blend with the main classifier by OOF rank averaging rather than raw probability averaging.",
+  "expected_effect": "Often a small but real lift from exploiting within-stint ordering and avoiding scale mismatch across heterogeneous models.",
+  "risk": "Ranking labels need careful construction for no-stop terminal stints, and ranking losses may underperform if groups are too short or noisy.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://www.cnblogs.com/medsci/articles/9160663.html",
+    "https://sklearn.org/stable/auto_examples/calibration/plot_calibration_curve.html"
+  ]
+}

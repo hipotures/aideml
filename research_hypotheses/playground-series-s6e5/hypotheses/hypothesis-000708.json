@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-fitted super-learner blend with beta calibration on logits",
+  "summary": "For AUC tasks, monotone calibration alone does not help a single model, but cross-fitted blending of heterogeneous models often does.",
+  "rationale": "For AUC tasks, monotone calibration alone does not help a single model, but cross-fitted blending of heterogeneous models often does. Super Learner formalizes OOF-weighted ensembling, and beta calibration is a safer parametric map than plain Platt scaling when score distributions are skewed.",
+  "implementation_hint": "Train a small library with genuinely different biases, e.g. current feature-engineered GBDT, lag-feature GBDT, CatBoost with native categoricals, and maybe a lightweight sequence model if available. Generate strict OOF logits, fit a non-negative meta-learner on OOF predictions, and optionally beta-calibrate each base model before blending or calibrate the final blend on a held-out fold only.",
+  "expected_effect": "Usually small but real AUC gains from diversity and better ordering in the mid-probability region; also stabilizes leaderboard variance.",
+  "risk": "If the base models are too correlated or calibration is fit on the same folds used for training predictions, the stack will overfit and add nothing.",
+  "sources": [
+    "https://www.researchgate.net/publication/5933560_Super_Learner",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ]
+}

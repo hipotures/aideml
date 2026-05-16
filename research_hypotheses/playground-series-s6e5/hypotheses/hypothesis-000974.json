@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Mixture-of-experts ensemble with fold-safe beta calibration",
+  "summary": "Public F1 papers emphasize strong regime differences under dry vs wet conditions and severe imbalance; calibration literature shows tree scores are often miscalibrated, and beta calibration can outperform plain Platt scaling on skewed score distributions.",
+  "rationale": "Public F1 papers emphasize strong regime differences under dry vs wet conditions and severe imbalance; calibration literature shows tree scores are often miscalibrated, and beta calibration can outperform plain Platt scaling on skewed score distributions. A single global model may blur dry, wet/intermediate, and late-race pit logic.",
+  "implementation_hint": "Train specialized experts such as dry compounds, wet/intermediate, and perhaps early/mid/late-race or first-stint vs later-stint models. Produce OOF probabilities, calibrate each expert with beta or isotonic-on-OOF, then blend with a simple meta-model or weighted average. Keep the final objective AUC-focused, but inspect calibration to stabilize ensemble behavior.",
+  "expected_effect": "Usually modest standalone gains, but often strong as the final increment once base models are close; especially useful if different regimes have different score shapes.",
+  "risk": "Extra moving parts can overfit if regime splits are too fine or calibration is fit on in-fold predictions.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://proceedings.mlr.press/v54/kull17a",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strictly causal lap-history features per driver-race-stint",
+  "summary": "The current best code is almost entirely row-local.",
+  "rationale": "The current best code is almost entirely row-local. Recent F1 modeling work treats tyre pace/degradation as a latent evolving process, and generic time-series validation guidance warns that adjacent observations are highly autocorrelated. A compact causal history block could capture the 'pit next lap' trigger better than more static heuristics.",
+  "implementation_hint": "Sort by Year/Race/Driver/LapNumber and build only backward-looking features: lag1/lag2/lag3 of LapTime_Delta, Cumulative_Degradation, Position_Change; rolling mean/std/slope over last 3-5 laps; laps since last pit; EWMA pace-loss slope within stint. Validate with folds that never let future laps from the same race leak backward.",
+  "expected_effect": "Should improve recall on imminent-stop rows where pace falls off abruptly, with better LB alignment than static tyre-window tweaks.",
+  "risk": "Easy to leak if lags/rolls are computed before splitting or if folds mix neighboring laps from the same race/driver.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

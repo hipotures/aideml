@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use soft regime gating instead of hard splits for dry, wet, and track-energy modes",
+  "summary": "Mixture-of-experts models are designed for nonstationary dynamics, and pit-stop logic is visibly regime-dependent: wet/intermediate races, abrasive tracks, sprint weekends, and endgame laps obey different stop incentives.",
+  "rationale": "Mixture-of-experts models are designed for nonstationary dynamics, and pit-stop logic is visibly regime-dependent: wet/intermediate races, abrasive tracks, sprint weekends, and endgame laps obey different stop incentives. A soft gate can learn those mode boundaries more flexibly than a single global model or brittle manual splits.",
+  "implementation_hint": "Train 3-4 specialists, for example `dry slick`, `wet/intermediate`, `high-energy track`, and `late-race endgame`. Use a simple gating model on causal context (`RaceProgress`, compound class, absolute weekend compound hardness, estimated laps remaining, year/race metadata) and output a weighted average probability.",
+  "expected_effect": "Should capture heterogeneity that a single model smooths away, especially when the same tyre-age signal means different things across regimes.",
+  "risk": "Only 26 races means the gate can overfit if too many experts are created; start with very few broad regimes.",
+  "sources": [
+    "https://www.mdpi.com/1099-4300/21/2/190/htm",
+    "https://pure.korea.ac.kr/en/publications/hidden-markov-mixtures-of-experts-for-prediction-of-non-stationar/",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ]
+}

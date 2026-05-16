@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Merge official circuit priors from FIA/F1/Pirelli instead of inferring everything from raw laps",
+  "summary": "Official sources encode real circuit asymmetry: mandatory dry-tyre rule state, compound durability differences, pre-race one-stop vs two-stop expectations, and track-specific pit-lane loss.",
+  "rationale": "Official sources encode real circuit asymmetry: mandatory dry-tyre rule state, compound durability differences, pre-race one-stop vs two-stop expectations, and track-specific pit-lane loss. Those priors are not in the flat lap table but are directly relevant to pit pressure.",
+  "implementation_hint": "Build a small lookup by `Race` or `Race_Year` with features like official pit-stop total-loss median from F1 pit-stop summaries, circuit severity bucket from Pirelli compound descriptions, and one-stop/two-stop prior from official strategy guides. Interact these with `LapsRemaining_Est`, `Compound`, `TyreLife`, and prior stop count.",
+  "expected_effect": "Improves out-of-race generalization when identical lap features imply different strategy pressure on different circuits.",
+  "risk": "Manual mapping effort and some priors are year-specific, so overfitting is possible if encoded too granularly.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article.strategy-guide-what-are-the-possible-race-strategies-for-the-qatar-grand.3EpBr30GfDriRdcEkeYFj5.html",
+    "https://www.formula1.com/en/results/2025/races/1271/usa/pit-stop-summary"
+  ]
+}

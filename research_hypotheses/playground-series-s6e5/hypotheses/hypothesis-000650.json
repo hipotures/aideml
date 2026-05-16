@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Standalone CatBoost categorical ensemble",
+  "summary": "The best runs rely on AutoGluon GBM/XGB.",
+  "rationale": "The best runs rely on AutoGluon GBM/XGB. Public tabular guidance and CatBoost references highlight ordered categorical target statistics and complementary errors, which fit this dataset’s Driver, Race, Compound, and engineered crosses.",
+  "implementation_hint": "Train a separate CatBoostClassifier with native categorical columns and high-cardinality crosses such as Driver_Race, Race_Compound, Driver_Compound_Stint, TyreLifeBin_Compound, and Year_Race. Blend predictions with the best AutoGluon model using validation-optimized rank or probability weights.",
+  "expected_effect": "Likely small AUC gain from better handling of categorical strategy priors and ensemble diversity.",
+  "risk": "CatBoost may be slower and can overfit rare driver/race combinations unless depth, l2_leaf_reg, and early stopping are conservative.",
+  "sources": [
+    "https://www.geeksforgeeks.org/catboosts-categorical-encoding-one-hot-vs-target-encoding/",
+    "https://tildalice.io/xgboost-lightgbm-catboost-kaggle-tabular-benchmark/",
+    "https://www.onenoughtone.com/learning-path/machine-learning/learning/lightgbm/5"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

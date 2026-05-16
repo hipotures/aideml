@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal stint-state features",
+  "summary": "Recent F1 tyre-degradation work models latent tyre pace with pit-stop state resets and time-varying degradation.",
+  "rationale": "Recent F1 tyre-degradation work models latent tyre pace with pit-stop state resets and time-varying degradation. Current features use mostly same-row ratios and static group medians; ordered within-driver/race rolling features may capture the accumulating hazard before a stop.",
+  "implementation_hint": "Sort by Race, Driver, LapNumber. Add lagged/rolling-only-past features: previous lap time delta, rolling 3-lap pace slope, rolling degradation slope, stint min/max/mean pace so far, laps since last PitStop, and change from previous lap within stint. Avoid centered or future-looking windows.",
+  "expected_effect": "Better discrimination of imminent pit stops versus merely old tyres, especially when degradation accelerates late in a stint.",
+  "risk": "If row order or Race names mix seasons badly, rolling features can leak or become noisy; validate with race-group or year-aware folds, not only random split.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.emergentmind.com/papers/2512.00640"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

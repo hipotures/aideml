@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regime-Aware OOF Stacker With Beta Calibration",
+  "summary": "Current blending is a manual linear weight search over OOF predictions.",
+  "rationale": "Current blending is a manual linear weight search over OOF predictions. Stacked generalization gives a principled way to learn when each expert is useful, and beta calibration is specifically designed for skewed classifier score distortions that often appear in boosted models.",
+  "implementation_hint": "Build a tiny meta-model on OOF predictions from XGB/CatBoost/AFT/ranking experts plus a few regime covariates (`wet/dry`, `RaceProgressBin`, `Stint`, adversarial shift score, maybe year). Start with logistic regression or shallow GBDT as the stacker, then beta-calibrate the stacker output globally or separately for dry vs wet regimes using only OOF predictions.",
+  "expected_effect": "Most likely small but real public-score improvement by correcting regime-specific mis-ordering and letting different experts dominate in different race states.",
+  "risk": "Easy to overfit if the meta-layer uses too many raw features or if calibration is fit on in-fold rather than strict OOF predictions.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0893608005800231",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state filter instead of more static degradation ratios",
+  "summary": "Recent F1 tire modeling work uses a state-space model with pit stops as state resets, which matches this task better than hand-set life thresholds.",
+  "rationale": "Recent F1 tire modeling work uses a state-space model with pit stops as state resets, which matches this task better than hand-set life thresholds. A per-driver, within-race latent wear/pace state could capture nonlinear stint collapse that current fixed expected-life features miss.",
+  "implementation_hint": "Build leakage-safe sequential features per Race-Year-Driver using only prior laps: exponentially weighted residual pace, degradation slope/intercept, one-step-ahead residual surprise, and a 'state reset confidence' after PitStop. Treat pit stops as reset points and estimate separate smooth/volatile wear states for slick vs wet compounds.",
+  "expected_effect": "Should add complementary signal on imminent stint failure, especially when TyreLife alone is ambiguous or compounds behave atypically.",
+  "risk": "Easy to leak if fitted with future laps from the same stint; keep all filter/state updates strictly causal within each row.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

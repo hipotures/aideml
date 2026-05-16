@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use explicit train-to-test importance weighting for domain shift",
+  "summary": "The dataset has obvious shift candidates such as Pre-Season Testing and changing year/race mixes.",
+  "rationale": "The dataset has obvious shift candidates such as Pre-Season Testing and changing year/race mixes. Covariate-shift literature says importance weighting is most useful when the learner is misspecified, which is likely here because the pipeline is a hand-engineered tabular approximation of a tactical process.",
+  "implementation_hint": "Estimate train-to-test density ratios with a simple train-vs-test classifier or Kernel Mean Matching on leakage-safe current-lap features. Cap extreme weights, and test three variants: full weighting, downweighting Pre-Season Testing only, and separate GP vs testing experts blended by OOF AUC.",
+  "expected_effect": "Small but real lift if current CV is optimistic because training distribution differs from the 2025-ish test mix.",
+  "risk": "High-variance weights can hurt more than help; clip weights aggressively and report effective sample size alongside CV.",
+  "sources": [
+    "https://arxiv.org/abs/2303.04020",
+    "https://www.cs.cmu.edu/~arthurg/papers/covariateShiftChapter.pdf"
+  ]
+}

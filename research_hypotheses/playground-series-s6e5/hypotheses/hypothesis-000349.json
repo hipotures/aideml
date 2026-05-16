@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-Fitted Beta-Calibrated Rank Ensemble",
+  "summary": "The metric rewards ordering, while tree ensembles often emit distorted probabilities.",
+  "rationale": "The metric rewards ordering, while tree ensembles often emit distorted probabilities. Calibration literature suggests beta calibration is a stronger binary post-hoc option than plain Platt scaling, and OOF rank blending is usually safer for AUC than naive probability averaging.",
+  "implementation_hint": "Generate race-held-out OOF predictions from 2-4 diverse specialists such as the base classifier, LambdaRank model, and survival model. Beta-calibrate each on a nested calibration split, then choose blend weights on OOF AUC using weighted rank or logit-rank averaging; freeze that stack for test-time inference.",
+  "expected_effect": "Likely a modest but robust gain, with less public-LB wobble than a single model or uncalibrated mean blend.",
+  "risk": "Very easy to overfit blend weights or leak through calibrator fitting; nested OOF discipline is mandatory.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7",
+    "https://arxiv.org/abs/1208.0645"
+  ]
+}

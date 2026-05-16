@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add event-specific tyre-rule pressure features",
+  "summary": "Public F1 strategy is not governed only by generic compound life.",
+  "rationale": "Public F1 strategy is not governed only by generic compound life. FIA/F1/Pirelli rules create hard stop-pressure spikes: normal dry races require two dry specifications unless wet tyres are used, 2025 Monaco required three tyre sets, and Qatar had maximum set-life limits in 2023 and 2025.",
+  "implementation_hint": "Add Race_Year flags and rule-derived counters: required_remaining_stops_by_rule, laps_to_Qatar_stint_cap, Monaco_three_set_debt, wet_rule_exemption_seen, and interactions with TyreLife/Stint/PriorPitCount. Keep rules as features or small post-rank boosts, not hard labels, unless train validation proves deterministic.",
+  "expected_effect": "Should improve rare but high-signal race-year rows where static compound windows understate mandatory stop urgency.",
+  "risk": "Sparse events can overfit local CV; race names may omit Qatar/Monaco or synthetic data may not follow real regulations exactly.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.formula1.com/en/latest/article/explained-what-does-the-maximum-tyre-stint-length-rule-mean-for-the-qatar.4q8iXkNgE3sLnIIASPV1sm",
+    "https://press.pirelli.com/a-maximum-of-25-laps-per-tyre-set-in-qatar/"
+  ]
+}

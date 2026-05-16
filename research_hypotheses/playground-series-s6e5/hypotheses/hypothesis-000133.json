@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Distill censored time-to-next-stop into classifier features",
+  "summary": "AFT survival models are designed for time-to-event targets with censoring, which matches laps-until-next-pit better than a plain binary label.",
+  "rationale": "AFT survival models are designed for time-to-event targets with censoring, which matches laps-until-next-pit better than a plain binary label. Using predicted remaining-lap quantiles or transformed hazard as features can sharpen the decision boundary near pit windows without replacing the current classifier.",
+  "implementation_hint": "Create a fold-safe auxiliary target equal to laps until the next pit stop, right-censor terminal stints at race end, fit an out-of-fold XGBoost `survival:aft` model, and feed its median/upper-quantile remaining-life predictions or derived next-lap event probability into the main tabular model.",
+  "expected_effect": "Better ordering around ambiguous mid/late-stint examples where simple tyre-life thresholds are too coarse.",
+  "risk": "Easy to leak future information when constructing time-to-event labels or race aggregates; all survival predictions must be strictly out-of-fold and sequence-causal.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://repositorio.uchile.cl/handle/2250/199664"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-grouped, gap-aware CV as the main anti-leakage filter",
+  "summary": "Current features are lap-level panel data with strong within-race dependence.",
+  "rationale": "Current features are lap-level panel data with strong within-race dependence. A row-random or weakly grouped split can overstate AUC because adjacent laps from the same race/strategy regime are near-duplicates. Grouped time-series validation with a gap is a closer match to real deployment and should expose which features truly transfer across races.",
+  "implementation_hint": "Use `Year_Race` as the primary group. Compare current CV against expanding or rolling `GroupTimeSeriesSplit` with a small lap-gap/embargo near fold boundaries. Re-score candidate features/models only under this stricter protocol and prune anything that collapses.",
+  "expected_effect": "More honest local CV and better leaderboard stability; may slightly reduce local score while improving generalization.",
+  "risk": "This may look worse locally at first, and small sample count per race can make fold variance noisy.",
+  "sources": [
+    "https://rasbt.github.io/mlxtend/user_guide/evaluate/GroupTimeSeriesSplit/",
+    "https://github.com/scikit-learn/scikit-learn/issues/19072"
+  ]
+}

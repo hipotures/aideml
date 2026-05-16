@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Estimate race-specific pit-loss and warm-up economics",
+  "summary": "F1 pit strategy is a cost-benefit decision: pit-loss, fresh-tyre gain, out-lap warm-up, and current degradation jointly decide whether stopping now pays.",
+  "rationale": "F1 pit strategy is a cost-benefit decision: pit-loss, fresh-tyre gain, out-lap warm-up, and current degradation jointly decide whether stopping now pays. Current solutions mostly use tyre-window feasibility, not the local economic break-even.",
+  "implementation_hint": "From PitStop rows, estimate Race-Year median in-lap/out-lap lap-time excess, post-stop warm-up penalty for laps 1-3, and current-stint degradation slope. Add utility features such as expected_next_3_lap_gain_minus_pit_loss and break_even_laps_to_recover_stop.",
+  "expected_effect": "Improves ranking around marginal stop windows, especially one-stop versus two-stop decisions.",
+  "risk": "LapTime outliers from cautions/red flags can corrupt estimates; use robust medians and fallback to Race-level or global priors when data is sparse.",
+  "sources": [
+    "https://aws.amazon.com/blogs/machine-learning/accelerating-innovation-how-serverless-machine-learning-on-aws-powers-f1-insights/",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

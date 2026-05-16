@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-grouped OOF stacking with sigmoid calibration only on held-out folds",
+  "summary": "Two validation traps are likely here: same-race leakage through group-derived features and over-optimistic stacking/calibration fit on reused predictions.",
+  "rationale": "Two validation traps are likely here: same-race leakage through group-derived features and over-optimistic stacking/calibration fit on reused predictions. GroupKFold and time-aware gaps are the safest official patterns for grouped temporal data. For ROC AUC, sigmoid calibration preserves ranking, while isotonic can change AUC via ties; that makes sigmoid the cleaner meta-feature transform.",
+  "implementation_hint": "Use `GroupKFold` on `Year_Race` for all OOF generation; additionally test a forward-by-year split with a small gap around race boundaries for robustness checks. Train diverse base learners, generate OOF predictions, optionally apply fold-wise sigmoid calibration only on held-out data, then fit a simple logistic stacker on OOF predictions.",
+  "expected_effect": "Less CV inflation and a more leaderboard-stable ensemble; often the gain comes from better blending rather than a stronger single model.",
+  "risk": "Cleaner validation can lower local CV even when it improves public generalization; isotonic calibration is risky for AUC because it introduces ties.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html"
+  ]
+}

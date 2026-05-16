@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Leakage-safe ordered empirical-Bayes stop priors",
+  "summary": "CatBoost’s ordered target statistics and classic empirical-Bayes smoothing both support the same idea: noisy categorical or binned event rates become stronger when shrunk toward broader parents.",
+  "rationale": "CatBoost’s ordered target statistics and classic empirical-Bayes smoothing both support the same idea: noisy categorical or binned event rates become stronger when shrunk toward broader parents. This competition has many sparse combinations of Driver, Race, Compound, Stint, TyreLife band, and race phase. A hierarchical stop-rate prior can capture historical strategy tendencies without needing a full simulator.",
+  "implementation_hint": "Create strictly OOF prior features such as logit pit-rate for (Driver,Compound), (Race,Compound,Stint), (Compound,TyreLifeBin,RacePhase), and nested shrinkage from narrow cells to broader parents. Use leave-race-out or ordered-by-time computation so each row only sees historical counts. Pass counts and posterior means as extra features, not final predictions.",
+  "expected_effect": "Medium upside on sparse drivers/races and on wet compounds where tree splits alone may underfit rare regimes.",
+  "risk": "Naive target encoding will leak badly and inflate CV. Overly fine bins can collapse to noise unless strong shrinkage and minimum-count thresholds are enforced.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://academic.oup.com/biomet/article/56/2/361/218896"
+  ]
+}

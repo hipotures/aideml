@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Diversified CatBoost plus weighted ensemble",
+  "summary": "The best runs use only GBM and XGB with AutoGluon weighted ensembling disabled.",
+  "rationale": "The best runs use only GBM and XGB with AutoGluon weighted ensembling disabled. CatBoost is designed for categorical combinations and ordered target statistics, while AutoGluon documentation recommends weighted ensembles for predictive quality.",
+  "implementation_hint": "Add CatBoost to the model family, keep Driver/Race/Compound/TyreLife_Compound as categorical, and enable fit_weighted_ensemble plus modest bagging/stacking if time allows. Separately test rank-averaging or weighted averaging of LightGBM, XGBoost, CatBoost, and ExtraTrees OOF predictions optimized for AUC.",
+  "expected_effect": "Likely small but robust AUC gain from model diversity and better categorical interaction handling, especially for driver/race strategy patterns.",
+  "risk": "More compute and possible overfit if stacking uses random validation only; combine with grouped OOF validation for selection.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://auto.gluon.ai/1.1.0/_modules/autogluon/tabular/predictor/predictor.html",
+    "https://docs.aws.amazon.com/en_us/sagemaker/latest/dg/autogluon-tabular-HowItWorks.html"
+  ]
+}

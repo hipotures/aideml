@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Pit-Wave Features",
+  "summary": "F1 strategy writeups emphasize that stops cluster when the pit window opens and rivals become undercut-vulnerable.",
+  "rationale": "F1 strategy writeups emphasize that stops cluster when the pit window opens and rivals become undercut-vulnerable. Your current best features are mostly row-local; they do not explicitly encode whether this lap is becoming a race-wide pit wave.",
+  "implementation_hint": "Build past-only race-lap aggregates within each Race-Year-LapNumber: fraction of cars that pitted on the previous 1-2 laps, field percentiles of TyreLife/Cumulative_Degradation/LapTime_Delta, and each driver’s deviation from those percentiles. Add interactions with Position and Compound.",
+  "expected_effect": "Should improve discrimination around the true opening of stop windows, especially when several cars converge on similar stint lengths.",
+  "risk": "Easy to leak if same-lap target information is used instead of lagged or race-state-only aggregates.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1/"
+  ]
+}

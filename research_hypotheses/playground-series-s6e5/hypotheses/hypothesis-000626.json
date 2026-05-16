@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut Pressure Features",
+  "summary": "F1 pit timing is often reactive: drivers pit to undercut, cover rivals, or avoid traffic.",
+  "rationale": "F1 pit timing is often reactive: drivers pit to undercut, cover rivals, or avoid traffic. Existing features use own tyre/lap state but little direct rival-pressure context beyond race-lap medians.",
+  "implementation_hint": "For each Race-LapNumber, sort by Position and derive features for cars ahead/behind: position gap proxy, their TyreLife, Compound, PitStop, LapTime_Delta, and whether a nearby rival just pitted on current or previous lap. Add interactions such as own_old_tyre_vs_ahead_fresh_tyre and behind_on_older_tyre_pressure.",
+  "expected_effect": "May catch strategic stops that happen before severe tyre degradation because nearby competitors trigger a cover/undercut response.",
+  "risk": "Position is ordinal, not time gap, so traffic pressure is approximate; current-lap group features must not use PitNextLap.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

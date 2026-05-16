@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use purged race-time validation, then ensemble only stable models with light monotone calibration",
+  "summary": "The remaining gains are small enough that selection bias is a real trap.",
+  "rationale": "The remaining gains are small enough that selection bias is a real trap. Purged/embargoed validation is meant to prevent temporal overlap leakage, and stability-aware model selection is safer than chasing tiny CV lifts. For the final blend, rank averaging plus a light monotone calibrator is low-risk for ROC AUC.",
+  "implementation_hint": "Evaluate candidates on race-ordered folds with a gap/embargo and track per-fold variance, not just mean AUC. Blend only models that stay strong under purged splits, average ranks or logits, then optionally fit beta calibration or ROC-regularized isotonic on out-of-fold predictions before submission.",
+  "expected_effect": "May not raise single-model CV much, but should improve leaderboard transfer and reduce false discoveries from overfit feature tweaks.",
+  "risk": "More conservative selection can look worse on naive CV; measure both naive and purged scores to quantify the gap explicitly.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v238/berta24a.html",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a latent tyre-state sidecar instead of more hand-built degradation formulas",
+  "summary": "Recent F1 research models tyre degradation as a latent state rather than a directly observed scalar.",
+  "rationale": "Recent F1 research models tyre degradation as a latent state rather than a directly observed scalar. That fits this dataset: TyreLife, Cumulative_Degradation, and LapTime_Delta are noisy proxies for the unobserved tyre condition that actually drives pit calls.",
+  "implementation_hint": "Train a small sidecar model that predicts a latent 'stint health' score or next-lap degradation regime from current and lagged per-driver stint variables. Use its out-of-fold predictions as features for the classifier rather than directly hard-coding more window equations.",
+  "expected_effect": "Should separate 'old but still stable' stints from true cliff-edge stints, especially across compounds and circuits.",
+  "risk": "Needs strictly causal lags and out-of-fold generation; otherwise the sidecar can quietly leak future stint information.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1"
+  ]
+}

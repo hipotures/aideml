@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Latent Tire-State Features Via Simple State-Space Filtering",
+  "summary": "Recent F1 tire-degradation work argues that latent tire pace with stint resets outperforms simpler autoregressive baselines.",
+  "rationale": "Recent F1 tire-degradation work argues that latent tire pace with stint resets outperforms simpler autoregressive baselines. That suggests raw `TyreLife` and `Cumulative_Degradation` may be insufficient proxies for the hidden state that actually triggers pit calls.",
+  "implementation_hint": "For each driver-race-stint, model lap-time residuals after removing crude fuel/race-progress effects, then extract filtered latent level, slope, uncertainty, and post-pit reset magnitude from a lightweight Kalman/local-trend model. Add compound-specific latent-state features rather than replacing existing features.",
+  "expected_effect": "Captures nonlinear wear, warmup, and noisy degradation regimes that trees may miss when using only observed aggregates.",
+  "risk": "Observed columns are only weak proxies for full telemetry, so latent states may be noisy on wet sessions or rare compounds.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://doi.org/10.1016/j.ifacol.2020.12.1446"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

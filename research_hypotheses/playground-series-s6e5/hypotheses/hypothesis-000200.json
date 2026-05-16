@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Year-aware covariate-shift weighting and expert blending",
+  "summary": "The data span 2022-2025 with many drivers and likely rule/car changes, so the train-test mix is unlikely stationary.",
+  "rationale": "The data span 2022-2025 with many drivers and likely rule/car changes, so the train-test mix is unlikely stationary. Domain-adaptation work suggests importance weighting or expert mixtures can help when the feature distribution shifts but the label mechanism is mostly stable.",
+  "implementation_hint": "Train a discriminator to separate train rows from test rows using only features available at inference. Convert its OOF scores into instance weights for the main model, or blend a global model with year-specific experts using a gating feature such as predicted test-likeness. Also test leaving one year out to detect whether current CV is too optimistic about cross-year transfer.",
+  "expected_effect": "Could improve public score if test is concentrated in a slightly shifted regime that the current pooled model underweights.",
+  "risk": "Importance weights can become unstable and amplify noise; if shift is weak, this adds variance without benefit.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/9572",
+    "https://www.nature.com/articles/s41586-024-08328-6",
+    "https://huggingface.co/papers/2012.06678"
+  ]
+}

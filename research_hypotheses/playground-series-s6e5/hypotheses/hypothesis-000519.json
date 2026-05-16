@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Degradation Acceleration Features",
+  "summary": "F1 tyre performance can degrade nonlinearly, with pace loss accelerating before a stop.",
+  "rationale": "F1 tyre performance can degrade nonlinearly, with pace loss accelerating before a stop. Current strong features use cumulative degradation and ratios, but not causal within-stint slope/curvature of degradation and lap-time loss.",
+  "implementation_hint": "Within Race_Year/Driver/Stint sorted by LapNumber, compute rolling causal slopes and second differences for LapTime_Delta and Cumulative_Degradation, early-stint baseline z-scores, and cliff flags. Winsorize pit/out-lap anomalies before slope calculations.",
+  "expected_effect": "Should identify tyres approaching a performance cliff before static tyre-life windows trigger.",
+  "risk": "If lap-time features are heavily synthetic or noisy, rolling derivatives may add variance.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://formula1.com/en/latest/article.the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd.html"
+  ]
+}

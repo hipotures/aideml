@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Tyre-cliff and change-point features from the last 2-5 laps",
+  "summary": "F1 strategy sources emphasize pit windows, lap-time deterioration, and tyre degradation as dynamic processes, not static ratios.",
+  "rationale": "F1 strategy sources emphasize pit windows, lap-time deterioration, and tyre degradation as dynamic processes, not static ratios. Recent F1 research also models tyre degradation as a latent evolving state. That points to missed signal in short-horizon slope/acceleration features: the next-lap pit decision should spike when pace loss or degradation abruptly accelerates.",
+  "implementation_hint": "Within each Year-Race-Driver sequence, compute leakage-safe lagged rolling features: 2/3/5-lap slope of LapTime_Delta, change in Degradation_Per_Lap, second differences, rolling z-scores against same-race-lap peers, positive-delta run length, and simple CUSUM-like accumulated slowdown since the last pit. Feed these to the existing tabular model rather than replacing it.",
+  "expected_effect": "Moderate upside if pit calls are triggered by recent deterioration bursts rather than absolute tyre age alone; especially useful when compounds or tracks deviate from the hand-set expected-life table.",
+  "risk": "Easy to break row alignment or leak future laps. Noisy lap times from traffic or wet conditions can make naive rolling features unstable unless split by regime or robustly clipped.",
+  "sources": [
+    "https://aws.amazon.com/sports/f1/",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

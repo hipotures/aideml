@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add fold-safe empirical hazard and remaining-stint priors",
+  "summary": "`PitNextLap` is naturally a discrete-time hazard.",
+  "rationale": "`PitNextLap` is naturally a discrete-time hazard. Survival literature and recent F1 pit-stop work both frame next-event prediction as hazard/horizon estimation rather than plain classification. Historical pit-window tables should be more informative than raw TyreLife alone.",
+  "implementation_hint": "Inside each fold, compute smoothed OOF hazard tables for buckets such as `(Year, Race, Compound, Stint, TyreLife_bin, RaceProgress_bin)` with hierarchical backoff to global/compound-only priors. Derive features like next-lap hazard prior, cumulative survival to current lap, expected laps remaining, and percentile within historical stint length.",
+  "expected_effect": "Directly encodes pit windows and should improve separation near the decision boundary, especially late-stint laps.",
+  "risk": "Easy to leak if priors are computed on full data; sparse race-driver cells need aggressive smoothing/backoff.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6348952/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

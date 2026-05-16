@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap LightGBM ranker blended with classifier",
+  "summary": "AUC rewards ordering, and the real decision is partly relative: who looks most urgent to pit on this lap versus other cars in the same race-lap context.",
+  "rationale": "AUC rewards ordering, and the real decision is partly relative: who looks most urgent to pit on this lap versus other cars in the same race-lap context. LightGBM’s ranking objectives are designed exactly for grouped ordering problems and can complement binary probability models.",
+  "implementation_hint": "Create groups by (Year, Race, LapNumber). Train `LGBMRanker` with `rank_xendcg` or `lambdarank`, label 1 for `PitNextLap` and 0 otherwise, then blend its OOF rank-normalized scores with the main classifier via simple rank averaging or a tiny stacker trained on race-group OOF predictions.",
+  "expected_effect": "Improves local ordering among contemporaneous cars, which may raise ROC AUC even if absolute probabilities are not better calibrated.",
+  "risk": "Some groups may have zero or multiple pitters, so ranking signal can be sparse; use it as a specialist blend, not a full replacement.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone"
+  ]
+}

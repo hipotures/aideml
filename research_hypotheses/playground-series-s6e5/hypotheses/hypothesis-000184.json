@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Augment with FastF1 track-status and weather regime features",
+  "summary": "Official F1 strategy coverage explicitly notes Safety Car windows and low-grip/wet conditions as cases where pit decisions shift from normal stint logic.",
+  "rationale": "Official F1 strategy coverage explicitly notes Safety Car windows and low-grip/wet conditions as cases where pit decisions shift from normal stint logic. FastF1 exposes track status and weather channels, giving a practical way to tag laps near yellow/VSC/SC/red-flag transitions or changing rain conditions that can trigger opportunistic next-lap stops.",
+  "implementation_hint": "For each race-year, pull FastF1 `track_status_data`, `weather_data`, and race-control messages; align by lap/time to derive `is_SC`, `is_VSC`, `laps_since_status_change`, `rainfall`, `track_temp`, `air_temp`, and `status_change_next_1_2_laps` proxies. Also add race-level counts like prior neutralizations and whether the current lap lies in a historically cheap-stop window. Test both direct features and a specialist model only on wet/intermediate/wet-compound rows.",
+  "expected_effect": "Can capture stop spikes that pure lap-time/tyre-life features miss, especially for wet-weather swaps and cheap stops under neutralization.",
+  "risk": "Time alignment is fiddly, and public FastF1 telemetry availability or race-name normalization may be inconsistent for some sessions.",
+  "sources": [
+    "https://docs.fastf1.dev/api.html",
+    "https://docs.fastf1.dev/_modules/fastf1/_api.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8"
+  ]
+}

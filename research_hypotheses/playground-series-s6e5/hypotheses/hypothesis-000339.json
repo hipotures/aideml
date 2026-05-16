@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-categorical CatBoost plus AFT duration blend",
+  "summary": "CatBoost’s ordered CTR machinery is designed to compute categorical statistics from previous objects only, which is attractive for high-cardinality `Driver/Race/Compound/Stint` interactions; scikit-learn’s docs explicitly warn that non-cross-fitted target encoding can catastrophically overfit.",
+  "rationale": "CatBoost’s ordered CTR machinery is designed to compute categorical statistics from previous objects only, which is attractive for high-cardinality `Driver/Race/Compound/Stint` interactions; scikit-learn’s docs explicitly warn that non-cross-fitted target encoding can catastrophically overfit. Separately, XGBoost’s AFT objective uses censored time-to-event information that a plain binary next-lap classifier discards.",
+  "implementation_hint": "Train one CatBoost specialist on raw categorical interactions plus causal numeric features, using race-aware folds and stable within-race ordering. Train a second model as AFT survival on `laps_until_next_pit` with censoring at race end, convert its survival curve to next-lap pit probability, then blend the CatBoost/current-model/AFT outputs in rank space using fold-wise weights selected on grouped CV.",
+  "expected_effect": "Diversifies error modes, improves handling of rare categorical interactions, and may transfer better to public LB than a single binary classifier.",
+  "risk": "Most complex idea here: AFT target construction, CatBoost ordering, and blend-weight selection can all leak if they are not fully out-of-fold by grouped race splits.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

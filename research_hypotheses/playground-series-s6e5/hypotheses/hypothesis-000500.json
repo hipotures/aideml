@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pre-season testing specialist or domain gate",
+  "summary": "Race includes Pre-Season Testing, which is not a Grand Prix strategy environment.",
+  "rationale": "Race includes Pre-Season Testing, which is not a Grand Prix strategy environment. F1 describes testing as data collection, reliability work, sandbagging, and pit-stop practice; FastF1 also treats testing events separately from race weekends. A single race-strategy model may mis-rank these rows.",
+  "implementation_hint": "Add IsTestingRace, TestingYear, and interactions with Compound, TyreLife, LapNumber, PitStop, and Driver frequency. Train either a separate specialist for Race == PRE-SEASON TESTING or use sample-weight/domain-gated blending so race-rule features are downweighted there.",
+  "expected_effect": "Can improve rows from the testing domain without disturbing Grand Prix rows, especially if public test contains a meaningful testing share.",
+  "risk": "If testing rows are rare, a specialist may overfit. Keep the gate simple and compare OOF AUC by Race domain.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-f1-pre-season-testing.3CuYMLp6etxlynKLz0j7Ev",
+    "https://docs.fastf1.dev/events.html"
+  ]
+}

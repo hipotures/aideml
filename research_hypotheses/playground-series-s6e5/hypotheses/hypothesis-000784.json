@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Clean-Air And Traffic Window Features",
+  "summary": "Public F1 strategy analysis repeatedly highlights pit-loss, traffic gaps, and undercut range as decisive.",
+  "rationale": "Public F1 strategy analysis repeatedly highlights pit-loss, traffic gaps, and undercut range as decisive. The current best code uses circuit priors but almost no explicit field-context features describing whether a stop would release the driver into clean air or dirty traffic.",
+  "implementation_hint": "Within each Year-Race-LapNumber, derive position-neighbor context available on the current lap only: lap-time delta to cars +/-1 and +/-2 positions, tyre-age gap to nearby rivals, local field spread, rank of current degradation within the field, and a proxy for pit-window openness such as whether a 20-25s loss would drop the driver into a dense pack vs sparse zone. Interact with Position and RaceProgress.",
+  "expected_effect": "Should add orthogonal signal for undercut/overcut viability and explain track-specific stop timing better than static race priors alone.",
+  "risk": "True time gaps are absent, so proxies may be noisy. Over-engineering field features can hurt if CV does not preserve full race groups.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/"
+  ]
+}

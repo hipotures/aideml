@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-state latent wear plus warm-up filter",
+  "summary": "Recent F1 tire-degradation work models latent pace degradation with state resets at pit stops, while F1 strategy analysis highlights that undercut/overcut outcomes depend not just on worn-tyre decay but also on fresh-tyre warm-up.",
+  "rationale": "Recent F1 tire-degradation work models latent pace degradation with state resets at pit stops, while F1 strategy analysis highlights that undercut/overcut outcomes depend not just on worn-tyre decay but also on fresh-tyre warm-up. The current handcrafted ratios mostly encode wear, not temporary cold-tyre drag.",
+  "implementation_hint": "Fit a lightweight forward filter per `Year,Race,Driver` that decomposes lap-time evolution into fuel burn, latent wear state, and a short-lived post-pit warm-up penalty. Export filtered wear level, wear acceleration, warm-up debt, and uncertainty-like residual scale as features. Use only past laps and exclude pit-entry/exit contamination.",
+  "expected_effect": "Could separate ‘pit now because tyres are gone’ from ‘do not pit yet because the new set will be cold/slow here’, especially on low-deg or hard-warm-up circuits.",
+  "risk": "If the filter is too flexible or poorly identified, it will just repackage noise. This is also close enough to prior latent-state ideas that it needs a sharper warm-up component to be genuinely new.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

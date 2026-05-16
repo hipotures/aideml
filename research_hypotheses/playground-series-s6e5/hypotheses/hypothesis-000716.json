@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace fixed pit-loss constants with race-specific undercut/overcut economics learned from historical stops",
+  "summary": "F1 teams treat pit-loss and undercut windows as circuit- and condition-specific, and Safety Car changes that loss materially.",
+  "rationale": "F1 teams treat pit-loss and undercut windows as circuit- and condition-specific, and Safety Car changes that loss materially. Your strongest code already encodes economics, but with fixed constants; that is probably too coarse across 26 races and multiple years.",
+  "implementation_hint": "Estimate per-race and per-regime pit-loss from observed PitStop laps in train: in-lap plus pit-lane plus out-lap shock versus nearby non-pitting peers. Derive race-specific warm-up penalty, undercut benefit, and Safety-Car-adjusted loss proxies, then recompute stop-now versus wait-one-lap value features from those learned priors.",
+  "expected_effect": "Should sharpen timing decisions and improve transfer across tracks where the same tyre age implies different stop value.",
+  "risk": "Observed pit-stop laps are endogenous, so naive estimates can be biased by traffic or damage stops; robust aggregation is needed.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

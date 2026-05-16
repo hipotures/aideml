@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking expert using race-lap query groups",
+  "summary": "Pit calls are relative: on a given lap, only some cars are truly \"most urgent\" to pit.",
+  "rationale": "Pit calls are relative: on a given lap, only some cars are truly \"most urgent\" to pit. CatBoost and LightGBM ranking objectives support grouped pairwise/query learning, which fits the idea of ranking drivers within the same `(Year, Race, LapNumber)` state rather than predicting each row independently.",
+  "implementation_hint": "Train a ranker with `group_id=(Year,Race,LapNumber)` and relevance=`PitNextLap`, optionally restricting pair generation to nearby positions or same compound/stint buckets. Blend the ranker score with the existing binary model; do not replace the classifier outright.",
+  "expected_effect": "Improves ordering within the same race context, which is directly aligned with ROC AUC and can capture undercut/overcut urgency better than absolute features alone.",
+  "risk": "Many groups will have zero or one positive, so the ranker can be noisy unless grouped carefully and regularized; needs validation against a binary baseline.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

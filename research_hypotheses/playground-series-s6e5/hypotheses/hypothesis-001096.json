@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Hard-negative curriculum around pit windows with focal-style boosting",
+  "summary": "ROC AUC may already be saturated on easy early-stint negatives.",
+  "rationale": "ROC AUC may already be saturated on easy early-stint negatives. Public imbalance work on XGBoost shows focal/weighted losses can improve difficult minority discrimination, and adjacent F1 work explicitly used class balancing. For this task, the most informative negatives are drivers who do not pit despite looking pit-ready on the same lap.",
+  "implementation_hint": "Upweight rows within a small window before actual pits, same-lap non-pitting rivals with similar `TyreLife/Compound/Position`, and late-stint negatives that resemble positives. Train one booster with focal-style or custom sample weights and keep it as a specialist expert in the ensemble.",
+  "expected_effect": "Could improve separation in the ambiguous decision zone where leaderboard gains are more likely than from more global feature ratios.",
+  "risk": "Aggressive reweighting can hurt calibration and overfit local CV, especially under non-purged folds; keep weights conservative and judge mainly by embargoed OOF plus leaderboard movement.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0167865520302129",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

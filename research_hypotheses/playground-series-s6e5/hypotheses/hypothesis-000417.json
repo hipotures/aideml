@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal multi-task horizon buckets",
+  "summary": "Recent lap-level pit-stop research and broader event-sequence/survival literature support predicting both the immediate event and a coarser time-to-event target.",
+  "rationale": "Recent lap-level pit-stop research and broader event-sequence/survival literature support predicting both the immediate event and a coarser time-to-event target. That usually stabilizes learning better than a single binary head.",
+  "implementation_hint": "Build a causal GRU/TCN or simple sequence encoder per `Race_Year x Driver` with heads for `PitNextLap` and ordinal `LapsToNextStop` buckets such as `1`, `2`, `3-5`, `6-10`, `>10`; export only OOF predictions for blending with the tabular model.",
+  "expected_effect": "Should sharpen discrimination around the actual pit window and reduce the tendency to treat all non-next-lap negatives as equally uninformative.",
+  "risk": "Bidirectional models are tempting but leaky here; sequence models can also underperform strong GBDTs unless the training pipeline is fully causal and fold-safe.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://ojs.aaai.org/index.php/AAAI/article/view/11842",
+    "https://epubs.siam.org/doi/10.1137/1.9781611975673.14"
+  ]
+}

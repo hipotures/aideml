@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Tyre Pace State",
+  "summary": "Recent F1 modelling work treats tyre degradation as a latent state with pit stops as structural resets.",
+  "rationale": "Recent F1 modelling work treats tyre degradation as a latent state with pit stops as structural resets. Current features use raw LapTime_Delta and cumulative degradation, but not a fitted per-stint residual state after removing fuel burn, race, driver, and compound effects.",
+  "implementation_hint": "Fit a leakage-safe baseline lap-time model on train folds using LapNumber/RaceProgress, Year, Race, Driver, Compound, Position, and wet/dry flags. Add residual, residual z-score within Year_Race_LapNumber, expanding residual mean/slope within Driver-Race-Stint shifted to current/past only, and residual acceleration over last 2-4 available laps.",
+  "expected_effect": "Captures tyre fade and abnormal pace loss more cleanly than raw LapTime_Delta; likely modest but orthogonal gain.",
+  "risk": "Chronological feature construction must restore row order exactly; prior rolling features failed when ordering was mishandled.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

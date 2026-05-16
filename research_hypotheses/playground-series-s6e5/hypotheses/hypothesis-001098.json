@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace transductive category stats with native time-aware CatBoost",
+  "summary": "The current pipeline computes category codes/frequencies on train+test together and uses shuffled CatBoost defaults.",
+  "rationale": "The current pipeline computes category codes/frequencies on train+test together and uses shuffled CatBoost defaults. CatBoost explicitly provides unbiased/ordered boosting plus `has_time` to avoid random permutations in categorical statistics, which is a closer match to sequential racing data and may remove subtle transductive leakage.",
+  "implementation_hint": "Sort by Year/Race/LapNumber/id, pass raw categorical columns only, set `has_time=True`, feed a timestamp/order index, test CPU `boosting_type=\"Ordered\"`, and tune `fold_permutation_block` around race or lap granularity. Compare against the current Cat model after removing any train+test frequency features from the XGB side.",
+  "expected_effect": "Small but real lift from better handling of rare Driver/Race interactions and cleaner OOF estimates; also a safer foundation for future stacking.",
+  "risk": "Ordered boosting on CPU is slower; gains may disappear if dataset size is already large enough that Plain GPU remains stronger.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Discrete-time hazard with driver/race frailty",
+  "summary": "This target is a one-step hazard.",
+  "rationale": "This target is a one-step hazard. Discrete-time survival models are a natural fit, and frailty terms are specifically designed for hidden heterogeneity across clusters; here, driver/race/stint can induce unobserved pit propensity that plain boosted trees may only partially capture.",
+  "implementation_hint": "Create person-period labels within each driver-race-stint for time to next pit. Fit a discrete-time hazard model with a flexible baseline over tyre age/lap and add grouped random-effect proxies or empirical-Bayes target statistics for driver-race/stint frailty. Convert the predicted hazard at horizon 1 back to PitNextLap probability, then blend with the current tree stack.",
+  "expected_effect": "Can add low-correlation signal by modeling transition risk directly rather than post-hoc smoothing binary probabilities.",
+  "risk": "Long-format construction and frailty estimation can overfit or become expensive; careful OOF generation is mandatory.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://journals.sagepub.com/doi/10.1177/0049124101029003004",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ]
+}

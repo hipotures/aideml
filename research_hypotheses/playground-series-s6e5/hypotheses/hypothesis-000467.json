@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Audit next-row PitStop as a sequence-leak feature",
+  "summary": "The label is PitNextLap while the data already contains PitStop for each row.",
+  "rationale": "The label is PitNextLap while the data already contains PitStop for each row. If rows form complete driver-race lap sequences, shifting PitStop by -1 within each sequence may nearly reconstruct the target; at minimum it is the most important validation-trap check.",
+  "implementation_hint": "Sort by Race_Year or Race+Year, Driver, LapNumber, id; create Lead1_PitStop, Lead1_TyreLifeReset, and NextRowSameDriverRace flags. Test Lead1_PitStop alone on train under race-held-out CV before blending it with model probabilities.",
+  "expected_effect": "Potentially very large AUC lift if the public test exposes full sequences; otherwise it identifies and prevents misleading CV from future-information features.",
+  "risk": "May be considered non-causal leakage if the intended prediction setting is live lap-by-lap; sequence keys can be ambiguous when laps are missing or testing data is mixed in.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Leakage_(machine_learning)",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://arxiv.org/abs/1902.06281"
+  ]
+}

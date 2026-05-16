@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed race-wise CV to detect hidden leakage and retune on the harsher split",
+  "summary": "The label is a next-lap event, so adjacent rows from the same race/driver can leak future context across folds even when features are shift-based.",
+  "rationale": "The label is a next-lap event, so adjacent rows from the same race/driver can leak future context across folds even when features are shift-based. Time-series literature recommends gap/embargo style validation when labels depend on future windows, and grouped-data leakage papers show clustered splits can materially inflate CV.",
+  "implementation_hint": "Replace random/group CV with folds built on ordered `(Year, Race)` blocks, and embargo at least 1-2 laps around each validation block for the same race. Compare current 0.951 CV under standard split vs embargoed split; only trust ideas that survive the harsher estimate.",
+  "expected_effect": "May lower local CV initially, but should improve leaderboard correlation and reduce overfitting to race-local temporal structure.",
+  "risk": "Purely a validation change may not raise CV, and if test races are IID with train races, the stricter split can be overly pessimistic.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://link.springer.com/article/10.1007/s00477-024-02715-1"
+  ]
+}

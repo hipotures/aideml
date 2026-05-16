@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add reset-aware latent tyre-state features instead of more raw tyre-life ratios",
+  "summary": "Recent F1 tire-degradation work models latent pace/degradation as a hidden state with pit stops acting as structural resets.",
+  "rationale": "Recent F1 tire-degradation work models latent pace/degradation as a hidden state with pit stops acting as structural resets. Your current features use observed `TyreLife`, `LapTime_Delta`, and `Cumulative_Degradation`, but not an inferred latent 'tyre health' or 'abnormal wear' state. That may be the missing nonlinear signal near pit windows.",
+  "implementation_hint": "Within each driver-race-stint, fit simple train-fold-only state estimates such as: expected lap-time drift by compound and stint age, residualized degradation slope, EWMA of lap-time delta, and deviation from the expected post-pit reset curve. Feed only the resulting latent-state summaries, not a full sequence model, into the existing tabular learner.",
+  "expected_effect": "Likely to sharpen discrimination in borderline cases where raw tyre age is similar but hidden wear state differs; especially useful on compounds/tracks with nonlinear deg curves.",
+  "risk": "If the latent state is estimated using race-level information too aggressively, it can create hidden leakage; keep the estimator causal within each sequence.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Lap_time_and_delta_analysis",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

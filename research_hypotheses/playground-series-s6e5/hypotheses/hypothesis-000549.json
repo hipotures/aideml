@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Short-horizon sequence sidecar over last 3-6 laps",
+  "summary": "Recent pit-stop papers report that temporal models, especially Bi-LSTM-style architectures, outperform simpler deep baselines because pit calls depend on developing trends in degradation and pace, not one-row snapshots.",
+  "rationale": "Recent pit-stop papers report that temporal models, especially Bi-LSTM-style architectures, outperform simpler deep baselines because pit calls depend on developing trends in degradation and pace, not one-row snapshots. The current best code uses only shallow lag features; a dedicated sequence sidecar is a distinct signal source.",
+  "implementation_hint": "Build per-driver chronological windows of the last 3-6 laps using only past data. Start with a cheap version first: lag-stack the numeric columns and first differences for 1-5 lags into a LightGBM/CatBoost sidecar. If that helps, test a tiny TCN/GRU/BiLSTM on the same windows. Blend strictly with OOF predictions only.",
+  "expected_effect": "Should sharpen detection of accelerating degradation or pace collapse just before stops, especially where single-lap deltas are noisy.",
+  "risk": "Easy to overstate CV if windows cross folds or use future padding. Deep models may be slower and less robust than lag-stacked trees.",
+  "sources": [
+    "https://www.researchgate.net/publication/397304397_Data-driven_pit_stop_decision_support_for_Formula_1_using_deep_learning_models",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

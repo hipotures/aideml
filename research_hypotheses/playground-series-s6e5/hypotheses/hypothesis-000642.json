@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dry-wet regime split",
+  "summary": "Pit-stop research notes wet/intermediate decisions are reactive and noisier, while dry-compound stops are more predictable from tyre degradation, stint length, and track position.",
+  "rationale": "Pit-stop research notes wet/intermediate decisions are reactive and noisier, while dry-compound stops are more predictable from tyre degradation, stint length, and track position. Treating all compounds with one model may blur different mechanisms.",
+  "implementation_hint": "Add regime flags: dry tyre, wet/intermediate, unknown/rare compound, soft-family compound. Train separate models or add high-order interactions for dry vs wet regimes; optionally downweight or isolate wet/intermediate rows if they are rare and unpredictable.",
+  "expected_effect": "Sharper dry-strategy ranking and less confusion from reactive weather-driven stops.",
+  "risk": "If test contains many wet/intermediate laps, downweighting may hurt; compare full-model blend versus dry-focused model rather than hard filtering only.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

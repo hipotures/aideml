@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Finite tyre-set scarcity and reuse state",
+  "summary": "Regulations allocate limited dry, intermediate, and wet tyre sets, and used-set reuse changes strategy.",
+  "rationale": "Regulations allocate limited dry, intermediate, and wet tyre sets, and used-set reuse changes strategy. Current features count prior slick compounds, but not how many stints have consumed or reused each compound.",
+  "implementation_hint": "Per Race_Year-Driver, compute causal counts of prior stints by Compound, number of new-set starts vs used-set starts using StintStartTyreLife, repeated_compound_stint_count, likely_fresh_slicks_consumed, and interactions with Stint and RaceProgress. Treat Pre-Season Testing separately because FastF1 notes TEST_UNKNOWN and testing-specific tyre behavior.",
+  "expected_effect": "May capture why two drivers with the same compound and TyreLife have different pit risk because one is preserving scarce fresh sets or already recycling used tyres.",
+  "risk": "Exact tyre allocation and availability are not in the competition data, so this is an approximate proxy and may overfit rare race-year patterns.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf",
+    "https://docs.fastf1.dev/core.html"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Time-ordered CatBoost CTR model on raw categorical crosses",
+  "summary": "CatBoost’s ordered boosting and categorical combinations are designed to reduce prediction shift from target leakage.",
+  "rationale": "CatBoost’s ordered boosting and categorical combinations are designed to reduce prediction shift from target leakage. This dataset has high-cardinality categories (`Driver`, `Race`, `Year`) and natural order within each driver-race sequence, which is exactly where ordered CTRs can outperform manual frequency encoding.",
+  "implementation_hint": "Train a separate CatBoostClassifier sorted by `Year, Race, Driver, LapNumber` with `has_time=True`, feeding raw categoricals plus a few numeric core fields. Let CatBoost build combos like `Driver×Race`, `Driver×Compound`, `Race×Compound`, `Driver×Stint`, and blend its OOF predictions with the current tree baseline rather than replacing it.",
+  "expected_effect": "Adds a genuinely different categorical signal family and may capture driver/race/compound interaction priors more cleanly than hand-engineered counts.",
+  "risk": "If row order is wrong, CTRs become noisy; CatBoost may underperform if numeric tyre-state features still dominate.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

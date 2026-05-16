@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "One-Lap DP Policy-Value Features",
+  "summary": "Recent F1 OR papers model pit timing as a sequential decision where stop-now, stop-later, and rival interaction change optimal behavior; the current feature stack approximates tyre windows but not the explicit value gap between actions.",
+  "rationale": "Recent F1 OR papers model pit timing as a sequential decision where stop-now, stop-later, and rival interaction change optimal behavior; the current feature stack approximates tyre windows but not the explicit value gap between actions.",
+  "implementation_hint": "Build a lightweight offline policy module that scores `pit_now`, `pit_next_lap`, and `go_long` using estimated tyre life, laps remaining, pit-loss prior, and local rival proximity. Feed only the value differences or action argmax indicators into the existing tabular classifier.",
+  "expected_effect": "Should improve ordering of borderline rows where tyre-life heuristics and track-position incentives disagree.",
+  "risk": "If the rival or pit-loss proxy is too crude, the policy feature can become a noisy hand-crafted heuristic and overfit CV.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

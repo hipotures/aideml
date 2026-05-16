@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace raw tyre-age heuristics with online latent tyre-state and cliff features",
+  "summary": "A recent Formula 1 state-space paper models lap time using latent tire pace and treats pit stops as structural state resets.",
+  "rationale": "A recent Formula 1 state-space paper models lap time using latent tire pace and treats pit stops as structural state resets. That directly matches this problem: the useful signal is not just `TyreLife`, but whether degradation has entered a latent ‘cliff’ regime for the current stint.",
+  "implementation_hint": "Fit a lightweight causal filter per driver-race-stint using only past/current laps to estimate latent degradation level, degradation slope, and residual pace loss after accounting for race progress. Add features such as posterior slope, posterior variance, residual-vs-expected lap delta, filtered cliff flag, and time-since-reset. Feed those features into the existing tree models instead of building a full standalone Bayesian predictor.",
+  "expected_effect": "Can outperform simple tyre/stint arithmetic if the public data’s degradation column is noisy or incomplete, especially in long dry stints.",
+  "risk": "Leakage is easy if future laps are used during smoothing; use strictly forward filtering, not full-sequence smoothing.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

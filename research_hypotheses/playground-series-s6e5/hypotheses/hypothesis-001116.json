@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Uncertainty-aware gating with Venn-Abers interval width",
+  "summary": "Calibration was already considered, but Venn-Abers offers more than calibrated means: interval width is an uncertainty signal.",
+  "rationale": "Calibration was already considered, but Venn-Abers offers more than calibrated means: interval width is an uncertainty signal. That uncertainty can decide when to trust the smooth global classifier versus the sharper causal/ranking experts.",
+  "implementation_hint": "For each base model or blend candidate, compute fold-wise inductive Venn-Abers calibrated probabilities on OOF predictions and retain both midpoint and interval width. Learn simple regime-specific blending rules such as: trust ranker/pressure models more when classifier interval width is large or when base models disagree strongly; otherwise keep the stable global blend.",
+  "expected_effect": "Can improve ensemble selection without overfitting blend weights to tiny AUC deltas, and may reduce bad overconfident predictions on out-of-distribution races/regimes.",
+  "risk": "Extra calibration layers are data-hungry and can be noisy on rare regimes; interval width may correlate with class balance rather than true epistemic uncertainty if bins are too small.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x",
+    "https://www.researchgate.net/publication/371506338_Well-Calibrated_Probabilistic_Predictive_Maintenance_using_Venn-Abers",
+    "https://www.researchgate.net/publication/289545029_Venn-Abers_predictors"
+  ]
+}

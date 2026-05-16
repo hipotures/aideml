@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Online change-point / run-length features for impending stop regimes",
+  "summary": "Pit decisions often follow abrupt regime shifts rather than smooth degradation alone.",
+  "rationale": "Pit decisions often follow abrupt regime shifts rather than smooth degradation alone. Online Bayesian change-point methods are designed to detect such transitions in nonstationary sequences using only past data.",
+  "implementation_hint": "For each driver-stint, run a lightweight causal detector on LapTime_Delta, degradation gain, and possibly position-change residuals: posterior change probability, estimated run length, time since last change, and recent change intensity. Add these as features or as a small expert blended by rank.",
+  "expected_effect": "Could surface late-stint cliff behavior and capture stop triggers that the current smooth EWMA pressure features miss.",
+  "risk": "Easy to overfit if the detector is too sensitive; must verify gains under forward/event-ordered validation, not just shuffled grouped CV.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4902550",
+    "https://www.ijcai.org/proceedings/2019/340"
+  ]
+}

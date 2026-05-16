@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hierarchical ordered categorical priors branch for Driver/Race interactions",
+  "summary": "High-cardinality identities are central here, and both CatBoost and sklearn target-encoding docs stress leakage-resistant ordered/cross-fitted encoding.",
+  "rationale": "High-cardinality identities are central here, and both CatBoost and sklearn target-encoding docs stress leakage-resistant ordered/cross-fitted encoding. The current best pipeline mostly uses frequency encoding plus hand-built interactions, leaving richer driver-race-compound priors underexploited.",
+  "implementation_hint": "Run a separate model branch using CatBoost native categoricals or manually cross-fitted target encodings with hierarchical shrinkage: `Driver`, `Race`, `Race_Year`, `Driver x Race`, `Driver x Compound`, `Race x Compound`, `Driver x Stint`. Use only fold-internal past data or internal cross-fitting; compare against current one-hot/frequency branch and blend OOF predictions.",
+  "expected_effect": "Captures persistent strategic tendencies of drivers and event-specific norms without handcrafting many brittle rules.",
+  "risk": "Easy to leak on repeated driver-race trajectories; gains may vanish unless folds are grouped by race or at least embargo adjacent sequence chunks.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html"
+  ]
+}

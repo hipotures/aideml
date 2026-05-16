@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Diverse CatBoost plus AutoGluon ensemble",
+  "summary": "The best runs rely mainly on AutoGluon GBM/XGB with feature tweaks.",
+  "rationale": "The best runs rely mainly on AutoGluon GBM/XGB with feature tweaks. Adjacent F1 strategy projects report XGBoost success, while this environment also has CatBoost, which often handles categorical interactions differently and can diversify predictions for AUC ensembling.",
+  "implementation_hint": "Train a standalone CatBoostClassifier with categorical columns Driver, Race, Compound, Year, Stint and the strongest engineered features; use class_weights or scale_pos_weight if positives are rare. Blend CatBoost and AutoGluon probabilities by OOF AUC-optimized weights or simple rank averaging.",
+  "expected_effect": "May improve public AUC through model diversity and better native categorical handling, even if each individual model is close to the current baseline.",
+  "risk": "Extra model time may exceed budget; probability calibration is less important for AUC than rank, so rank averaging should be tested against raw averaging.",
+  "sources": [
+    "https://f1-strategy-prediction.vercel.app/",
+    "https://papers.cool/arxiv/2501.04067",
+    "https://catboost.ai/docs/en/concepts/python-reference_catboostclassifier"
+  ]
+}

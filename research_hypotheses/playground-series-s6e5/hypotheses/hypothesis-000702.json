@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Query-wise ranking model by race-lap context, then calibrate",
+  "summary": "AUC is ranking-based, and pit decisions are relative within local race context.",
+  "rationale": "AUC is ranking-based, and pit decisions are relative within local race context. CatBoost supports query-wise AUC/ranking objectives, which can learn who is most likely to pit among cars sharing the same race-lap context; this can complement a plain binary classifier.",
+  "implementation_hint": "Train a second model with group IDs such as `(Year, Race, LapNumber)` or `(Year, Race, LapNumber, dry/wet)` and CatBoost query-wise loss/metric. Blend its OOF predictions with the current binary model, then calibrate the blend on OOF predictions only.",
+  "expected_effect": "Improves ordering of borderline examples in the same strategic moment, which can help ROC AUC even if raw probabilities are imperfect.",
+  "risk": "Groups with few positives or tiny size may be noisy; wrong grouping can dilute signal. This is an extension of prior ranking ideas, so gains may be incremental rather than large.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV"
+  ]
+}

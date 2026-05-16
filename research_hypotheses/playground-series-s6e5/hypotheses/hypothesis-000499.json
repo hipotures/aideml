@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal neutralization-discount proxy",
+  "summary": "Safety Car and VSC periods lower racing speed and can make pit stops strategically attractive, but there is no explicit safety-car column.",
+  "rationale": "Safety Car and VSC periods lower racing speed and can make pit stops strategically attractive, but there is no explicit safety-car column. Formula 1 sources define SC/VSC as reduced-speed race states; these should leave signatures in field-wide lap-time inflation, compressed gaps, and clustered pit stops.",
+  "implementation_hint": "For each Race_Year/LapNumber, compute leave-one-driver-out field median LapTime_Delta, lap-time dispersion, number/share of cars pitting, and position-change volatility. Feed only lagged versions from lap t and t-1 to predict PitNextLap at t, plus interactions with NeedsAnotherStop and LapsRemaining_Est.",
+  "expected_effect": "Should help identify opportunistic stops that static compound-life windows miss, especially wet or incident-heavy races.",
+  "risk": "Same-lap or future-lap aggregate features can leak if not lagged carefully. In pre-season testing, slow laps may mimic neutralization but have different meaning.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf"
+  ]
+}

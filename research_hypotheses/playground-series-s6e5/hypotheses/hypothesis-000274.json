@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/overcut opportunity proxy from relative pace and traffic window",
+  "summary": "F1 strategy analysis emphasizes that pit timing depends not only on tyre age but on whether fresh tyres create an undercut advantage or whether cold-tyre conditions favor an overcut.",
+  "rationale": "F1 strategy analysis emphasizes that pit timing depends not only on tyre age but on whether fresh tyres create an undercut advantage or whether cold-tyre conditions favor an overcut. That interaction is not captured by fixed finish-window heuristics alone.",
+  "implementation_hint": "Build race-lap relative features such as driver LapTime_Delta minus same-race-lap median, position gap proxies from Position and Position_Change, and track-specific warmup/degradation regime flags by Race x Compound x early/late stint. Add features that estimate whether pitting now likely improves relative pace next lap versus staying out one more lap.",
+  "expected_effect": "Improves discrimination in borderline windows where two drivers have similar tyre life but only one has a real tactical reason to pit immediately.",
+  "risk": "Same-lap aggregates are leakage-prone if computed on the full dataset or using future rows from the same race in validation.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

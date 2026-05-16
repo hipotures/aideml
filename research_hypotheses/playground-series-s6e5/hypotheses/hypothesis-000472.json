@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Map relative tyre labels to absolute Pirelli C-compounds",
+  "summary": "The dataset uses HARD/MEDIUM/SOFT, but those labels are event-relative; Pirelli nominates different C1-C5/C6 compounds per race, and 2023-2025 tyre ranges changed.",
+  "rationale": "The dataset uses HARD/MEDIUM/SOFT, but those labels are event-relative; Pirelli nominates different C1-C5/C6 compounds per race, and 2023-2025 tyre ranges changed. A MEDIUM at one GP can be a different physical tyre than a MEDIUM elsewhere, so fixed expected-life maps blur degradation signals.",
+  "implementation_hint": "Add a Race-Year lookup from public Pirelli/F1 compound announcements mapping HARD/MEDIUM/SOFT to absolute C-code, hardness rank, adjacent/non-adjacent allocation flag, and season tyre-era indicators. Replace or augment current SOFT/MEDIUM/HARD life constants with C-code-specific and race-specific priors.",
+  "expected_effect": "Better cross-race generalization and cleaner interactions between TyreLife, degradation, Race, and Year, especially for 2025 races with unusual allocations.",
+  "risk": "Manual lookup errors or missing race-name normalization can hurt; keep unknowns as explicit categories and test with Race-Year grouped CV.",
+  "sources": [
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/",
+    "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2025-united-states-grand.iA1RRCtPcRcMlIZqdQP3G",
+    "https://en.wikipedia.org/wiki/Formula_One_tyres"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Map `SOFT/MEDIUM/HARD` to absolute Pirelli compounds by `Race-Year`",
+  "summary": "Public F1 tyre docs note that `soft/medium/hard` are relative weekend labels chosen from the wider C1-C5/C6 range, so the same observed `SOFT` can mean very different durability and degradation across races.",
+  "rationale": "Public F1 tyre docs note that `soft/medium/hard` are relative weekend labels chosen from the wider C1-C5/C6 range, so the same observed `SOFT` can mean very different durability and degradation across races. Current heuristics treat the label as globally comparable, which likely blurs cross-race generalization.",
+  "implementation_hint": "Join a small external lookup table of Pirelli nominations per `Race-Year` and derive absolute hardness index, gap-to-softest, gap-to-hardest, and race-relative compound ordinal. Recompute expected stint-life priors from absolute compound identity, not just displayed label. Validate with folds grouped by `Year_Race` so the lookup does not leak outcome patterns.",
+  "expected_effect": "Should improve transfer across tracks and seasons, especially where current service-window thresholds are misaligned because `SOFT` at one event behaves like `MEDIUM` at another.",
+  "risk": "Requires careful race-name normalization and external table hygiene; gains may concentrate on dry races only.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/",
+    "https://www.formula1.com/en/latest/article/pirelli-confirm-tyre-choices-for-first-three-f1-races-of-2023-as-new.1xlpcTVaLqw0NeM3aYoyCt"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

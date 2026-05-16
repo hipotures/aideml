@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-Constrained Dry Expert With Purged Chronological Stacking",
+  "summary": "Official model docs note monotonic constraints can improve predictive performance when prior structure is strong.",
+  "rationale": "Official model docs note monotonic constraints can improve predictive performance when prior structure is strong. For dry green-flag racing, features such as stop-pressure, inability to finish, and legality pressure should usually move pit probability in one direction, while recent-pit freshness should move it the other. Pairing that with purged chronological validation and sigmoid stacking gives a lower-variance specialist.",
+  "implementation_hint": "Train a dry-race LightGBM/XGBoost expert with increasing constraints on `Service_Window_Pressure`, `Finish_Stop_Pressure`, `Cannot_Finish_On_Current_Tyre`, and legality-pressure features, and decreasing constraints on cooldown/freshness features. Evaluate with race-ordered splits plus a gap/purge around fold boundaries, then blend OOF predictions using sigmoid calibration or logistic stacking rather than isotonic.",
+  "expected_effect": "Small but robust generalization gain by removing nonsensical inversions and reducing fold-specific overfit, especially if the leaderboard test period shifts slightly from train.",
+  "risk": "Bad constraint signs can suppress real overcut regimes, and constrained trees can become too shallow if the feature set is noisy.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

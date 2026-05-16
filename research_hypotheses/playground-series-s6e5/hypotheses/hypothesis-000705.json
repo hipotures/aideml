@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Non-overlapping landmark hazard stack instead of plain row classification",
+  "summary": "Recurrent-event literature shows stacked landmark models can be biased when overlapping landmark periods are used.",
+  "rationale": "Recurrent-event literature shows stacked landmark models can be biased when overlapping landmark periods are used. This task is exactly a repeated discrete-time next-event problem, so reframing rows as landmark hazards with non-overlapping evaluation windows is a cleaner inductive bias than ordinary iid classification.",
+  "implementation_hint": "Create person-period style training with group keys at least (Year,Race,Driver,Stint). Train a binary hazard model for next-lap pit probability, but validate with race-chronology-safe, non-overlapping landmark folds and purge adjacent laps from train when the same driver-race appears in validation. Compare against current CV; if local score drops but fold variance tightens, trust the safer split.",
+  "expected_effect": "May not spike raw CV immediately, but should reduce optimistic validation and improve transfer to hidden races/public LB.",
+  "risk": "Main risk is lower local CV because the split is harsher; also easy to accidentally duplicate near-identical landmarks if stacking is not carefully purged.",
+  "sources": [
+    "https://pubmed.ncbi.nlm.nih.gov/27142981/",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://academic.oup.com/biostatistics/article/22/2/266/5542991"
+  ]
+}

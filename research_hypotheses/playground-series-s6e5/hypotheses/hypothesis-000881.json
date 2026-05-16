@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use lap-group ranking plus sigmoid-calibrated regime blend",
+  "summary": "Pit calls are partly relative within a lap and race state, but final submissions are scored by global ROC AUC.",
+  "rationale": "Pit calls are partly relative within a lap and race state, but final submissions are scored by global ROC AUC. CatBoost ranking objectives let you learn within-group ordering, while scikit-learn notes sigmoid calibration preserves ranking whereas isotonic can introduce ties and alter AUC. This supports a two-model blend: local ranker for relative urgency, classifier for global probability shape.",
+  "implementation_hint": "Train a ranker with groups like Year-Race-LapNumber or Year-Race-LapNumber-CompoundBucket, using PairLogit/QueryAUC-style objectives. Convert rank scores to standardized logits, then blend with the main classifier using out-of-fold sigmoid calibration, optionally with separate calibrators for dry vs wet and neutralized vs green regimes.",
+  "expected_effect": "Should sharpen ordering among same-lap contenders without sacrificing AUC when merged through rank-preserving calibration.",
+  "risk": "Some laps have no or many positives, making grouping noisy; over-grouping can hurt if pit calls are not truly competitive within that slice.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB"
+  ]
+}

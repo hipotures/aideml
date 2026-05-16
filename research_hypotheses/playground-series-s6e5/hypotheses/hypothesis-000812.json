@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "State-space tyre-state expert with filtered cliff probability",
+  "summary": "A 2026 F1 tyre-degradation paper shows state-space models with pit-stop resets outperform AR-style baselines and yield interpretable latent pace/degradation states.",
+  "rationale": "A 2026 F1 tyre-degradation paper shows state-space models with pit-stop resets outperform AR-style baselines and yield interpretable latent pace/degradation states. That fits this task better than more hand-set tyre-life thresholds because pit decisions are triggered by hidden degradation phase changes, not just observed TyreLife.",
+  "implementation_hint": "Build a lightweight per-(Year,Race,Driver,Stint) online filter using only past laps to estimate latent tyre pace, degradation slope, and probability of entering a late-stint 'cliff' regime; feed those filtered states and one-step-ahead residuals into the current tabular model. Validate with race-held-out folds so the filter never sees future laps from the same stint.",
+  "expected_effect": "Should reduce variance from noisy LapTime_Delta/Cumulative_Degradation and add signal exactly near ambiguous pit-window laps.",
+  "risk": "Extra complexity may add little if current features already proxy latent state well; must enforce strict causal filtering to avoid leakage.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

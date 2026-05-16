@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-CatBoost specialist on strategy state tuples",
+  "summary": "CatBoost was designed to reduce prediction shift from categorical target statistics, which is directly relevant here because `Driver`, `Race`, `Year`, `Compound`, and `Stint` are high-cardinality and strategy-like.",
+  "rationale": "CatBoost was designed to reduce prediction shift from categorical target statistics, which is directly relevant here because `Driver`, `Race`, `Year`, `Compound`, and `Stint` are high-cardinality and strategy-like. The current best solutions mostly use raw categories, frequencies, and manual heuristics, not leakage-safe online CTRs over state tuples.",
+  "implementation_hint": "Train a separate CatBoost model with categorical inputs left raw and combinations such as `Driver x Compound`, `Race x Compound`, `Driver x Race_Year`, `Stint x Compound`, `PriorPitCount x Compound`. Evaluate only with `Race_Year`/race-grouped OOF splits and blend its OOF predictions with the current GBDT stack.",
+  "expected_effect": "Captures stable but nonlinear strategy priors and interaction effects that manual frequency features miss, with a realistic chance of small additive AUC gain.",
+  "risk": "Can overfit historical driver/team behavior if folds are not race-blocked; year drift may make some priors brittle.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/features/categorical-features.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

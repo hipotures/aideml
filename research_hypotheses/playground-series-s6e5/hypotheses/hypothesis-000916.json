@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Per-race sequential lag and rolling features",
+  "summary": "Pit calls are lap-sequential decisions.",
+  "rationale": "Pit calls are lap-sequential decisions. FastF1 lap data exposes Driver, LapNumber, Stint, Compound, TyreLife, PitIn/PitOut, Position and TrackStatus fields, and F1 strategy work treats tyre degradation and lap-time evolution as dynamic processes rather than independent rows. The current best solutions do not use ordered within-driver/race lag or rolling context.",
+  "implementation_hint": "Sort by Race, Year, Driver, LapNumber and create groupwise lag1/lag2 and rolling-3/5 features for LapTime_Delta, Position_Change, Position, Cumulative_Degradation, TyreLife, and PitStop. Add deltas from rolling mean, rolling std, and last-lap worsening flags. Ensure test rows are concatenated only for feature continuity, with no target-derived future values.",
+  "expected_effect": "Should improve AUC by detecting the immediate pre-pit pattern: pace drop, position loss, and stint ageing over recent laps.",
+  "risk": "If train/test rows are not complete chronological continuations within each race-driver group, rolling features may add noise or accidental leakage.",
+  "sources": [
+    "https://docs.fastf1.dev/core.html",
+    "https://docs.fastf1.dev/getting_started/basics.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

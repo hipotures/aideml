@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Test a raw-categorical CatBoost branch with combination CTRs",
+  "summary": "The dataset has very high-cardinality categorical structure (`Driver`, `Race`, `Year`, `Compound`) and the current best code mostly compresses that into frequencies and medians.",
+  "rationale": "The dataset has very high-cardinality categorical structure (`Driver`, `Race`, `Year`, `Compound`) and the current best code mostly compresses that into frequencies and medians. CatBoost is explicitly designed to build ordered target statistics and feature combinations without naive one-hot leakage.",
+  "implementation_hint": "Train a CatBoost classifier on the strongest numeric base features plus raw categorical columns and a small number of explicit combos like `Race_Year`, `Driver x Compound`, and `Driver x Stint`. Keep preprocessing minimal; compare against the current frequency/median engineered version under the same grouped CV.",
+  "expected_effect": "May recover interaction signal from rare drivers, race-specific behavior, and compound-choice patterns that the manual encodings flatten away.",
+  "risk": "If CV is not group-safe, ordered CTRs can still look deceptively strong. CatBoost may also underperform if most of the remaining signal is temporal rather than categorical.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases"
+  ]
+}

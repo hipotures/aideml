@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost categorical expert",
+  "summary": "This dataset has very high-cardinality identities and sparse interactions across Driver, Race, Year, Compound, and Stint.",
+  "rationale": "This dataset has very high-cardinality identities and sparse interactions across Driver, Race, Year, Compound, and Stint. CatBoost’s ordered categorical processing is designed to avoid leakage while building target-statistic combinations automatically, which the current manual frequency features may only approximate.",
+  "implementation_hint": "Train a CatBoostClassifier on raw categorical columns plus the best numeric strategy features. Keep categories un-one-hot-encoded, test a compact ordered-boosting setup first, and blend its OOF predictions with the existing tree model by rank or logistic stacking.",
+  "expected_effect": "Most likely gain is on sparse entity interactions such as rare drivers, race-year shifts, and compound-by-stint behavior.",
+  "risk": "CV can be slower and noisy if folds are not race-purged; gains may be small if current numeric heuristics already dominate signal.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

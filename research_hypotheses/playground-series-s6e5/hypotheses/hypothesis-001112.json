@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fold-safe latent tyre-state filter from a state-space degradation model",
+  "summary": "Recent F1 work models lap time as observed output from a latent tyre/degradation state with pit stops as structural resets.",
+  "rationale": "Recent F1 work models lap time as observed output from a latent tyre/degradation state with pit stops as structural resets. That is a better match to this task than raw cumulative degradation because the target is effectively about hidden stint state, not just current telemetry snapshot.",
+  "implementation_hint": "Inside each training fold only, fit a simple per-compound/per-race causal filter on each driver-stint using past laps only: estimate latent pace loss, one-step degradation slope, shock/outlier flag, and post-reset recovery. Export those filtered states as new numeric features to XGB/CatBoost; never fit the filter on validation races before scoring them.",
+  "expected_effect": "Should improve separation of true end-of-stint risk from noisy slow laps and may especially help on races where raw degradation is noisy or negative-valued.",
+  "risk": "Easy to leak if the smoother uses future laps or is fit on full data; also possible that a lightweight filter adds little beyond current handcrafted tyre-life proxies.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

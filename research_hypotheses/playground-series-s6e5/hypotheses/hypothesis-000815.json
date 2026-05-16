@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual undercut-value features instead of raw degradation proxies",
+  "summary": "Official F1/Pirelli strategy material emphasizes that pit timing depends on whether fresh-tyre gain can offset pit-loss and rival reactions, while recent game-theoretic work frames pit timing as a competitive sequential decision.",
+  "rationale": "Official F1/Pirelli strategy material emphasizes that pit timing depends on whether fresh-tyre gain can offset pit-loss and rival reactions, while recent game-theoretic work frames pit timing as a competitive sequential decision. That suggests modeling pit value as a counterfactual delta, not just an absolute tyre-age threshold.",
+  "implementation_hint": "For each lap, estimate local old-tyre loss from recent pace trend and field-relative lap baselines, estimate fresh-tyre pace for each compound, subtract an approximate circuit pit-loss prior, and add nearest-rival exposure features such as 'car ahead vulnerable to undercut' and 'stop now rejoins into traffic pocket'. Use only contemporaneous or lagged race-lap aggregates.",
+  "expected_effect": "Should help especially in mid-race cases where raw wear looks moderate but the strategic undercut opportunity is strong.",
+  "risk": "Pit-loss and fresh-tyre gain are noisy without external timing detail; badly estimated counterfactuals can just duplicate existing features with more noise.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-possible-race-strategies-for-the-2024.149KllzWtB6CJIHyNcDMnE",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

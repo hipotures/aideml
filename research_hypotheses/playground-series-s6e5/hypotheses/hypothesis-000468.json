@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add Monaco 2025 special rule debt",
+  "summary": "The 2025 FIA sporting regulations made Monaco different: drivers had to use at least three tyre sets, unlike the usual two dry-compound requirement.",
+  "rationale": "The 2025 FIA sporting regulations made Monaco different: drivers had to use at least three tyre sets, unlike the usual two dry-compound requirement. Current stop-debt features that assume one required stop can under-rank the second mandatory Monaco stop.",
+  "implementation_hint": "Create Monaco2025 flag and set required_stop_count/required_tyre_sets higher for Race == Monaco Grand Prix and Year == 2025. Add StopDebtToRule, LateRace_MonacoDebt, and RuleDebtAfterCurrent interactions with PitCountAfterCurrent and LapsRemaining_Est.",
+  "expected_effect": "Localized but clean lift on Monaco 2025 rows and better generalization than generic tyre-life thresholds.",
+  "risk": "If Race names omit Monaco or the competition data abstracts rules away, this becomes a sparse feature with little impact.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq.UUe16nwpOcqBe9f6PYgkq"
+  ]
+}

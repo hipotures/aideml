@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Discrete-Time Remaining-Laps Survival Instead Of Plain Next-Lap Classification",
+  "summary": "Official survival docs and recent survival literature both fit this label geometry: each row has a positive time-to-event, and many rows are naturally right-censored by race finish or no later pit.",
+  "rationale": "Official survival docs and recent survival literature both fit this label geometry: each row has a positive time-to-event, and many rows are naturally right-censored by race finish or no later pit. This reframes the problem as learning the full pit-window shape, then extracting the 1-lap hazard, rather than asking a standalone binary question at each lap.",
+  "implementation_hint": "For each driver-race row, compute `laps_to_next_pit`; if no future pit exists, right-censor at remaining race length. Train either XGBoost `survival:aft` or a discrete-time hazard model on Kaplan-Meier-quantile bins, then convert the predicted survival curve into `P(pit on next lap | not yet pitted)` and blend that probability with the current classifier.",
+  "expected_effect": "Should improve early/late-stint generalization and reduce noisy threshold behavior around pit windows, with the biggest upside on rows far from the immediate cliff.",
+  "risk": "Label construction and hazard-to-probability conversion are easy to get wrong; AFT may underperform if the true hazard is highly non-proportional across compounds/regimes.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://catboost.ai/docs/en/concepts/loss-functions-regression"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only latent degradation slope and cliff features",
+  "summary": "Recent F1 tire-degradation work models pace as a latent state with stint resets and time-varying degradation; the pit-stop DL paper also reports gains from sequence-aware models.",
+  "rationale": "Recent F1 tire-degradation work models pace as a latent state with stint resets and time-varying degradation; the pit-stop DL paper also reports gains from sequence-aware models. Your best features are static window heuristics, so a simpler tabular version is to estimate online degradation state, slope, and acceleration within each driver-race-stint using only prior laps.",
+  "implementation_hint": "For each (Year,Race,Driver,Stint), build strictly lagged features: 1-3 lap rolling means of LapTime_Delta and Cumulative_Degradation, exponential-weighted slope, second-difference 'cliff' indicators, residual-to-stint-trend, and time-since-last-local-minimum pace. Reset at PitStop/Stint boundaries. Feed these into the existing booster rather than switching fully to an RNN.",
+  "expected_effect": "Should improve recall near true stop windows by detecting accelerating tire drop-off that static tyre-age ratios miss.",
+  "risk": "If row order is not perfectly chronological inside each driver-race sequence, leakage or noisy lags will hurt CV; needs strict sorting and fold-safe computation.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

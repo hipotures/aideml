@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-aware CV and experts: leave one race-year out, then blend slick/wet and green-flag/caution models",
+  "summary": "The dataset mixes years, circuits, wet compounds, and even pre-season testing, so random or weak grouping can overstate CV by reusing race-specific distributions.",
+  "rationale": "The dataset mixes years, circuits, wet compounds, and even pre-season testing, so random or weak grouping can overstate CV by reusing race-specific distributions. GroupKFold with race-year groups is the minimum safeguard, and separate experts often help when behavior changes sharply across regimes.",
+  "implementation_hint": "Validate with `Race_Year` or stricter leave-one-event-out groups, then train specialist models for slick vs wet compounds and normal-green vs caution/rain regimes. Use a simple gating rule from compound/track-status/weather to blend expert probabilities.",
+  "expected_effect": "Better offline reliability and potential leaderboard lift if current CV is inflated by event leakage or if one global model is averaging across incompatible regimes.",
+  "risk": "If current CV is already strict, gains may be small; splitting into experts can reduce sample size and overfit rare wet/testing regimes.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://openf1.org/"
+  ]
+}

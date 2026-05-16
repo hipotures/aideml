@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strict OOF regime-wise calibration and narrow stack",
+  "summary": "The current plateau suggests ordering is already strong, so remaining leaderboard gain may come from probability shaping and model diversity.",
+  "rationale": "The current plateau suggests ordering is already strong, so remaining leaderboard gain may come from probability shaping and model diversity. Beta calibration addresses skewed score distortions; Venn-Abers gives a strong calibration framework. A small stack over heterogeneous base models is more plausible than more same-family feature variants.",
+  "implementation_hint": "Build OOF predictions from 2-3 diverse bases such as the current GBDT, CatBoost, and the ranker score. Fit tiny second-stage calibrators only on OOF predictions, separately for coarse regimes like dry vs wet and early/mid/late race; compare beta calibration, isotonic, or Venn-Abers-style maps. Keep race-blocked folds end-to-end.",
+  "expected_effect": "Likely a modest but real public-score improvement if test distribution differs slightly from local CV and if the base models make complementary mistakes.",
+  "risk": "Calibration can hurt AUC if regimes are too small or if the calibrator is fit on noisy folds. Any in-fold stacking or globally fit calibrator will leak and overstate gains.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v91/nouretdinov18a.html",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

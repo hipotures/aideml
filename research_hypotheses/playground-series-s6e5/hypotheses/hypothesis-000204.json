@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Mandatory-Compound Feasibility State",
+  "summary": "FIA rules require two different dry compounds in a dry race.",
+  "rationale": "FIA rules require two different dry compounds in a dry race. A driver who has not yet satisfied that requirement is in a different strategic state from one who already has, and this can be inferred from current-race compound history rather than external data.",
+  "implementation_hint": "For each driver within Race-Year, reconstruct compounds already used before the current lap, then create features like MustUseAnotherDryCompound, MandatoryRuleAlreadySatisfied, and legal-finish flags for stopping now versus stretching current tyres. Treat wet/intermediate races separately because the dry-compound mandate no longer applies.",
+  "expected_effect": "Adds a regulation-grounded state variable that should be most useful in mid/late dry-race stints where window heuristics alone are ambiguous.",
+  "risk": "This overlaps with prior rule-aware ideas, so it needs strict current-race reconstruction and a sharper legality/feasibility formulation to be genuinely new.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_2_-_2023-10-25.pdf"
+  ]
+}

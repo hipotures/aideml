@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit Rule-State Features, Including Dry Compound Debt And Monaco-2025 Two-Stop Override",
+  "summary": "F1 strategy depends on legal constraints, not just wear.",
+  "rationale": "F1 strategy depends on legal constraints, not just wear. Official F1 guidance says normal dry races require at least two different slick compounds, wet races are exempt, and Monaco 2025 uniquely required two stops with at least three tyre sets. Current features only partially encode slick-history pressure.",
+  "implementation_hint": "Add leakage-safe per driver-race state variables: `used_slick_count`, `current_compound_counts_toward_rule`, `remaining_legal_obligations`, `can_finish_legally_without_stop`, `wet_rule_exempt`, and a `monaco_2025_forced_two_stop` flag with derived `min_stops_remaining` and `laps_until_rule_breach_window` features.",
+  "expected_effect": "Should sharpen late-race and strategy-edge cases where the car can finish physically but not legally, especially around one-stop vs two-stop boundary races.",
+  "risk": "If Monaco is absent or rare in test, the special-case feature may overfit; keep the generic legality-state features separate from the Monaco override.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq.html.UUe16nwpOcqBe9f6PYgkq",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

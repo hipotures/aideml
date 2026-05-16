@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-gated raw-categorical ensemble with sigmoid-only calibration",
+  "summary": "Ordered boosting is well-suited for high-cardinality categorical interactions like Driver x Race x Compound, while sigmoid calibration preserves ranking unlike isotonic.",
+  "rationale": "Ordered boosting is well-suited for high-cardinality categorical interactions like Driver x Race x Compound, while sigmoid calibration preserves ranking unlike isotonic. A gated blend can let different specialists dominate in slick, wet, early-race, and late-race regimes without damaging AUC.",
+  "implementation_hint": "Train complementary specialists such as CatBoost on raw categories plus a tree model on engineered numerics, then learn simple regime-dependent blend weights from OOF predictions. If calibrating, prefer Platt/sigmoid per regime; avoid isotonic unless tie-induced AUC loss is acceptable.",
+  "expected_effect": "Likely modest but reliable gain from better handling unseen/high-cardinality categories and distribution shifts across compounds/weather while preserving rank quality.",
+  "risk": "Too many gating rules can overfit; keep regime definitions coarse and estimate weights strictly OOF.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

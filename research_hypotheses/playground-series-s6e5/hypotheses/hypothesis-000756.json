@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace Calibration-First Blending With a Direct AUC-Optimized OOF Meta-Learner",
+  "summary": "The leaderboard metric is ROC AUC, so the final ensemble should optimize ranking directly, not just probability calibration.",
+  "rationale": "The leaderboard metric is ROC AUC, so the final ensemble should optimize ranking directly, not just probability calibration. A pairwise AUC objective or listwise meta-learner on strictly OOF base predictions is a different lever from beta/isotonic calibration and may exploit complementary specialists better.",
+  "implementation_hint": "Collect strictly OOF predictions from diverse specialists, then fit a simple linear or shallow tree meta-model with pairwise AUC loss or another rank-focused objective. Only after that consider a light monotone calibration if needed for stability, never using in-fold predictions.",
+  "expected_effect": "Can improve public-score robustness when base models disagree on ordering near the pit window, even if each single model is already well calibrated.",
+  "risk": "Pairwise meta-learning can overfit if too many highly correlated base models are included; any OOF mistake becomes instant leakage.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/abs/pii/S0031320311004729",
+    "https://www.research.monash.edu/en/publications/area-under-roc-optimisation-using-a-ramp-approximation/",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0167865505003077"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

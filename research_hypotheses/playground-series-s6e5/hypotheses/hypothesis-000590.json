@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-blocked CatBoost on raw high-cardinality categoricals",
+  "summary": "The current best solutions hand-engineer many frequency/interactions for `Driver`, `Race`, and `Compound`, but CatBoost was designed to turn categorical values and combinations into ordered target statistics while reducing boosting bias.",
+  "rationale": "The current best solutions hand-engineer many frequency/interactions for `Driver`, `Race`, and `Compound`, but CatBoost was designed to turn categorical values and combinations into ordered target statistics while reducing boosting bias. With 800+ drivers and repeated race/compound contexts, it can capture interaction structure the manual encodings likely miss.",
+  "implementation_hint": "Train `CatBoostClassifier` with raw categorical columns plus the strongest numeric pit-window features, using folds grouped by `Year+Race`. Drop most global frequency encodings to avoid redundancy, keep depth modest, and compare pure CatBoost vs a blend with the current GBDT baseline. Ensure every OOF prediction is generated from race-held-out folds only.",
+  "expected_effect": "Could improve CV slightly on its own, but the bigger value may be a more diverse error pattern for ensembling than another LightGBM-style feature variant.",
+  "risk": "If folds are not strictly race-blocked, ordered categorical statistics will look better than they really are. If numeric features dominate and CatBoost is under-tuned, it may only match the baseline.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_fighting-biases",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Causal latent tyre-state filter with uncertainty features",
+  "summary": "Recent F1 tyre-degradation work models wear as a latent state with pit-stop resets, and motorsport strategy literature treats degradation as the main driver of stop timing.",
+  "rationale": "Recent F1 tyre-degradation work models wear as a latent state with pit-stop resets, and motorsport strategy literature treats degradation as the main driver of stop timing. That maps well to this tabular setting: the current code uses observed degradation and EWMs, but not an explicit hidden wear state or state uncertainty. A causal filter can summarize whether a driver is deteriorating faster than raw TyreLife suggests.",
+  "implementation_hint": "Within each (Year,Race,Driver,Stint), build a one-step causal filter from LapTime_Delta, Cumulative_Degradation, TyreLife, Compound, and LapNumber. Emit filtered level, filtered slope, innovation, and posterior uncertainty; reset at PitStop=1. Feed these as additional numeric features into the existing tree stack, computed strictly from past laps only.",
+  "expected_effect": "Medium upside if TyreLife and degradation are noisy proxies for true wear; should be most useful on dry compounds and long green-flag stints.",
+  "risk": "Easy to leak if the filter uses contemporaneous or future race-level aggregates; over-parameterized filters may just recreate current EWMs with more variance.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

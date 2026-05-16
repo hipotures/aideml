@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Trailing degradation derivatives instead of static tyre thresholds",
+  "summary": "Recent F1 research models tyre degradation as a latent dynamic process with pit stops as state resets, and pit-stop DL work reports strong gains from temporal dependencies.",
+  "rationale": "Recent F1 research models tyre degradation as a latent dynamic process with pit stops as state resets, and pit-stop DL work reports strong gains from temporal dependencies. The current winning features are mostly levels and ratios, not causal slope/curvature of deterioration.",
+  "implementation_hint": "Within each `Race_Year, Driver, Stint`, add trailing 2-5 lap slope, curvature, EWMA, and change-point features for `LapTime (s)`, `LapTime_Delta`, `Cumulative_Degradation`, and `TyreLife`; optionally estimate a simple Kalman/state-space latent pace-loss feature reset at pits.",
+  "expected_effect": "Should detect tyre-cliff onset and separate sustained degradation from one-off noisy laps, especially in ambiguous mid/late-stint cases.",
+  "risk": "Short stints and neutralized laps make derivatives noisy; all windows must be strictly causal and robust to extreme lap-time outliers.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

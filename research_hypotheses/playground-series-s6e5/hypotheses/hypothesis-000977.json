@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Estimate latent tyre-state and degradation slope instead of using raw wear proxies only",
+  "summary": "Recent F1 research models tyre degradation as a latent state with pit-stop resets and shows better predictive robustness than a simple AR baseline.",
+  "rationale": "Recent F1 research models tyre degradation as a latent state with pit-stop resets and shows better predictive robustness than a simple AR baseline. That suggests your current explicit features like `TyreLife`, `Cumulative_Degradation`, and rolling lap deltas may be missing a hidden pace-loss state and its uncertainty.",
+  "implementation_hint": "Within each driver-race-stint, residualize lap time against race/lap field pace, then fit a simple Kalman/state-space or even recursive linear trend model with reset at pit stops. Use filtered state, slope, acceleration, and state uncertainty as new features; also derive undercut pressure by comparing current latent degradation to fresh-tyre expectation.",
+  "expected_effect": "Could add signal where raw tyre age is noisy across compounds, tracks, and weather, improving ranking inside the true pit window.",
+  "risk": "A full Bayesian fit may be too slow; a simplified filter is safer but may underfit if race context is not removed first.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

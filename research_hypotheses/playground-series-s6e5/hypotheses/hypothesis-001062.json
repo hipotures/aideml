@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Reframe as discrete-time survival with censoring, then read out next-lap hazard",
+  "summary": "The target is naturally a time-to-next-pit event, and survival literature explicitly shows discrete-time person-period framing lets you use standard classifiers while handling censoring correctly.",
+  "rationale": "The target is naturally a time-to-next-pit event, and survival literature explicitly shows discrete-time person-period framing lets you use standard classifiers while handling censoring correctly. This sharpens the earlier hazard idea into a concrete formulation: optimize the whole stop-timing process, then use hazard at t+1 as the submission probability.",
+  "implementation_hint": "For each row, build remaining-laps-to-next-pit labels on train; if no later pit exists in that race, mark as right-censored at race end. Train either a discrete-time hazard model on horizon bins 1..H or an XGBoost AFT model on interval labels. Use auxiliary losses over 1-3 lap horizons, but submit only hazard(h=1).",
+  "expected_effect": "Better ranking near pit windows and fewer inconsistent probabilities across adjacent laps from the same stint.",
+  "risk": "Data expansion can become heavy, and survival formulations may overfit if horizons are too granular for rare late-race events.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

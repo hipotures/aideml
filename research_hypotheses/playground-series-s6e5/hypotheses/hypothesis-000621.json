@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-level pit-window distance features",
+  "summary": "Strategy models describe optimal stint length as a function of pit loss and degradation, while real F1 race strategy varies by circuit, compound, traffic, and safety-car likelihood.",
+  "rationale": "Strategy models describe optimal stint length as a function of pit loss and degradation, while real F1 race strategy varies by circuit, compound, traffic, and safety-car likelihood. Current runs use median TyreLife by Race/Compound but do not encode distance to likely stop windows.",
+  "implementation_hint": "From train only, compute smoothed empirical PitNextLap rate by Year-Race-Compound-Stint-TyreLife and broader backoffs such as Race-Compound-TyreLife, Compound-Stint-TyreLife, and Year-Compound-TyreLife. Add features for posterior hazard, distance to local hazard peak, cumulative hazard within next 1/2/3 tyre-life bins, and whether TyreLife is inside the central 50/80% positive window. Use out-of-fold encoding for train and full-train encoding for test.",
+  "expected_effect": "Can sharpen ranking around common one-stop/two-stop windows and add strategy priors that tree models may not infer from continuous interactions alone.",
+  "risk": "High leakage risk if encodings are not out-of-fold for train. Sparse race-specific bins need Bayesian smoothing and fallback hierarchy.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://racemate.io/tyre-strategy-simulator/"
+  ]
+}

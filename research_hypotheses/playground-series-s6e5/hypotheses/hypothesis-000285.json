@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-Preserving OOF Blend With Sigmoid Calibration Only On The Final Mix",
+  "summary": "AUC is rank-based, so isotonic calibration can hurt by introducing ties, while sigmoid calibration preserves ranking.",
+  "rationale": "AUC is rank-based, so isotonic calibration can hurt by introducing ties, while sigmoid calibration preserves ranking. That makes a good testable direction a specialist blend first, then apply only a monotonic calibrator to the blended score if public submissions benefit.",
+  "implementation_hint": "Build 2-3 specialists with different inductive biases, such as current feature-rich GBDT/AutoML, CatBoost categorical specialist, and hazard-style model. Generate strict out-of-fold predictions, combine them with a simple linear or logistic meta-blend, and if needed calibrate only the final blend with `method='sigmoid'` on OOF predictions. Compare raw blend vs sigmoid-calibrated blend on CV and leaderboard.",
+  "expected_effect": "Can capture complementary ranking signal while avoiding the public-score degradation that often comes from overfitted non-monotonic calibration.",
+  "risk": "If specialists are too correlated, the blend adds complexity without lift; calibration done on in-fold predictions will leak badly.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

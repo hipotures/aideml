@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-and-Weather Regime Expert With Crossover Logic",
+  "summary": "FIA rules and Pirelli tyre behavior imply qualitatively different stop logic in dry mandatory-compound races versus intermediate/full-wet crossover conditions.",
+  "rationale": "FIA rules and Pirelli tyre behavior imply qualitatively different stop logic in dry mandatory-compound races versus intermediate/full-wet crossover conditions. Pirelli explicitly notes wide crossover windows for intermediates, while FIA dry-race tyre obligations create structural pressure that a single global model may smooth away.",
+  "implementation_hint": "Train a small specialist only for wet/crossover rows (`INTERMEDIATE`/`WET`) and another for dry rows with explicit rule-state features: whether the car has likely satisfied the two-dry-compound obligation, whether current compound can finish, and whether a fresh alternative can finish. Blend specialists by regime or gate them hard by compound/weather state.",
+  "expected_effect": "Could unlock gains on rare but strategically distinct subpopulations that a single global learner underfits, while also reducing variance from forcing one formula across dry and wet logic.",
+  "risk": "Wet rows may be sparse, so the wet expert can overfit; inferring compound-obligation state from available columns may be imperfect if historical rule details vary across seasons.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Model strategic reaction using same-lap field context and pit-wave features",
+  "summary": "Public F1 strategy papers emphasize that competition changes optimal stopping behavior, and recent pit-stop decision support finds pitting probability rises when nearby cars pit.",
+  "rationale": "Public F1 strategy papers emphasize that competition changes optimal stopping behavior, and recent pit-stop decision support finds pitting probability rises when nearby cars pit. The dataset likely allows same-lap race context from all cars in a race-lap snapshot.",
+  "implementation_hint": "Within each Year-Race-LapNumber group, create features such as fraction of cars already pitted this lap, whether adjacent on-track positions pitted, position-relative pace z-scores, and local cluster signals by front/mid/back of field. Test both raw group stats and interaction terms with compound, stint, and race phase.",
+  "expected_effect": "Captures undercut/cover reactions that single-car features miss, likely lifting AUC on borderline strategic laps.",
+  "risk": "Need careful definition of what is observable at prediction time; avoid using any information that would not exist before the next-lap decision.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

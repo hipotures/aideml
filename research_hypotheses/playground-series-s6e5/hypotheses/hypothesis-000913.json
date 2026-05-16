@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Filtered latent-wear features with uncertainty instead of raw degradation ratios",
+  "summary": "A recent F1 state-space paper models lap time as fuel plus latent tyre pace with pit-stop resets and shows better predictive robustness than a simple AR baseline.",
+  "rationale": "A recent F1 state-space paper models lap time as fuel plus latent tyre pace with pit-stop resets and shows better predictive robustness than a simple AR baseline. Your current features approximate wear with ratios and short rolling windows; a filtered latent state, slope, and uncertainty should capture nonlinear fade and warm-up more causally.",
+  "implementation_hint": "Per driver-race-stint, fit a simple causal state-space/Kalman filter on lap-time residuals after race-level normalization. Export filtered wear level, wear acceleration, reset shock after pit, and posterior variance as tabular features, with compound-specific process noise if feasible.",
+  "expected_effect": "Better separation between genuine tyre fade and one-off slow laps from traffic or anomalies, improving borderline pit decisions.",
+  "risk": "Misspecified filters can inject noise, and runtime may become nontrivial if applied naively to every stint.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

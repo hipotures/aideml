@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-Preserving Ensemble With Leakage-Aware CV",
+  "summary": "ROC AUC rewards ordering, so diversified models and validation design matter more than probability calibration.",
+  "rationale": "ROC AUC rewards ordering, so diversified models and validation design matter more than probability calibration. Random row splits can inflate scores because adjacent laps from the same driver-race are highly correlated.",
+  "implementation_hint": "Train several models on the same engineered table: AutoGluon GBM/XGB, standalone CatBoost with categorical columns, and a regularized logistic/hazard baseline. Compare random CV to GroupKFold by Race-Year or Driver-Race, then blend predictions by OOF AUC rank or simple average; avoid isotonic unless optimizing calibration separately.",
+  "expected_effect": "May improve public/private robustness by combining nonlinear tabular fit with strategy-prior and hazard-style rankings.",
+  "risk": "Grouped CV may show lower local scores than random split; if public test resembles random rows, conservative validation may underselect leaderboard-tuned features.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/cross_validation.html#group-k-fold",
+    "https://catboost.ai/docs/en/concepts/python-reference_catboostclassifier",
+    "https://auto.gluon.ai/stable/tutorials/tabular/tabular-essentials.html"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace raw tyre-age heuristics with a latent wear filter",
+  "summary": "Recent F1 papers model tyre degradation as a latent state with pit-stop resets and show that timing data can recover hidden tyre pace better than simple surface features.",
+  "rationale": "Recent F1 papers model tyre degradation as a latent state with pit-stop resets and show that timing data can recover hidden tyre pace better than simple surface features. That is a stronger formulation than fixed compound life constants or raw TyreLife alone.",
+  "implementation_hint": "Within each Driver x Race stint, run a lightweight online state-space or Kalman-style filter using LapTime (s), LapTime_Delta, Cumulative_Degradation and PitStop resets. Emit filtered wear level, wear slope, one-step residual, uncertainty and a cliff/alarm indicator as tabular features for the tree model.",
+  "expected_effect": "Sharper next-lap hazard near tyre cliff events and better handling of slow laps that preserve tyres, including Safety Car breathing periods.",
+  "risk": "Filter parameters can overfit if estimated globally; tune only inside training folds and compare against a very simple deterministic baseline.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

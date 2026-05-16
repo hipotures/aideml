@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone Rule-Aware GBDT",
+  "summary": "Some pit-risk relationships are directionally constrained by physics or rules: more tyre age, more positive lap-time loss, more finish deficit, and remaining dry-compound debt should not usually reduce pit likelihood within the same regime.",
+  "rationale": "Some pit-risk relationships are directionally constrained by physics or rules: more tyre age, more positive lap-time loss, more finish deficit, and remaining dry-compound debt should not usually reduce pit likelihood within the same regime. XGBoost/LightGBM monotone constraints are an adjacent competition pattern for reducing brittle overfit under shift.",
+  "implementation_hint": "Create signed features such as `CurrentTyreFinishExcess`, `Positive_LapTime_Delta`, `TyreLife`, `StopDebtAfterCurrent`, and `TyreLife_To_Remaining`. Fit a constrained XGBoost or LightGBM specialist with monotonicity only on clearly signed features, leaving ambiguous regime features unconstrained; optionally split dry vs wet compounds first.",
+  "expected_effect": "Lower variance and better public-score translation than an unconstrained tree on threshold-heavy engineered features.",
+  "risk": "Some signs flip in wet races, SC/VSC periods, or mandatory-compound edge cases, so overly broad constraints can flatten real signal.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html"
+  ]
+}

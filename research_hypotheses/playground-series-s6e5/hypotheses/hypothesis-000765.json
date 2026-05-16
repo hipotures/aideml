@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial-validation-weighted training for hidden train/test race shift",
+  "summary": "The public/private split may differ by race, year mix, or driver identities.",
+  "rationale": "The public/private split may differ by race, year mix, or driver identities. Covariate-shift literature and adversarial-validation work suggest weighting training rows by test-likeness can outperform pure ERM when the label mechanism is stable but feature marginals move. This is especially relevant here because the leaderboard gap is already visible despite strong local CV.",
+  "implementation_hint": "Run adversarial validation to distinguish train from test using only features available at inference, then use the adversarial score or estimated density ratio as sample weights for a second-stage model. Select models by grouped CV plus worst-fold stability, not just mean AUC, to avoid choosing a fold-fragile heuristic set.",
+  "expected_effect": "Can reduce public-LB degradation if the held-out test races/years sit in a shifted region of feature space that the current model underweights.",
+  "risk": "Importance weights can be high variance and may hurt if the apparent shift is mostly harmless or if the label conditional changes across domains.",
+  "sources": [
+    "https://www.researchgate.net/publication/357203459_Managing_dataset_shift_by_adversarial_validation_for_credit_scoring",
+    "https://research.ibm.com/publications/direct-importance-estimation-for-covariate-shift-adaptation",
+    "https://www.researchgate.net/publication/336577014_Robust_Importance_Weighting_for_Covariate_Shift"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-Time Hazard Head With Survival-Derived Features",
+  "summary": "Discrete-time survival models are a natural fit for next-lap pit probability because they model event risk at each lap conditional on not having pitted yet.",
+  "rationale": "Discrete-time survival models are a natural fit for next-lap pit probability because they model event risk at each lap conditional on not having pitted yet. This directly matches the target better than static binary classification and extends prior hazard ideas into a concrete fold-safe implementation.",
+  "implementation_hint": "Create driver-race ordered sequences and engineer survival-style state features: laps since last stop, current stint age percentile within race, cumulative non-pit survival within stint, and hazard-by-lap bins interacted with compound/wetness. Train a discrete-time hazard model or emulate one with per-lap binary rows plus lap-bin indicators, using GroupKFold by race-year and only past-lap features.",
+  "expected_effect": "Better ranking near pit windows, especially late-stint rows where static models understate rapidly rising stop risk.",
+  "risk": "Easy to leak if hazard tables or lap-bin priors are computed on full races or full folds; gains may be small if the base AutoML stack already approximates hazards.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

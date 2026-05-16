@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Train a true query-group ranker on within-lap decisions",
+  "summary": "Official CatBoost and XGBoost ranking docs support group-aware pairwise/listwise losses.",
+  "rationale": "Official CatBoost and XGBoost ranking docs support group-aware pairwise/listwise losses. Pit-stop choice is partly relative within each race-lap field state, so grouping by `Year/Race/LapNumber` matches the real decision surface better than global binary loss. This is a more concrete extension of earlier ranking ideas because it uses native query objectives rather than only post-hoc rank blending.",
+  "implementation_hint": "Build `qid = Year + Race + LapNumber`, sort by `qid`, and train one model with `rank:pairwise` or `rank:ndcg` in XGBoost and/or `QueryCrossEntropy` or `QuerySoftMax` in CatBoost. Keep the current binary model, then blend OOF predictions from the ranker and classifier. Upweight groups containing at least one actual pit to avoid spending too much signal on all-zero laps.",
+  "expected_effect": "Likely small-to-moderate gain via a more diverse expert that improves ordering among same-lap competitors, which should help ROC AUC after blending.",
+  "risk": "Many groups may have no positives, so the ranker can be noisy unless grouping, weighting, and sorting are handled carefully.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

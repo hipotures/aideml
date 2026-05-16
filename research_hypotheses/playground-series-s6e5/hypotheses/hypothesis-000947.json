@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Year Grouped Hazard Priors",
+  "summary": "Random row CV can leak race strategy patterns because rows from the same race/driver trajectory appear in both train and validation.",
+  "rationale": "Random row CV can leak race strategy patterns because rows from the same race/driver trajectory appear in both train and validation. F1 pit timing is a per-race hazard shaped by tyre rules, race progress, compound, and stint, so smoothed out-of-fold stop-lap priors should be learned under race-year grouping.",
+  "implementation_hint": "Use GroupKFold by Year_Race or leave-one-race-out to build OOF target encodings for bins such as Race x Stint x Compound x LapNumber, Race x RaceProgressBin, Year x Race x Stint, and Compound x TyreLifeBin. Smooth toward global positive rate and add both exact-bin prior and cumulative hazard prior P(stop next lap | survived to this lap).",
+  "expected_effect": "More leaderboard-robust ranking and possibly small CV gain if current CV is optimistic or noisy.",
+  "risk": "May reduce local random-CV score while improving true generalization; sparse bins need strong smoothing.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

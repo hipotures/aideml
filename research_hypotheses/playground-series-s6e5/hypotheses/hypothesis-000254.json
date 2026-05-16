@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Raw-Categorical CatBoost Specialist With Ordered Statistics",
+  "summary": "Current best solutions are feature-heavy and likely tree-ensemble dominated, but CatBoost’s ordered boosting and ordered categorical statistics are specifically designed to reduce prediction shift and leakage with high-cardinality categoricals like Driver, Race, and their interactions.",
+  "rationale": "Current best solutions are feature-heavy and likely tree-ensemble dominated, but CatBoost’s ordered boosting and ordered categorical statistics are specifically designed to reduce prediction shift and leakage with high-cardinality categoricals like Driver, Race, and their interactions.",
+  "implementation_hint": "Run a separate CatBoost classifier on mostly raw columns plus a small number of robust numeric interactions, preserving categorical columns directly and letting ordered CTRs learn `Driver x Race`, `Race x Compound`, and `Driver x Compound` structure. Keep validation grouped by race/year and avoid external one-hot or naive target encoding.",
+  "expected_effect": "A complementary specialist may capture categorical interaction signal the current handcrafted-window models miss, improving ensemble diversity more than standalone CV.",
+  "risk": "If chronology is not respected in folds or rare categories dominate, CatBoost can still overfit; compare carefully against the current best single model.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdfNeurIPS.Papers%2B1NeurIPS.Papers%2B1",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ]
+}

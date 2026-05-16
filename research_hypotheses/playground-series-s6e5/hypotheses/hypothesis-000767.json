@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Raw-categorical CatBoost specialist instead of manual frequency encoding",
+  "summary": "Your strongest runs still hand-engineer category frequencies.",
+  "rationale": "Your strongest runs still hand-engineer category frequencies. CatBoost explicitly recommends using native categorical handling and categorical combinations rather than preprocessing one-hot/frequency substitutes; this is especially relevant with sparse Driver and Race x Compound interactions.",
+  "implementation_hint": "Train a separate CatBoost model with raw categorical columns and a few high-signal crosses kept as strings, using fold-local fitting only. Keep numeric physics features, but remove most manual freq encodings in this branch so ordered CTRs/combinations do the work. Blend this specialist with the current numeric heuristic model rather than replacing it outright.",
+  "expected_effect": "Can recover signal from rare drivers/race-compound interactions and reduce brittleness from manually chosen frequency encodings.",
+  "risk": "If CV is weak, CatBoost can look better locally than on LB; tuning can also overfit sparse identities.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

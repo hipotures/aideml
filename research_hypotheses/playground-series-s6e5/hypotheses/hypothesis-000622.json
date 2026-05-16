@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native CatBoost categorical-combination model",
+  "summary": "The data has high-value categorical structure: Driver, Race, Year, Compound, Stint, and their interactions.",
+  "rationale": "The data has high-value categorical structure: Driver, Race, Year, Compound, Stint, and their interactions. CatBoost is designed to transform categorical combinations into numeric statistics internally, avoiding brittle manual one-hot encodings.",
+  "implementation_hint": "Train a standalone CatBoostClassifier with categorical columns preserved as strings/categories, class imbalance handled via scale_pos_weight or auto_class_weights, eval_metric=AUC, early stopping, and several seeds. Include engineered numeric features from the best wrapper but avoid precomputed target encodings in this variant. Blend CatBoost predictions with AutoGluon GBM/XGB by rank or weighted average.",
+  "expected_effect": "Adds model diversity and may capture Driver-Race-Compound strategy habits better than LightGBM/XGBoost on manually encoded categories.",
+  "risk": "CatBoost can overfit race identities under random splits, so require GroupKFold by Race/Year sanity checks before trusting leaderboard gains.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

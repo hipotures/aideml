@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Time-varying discrete hazard with monotone wear effects",
+  "summary": "The strongest adjacent statistical framing is still discrete-time survival, but the source material suggests the effect of tyre age is not constant: undercut power, warm-up penalty, and degradation all vary by race phase and track context.",
+  "rationale": "The strongest adjacent statistical framing is still discrete-time survival, but the source material suggests the effect of tyre age is not constant: undercut power, warm-up penalty, and degradation all vary by race phase and track context. A hazard model with varying coefficients is a more specific next step than a generic multi-horizon setup.",
+  "implementation_hint": "Expand each current row into a next-lap hazard target as before, but fit a complementary log-log or logistic discrete hazard model with spline or GAM-style interactions for `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, and `LapsRemaining`, allowing coefficients to vary with `RaceProgress`, `Compound`, and inferred regime. Enforce monotonicity where sensible on wear-related terms, then ensemble with the tree model rather than replacing it.",
+  "expected_effect": "Should sharpen probability shape around the true pit window and reduce ad hoc threshold-feature dependence.",
+  "risk": "This partially overlaps with prior hazard work; gains depend on the varying-coefficient piece being genuinely new and validated with strict race-blocked OOF.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/abs/pii/S0377221718309548",
+    "https://academic.oup.com/biomet/article/81/2/317/468177",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/"
+  ]
+}

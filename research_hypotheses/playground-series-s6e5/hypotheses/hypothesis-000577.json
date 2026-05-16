@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-Grouped Learning-to-Rank Blend",
+  "summary": "AUC rewards ordering, and the real decision is partly relative: on a given lap, only a few drivers are plausible pit candidates.",
+  "rationale": "AUC rewards ordering, and the real decision is partly relative: on a given lap, only a few drivers are plausible pit candidates. Learning-to-rank is designed for grouped binary relevance and is a different bias than plain binary classification.",
+  "implementation_hint": "Train an XGBoost ranker with qid=(Year,Race,LapNumber), label=PitNextLap, and the same feature set plus field-relative interactions. Blend its OOF score with the classifier rather than replacing the classifier. Test both rank:pairwise and rank:ndcg.",
+  "expected_effect": "Sharper within-lap ordering of who pits next, which can improve leaderboard AUC even if absolute probabilities move little.",
+  "risk": "Groups with zero or one positive produce weak pairwise signal; also avoid using future same-race information when building lap-group priors.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

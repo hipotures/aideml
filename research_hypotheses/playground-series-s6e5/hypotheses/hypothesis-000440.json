@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Residual causal sequence expert, blended rather than replacing GBDT",
+  "summary": "AutoF1 reports that an RNN trained on historic race time series can support pit-stop strategy and explicitly suggests transformer-style positional modeling for pit-stop patterns.",
+  "rationale": "AutoF1 reports that an RNN trained on historic race time series can support pit-stop strategy and explicitly suggests transformer-style positional modeling for pit-stop patterns. At the same time, FT-Transformer results show there is still no universal winner between deep tabular models and GBDT, which argues for a residual sequence expert rather than a full model swap.",
+  "implementation_hint": "Build per-driver-per-race causal sequences using only past laps. Feed recent standardized lap features plus the strong tree-model score into a lightweight GRU, TCN, or small transformer encoder, and train it to predict residual error on top of the tabular baseline. Blend its OOF predictions with the baseline via rank averaging.",
+  "expected_effect": "Captures temporal motifs that fixed handcrafted windows miss, while keeping variance lower than a standalone sequence model.",
+  "risk": "Implementation complexity is highest here; order, padding, and fold leakage can produce fake gains very easily.",
+  "sources": [
+    "https://eprints.whiterose.ac.uk/id/eprint/229478/1/PBRX_F1_IEEE_Conference_Version.pdf",
+    "https://papers.nips.cc/paper_files/paper/2021/file/9d86d83f925f2149e9edb0ac3b49229c-Paper.pdf"
+  ]
+}

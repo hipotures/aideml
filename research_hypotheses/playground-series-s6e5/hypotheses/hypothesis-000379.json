@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hard-code 2025 Monaco and wet-exemption legality states",
+  "summary": "Official FIA rules changed Monaco for 2025 to a dry-race two-stop / three-set requirement, while use of intermediates or wets changes the usual dry-compound obligation.",
+  "rationale": "Official FIA rules changed Monaco for 2025 to a dry-race two-stop / three-set requirement, while use of intermediates or wets changes the usual dry-compound obligation. That creates rule-driven pit calls that generic tyre-life heuristics can miss.",
+  "implementation_hint": "Build a per-row rule state from `Race`, `Year`, `Compound`, `PitStop`, and prior stint history: dry-stop debt, distinct dry compounds used, sets used, wet-exempt flag, and remaining mandatory stops under `Monaco 2025` versus all other races. Interact with `LapsRemaining_Est` and current compound.",
+  "expected_effect": "Should reduce false negatives on regulation-driven stops, especially in 2025 Monaco and mixed-condition races.",
+  "risk": "Niche coverage; gains may be small in CV unless folds expose the relevant race-year edge cases.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE/"
+  ]
+}

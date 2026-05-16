@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Forward embargoed CV as the model-selection gate",
+  "summary": "Current grouped CV can still look optimistic for a next-lap event because adjacent laps from the same race regime remain highly correlated.",
+  "rationale": "Current grouped CV can still look optimistic for a next-lap event because adjacent laps from the same race regime remain highly correlated. Purged/embargoed validation is a standard fix in event-driven domains, and multiple-testing literature suggests small CV gains are easy to overtrust when trying many blends.",
+  "implementation_hint": "Keep training rows sorted by season-race-lap. Build 5-fold forward splits by race chronology, then embargo 1-2 laps (or one full race block) around each validation fold; use mean-minus-std AUC across those splits to choose features/blends, while keeping the existing CV only as a secondary diagnostic.",
+  "expected_effect": "May not raise raw local CV, but should reduce false positives and improve the chance that any new gain survives on Kaggle test data.",
+  "risk": "Can lower apparent CV and reduce train size; if the test set is IID rather than forward-shifted, the stricter split may underfit model selection.",
+  "sources": [
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2308682",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3177057"
+  ]
+}

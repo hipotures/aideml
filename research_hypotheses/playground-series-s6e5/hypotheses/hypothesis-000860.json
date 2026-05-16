@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Next-Lap Hazard Model Instead Of Plain Binary Only",
+  "summary": "This is a time-to-event problem with censoring at race end or tyre changes, which matches survival modeling more naturally than independent row classification.",
+  "rationale": "This is a time-to-event problem with censoring at race end or tyre changes, which matches survival modeling more naturally than independent row classification. Time-varying Cox and discrete hazard models are built exactly for evolving covariates and one-step event risk.",
+  "implementation_hint": "Reshape each driver-race trajectory into start/stop intervals ending in pit event or censoring. Train a small sidecar with CoxTimeVaryingFitter or a discrete-time LogisticHazard model stratified by wet/dry or slick/wet regime, then use the predicted hazard at the current interval as a blend feature or direct ensemble member.",
+  "expected_effect": "Can regularize sequential consistency and improve calibration of pit probability curves across a stint, especially around rising hazard zones.",
+  "risk": "Survival sidecars can underperform if the long-format construction leaks future state or if censored race-end intervals overwhelm true pit events.",
+  "sources": [
+    "https://lifelines.readthedocs.io/en/stable/Time%20varying%20survival%20regression.html",
+    "https://lifelines.readthedocs.io/en/latest/fitters/regression/CoxTimeVaryingFitter.html",
+    "https://github.com/havakv/pycox"
+  ]
+}

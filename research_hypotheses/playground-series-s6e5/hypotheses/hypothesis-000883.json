@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censor-aware next-stop time sidecar with `survival:aft`",
+  "summary": "This target is naturally a time-to-event problem: each row has a remaining number of laps until the next pit, and final stints are right-censored.",
+  "rationale": "This target is naturally a time-to-event problem: each row has a remaining number of laps until the next pit, and final stints are right-censored. A survival sidecar uses more label structure than a binary next-lap target and can learn a smoother imminence surface.",
+  "implementation_hint": "For each driver-race trajectory, derive `laps_until_next_pit`; use exact intervals `[t,t]` when a future pit exists and right-censored `[t,+inf)` when the stint ends without another stop. Train XGBoost `survival:aft`, then convert predicted time-to-pit into monotone features such as `1/pred_time`, `pred_time<=1.5`, and race-normalized hazard rank for the main classifier.",
+  "expected_effect": "Often helps near-boundary cases by separating ‘pit soon but not this lap’ from ‘not for many laps,’ which plain binary training compresses together.",
+  "risk": "If CV is not strictly grouped by race/driver chronology, the derived time-to-event label can leak future structure; survival predictions may also be hard to calibrate directly to probabilities.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

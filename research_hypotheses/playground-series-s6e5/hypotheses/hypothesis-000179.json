@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary stop-horizon target distilled back into next-lap AUC model",
+  "summary": "A recent pit-stop decision paper reports gains from coupling next-lap classification with a stop-horizon regression head.",
+  "rationale": "A recent pit-stop decision paper reports gains from coupling next-lap classification with a stop-horizon regression head. For this task, predicting whether the next stop is 1, 2, 3, 4-6, or 7+ laps away can force smoother sequential structure than raw binary labels alone.",
+  "implementation_hint": "Create a training-only target for laps until next PitStop event per Race-Year-Driver, bucket it into ordinal classes, train an auxiliary OOF model, and feed only its OOF class probabilities or expected horizon into the final binary model. Validate by race-year groups so the auxiliary target never leaks across folds.",
+  "expected_effect": "Adds a softer notion of pit-window proximity, reducing brittle dependence on hand-tuned tire-life thresholds.",
+  "risk": "If the auxiliary model is weak, it can just recycle existing features and add noise. Must avoid using future-derived features directly at inference.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ]
+}

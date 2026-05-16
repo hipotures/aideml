@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monaco-2025 Rule-Shift Specialist",
+  "summary": "A dated rules change created a one-off strategy regime: on February 26, 2025, F1 approved mandatory two-stop Monaco races, which materially changes next-lap pit propensity relative to normal Monaco logic and should not be pooled blindly with other races.",
+  "rationale": "A dated rules change created a one-off strategy regime: on February 26, 2025, F1 approved mandatory two-stop Monaco races, which materially changes next-lap pit propensity relative to normal Monaco logic and should not be pooled blindly with other races.",
+  "implementation_hint": "Add a `Year==2025 && Race==Monaco` specialist branch or blend expert with strong interactions on position, stint, progress, compound, and tyre-life pressure; validate with `Year_Race` grouping so the tiny slice cannot leak through generic folds.",
+  "expected_effect": "Small but plausible public-LB gain from correctly handling an outlier regime that generic window heuristics will under-model.",
+  "risk": "Very small sample; can overfit local CV unless the specialist is heavily regularized and only activated on Monaco 2025 rows.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.autosport.com/f1/news/f1-scraps-mandatory-monaco-gp-two-stop-rule-for-2026-/10801061/"
+  ]
+}

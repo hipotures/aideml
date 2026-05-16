@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost Over Raw High-Cardinality Categories",
+  "summary": "CatBoost’s ordered categorical handling and `has_time` mode are designed to avoid target leakage from random permutations when row order matters.",
+  "rationale": "CatBoost’s ordered categorical handling and `has_time` mode are designed to avoid target leakage from random permutations when row order matters. This dataset has many rare `Driver`, `Race`, and interaction categories, so a CatBoost model can be complementary to the current manual-feature baseline even if feature importances overlap.",
+  "implementation_hint": "Sort rows causally within `Year, Race, Driver, LapNumber`, set CatBoost `has_time=True`, feed raw categorical columns plus a small set of strongest numeric features, and validate with race-grouped folds only. Test interaction categories like `Driver+Compound` and `Race+Compound` as native categorical strings rather than manual frequency encodings.",
+  "expected_effect": "May recover signal from sparse identities and interaction histories that one-hot/frequency/manual encodings miss, improving blend diversity more than standalone CV.",
+  "risk": "If ordering is not truly causal or folds reuse the same race in train and validation, ordered CTRs can still look better locally than they generalize.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common.html",
+    "https://catboost.ai/docs/en/references/training-parameters/index",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

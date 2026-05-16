@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary laps-to-next-stop target with censored multi-task training",
+  "summary": "A recent F1 pit-stop paper reports a cascaded setup where next-lap classification is complemented by estimating remaining laps to stop, and race-strategy literature treats pit timing as a dynamic timing problem rather than a pure binary event.",
+  "rationale": "A recent F1 pit-stop paper reports a cascaded setup where next-lap classification is complemented by estimating remaining laps to stop, and race-strategy literature treats pit timing as a dynamic timing problem rather than a pure binary event. This could sharpen ordering near the decision boundary better than adding more fixed thresholds.",
+  "implementation_hint": "Create an auxiliary target `laps_to_next_pit` within each `Race-Year-Driver` sequence, censoring rows with no later stop in the session. Train a shared tabular model with two heads or two-stage stack: head A predicts `PitNextLap`, head B predicts `laps_to_next_pit` / stop-within-k-horizon probabilities. Feed OOF horizon predictions back into the final classifier.",
+  "expected_effect": "Better discrimination for borderline laps where raw tyre age is ambiguous, especially late-stint and late-race rows.",
+  "risk": "Requires careful censored-label construction and leakage-safe sequence ordering; noisy auxiliary labels may hurt if the stop horizon is too sparse.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

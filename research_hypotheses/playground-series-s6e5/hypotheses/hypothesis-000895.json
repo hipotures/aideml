@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specific experts for dry, wet/intermediate, and testing-like domains",
+  "summary": "Published pit-stop work explicitly notes dry-race pit calls are largely degradation/track-position driven, while wet/intermediate stops are much more reactive.",
+  "rationale": "Published pit-stop work explicitly notes dry-race pit calls are largely degradation/track-position driven, while wet/intermediate stops are much more reactive. Pre-season testing is also not representative of normal race intent. A single global model likely averages incompatible policies.",
+  "implementation_hint": "Train separate experts for at least: dry compounds (`SOFT/MEDIUM/HARD`), wet/intermediate compounds, and `Pre-Season Testing` rows if present. Optionally add a Monaco/special-rules expert. Blend by a simple gate from current row metadata, and keep the main dry model free from wet/testing noise.",
+  "expected_effect": "Lower bias from mixing fundamentally different decision processes; likely most useful on rare but strategically distinct regimes.",
+  "risk": "Sample sizes shrink fast, so some experts may become unstable; only split where counts are adequate and compare against a shared fallback model.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://www.formula1.com/en/latest/article/essential-guide-how-to-read-bahrain-pre-season-testing-with-f1-strategy.2CkqwrzR0PSA013BRRnOQR",
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf"
+  ]
+}

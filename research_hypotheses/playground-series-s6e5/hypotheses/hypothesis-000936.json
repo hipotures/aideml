@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Diverse GBDT Rank Ensemble With OOF Calibration",
+  "summary": "The best current CV scores are very close, suggesting diminishing returns from more single-model features.",
+  "rationale": "The best current CV scores are very close, suggesting diminishing returns from more single-model features. Public tabular guidance supports combining LightGBM, CatBoost, and XGBoost because their categorical handling and regularization create complementary errors; ROC AUC also benefits from rank-preserving blend search rather than hard calibration alone.",
+  "implementation_hint": "Generate OOF/test predictions from 3-5 seeds each of LightGBM, CatBoost native categoricals, and XGBoost hist with the strongest feature set. Optimize blend weights on OOF AUC using rank-averaged predictions and optionally calibrate with isotonic/Platt only if it improves OOF AUC. Keep a grouped-by-race/year validation view to detect leaderboard-overfit blends.",
+  "expected_effect": "Likely small but practical gain, around 0.0005-0.002 AUC if model errors are not fully correlated.",
+  "risk": "Can overfit OOF if too many seeds/weights are tuned on one split; CatBoost may be slower, and calibration can worsen AUC if it distorts ranking.",
+  "sources": [
+    "https://tildalice.io/xgboost-lightgbm-catboost-kaggle-tabular-benchmark/",
+    "https://www.alexholyk.com/4-ML/ensemble-methods.html",
+    "https://engineersofai.com/docs/ml/tree-models/lightgbm-and-catboost"
+  ]
+}

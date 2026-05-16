@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation-state features from a fold-safe state-space or Kalman filter",
+  "summary": "Recent F1 work models tire wear as a latent stochastic process with pit-stop resets and shows better predictive robustness than a simpler AR(1) benchmark.",
+  "rationale": "Recent F1 work models tire wear as a latent stochastic process with pit-stop resets and shows better predictive robustness than a simpler AR(1) benchmark. That suggests the current handcrafted degradation proxies are still missing a useful hidden-state summary.",
+  "implementation_hint": "Within each sorted `Race_Year x Driver` sequence, fit a lightweight online filter on lap-time residuals after removing coarse race effects. Export only past-informed states such as latent pace level, degradation slope, one-step forecast error, reset-adjusted pace, and posterior uncertainty; feed those into the existing tabular learner.",
+  "expected_effect": "Improves detection of true ‘degradation tipping points’ versus noisy slow laps, especially when `TyreLife` and `Cumulative_Degradation` are ambiguous.",
+  "risk": "If the filter is fit with future information or across train/test race segments, leakage will be severe. A too-heavy state model may also add variance without enough signal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

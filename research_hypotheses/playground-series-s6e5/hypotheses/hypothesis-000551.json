@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-cat plus within-lap rank ensemble with sigmoid-only calibration",
+  "summary": "CatBoost’s ordered categorical handling is explicitly designed to reduce target leakage from categorical statistics, and XGBoost ranking supports grouped query learning.",
+  "rationale": "CatBoost’s ordered categorical handling is explicitly designed to reduce target leakage from categorical statistics, and XGBoost ranking supports grouped query learning. For this task, a ranker can answer 'who is most likely to pit on this lap?' while a classifier answers absolute probability. Blend them, then use only rank-preserving sigmoid calibration because isotonic can alter ROC-AUC via ties.",
+  "implementation_hint": "Train a CatBoost classifier on raw categorical columns and combinations instead of manual frequency encodings, then train an XGBoost ranker with qid = Year/Race/LapNumber and binary label = PitNextLap. Blend only if both improve on leave-race-out plus rolling-year CV. If calibration helps, apply OOF sigmoid/Platt scaling to the blend, not isotonic.",
+  "expected_effect": "Adds model diversity and may improve lap-local ordering without sacrificing absolute probability quality; often useful when baseline tree models are already saturated.",
+  "risk": "Ranking groups with very few positives can be unstable, and CatBoost/ranker gains may disappear if validation is not truly race-held-out. Isotonic calibration is a trap here because it can change AUC.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers",
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/learning_to_rank.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

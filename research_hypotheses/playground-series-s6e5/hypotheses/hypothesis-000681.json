@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Field-Relative Undercut And Traffic Opportunity Features",
+  "summary": "Pit timing depends on competition, not just tyre age.",
+  "rationale": "Pit timing depends on competition, not just tyre age. Strategy references and recent operations-research papers emphasize traffic, undercut payoff, and opponent interaction; ignoring competition can materially degrade decisions.",
+  "implementation_hint": "Within each race-lap, build relative features: gap to nearby cars, percentile of current lap time within field, compound/tyre-life contrast versus cars ahead/behind, and an approximate undercut score using expected fresh-tyre gain minus pit-loss and traffic penalty proxies. Keep all features strictly contemporaneous within the same lap snapshot.",
+  "expected_effect": "Should reduce false positives where tyres are old but traffic makes stopping unattractive, and surface true positives where an undercut window opens despite moderate degradation.",
+  "risk": "Same-lap field features are safe only if they use information observable by that lap; any use of next-lap positions, finalized gaps, or post-stop outcomes will leak.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

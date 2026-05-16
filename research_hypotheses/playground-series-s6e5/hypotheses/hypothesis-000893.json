@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Opponent-reaction and undercut-cover features",
+  "summary": "Public F1 strategy sources emphasize that pit timing is driven by undercut/overcut windows, clean air, and whether a nearby rival has already stopped.",
+  "rationale": "Public F1 strategy sources emphasize that pit timing is driven by undercut/overcut windows, clean air, and whether a nearby rival has already stopped. Recent pit-stop research also reports that a driver’s pit probability rises when the car ahead has pitted. Current best code has field context, but not explicit opponent-action signals.",
+  "implementation_hint": "Within each race/lap, derive features keyed to nearby competitors: whether position-1 or position+1 pitted this lap or last lap, their compound and tyre life, local position cluster density, and a proxy `must_cover_undercut` flag when a nearby rival pits and the current driver has older tyres / worse lap delta. Use only information observable up to the current lap.",
+  "expected_effect": "Adds strategy-reaction signal that raw self-history misses, especially around first-stop and cover-off decisions.",
+  "risk": "You do not have exact time gaps, so position-adjacent proxies can be noisy on spread-out fields or safety-car-affected laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

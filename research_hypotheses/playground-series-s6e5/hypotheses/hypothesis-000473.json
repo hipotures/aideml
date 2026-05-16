@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Learn race-specific optimal stop-window pressure",
+  "summary": "F1 strategy balances tyre degradation against circuit pit-loss.",
+  "rationale": "F1 strategy balances tyre degradation against circuit pit-loss. Current features mostly ask whether a tyre can reach the finish; they do not estimate whether the current lap is near the economically optimal stop point for that race and compound.",
+  "implementation_hint": "Within each Race-Year/Compound/Stint, fit causal lap-time residual slope versus TyreLife using only prior/current laps, estimate pit-loss from observed PitStop laps versus race median pace, then create features such as sqrt(2*pit_loss/deg_slope), distance_to_optimal_stint_length, and in_optimal_window flags.",
+  "expected_effect": "Adds dynamic strategy timing beyond fixed compound lifetimes, likely improving ranking around normal green-flag stops.",
+  "risk": "Noisy degradation estimates during safety-car, wet, or pre-season rows can mislead; winsorize lap times and use smoothed fallbacks by Race and Compound.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

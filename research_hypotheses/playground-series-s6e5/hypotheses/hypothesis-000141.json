@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-group cross-fitted hierarchical categorical priors plus CatBoost ordered boosting",
+  "summary": "CatBoost’s ordered boosting and ordered categorical statistics were designed specifically to reduce prediction shift from target leakage.",
+  "rationale": "CatBoost’s ordered boosting and ordered categorical statistics were designed specifically to reduce prediction shift from target leakage. This dataset has very high-cardinality Driver and Driver-Race structure, including sparse and unseen identities, so hierarchical OOF priors are likely higher-upside than adding more manual thresholds.",
+  "implementation_hint": "Train a CatBoost classifier with raw categorical columns and compare it to the current numeric-engineered tree baseline. Add fold-safe hierarchical encodings computed only from training folds: Driver, Driver×Compound, Driver×Race, Race×Compound, Year×Race×Stint, with empirical-Bayes shrinkage toward broader parents. Use race-year grouped folds so encodings never see the held-out event history.",
+  "expected_effect": "Better generalization on sparse drivers/races and less overfit than naive frequency or mean encodings.",
+  "risk": "Random-row CV can make this look better than it is; evaluate under LeaveOneGroupOut or grouped folds by Race_Year/Year to confirm the gain survives leakage-safe splits.",
+  "sources": [
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

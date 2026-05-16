@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Grouped CatBoost QueryCrossEntropy as a within-lap binary objective",
+  "summary": "Previous research already pointed toward within-lap ranking.",
+  "rationale": "Previous research already pointed toward within-lap ranking. CatBoost’s QueryCrossEntropy is a more specific next test for this task because it mixes ordinary logloss with a learned per-group shift, matching the idea that each race-lap has its own baseline pit propensity while still predicting binary next-lap events.",
+  "implementation_hint": "Use GroupId = Year_Race_LapNumber and train CatBoost with QueryCrossEntropy over the same features, optionally with alpha sweeps and race-group sample weights. Blend its raw scores with the current binary CatBoost/XGB stack by rank or standardized logit rather than replacing the baseline outright.",
+  "expected_effect": "Can improve ordering among drivers sharing the same race-lap context, which is exactly where many pit calls are marginal.",
+  "risk": "If many groups have too few positives, the grouped objective may mostly relearn a noisy intercept; blend-first is safer than full replacement.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/querycrossentropy",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Tyre-State Filter Instead Of Raw Degradation Heuristics",
+  "summary": "Recent F1 research models tyre degradation as a latent state with pit stops as resets, which matches the competition structure better than fixed compound life constants.",
+  "rationale": "Recent F1 research models tyre degradation as a latent state with pit stops as resets, which matches the competition structure better than fixed compound life constants. This develops the prior latent-state idea into a concrete, testable direction: infer hidden tyre pace loss online from observed lap-time and degradation signals.",
+  "implementation_hint": "Per driver-race-stint, fit a simple Kalman/state-space filter or exponentially smoothed hidden state using LapTime_Delta, LapTime (s), Cumulative_Degradation, TyreLife, and reset on PitStop/compound change. Feed only causal summaries such as latent wear level, wear slope, innovation residual, and disagreement between observed pace loss and expected tyre age.",
+  "expected_effect": "Should capture stint-specific wear better than one-size-fits-all tyre windows, especially when compounds behave differently by circuit or when degradation is nonlinear.",
+  "risk": "State estimation can overfit if the transition assumptions are too flexible or if noisy laps from traffic/safety effects are treated as pure degradation.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/formula-1-for-dummies-the-choice-of-tyres-in-formula-1-53864/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

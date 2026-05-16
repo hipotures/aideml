@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Latent tire-state features from a state-space filter with pit resets",
+  "summary": "A 2026 F1 tire-degradation paper models degradation as a latent stochastic state with explicit pit-stop resets and shows rolling-origin robustness across race sessions.",
+  "rationale": "A 2026 F1 tire-degradation paper models degradation as a latent stochastic state with explicit pit-stop resets and shows rolling-origin robustness across race sessions. That is a better inductive bias than static ratios like `DegPerLap` and `TyreLifeToRaceLeft`, especially when degradation accelerates or becomes noisy.",
+  "implementation_hint": "Fit a lightweight per-stint filter/state-space approximation using observed lap time, lap delta, compound, and pit resets; export posterior latent pace, latent degradation rate, change-in-rate, reset gap, and posterior uncertainty. Use these as features in the existing XGB/Cat models rather than replacing the tabular stack.",
+  "expected_effect": "Adds interpretable hidden-state features that can separate true tire fade from transient noise, weather, or traffic artifacts.",
+  "risk": "A full Bayesian fit may be too slow; use a simplified Kalman/state update or offline prefit parameters first. Poorly estimated latent states can underperform simpler handcrafted features.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

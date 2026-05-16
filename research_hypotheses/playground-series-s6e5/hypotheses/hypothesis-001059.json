@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use purged rolling-origin validation as the model-selection gate, not just grouped random folds",
+  "summary": "The new tyre-state paper evaluates with rolling-origin CV, and scikit-learn’s `TimeSeriesSplit` exists precisely because future-to-past evaluation can mislead.",
+  "rationale": "The new tyre-state paper evaluates with rolling-origin CV, and scikit-learn’s `TimeSeriesSplit` exists precisely because future-to-past evaluation can mislead. Here, race strategy patterns drift by season and even by event, so shuffled grouped CV can reward brittle race memorization and overstate gains from high-cardinality or opponent-aware features.",
+  "implementation_hint": "Order races chronologically by `Year` and weekend, then evaluate forward-only folds with a gap or full-race purge. Keep your current grouped CV for variance estimates, but accept a new feature/model only if it improves both grouped CV and forward CV. Use forward-CV OOF predictions for blend-weight tuning.",
+  "expected_effect": "Fewer false positives in research iterations and better alignment between local CV and leaderboard/generalization.",
+  "risk": "Scores may drop initially because the validation is harsher; some genuinely useful race-specific priors may look worse under forward splits if train coverage is thin.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

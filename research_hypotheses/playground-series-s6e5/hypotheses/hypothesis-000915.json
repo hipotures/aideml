@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint-embargo CV with strictly OOF encodings and stacks",
+  "summary": "Purged and embargoed CV exists precisely because overlapping sequential samples can leak signal across folds.",
+  "rationale": "Purged and embargoed CV exists precisely because overlapping sequential samples can leak signal across folds. Here, adjacent laps from the same driver-race-stint are near-duplicates, so even race-aware CV can still look too optimistic when custom encodings, pit-window priors, or stacked experts are built on all training rows.",
+  "implementation_hint": "When evaluating a fold, embargo neighboring laps or whole adjacent stint blocks for the same driver-race around the validation segment, and rebuild all frequency/target encodings and stacker inputs strictly out-of-fold under that splitter. Use this as the selection CV for new experts rather than only the easier grouped split.",
+  "expected_effect": "Improves correlation between local CV and leaderboard behavior and filters out ideas that only exploit overlap leakage.",
+  "risk": "This may lower local CV immediately and reduces effective sample size; it is mainly a model-selection improvement rather than a direct feature gain.",
+  "sources": [
+    "https://deepwiki.com/quantopian/mlfinlab/5.2-cross-validation",
+    "https://arxiv.org/abs/1706.09516",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

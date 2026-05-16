@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Row-causal latent tyre degradation filter with innovation features",
+  "summary": "A 2026 F1 study models tyre degradation as a latent state with pit stops as resets, which matches this task closely.",
+  "rationale": "A 2026 F1 study models tyre degradation as a latent state with pit stops as resets, which matches this task closely. The current features approximate degradation with ratios and windows, but they do not estimate hidden pace decay, acceleration of wear, or uncertainty.",
+  "implementation_hint": "Per Driver-Year-Race-Stint, fit a simple causal state-space or Kalman-style filter for latent tyre pace using LapTime (s), LapTime_Delta, TyreLife, and RaceProgress as a fuel proxy. Add filtered state, state slope, one-step innovation, rolling innovation variance, and time-since-last-positive-innovation-run as features.",
+  "expected_effect": "Can separate normal old-tyre pace from sudden cliff behavior, giving the classifier a cleaner trigger than raw degradation totals.",
+  "risk": "A bad observation model can just repackage noise; use only prefix data and reset state on PitStop=1 rows.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial train-test weighting",
+  "summary": "The data is split by rows but likely contains race/year distribution drift.",
+  "rationale": "The data is split by rows but likely contains race/year distribution drift. Kaggle tabular practice often uses adversarial validation to reveal train-test mismatch; current CV is random stratified and may reward features that do not transfer across races or seasons.",
+  "implementation_hint": "Train a lightweight classifier to distinguish train rows from test rows using only non-target features. Use its predicted test-likeness as sample weights for the final model, or build validation folds from the most test-like training rows. Compare against the current random split CV and public score.",
+  "expected_effect": "Could improve Kaggle public alignment even if local random CV changes little or drops slightly.",
+  "risk": "If the public test is not representative of the private/test distribution, overweighting test-like rows can reduce generalization.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/cross_validation.html",
+    "https://www.kaggle.com/code/konradb/adversarial-validation-and-other-scary-terms"
+  ]
+}

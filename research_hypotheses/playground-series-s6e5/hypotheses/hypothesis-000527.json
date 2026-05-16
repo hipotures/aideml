@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model undercut/overcut pressure with field-relative features, not just same-lap medians",
+  "summary": "Pit calls are competitive decisions, not only wear decisions.",
+  "rationale": "Pit calls are competitive decisions, not only wear decisions. Public F1 strategy analysis and OR work both emphasize that rival behavior materially changes optimal stop timing. Your best nodes already use same-lap medians/ranks, but they do not explicitly encode whether a car is vulnerable to undercut or positioned for an overcut relative to nearby competitors.",
+  "implementation_hint": "Create causal same-lap features within `(Year,Race,LapNumber)` such as percentile ranks restricted to nearby position bands, same-compound field density, delta-to-compound-median by position tercile, and 'pressure' flags when a driver is slow relative to nearby cars while on older tyres. Cluster races into high-undercut vs high-overcut regimes using train-only aggregate signatures, then interact those regime IDs with the field-relative features.",
+  "expected_effect": "Should add signal that static tyre-life features miss, particularly for mid-pack and track-specific strategy regimes.",
+  "risk": "True opponent pressure is only partially observed because the dataset lacks exact time gaps/traffic; approximate field-relative proxies may be noisy on sparse groups.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

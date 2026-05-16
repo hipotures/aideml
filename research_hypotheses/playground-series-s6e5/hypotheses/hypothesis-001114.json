@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Boundary-only within-lap ranking expert using querywise CatBoost",
+  "summary": "Earlier ranking ideas were broad; the sharper version is to rank only plausible pit-window candidates within each lap/query.",
+  "rationale": "Earlier ranking ideas were broad; the sharper version is to rank only plausible pit-window candidates within each lap/query. CatBoost supports querywise and pairwise ranking objectives directly, which is useful because ROC AUC ultimately rewards ordering and many easy negatives need not dominate training.",
+  "implementation_hint": "Build a ranker with `GroupId = Year/Race/LapNumber`. Restrict training rows or pair generation to candidate windows such as `TyreLife >= race-compound median stop age - k`, high degradation, or late-stint laps. Within each query, pair actual stoppers against candidate non-stoppers and train `YetiRankPairwise`, `QueryCrossEntropy`, or `PairLogit`; blend its OOF ranks with the classifier only on candidate windows.",
+  "expected_effect": "Should improve local ordering among same-lap rivals, where the current global classifier may be strong overall but still miss which of several old-tyre cars is most likely to stop next.",
+  "risk": "If candidate-window heuristics are wrong, the ranker becomes sparse/noisy; query groups with zero positives also need careful handling.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

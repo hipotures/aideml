@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Lap-Group Ranker With Raw Categoricals",
+  "summary": "Pit-now is partly a relative decision: on a given lap, some cars are much more stop-ready than others even when global hazard varies by race.",
+  "rationale": "Pit-now is partly a relative decision: on a given lap, some cars are much more stop-ready than others even when global hazard varies by race. Ranking objectives are built for within-group ordering, and CatBoost/LightGBM both support ranking while handling high-cardinality structure better than manual one-hot pipelines.",
+  "implementation_hint": "Create groups by `(Year,Race,LapNumber)` and train a ranking specialist (`CatBoost YetiRankPairwise/QueryAUC` or `LightGBM lambdarank`) using raw `Driver/Race/Compound` plus the best numeric features. Use its OOF score as a blend feature for the pointwise AUC model rather than replacing the classifier outright.",
+  "expected_effect": "Better within-lap ordering and improved robustness when absolute stop propensity shifts strongly across tracks.",
+  "risk": "A pure ranker may miscalibrate probabilities and can underperform on singleton or tiny groups, so blend and validate race-held-out only.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

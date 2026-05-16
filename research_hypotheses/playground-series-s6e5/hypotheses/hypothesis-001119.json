@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Model undercut/overcut pressure and teammate coordination explicitly",
+  "summary": "F1 strategy is heavily interaction-driven: undercut and overcut depend on relative gaps, tyre warm-up tradeoffs, and competitor behavior, while game-theoretic motorsport work shows ignoring competition materially changes optimal stop timing.",
+  "rationale": "F1 strategy is heavily interaction-driven: undercut and overcut depend on relative gaps, tyre warm-up tradeoffs, and competitor behavior, while game-theoretic motorsport work shows ignoring competition materially changes optimal stop timing. The current code uses broad field pressure, but not direct strategic interaction features tied to nearest rivals and teammate sequencing.",
+  "implementation_hint": "Build causal features for nearest-ahead/nearest-behind rival state on the previous lap: relative tyre age, relative lap-time delta, compound mismatch, position-gap proxies, and whether the rival just stopped. Add teammate features such as same-team current stint age gap, teammate previous-lap stop flag, and a simple double-stack-risk proxy when both cars look pit-ready on adjacent laps. Train these as plain tabular features first before any custom model.",
+  "expected_effect": "Could sharpen predictions in the exact scenarios where pit calls are strategic rather than purely wear-driven, especially midfield battles and synchronized team decisions.",
+  "risk": "The dataset lacks explicit time gaps, so proxies may be noisy. Badly designed same-lap rival features can leak if they reflect simultaneous reactions not available at decision time.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

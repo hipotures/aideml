@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recurrent-event stop model with stop-number strata",
+  "summary": "Pit stops are recurrent events, and recurrent-event literature recommends modeling event history explicitly rather than only time-to-first-event.",
+  "rationale": "Pit stops are recurrent events, and recurrent-event literature recommends modeling event history explicitly rather than only time-to-first-event. In F1 terms, first-stop, second-stop, and late splash-and-dash behavior have different hazards, so a single pooled binary target can blur signal.",
+  "implementation_hint": "Create leakage-safe features for prior stop count, laps since last stop, stint index, and interactions with compound/weather, then train separate heads or a shared model with stop-number strata for stop 0->1, 1->2, and 2+; blend their probabilities back to one PitNextLap score based on current prior-stop count.",
+  "expected_effect": "Should sharpen calibration and ranking because the model no longer forces one hazard shape across fundamentally different strategy phases.",
+  "risk": "Small sample sizes for high stop counts can overfit; if validation is not grouped by race, recurrent-history features may look better than they generalize.",
+  "sources": [
+    "https://www.scholars.northwestern.edu/en/publications/shared-frailty-models-for-recurrent-events-and-a-terminal-event/",
+    "https://journals.sagepub.com/doi/10.1177/09622802241236934"
+  ]
+}

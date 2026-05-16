@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reconstruct elapsed-time gaps and pit-exit traffic pressure",
+  "summary": "F1 undercut and cover decisions depend on gaps to nearby cars and whether a driver would rejoin in traffic, but the current features mostly use Position without time gaps.",
+  "rationale": "F1 undercut and cover decisions depend on gaps to nearby cars and whether a driver would rejoin in traffic, but the current features mostly use Position without time gaps. LapTime is enough to approximate cumulative race time per driver and derive gap_ahead, gap_behind, local pack density, and clean-air probability.",
+  "implementation_hint": "Within each Race_Year, Driver sequence, cumulative-sum LapTime to ElapsedRaceTime. For each lap, rank drivers by elapsed time and compute nearest gaps, number of cars within 2/5/10/20 seconds, and interactions with Position, TyreLife, and LapsRemaining_Est. Use only current and prior lap times.",
+  "expected_effect": "Can capture undercut/overcut timing beyond tyre-age thresholds, especially around pit windows where AUC errors are concentrated.",
+  "risk": "LapTime outliers from pit laps, safety car, or testing runs can distort elapsed gaps; winsorize and add missing/outlier flags.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/f1-glossary-u-z.5JSlDsnyvYmbK0TCjTs7KB",
+    "https://docs.fastf1.dev/time_explanation.html",
+    "https://docs.fastf1.dev/data_reference/index.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation-state features via a fold-safe sequential filter",
+  "summary": "Recent F1 work shows tire wear is better represented as a latent stochastic process with stint resets than as raw observed degradation alone.",
+  "rationale": "Recent F1 work shows tire wear is better represented as a latent stochastic process with stint resets than as raw observed degradation alone. That suggests the classifier may benefit from hidden-state summaries and uncertainty, not just direct ratios.",
+  "implementation_hint": "Within each driver-race sequence, residualize lap time for race context, then run a simple Kalman/state-space or exponentially updated filter that outputs current latent pace, degradation slope, shock term, and posterior uncertainty. Reset state on `PitStop==1`; use only past/current laps within fold.",
+  "expected_effect": "Can separate true wear from noise/traffic and expose whether the driver is entering a high-risk stop window even when raw lap deltas are noisy.",
+  "risk": "If the filter is too complex or tuned globally, gains may vanish versus cheaper lag features; wet/safety-car laps can destabilize state estimates.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Kalman/state-space latent tyre-degradation residual features",
+  "summary": "Recent F1 work shows state-space tire models beat simpler AR baselines by estimating a latent degradation state with pit-stop resets.",
+  "rationale": "Recent F1 work shows state-space tire models beat simpler AR baselines by estimating a latent degradation state with pit-stop resets. That is a direct match for this competition because the observed features already contain noisy lap-time and degradation proxies.",
+  "implementation_hint": "Within each race-driver stint, fit a simple leakage-safe recursive filter using LapTime, LapTime_Delta, TyreLife, and Cumulative_Degradation to estimate latent wear level, latent wear slope, and one-step forecast error. Use only forward recursion inside each sequence; add filtered state, innovation, and state-reset features to the existing tabular model.",
+  "expected_effect": "Captures hidden degradation pressure more cleanly than fixed compound life thresholds, especially when observed degradation is noisy or compound-dependent.",
+  "risk": "Poorly initialized filters or using smoothed future-aware states would leak badly and overstate CV.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

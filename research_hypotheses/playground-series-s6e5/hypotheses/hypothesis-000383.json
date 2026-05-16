@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a censored time-to-next-pit specialist and blend it AUC-safely",
+  "summary": "Each row is naturally a time-to-event state.",
+  "rationale": "Each row is naturally a time-to-event state. Survival models explicitly handle censored final stints, and recent public F1 pit-stop work finds temporal models useful. For leaderboard ROC-AUC, blend this specialist with the best tabular model using rank-preserving methods; scikit-learn notes isotonic can introduce ties and change AUC.",
+  "implementation_hint": "Convert each driver-race sequence into time-until-next-pit with right-censoring at race end, fit an XGBoost `survival:aft` or time-varying hazard model, and use next-lap hazard/probability as a meta-feature or OOF blend with the base GBM. Prefer rank averaging or sigmoid-only calibration over isotonic when optimizing AUC.",
+  "expected_effect": "Adds an event-time inductive bias that pure row-wise classifiers lack and may improve public robustness when exact stop timing drives rank.",
+  "risk": "More complex CV plumbing; survival objectives optimize likelihood, so the specialist may help mainly through ensembling rather than standalone CV.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://lifelines.readthedocs.io/en/latest/Time%20varying%20survival%20regression.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://medium.com/data-design/reaching-the-depths-of-power-geometric-ensembling-when-targeting-the-auc-metric-2f356ea3250e",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

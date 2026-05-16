@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leakage-safe regime stacking, not probability calibration",
+  "summary": "Prior work already explored regime ideas conceptually; the next testable extension is a strict two-level stack where specialists cover dry/wet, mandatory-stop-debt, and endgame regimes.",
+  "rationale": "Prior work already explored regime ideas conceptually; the next testable extension is a strict two-level stack where specialists cover dry/wet, mandatory-stop-debt, and endgame regimes. Public calibration guidance also says calibration usually does not help rank metrics like AUC, so effort is better spent on rank-preserving OOF stacking than isotonic post-processing.",
+  "implementation_hint": "Train 3-5 specialists on disjoint regimes or feature subsets, generate out-of-fold predictions with race-group CV, then fit a simple meta-learner on those OOF scores plus a few regime flags. Prefer sigmoid or plain linear/rank averaging if any post-transform is needed; avoid isotonic unless optimizing probability quality rather than AUC.",
+  "expected_effect": "Can capture heterogeneous decision rules across slick/wet and early/late race without forcing one model to learn all regimes.",
+  "risk": "Main failure mode is leakage from non-OOF base predictions or from fold schemes that mix rows from the same race. Over-partitioning regimes can also thin data.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

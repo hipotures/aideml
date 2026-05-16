@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Replace raw degradation heuristics with causal latent tire-state features",
+  "summary": "Recent F1 literature models tire degradation as a latent state rather than trusting raw observed degradation directly.",
+  "rationale": "Recent F1 literature models tire degradation as a latent state rather than trusting raw observed degradation directly. A hidden wear/state estimate plus one-step innovation can capture whether the current lap is unusually bad for the true tire condition, which is more strategy-relevant than cumulative degradation alone.",
+  "implementation_hint": "Within each `(Year,Race,Driver,Stint)`, fit a causal state-space or simple Kalman-style filter on lap-time delta and degradation using only past laps; export latent wear level, wear slope, residual surprise, and posterior uncertainty as features for the existing tree models.",
+  "expected_effect": "Could improve generalization across tracks and compounds by denoising the most strategy-critical signal: tire condition versus expected pace decay.",
+  "risk": "A badly specified filter can inject noise or hidden leakage if it accidentally uses future laps; implementation must be strictly forward-only within each stint.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

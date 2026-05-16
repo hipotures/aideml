@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Tighten CV with race-purging and use only monotonic calibration for final blending",
+  "summary": "Your feature space already uses strong race/context interactions and will likely expand with race-lap aggregates, which raises leakage risk if folds mix adjacent laps from the same event.",
+  "rationale": "Your feature space already uses strong race/context interactions and will likely expand with race-lap aggregates, which raises leakage risk if folds mix adjacent laps from the same event. Separately, scikit-learn notes isotonic calibration can change ROC-AUC via ties, while sigmoid is strictly monotonic and preserves ranking. For this competition, selection errors from optimistic CV may matter more than another hand-crafted feature block.",
+  "implementation_hint": "Evaluate models under leave-one-race-out or leave-one-race-year-out grouped folds, optionally embargoing nearby laps from the same race when building cross-fitted statistics. Use OOF predictions for any target encoding, race-lap aggregate, or stacked feature. For final blending, prefer logistic/sigmoid calibration or rank-preserving linear/logit blends; avoid isotonic unless it proves harmless on AUC.",
+  "expected_effect": "May lower local CV slightly but should give more trustworthy model choice and safer leaderboard transfer; monotonic calibration can improve probability quality without scrambling rank order.",
+  "risk": "Stricter CV can make progress look smaller and may reject genuinely useful high-variance ideas if folds are too coarse.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

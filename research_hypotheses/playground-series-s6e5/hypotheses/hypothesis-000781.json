@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hierarchical Cross-Fitted Empirical-Bayes Encodings",
+  "summary": "Driver and race IDs are high-cardinality and test contains entity shift.",
+  "rationale": "Driver and race IDs are high-cardinality and test contains entity shift. Empirical-Bayes target encoding with cross-fitting can retain useful entity signal while shrinking hard toward broader parents like Race, Year, Compound, and Race×Year, reducing leakage and variance.",
+  "implementation_hint": "Build fold-safe encodings such as Driver -> Driver×Compound -> Driver×RaceYear with shrinkage toward parent/global means. Fit encoders only on training folds, export OOF values for train and full-fit values for test, and combine with current physical features rather than replacing them.",
+  "expected_effect": "Moderate upside if rare drivers/race combinations are currently underused or overfit by simple frequency features.",
+  "risk": "Easy to leak if not fully cross-fitted; over-shrinking can wash out real entity behavior.",
+  "sources": [
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://cir.nii.ac.jp/crid/1360016867938549760"
+  ]
+}

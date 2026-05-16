@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a within-driver race ranker and blend by monotonic calibration",
+  "summary": "ROC AUC rewards ordering, and ranking objectives are designed to improve within-query order directly.",
+  "rationale": "ROC AUC rewards ordering, and ranking objectives are designed to improve within-query order directly. Here the natural query is a driver-race candidate sequence, where the model should rank imminent pit laps above earlier same-stint laps.",
+  "implementation_hint": "Train a CatBoost or LightGBM ranker with query groups like `driver x race` or `driver x race x stint`, using graded relevance around the actual stop lap. Blend the ranker score with the binary classifier via rank averaging or sigmoid calibration only, to avoid isotonic ties that can hurt AUC.",
+  "expected_effect": "Sharper ordering near actual stop windows, especially for borderline late-stint laps where binary classifiers flatten probabilities.",
+  "risk": "Query design matters; wet races and terminal no-stop cases can make relevance labels noisy.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

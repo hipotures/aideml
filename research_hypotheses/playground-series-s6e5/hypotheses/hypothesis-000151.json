@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Residual sequence correction over the strong tabular baseline",
+  "summary": "Adjacent F1 work uses Bi-LSTM and newer multi-task residual architectures, but full sequence models alone often underperform strong tabular setups under temporal shift.",
+  "rationale": "Adjacent F1 work uses Bi-LSTM and newer multi-task residual architectures, but full sequence models alone often underperform strong tabular setups under temporal shift. A lower-risk variant is to keep the current GBDT baseline and learn only the residual correction from short lap histories.",
+  "implementation_hint": "First train the existing best tabular model. Then build a compact sequence branch on the last 3-10 laps of per-driver standardized deltas (`LapTime_Delta`, degradation growth, position-change streaks, pit history, compound/stint state), targeting either residual logit correction or agreement/disagreement with the base model near pit windows. Blend only when sequence confidence is high.",
+  "expected_effect": "Adds temporal shape information without forcing the entire solution onto a less stable deep sequence model.",
+  "risk": "Requires careful fold construction and sequence extraction after splitting; otherwise leakage from precomputed sequences can inflate CV.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.researchgate.net/publication/398475488_Hidden_Leaks_in_Time_Series_Forecasting_How_Data_Leakage_Affects_LSTM_Evaluation_Across_Configurations_and_Validation_Strategies",
+    "https://www.researchgate.net/publication/389398759_Understanding_the_Limits_of_Deep_Tabular_Methods_with_Temporal_Shift"
+  ]
+}

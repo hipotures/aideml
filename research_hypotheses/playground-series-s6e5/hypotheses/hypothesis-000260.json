@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-specific strategy prior table from official guides",
+  "summary": "Official strategy guides repeatedly publish race-level priors such as pit-lane loss, one-stop vs two-stop preference, and compound warm-up caveats.",
+  "rationale": "Official strategy guides repeatedly publish race-level priors such as pit-lane loss, one-stop vs two-stop preference, and compound warm-up caveats. Those constants vary materially by circuit and can shift stop incentives even when per-row tyre features look similar.",
+  "implementation_hint": "Build a small external lookup by Race for pit-lane loss bucket, baseline one-stop/two-stop bias, and warm-up sensitivity, sourced from official strategy guides or stable race metadata. Join these as low-cardinality priors and interact them with LapsRemaining_Est, TyreLife_To_Remaining, and compound. Keep the table coarse to avoid brittle manual numbers.",
+  "expected_effect": "Adds missing track-specific economics of stopping, which should help separate 'must extend' versus 'pit now' races that otherwise share similar on-tyre states.",
+  "risk": "Manual external priors can be noisy across years and weather; use broad buckets rather than exact seconds, and ensure no post-race information leaks into the lookup.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.strategy-guide-what-are-the-possible-race-strategies-for-the-russian-grand.292fIM7raBljiTrw2XRscl.html",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-2022-british.2pbZHGNH1x4ekkUuqFg5R3",
+    "https://www.formula1.com/en/latest/article/f1-explains-what-goes-on-inside-an-f1-pit-lane-with-strategy-guru-bernie.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG.6w7WwASefNkk5nZ2IIDqLG"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native CatBoost categorical strategy model for high-cardinality driver/race effects",
+  "summary": "Your data has hundreds of drivers and many race-specific contexts; hand frequency encoding likely compresses too much structure.",
+  "rationale": "Your data has hundreds of drivers and many race-specific contexts; hand frequency encoding likely compresses too much structure. CatBoost’s ordered boosting and categorical handling were designed to reduce prediction shift from target leakage in such settings, which is especially relevant if many current features are target-like aggregates over sparse IDs.",
+  "implementation_hint": "Train a comparatively lean CatBoost model using raw categorical columns plus a small numeric core. Add strategic categorical crosses such as `Driver x Compound`, `Race x Compound`, `Race x Stint`, and binned `RaceProgress`. Evaluate it as a standalone model and as a diverse ensemble member against the current feature-engineered tree model.",
+  "expected_effect": "Could recover interaction signal hidden by manual encodings and improve ensemble diversity even if standalone CV is similar.",
+  "risk": "If CV is not fully group-safe, CatBoost categorical statistics can still look better than they generalize; also, too many weak crosses can bloat training.",
+  "sources": [
+    "https://catboost.ai/docs",
+    "https://huggingface.co/papers/1706.09516",
+    "https://docs.aws.amazon.com/sagemaker/latest/dg/catboost-HowItWorks.html"
+  ]
+}

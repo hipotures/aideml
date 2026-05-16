@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Ranking Specialist Blended With Pointwise Hazard",
+  "summary": "ROC AUC rewards ordering, and pit decisions are inherently relative within a race-lap snapshot: who among the current field is most likely to stop next.",
+  "rationale": "ROC AUC rewards ordering, and pit decisions are inherently relative within a race-lap snapshot: who among the current field is most likely to stop next. A pairwise/listwise ranking expert on each lap can learn these local comparisons even when absolute probabilities are hard to calibrate.",
+  "implementation_hint": "Create groups at (Year, Race, LapNumber) or (Year, Race, LapNumber, compound regime) and train a LambdaRank/RankNet-style model or pairwise classifier to rank drivers by next-lap pit likelihood. Blend its OOF logits with the main pointwise model, then apply a lightweight beta calibrator only to the final blended score if submission sharpness matters.",
+  "expected_effect": "Often improves AUC by correcting local ordering errors inside the same race context, especially when several drivers sit in overlapping pit windows.",
+  "risk": "Group sizes are small and positive labels per lap may be sparse, so the ranking expert may be unstable unless heavily regularized and used only as a complementary ensemble member.",
+  "sources": [
+    "https://www.microsoft.com/en-us/research/publication/learning-to-rank-from-pairwise-approach-to-listwise-approach/",
+    "https://link.springer.com/article/10.1007/s10994-024-06644-6",
+    "https://proceedings.mlr.press/v54/kull17a.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

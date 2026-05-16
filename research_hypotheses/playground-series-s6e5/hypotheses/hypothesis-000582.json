@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent caution-state detector from field-wide lap anomalies",
+  "summary": "Safety Car/VSC periods materially change pit economics by reducing effective pit loss.",
+  "rationale": "Safety Car/VSC periods materially change pit economics by reducing effective pit loss. Public F1 strategy references emphasize opening Safety Car windows and discounted pit loss under SC/VSC, but the tabular data has no explicit caution flag.",
+  "implementation_hint": "Infer a per-race-lap latent caution score from field-wide statistics already available in-data: mean/variance spikes in LapTime, compression in lap deltas, simultaneous position disruptions, and sudden multi-car pit bursts. Feed this score and its short lags into the main model or use it to gate a caution-specialist submodel.",
+  "expected_effect": "Should capture a high-leverage regime missing from current features and reduce false negatives on opportunistic stops during neutralized conditions.",
+  "risk": "Anomaly features may also fire on weather or incident-heavy laps, so the latent state can be noisy without robust smoothing.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/fia-clarifies-new-virtual-safety-car-procedures.3kAXqSlWzpv5DRXo8eW8Nf",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

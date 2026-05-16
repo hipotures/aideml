@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit Rule-State Expert For Dry/Wet And Monaco 2025",
+  "summary": "The FIA rules create hard discontinuities: normal dry races require at least two dry specifications, wet/intermediate usage removes that requirement, and Monaco 2025 had a temporary mandatory two-stop rule.",
+  "rationale": "The FIA rules create hard discontinuities: normal dry races require at least two dry specifications, wet/intermediate usage removes that requirement, and Monaco 2025 had a temporary mandatory two-stop rule. Those discrete legality constraints change pit incentives in ways that broad tyre-life heuristics can blur.",
+  "implementation_hint": "Add rule-state features such as `mandatory_stops_remaining_est`, `dry_rule_active`, `wet_rule_exempt`, and `monaco_2025_two_stop_rule`. If Monaco 2025 exists in train/test, either train a tiny expert for that slice or gate a separate score that is blended only there. Also distinguish wet/intermediate races from slick races instead of sharing one decision surface.",
+  "expected_effect": "Cleaner handling of rare but high-signal slices where the base model is structurally misspecified.",
+  "risk": "Very sparse slices can create unstable experts; if Monaco 2025 is absent or tiny, keep it as features rather than a standalone model.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

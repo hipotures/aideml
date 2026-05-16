@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Treat 'Pre-Season Testing' As A Different Domain",
+  "summary": "Official F1 guidance says testing laps are confounded by reliability checks, sensors, fuel load, engine mode, track evolution, and non-race objectives.",
+  "rationale": "Official F1 guidance says testing laps are confounded by reliability checks, sensors, fuel load, engine mode, track evolution, and non-race objectives. Since your data explicitly includes 'Pre-Season Testing', mixing it into the same validation and model behavior as grands prix is a plausible hidden CV trap.",
+  "implementation_hint": "Run three ablations: exclude testing rows entirely; keep them with strong downweighting; or train a small testing-only expert and blend with the race model using the Race field. Validation should report Year-Race grouped CV with and without testing races so you can see whether current gains are coming from an easier but mismatched subdomain.",
+  "expected_effect": "Can improve leaderboard transfer if local CV is currently inflated by learning test-session artifacts instead of race strategy.",
+  "risk": "If test data contains the same testing domain in meaningful volume, removing it could hurt; this needs explicit ablation rather than assumption.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/essential-guide-how-to-read-bahrain-pre-season-testing-with-f1-strategy.2CkqwrzR0PSA013BRRnOQR",
+    "https://www.bbc.co.uk/sport/formula1/articles/c05mpv8r9qmo"
+  ]
+}

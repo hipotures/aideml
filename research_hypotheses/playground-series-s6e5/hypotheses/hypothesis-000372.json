@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hierarchical Strategic Priors Via Cross-Fitted Encodings",
+  "summary": "Driver and race IDs are high-cardinality and likely carry persistent strategic tendencies that simple frequency encoding misses.",
+  "rationale": "Driver and race IDs are high-cardinality and likely carry persistent strategic tendencies that simple frequency encoding misses. Adjacent tabular literature and CatBoost docs both point to regularized/cross-fitted target statistics as a strong way to extract signal from such categories without catastrophic leakage.",
+  "implementation_hint": "Build race-held-out, out-of-fold encodings with Bayesian shrinkage for Driver, Driver x Compound, Driver x Race, Race x Stint, Race x LapBin, and Year x Race. Feed them into the current tree stack and also train a raw-categorical CatBoost specialist, then average or rank-average with the best existing model.",
+  "expected_effect": "Should complement handcrafted tyre-window features with stable strategic priors, especially for repeat drivers/tracks and unseen rare combinations that need shrinkage to the global mean.",
+  "risk": "This is extremely leak-prone if folds are not grouped by race/year. Also unseen-category handling matters because test has fewer drivers than train; collapse rare levels and use only OOF encodings.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/faq",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

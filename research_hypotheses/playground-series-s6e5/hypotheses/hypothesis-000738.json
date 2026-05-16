@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged Rolling-Origin Validation By Race Session",
+  "summary": "The newest F1 tyre-degradation paper evaluates one-step-ahead predictions with rolling-origin cross-validation inside sessions, which matches the causal structure of lap-by-lap strategy better than shuffled folds.",
+  "rationale": "The newest F1 tyre-degradation paper evaluates one-step-ahead predictions with rolling-origin cross-validation inside sessions, which matches the causal structure of lap-by-lap strategy better than shuffled folds. CatBoost docs also note default CV shuffles unless grouping is provided. For this target, leakage from nearby laps in the same stint is a real selection trap.",
+  "implementation_hint": "Select models with outer folds grouped by `Year,Race`, and inside each training fold evaluate with forward-only splits ordered by lap within `Driver,Race,Stint`. Recompute any target/statistical encodings strictly inside each fold. Compare whether current 0.951 CV models remain stable under this harsher protocol before trusting LB deltas.",
+  "expected_effect": "May lower local CV but improve model selection and reduce public-LB disappointment from within-race leakage.",
+  "risk": "If the current pipeline is already robust, this mostly changes selection variance rather than raw model strength.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://catboost.ai/docs/en/features/cross-validation"
+  ]
+}

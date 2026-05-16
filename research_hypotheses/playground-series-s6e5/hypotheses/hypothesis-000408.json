@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specialist ensemble with AUC-safe monotone blending",
+  "summary": "Dry mandatory-stop races, wet/intermediate races, and pre-season testing follow different strategic rules, so a single global classifier is likely averaging incompatible mechanisms.",
+  "rationale": "Dry mandatory-stop races, wet/intermediate races, and pre-season testing follow different strategic rules, so a single global classifier is likely averaging incompatible mechanisms. Specialist models are a common way to exploit such heterogeneity, and monotone calibration preserves rank-sensitive metrics better than isotonic when AUC is the target.",
+  "implementation_hint": "Train separate experts for at least slick-dry, wet/intermediate, and pre-season-testing regimes; optionally split dry races again by 'mandatory stop still owed' versus 'free to finish'. Blend only with blocked OOF logits using a simple logistic meta-model or rank averaging. If post-hoc calibration is used, prefer sigmoid or temperature scaling over isotonic on the final blend.",
+  "expected_effect": "Should improve tail behavior in rare regimes and give a safer ensemble path than adding many more hand-built global features.",
+  "risk": "Rare-regime experts can overfit, and a bad gating rule can erase gains; this works best with strict OOF discipline.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/the-strategist-rain-red-flags-and-confusion-how-do-the-teams-plan-for-a-race.3eqV2nbYoydVL0Z9CHwDrD",
+    "https://arxiv.org/abs/2206.02107",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/dev/modules/generated/sklearn.ensemble.StackingClassifier.html"
+  ]
+}

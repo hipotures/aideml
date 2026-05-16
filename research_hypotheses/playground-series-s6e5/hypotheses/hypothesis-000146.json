@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-safe OOF calibration and regime-specific blending",
+  "summary": "Scikit-learn notes isotonic can change ROC-AUC because it introduces ties, while sigmoid preserves ranking; beta calibration is a richer parametric map than logistic and often more stable than isotonic.",
+  "rationale": "Scikit-learn notes isotonic can change ROC-AUC because it introduces ties, while sigmoid preserves ranking; beta calibration is a richer parametric map than logistic and often more stable than isotonic. That makes it a better post-processing candidate for leaderboard-facing blends.",
+  "implementation_hint": "Generate OOF predictions from 2-4 diverse models, then fit per-regime calibrators on OOF only: start with sigmoid and beta calibration for dry vs wet and early vs late race; reserve isotonic only if it improves OOF AUC despite ties. Blend calibrated OOF scores with a simple linear or constrained-weight stacker.",
+  "expected_effect": "Can smooth model-specific score distortions and rescue leaderboard generalization without changing base features.",
+  "risk": "Calibration often helps log loss more than AUC; overfitting the stacker or using in-fold predictions will give false gains.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v256/salinas24a.html"
+  ]
+}

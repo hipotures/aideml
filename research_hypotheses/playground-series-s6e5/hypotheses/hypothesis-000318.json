@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored Time-to-Next-Stop Hazard Stack",
+  "summary": "Official XGBoost AFT guidance matches this setup: time-to-event with censoring.",
+  "rationale": "Official XGBoost AFT guidance matches this setup: time-to-event with censoring. Many rows are not immediate positives, but they still contain signal about how close the next stop is; modeling only next-lap binary labels discards that ordering information.",
+  "implementation_hint": "For each driver-race sequence, derive time_until_next_pit; censor rows with no later pit at race end. Train an AFT survival model on leakage-safe online features, then convert predicted survival to a discrete next-lap hazard or a short-horizon hazard vector. Stack that OOF hazard with the main classifier rather than replacing it.",
+  "expected_effect": "Should add smoother stint-end pressure estimates and reduce brittle threshold behavior around the current heuristic finish-window features.",
+  "risk": "Label construction is easy to leak if future pits are used inside feature engineering rather than only for the auxiliary target; conversion from survival outputs to next-lap probability must be done consistently.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

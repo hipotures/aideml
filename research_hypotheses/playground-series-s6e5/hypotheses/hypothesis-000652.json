@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal rolling degradation slope features",
+  "summary": "Recent F1 degradation research models tyre pace as a latent state with pit-stop resets, not just static tyre age.",
+  "rationale": "Recent F1 degradation research models tyre pace as a latent state with pit-stop resets, not just static tyre age. The current best has cumulative degradation ratios but little causal momentum of degradation within the current stint.",
+  "implementation_hint": "Sort by Year/Race/Driver/LapNumber. Within each stint, create lag-only rolling/EWMA features for LapTime_Delta, Pace_Deviation_From_Median, Cumulative_Degradation, first differences, 3-lap slopes, and acceleration terms; reset at Stint or PitStop changes. Avoid centered or future windows.",
+  "expected_effect": "May improve AUC by catching the lap just before the tyre cliff, where next-lap pit probability rises sharply.",
+  "risk": "If row order or race grouping is noisy, rolling features can add variance; validation must ensure no future leakage.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

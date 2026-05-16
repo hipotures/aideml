@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap query ranking head over simultaneous pit candidates",
+  "summary": "Pit calls are relative decisions among drivers on the same lap, not independent Bernoulli events.",
+  "rationale": "Pit calls are relative decisions among drivers on the same lap, not independent Bernoulli events. XGBoost rankers are designed for grouped queries and pairwise/listwise ordering, which matches choosing who is most pit-ready within a `(Year,Race,LapNumber)` snapshot.",
+  "implementation_hint": "Train an `XGBRanker` with `qid=(Year,Race,LapNumber)` or a narrower candidate set such as only drivers not in immediate cooldown. Use labels 1 for `PitNextLap`, 0 otherwise. Blend the rank score with the binary model, or use it only as a meta-feature. Consider separate rankers for dry and wet compounds.",
+  "expected_effect": "Sharper within-lap ordering and fewer false positives on laps where only one or two cars are realistic pit candidates.",
+  "risk": "Many race-lap groups may contain no positives; filter groups or upweight groups with at least one positive to avoid wasting pairwise signal.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

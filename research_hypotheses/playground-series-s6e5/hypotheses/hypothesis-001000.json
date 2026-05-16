@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend a CatBoost specialist with raw high-cardinality categories",
+  "summary": "CatBoost’s ordered boosting and ordered target statistics are designed to learn from high-cardinality categorical identities without the prediction shift of naive target encoding.",
+  "rationale": "CatBoost’s ordered boosting and ordered target statistics are designed to learn from high-cardinality categorical identities without the prediction shift of naive target encoding. This directly fits Driver/Race/Compound/Stint interactions that the current manual frequency features only approximate.",
+  "implementation_hint": "Train a separate CatBoost classifier on mostly raw categorical columns plus a lean set of causal numeric features; include raw combos like Driver×Race, Driver×Compound, Race×Compound, Year×Race. Validate only with race-group folds and blend OOF probabilities with the existing tree model.",
+  "expected_effect": "May recover signal from sparse identity interactions and race-specific strategy habits that manual encodings miss, improving ensemble AUC more than replacing the current model outright.",
+  "risk": "If folds are not strictly grouped by race/weekend, ordered categorical gains can be overstated. CatBoost may also add little if current engineered numerics already explain most variance.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://arxiv.org/abs/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

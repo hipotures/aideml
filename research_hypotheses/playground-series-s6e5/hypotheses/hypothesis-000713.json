@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap ranking specialist blended with beta-calibrated classifier logits",
+  "summary": "Next-lap pit decisions are partly relative: on a given lap, only a few drivers are truly in-window.",
+  "rationale": "Next-lap pit decisions are partly relative: on a given lap, only a few drivers are truly in-window. Learning-to-rank can exploit that within-lap competition structure, while beta calibration is a strong low-variance way to align skewed scores before blending.",
+  "implementation_hint": "Train an XGBoost ranker with qid = Year+Race+LapNumber so each query is the active field on one lap, using the current best engineered features plus any sequence/state features. Convert ranker scores to probabilities with fold-wise beta calibration, then blend calibrated logits with the main binary classifier using only purged/grouped OOF predictions.",
+  "expected_effect": "Should improve ordering among same-lap candidates and reduce noisy standalone probabilities when fused with the stronger tabular classifier.",
+  "risk": "Ranking only helps if each lap has enough positives/near-positives to learn from; calibration or blending done on non-purged OOF can create fake gains.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3274354"
+  ]
+}

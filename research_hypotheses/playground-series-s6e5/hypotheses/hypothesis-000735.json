@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a compact monotone-constrained CatBoost specialist on causal pressure features",
+  "summary": "CatBoost’s ordered categorical handling is specifically designed to reduce prediction shift from target leakage in high-cardinality categorical features, which fits `Driver`, `Race`, and their interactions.",
+  "rationale": "CatBoost’s ordered categorical handling is specifically designed to reduce prediction shift from target leakage in high-cardinality categorical features, which fits `Driver`, `Race`, and their interactions. Monotone constraints offer a clean way to regularize physically directional features without hand-coding more thresholds.",
+  "implementation_hint": "Train a small CatBoost specialist using raw categoricals plus a compact numeric set. Constrain only features with strong one-way intuition, such as `TyreLife`, latent wear, service-window pressure, and cannot-finish pressure, while leaving ambiguous context features unconstrained. Blend this specialist with the current unconstrained model rather than replacing it outright.",
+  "expected_effect": "May improve generalization on sparse driver/race combinations and reduce overfitting from expanding manual feature recipes.",
+  "risk": "Over-constraining race-context interactions can suppress true reversals in wet or caution-affected regimes; keep constraints narrow.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/references/training-parameters/",
+    "https://huggingface.co/papers/1706.09516"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-Time Hazard Model For Time-To-Pit",
+  "summary": "This target is naturally a next-event problem, not just a rowwise binary classification problem.",
+  "rationale": "This target is naturally a next-event problem, not just a rowwise binary classification problem. Survival/AFT literature and recent F1 tyre-degradation work both model latent stint state with structural resets at pit stops, which matches the competition setting better than adding more static thresholds.",
+  "implementation_hint": "Create a secondary training view per driver-race-stint where the label is hazard at lap t: pit on t+1 given no pit yet. Fit a tree model on stint-local features plus cumulative state, and optionally a second model for remaining-laps-to-pit using pseudo-survival labels within each observed stint. Blend hazard output back into the base classifier rather than replacing it outright.",
+  "expected_effect": "Should improve ordering near true pit windows and reduce noisy positives on old tyres that are still strategically viable, especially late in stints.",
+  "risk": "If CV is not strictly grouped by race-year or if stint-derived labels leak future information, local AUC can look falsely strong. Survival reformulation also adds engineering complexity.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://docs.fastf1.dev/core.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

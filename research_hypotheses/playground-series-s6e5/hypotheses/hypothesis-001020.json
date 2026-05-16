@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary laps-to-pit multitask model",
+  "summary": "Recent F1 pit-stop papers report gains from predicting both next-lap pit probability and distance-to-stop; the auxiliary horizon task can stabilize rare positive labels and sharpen borderline pit-window rows that plain binary AUC models treat similarly.",
+  "rationale": "Recent F1 pit-stop papers report gains from predicting both next-lap pit probability and distance-to-stop; the auxiliary horizon task can stabilize rare positive labels and sharpen borderline pit-window rows that plain binary AUC models treat similarly.",
+  "implementation_hint": "Keep the current feature pipeline, but add a second target such as capped laps-until-next-pit within each driver-race sequence. Train either a two-head NN or a pair of tabular models where the horizon prediction is fed back as an out-of-fold feature into the final binary classifier. Validate strictly by whole race groups.",
+  "expected_effect": "Better discrimination around pit-window edges, especially medium-probability rows where current handcrafted features are already saturated.",
+  "risk": "If the auxiliary target is noisy around final stints or missing future pits, it can add variance unless constructed causally and capped carefully.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

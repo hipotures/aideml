@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "One-Positive-Per-Stint Listwise Specialist With Sigmoid-Calibrated Blend",
+  "summary": "Within a stint, the terminal pre-pit lap is structurally special; CatBoost ranking objectives support within-group pair/list losses, which fit this geometry better than independent row classification.",
+  "rationale": "Within a stint, the terminal pre-pit lap is structurally special; CatBoost ranking objectives support within-group pair/list losses, which fit this geometry better than independent row classification. For final probabilities, scikit-learn warns isotonic can change AUC via ties, while sigmoid preserves ranking.",
+  "implementation_hint": "Group rows by `Driver,Race,Stint` and train a ranking specialist where later terminal laps should outrank earlier non-terminal laps in the same stint; blend its OOF logits with the best classifier, then apply only sigmoid/Platt calibration on OOF predictions, optionally per dry vs wet regime.",
+  "expected_effect": "Can sharpen the model around the single spike before a pit stop while keeping final calibration AUC-safe.",
+  "risk": "Some stints end without an observed next-lap pit in the available frame, so group construction and label logic must be careful.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6"
+  ]
+}

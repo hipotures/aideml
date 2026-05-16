@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hawkes-lite pit-wave intensity features",
+  "summary": "Public F1 strategy analyses and recent game-theoretic pit-stop work both emphasize reactive stops: teams cover undercuts, exploit traffic windows, and trigger clustered pit waves.",
+  "rationale": "Public F1 strategy analyses and recent game-theoretic pit-stop work both emphasize reactive stops: teams cover undercuts, exploit traffic windows, and trigger clustered pit waves. A self-exciting event view is missing from the current baseline, which has rival features but not explicit multi-lap field intensity.",
+  "implementation_hint": "Create forward-only race-level and local-neighborhood intensities from prior pit events: decayed counts over the previous 1-3 laps, prior pits among nearby positions, and prior pits among same-compound or same-strategy peers. Interact these with own cooldown, tyre age, and laps-remaining features. Keep all aggregates strictly prior-lap only.",
+  "expected_effect": "Should help around ambiguous clustered windows where many drivers stop in reaction to one another rather than solely because of their own tyre state.",
+  "risk": "Very easy to leak if current-lap or future rows enter the aggregates. In sparse-stop races the signal may be noisy and require shrinkage or simple EMA features instead of a full point-process fit.",
+  "sources": [
+    "https://jmlr.org/beta/papers/v23/21-0917.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hierarchical stint-hazard priors instead of fixed compound life tables",
+  "summary": "The current best features hard-code generic compound life windows.",
+  "rationale": "The current best features hard-code generic compound life windows. Discrete-time survival work supports estimating per-interval hazard, and F1 pit-stop papers frame the decision as lap-level event timing rather than a single static threshold.",
+  "implementation_hint": "Build out-of-fold empirical/Bayesian hazard tables for pit-on-next-lap using keys like `Compound x Stint x TyreLife`, then shrink toward `Race x Compound`, `Year x Compound`, and global priors. Feed prior hazard, cumulative survival-to-finish, and prior-vs-observed residual features into the main classifier.",
+  "expected_effect": "Should outperform hand-set life constants by learning track- and regime-specific stopping curves while remaining tabular and interpretable.",
+  "risk": "Easy to leak if priors are fit on the full dataset or include later laps from the same driver-race in validation folds.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

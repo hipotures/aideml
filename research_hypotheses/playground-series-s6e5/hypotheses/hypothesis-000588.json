@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Leakage-resistant high-cardinality strategy encodings",
+  "summary": "`Driver`, `Race`, and their interactions are high-cardinality and strategy-heavy.",
+  "rationale": "`Driver`, `Race`, and their interactions are high-cardinality and strategy-heavy. Public evidence favors regularized target encoding over crude frequency/integer encoding, and CatBoost’s ordered categorical processing is specifically designed to reduce prediction shift from target leakage.",
+  "implementation_hint": "Test either CatBoost on mostly raw categoricals plus compact numeric features, or explicit fold-local regularized target encodings for `Driver`, `Driver_Compound`, `Race_Compound_Stint`, `Year_Race`, and `Driver_Race`. Use chronological ordering inside each train fold if possible, and compare against the current frequency features.",
+  "expected_effect": "Captures persistent driver/team/race style differences that simple frequency counts miss, without exploding sparse one-hot interactions.",
+  "risk": "Naive target encoding will overfit badly; must be race-blocked and OOF, with strong shrinkage for rare categories.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

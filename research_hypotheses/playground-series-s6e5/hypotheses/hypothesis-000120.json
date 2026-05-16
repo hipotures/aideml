@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost with native categoricals and ordered statistics on interaction keys",
+  "summary": "The dataset has high-cardinality entities (`Driver`, `Race`, `Race_Year`) and likely strong interactions.",
+  "rationale": "The dataset has high-cardinality entities (`Driver`, `Race`, `Race_Year`) and likely strong interactions. CatBoost’s ordered categorical processing is specifically designed to reduce target leakage versus manual mean encoding or crude frequency encoding.",
+  "implementation_hint": "Train a CatBoostClassifier using native categorical columns plus interaction strings like `Driver|Compound`, `Race|Compound`, `Driver|Race`, `Year|Race|Compound`. Compare `boosting_type=Ordered` and `Plain`, but score only with `GroupKFold` on `Race_Year`.",
+  "expected_effect": "Can capture sparse category interactions that the current numeric feature stack likely underuses; often complementary to LightGBM/XGBoost in tabular competitions.",
+  "risk": "If fold construction is weak, category priors will look better locally than on leaderboard. Ordered boosting may also be slower.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/concepts/faq"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

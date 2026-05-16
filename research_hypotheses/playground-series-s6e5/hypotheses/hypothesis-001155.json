@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "True grouped ranking expert trained on lap queries",
+  "summary": "Current code only rank-blends binary models; official CatBoost and LightGBM ranking objectives support query-group learning directly.",
+  "rationale": "Current code only rank-blends binary models; official CatBoost and LightGBM ranking objectives support query-group learning directly. Since competition utility depends heavily on ordering cars within the same lap context, a lap-group ranker can learn relative pit urgency better than pointwise logloss alone.",
+  "implementation_hint": "Build a separate ranker with query groups = (Year,Race,LapNumber). Use CatBoost YetiRank/LambdaMart or LightGBM lambdarank/rank_xendcg, with positive labels from PitNextLap and optional higher gains for strong pit contexts. Evaluate with both global ROC AUC and query-aware diagnostics, then blend the ranker’s OOF scores with the binary stack instead of only query-normalizing existing predictions.",
+  "expected_effect": "Should improve within-lap separation and provide a cleaner same-lap expert than heuristic query-rank post-processing.",
+  "risk": "Ranking losses may ignore cross-query calibration and can underperform if most lap groups have very few positives.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://catboost.ai/en/docs/concepts/loss-functions-classification",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

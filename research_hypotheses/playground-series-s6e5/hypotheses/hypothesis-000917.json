@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Empirical pit-window hazard priors",
+  "summary": "Pit timing is naturally a hazard problem: probability of stopping rises with tyre age, compound, race progress, and stint number.",
+  "rationale": "Pit timing is naturally a hazard problem: probability of stopping rises with tyre age, compound, race progress, and stint number. Strategy models often optimize pit epochs and use tyre degradation curves, and a simple hazard prior can complement GBDTs without requiring a full survival model.",
+  "implementation_hint": "From training only, compute smoothed historical PitNextLap rates by bins such as Race x Compound x Stint x TyreLifeBin, Race x RaceProgressBin x Stint, Driver x Compound x TyreLifeBin. Add these as OOF target-encoded features using race/year folds or K-fold smoothing; for test, fit encoders on all train with global fallback.",
+  "expected_effect": "Can add high-signal calibrated priors for common pit windows that tree models may not infer robustly from sparse categorical combinations.",
+  "risk": "Naive target encoding over all train will inflate CV; must be OOF and smoothed to avoid leakage and overfitting rare race/driver cells.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://scikit-learn.org/stable/modules/cross_validation.html?highlight=cross_validate"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

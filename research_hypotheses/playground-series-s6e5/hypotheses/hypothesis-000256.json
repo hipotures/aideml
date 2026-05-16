@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Field-synchronous neutralization proxy specialist",
+  "summary": "F1 strategy groups explicitly watch for Safety Car/VSC windows because pitting under neutralization creates a large effective discount; official race coverage repeatedly describes 'free pit stops' and pre-opened Safety Car windows.",
+  "rationale": "F1 strategy groups explicitly watch for Safety Car/VSC windows because pitting under neutralization creates a large effective discount; official race coverage repeatedly describes 'free pit stops' and pre-opened Safety Car windows. Your table has no flag variable, but same-lap cross-driver anomalies can proxy neutralization events.",
+  "implementation_hint": "Build race-lap features using only same-lap peer rows: share of pit stops on that lap, std/median of LapTime_Delta, count of extreme positive deltas, field size still circulating, and whether many drivers suddenly gain fresh-tyre pace together. Train a small specialist model on these race-lap aggregates and blend it with the base model, or gate the base score upward only when the neutralization proxy is high.",
+  "expected_effect": "Should improve recall on abrupt multi-car stop waves and reduce missed late-race 'cheap stop' events that tyre-window heuristics cannot explain.",
+  "risk": "Main trap is leakage if race-lap aggregates are computed using future-derived features or if CV splits let the same race appear across train/valid. Keep aggregates contemporaneous and split by race-year.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/fia-clarifies-new-virtual-safety-car-procedures.3kAXqSlWzpv5DRXo8eW8Nf",
+    "https://www.formula1.com/en/latest/article/albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E"
+  ]
+}

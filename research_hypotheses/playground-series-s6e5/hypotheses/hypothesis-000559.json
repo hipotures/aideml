@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-Regime Experts Beyond Dry/Wet",
+  "summary": "Undercut dominance, tyre warm-up behavior, and one-stop vs two-stop pressure vary strongly by circuit and conditions.",
+  "rationale": "Undercut dominance, tyre warm-up behavior, and one-stop vs two-stop pressure vary strongly by circuit and conditions. Public F1 analyses repeatedly show Monaco-like overcut/warm-up races behave differently from high-deg undercut races, so a single global model likely averages away useful structure.",
+  "implementation_hint": "Cluster `Year_Race` into a few strategy regimes using causal summaries available at prediction time or learned from prior laps in-train: degradation curvature, first-lap-after-pit delta patterns, one-stop frequency, stint-length distribution. Train expert models per regime and blend by a lightweight regime classifier.",
+  "expected_effect": "Cleaner decision boundaries for races where pit timing logic is qualitatively different despite similar raw tyre ages.",
+  "risk": "Only 26 races are available, so regime definitions must stay coarse to avoid fragmentation.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.mdpi.com/2076-3417/10/21/7805/html",
+    "https://www.mdpi.com/2076-3417/10/12/4229"
+  ]
+}

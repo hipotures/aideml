@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Leakage-Safe OOF Regime Stacker, With Minimal Post-Hoc Calibration",
+  "summary": "Stacked generalization is a natural next step once the base learners are meaningfully different.",
+  "rationale": "Stacked generalization is a natural next step once the base learners are meaningfully different. At the same time, calibration literature warns that isotonic/binning methods often improve probability quality at the cost of grouping/discrimination, and scikit-learn’s target-encoding example shows how badly high-cardinality statistics can overfit without cross-fitting.",
+  "implementation_hint": "Build a level-1 model only from out-of-fold predictions of the baseline classifier, survival model, listwise ranker, and teacher model, plus small regime indicators like wet/dry, race phase, tyre bin, and stint bin. Keep every categorical prior/encoding fold-local, drop any train+test joint frequency statistics, and only test calibration inside the OOF meta-CV if it improves AUC rather than just log loss.",
+  "expected_effect": "Lets the pipeline learn which base learner is strongest in each regime while avoiding the most likely validation trap: leakage through encoders, priors, or meta-features.",
+  "risk": "Gain may be small if the base models remain too correlated; meta-features are easy to leak, and heavy calibration can flatten ranking quality.",
+  "sources": [
+    "https://doi.org/10.1016/S0893-6080(05)80023-1",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

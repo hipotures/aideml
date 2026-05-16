@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a stint phase-change sidecar that detects tyre-cliff onset, not just absolute tyre age",
+  "summary": "Predictive-maintenance literature repeatedly treats degradation as multi-phase with a change point, and F1 strategy articles explain that undercut value depends on when old tyres stop behaving linearly.",
+  "rationale": "Predictive-maintenance literature repeatedly treats degradation as multi-phase with a change point, and F1 strategy articles explain that undercut value depends on when old tyres stop behaving linearly. Current features mostly encode level and simple ratios; they do not explicitly estimate whether a stint just crossed from stable to cliff-like behavior.",
+  "implementation_hint": "Within each `Year-Race-Driver-Stint`, compute rolling slopes/curvature of `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation` against `TyreLife` or lap index. Derive `phase_change_score`, `recent_acceleration_in_loss`, `pre_cliff_vs_post_cliff` bins, and optionally a tiny sidecar model that predicts change-point probability; feed its OOF output into the main learner.",
+  "expected_effect": "Better separation between old-but-still-acceptable tyres and old tyres that have just entered the real pit window.",
+  "risk": "Per-stint sequences are short; noisy lap deltas or safety-car laps can create false change points unless status-filtered first.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0967066123004094",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0951832021004324",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-regime mixture of experts keyed by undercut vs overcut conditions",
+  "summary": "F1 strategy sources stress that pit timing logic changes by circuit energy, tyre warm-up, and degradation regime: high-deg tracks favor undercut behavior, while low-energy tracks like Monaco favor overcut/long first stints.",
+  "rationale": "F1 strategy sources stress that pit timing logic changes by circuit energy, tyre warm-up, and degradation regime: high-deg tracks favor undercut behavior, while low-energy tracks like Monaco favor overcut/long first stints. A single global model can blur these opposite response surfaces.",
+  "implementation_hint": "Create race-level regime labels from training data only, using historical stop-timing shape, median degradation slope, wet vs dry compound share, and estimated pit-window width. Train 2-4 specialists such as `high_deg_dry`, `low_deg_track_position`, `wet/intermediate`, then blend with a lightweight gate based on race-level features and current compound/weather indicators.",
+  "expected_effect": "Can recover signal lost in one-size-fits-all trees and reduce contradictory splits around the same tyre-life values.",
+  "risk": "Regime definitions can become noisy with only 26 races; keep the number of experts small and fallback to the global model.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

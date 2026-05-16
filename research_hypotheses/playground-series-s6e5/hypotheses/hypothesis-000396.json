@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Multi-horizon pit specialist",
+  "summary": "Next-lap pit labels are noisy at the edge of a window, while survival-style models learn the event-time shape directly.",
+  "rationale": "Next-lap pit labels are noisy at the edge of a window, while survival-style models learn the event-time shape directly. Public event-time work suggests modeling several horizons can outperform a single binary cutoff.",
+  "implementation_hint": "Train a specialist for `Pit within 1/2/3/5 laps` or a discrete hazard/PMF model, generate strict OOF predictions, and add derived features such as `P<=1`, `P<=3`, `P<=5`, `P<=1 / P<=3`, and horizon spread or entropy to the final ensemble.",
+  "expected_effect": "Sharper discrimination between cars whose window is merely opening and cars likely to box immediately.",
+  "risk": "Close to earlier time-to-pit ideas, so lift may be incremental unless the multi-horizon outputs are used as features rather than a standalone replacement.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/11842",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://arxiv.org/abs/2406.14341"
+  ]
+}

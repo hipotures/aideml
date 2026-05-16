@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Filtered latent tyre-wear state via simple state-space/Kalman features",
+  "summary": "A new 2026 F1 tyre-degradation paper models wear as a latent state with pit-stop resets and finds better sequential prediction than an AR benchmark.",
+  "rationale": "A new 2026 F1 tyre-degradation paper models wear as a latent state with pit-stop resets and finds better sequential prediction than an AR benchmark. That is a more concrete version of the broad ‘latent tyre state’ idea: instead of static degradation ratios, estimate hidden wear level and wear slope from past lap-time observations only.",
+  "implementation_hint": "For each `Race_Year-Driver` sequence, fit a lightweight past-only filter with state components like latent pace loss and degradation slope; reset state after `PitStop=1`. Export filtered state mean, slope, innovation, and uncertainty as tabular features for the existing classifier.",
+  "expected_effect": "Better separation between normal long stints and true cliff/stop-trigger moments, especially when raw `LapTime_Delta` is noisy.",
+  "risk": "Model misspecification on wet races or traffic-heavy laps can inject noise; computational setup is more complex than ordinary feature engineering.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://journals.sagepub.com/doi/abs/10.1177/22150218261446170"
+  ]
+}

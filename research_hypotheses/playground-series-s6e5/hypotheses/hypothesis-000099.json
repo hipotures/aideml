@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add latent tyre-state features from a per-stint state-space model",
+  "summary": "Recent F1 tyre-degradation work models lap time as a latent degradation state with pit-stop resets and shows better predictive robustness than AR baselines.",
+  "rationale": "Recent F1 tyre-degradation work models lap time as a latent degradation state with pit-stop resets and shows better predictive robustness than AR baselines. Your current features use raw degradation and ratios, but not an inferred hidden pace-loss state, its slope, or uncertainty.",
+  "implementation_hint": "For each `Year,Race,Driver,Stint`, estimate a simple local-linear/Kalman state from `LapTime (s)`, `LapTime_Delta`, `TyreLife`, and compound, with reset after `PitStop=1`. Feed the filtered state, one-step forecast residual, state slope, and posterior variance into trees.",
+  "expected_effect": "Can sharpen the pit-window signal when raw `Cumulative_Degradation` is noisy or non-monotone, especially on long stints and wet compounds.",
+  "risk": "A poorly tuned filter can just restate existing features and add noise; leakage-free fitting must be strictly past-only within sequence.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-"
+  ]
+}

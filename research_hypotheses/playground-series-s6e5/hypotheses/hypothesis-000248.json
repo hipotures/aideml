@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Event-Specific Pit-Utility Residual Using Inferred Degradation Slope",
+  "summary": "Strategy references frame stop timing as a tradeoff between current degradation, pit loss, and whether fresh tyres can repay that loss via undercut/finish utility.",
+  "rationale": "Strategy references frame stop timing as a tradeoff between current degradation, pit loss, and whether fresh tyres can repay that loss via undercut/finish utility. That suggests a more dynamic event-specific utility score than current static compound windows.",
+  "implementation_hint": "Infer a race-level pit-loss proxy from observed `PitStop=1` lap-time disruptions, then build features like `estimated_deg_slope x expected_remaining_laps`, `utility_of_staying_out`, `utility_of_pitting_now`, and `distance_to_optimal_stint` using slope estimates from prior laps in the current stint. Cross-fit all race-level priors inside training folds only.",
+  "expected_effect": "Could separate ‘old tyres but still efficient to stay out’ from ‘same tyre age but economically optimal to stop now’, giving a cleaner next-lap stop boundary.",
+  "risk": "Pit-loss inference may be noisy because raw lap time includes traffic/incidents; bad race-level priors could hurt more than help.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

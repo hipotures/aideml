@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pre-Season Testing Domain Adaptation",
+  "summary": "Official F1 material makes clear that pre-season testing is operationally different from races: teams run experiments, reliability programs, and setup checks rather than normal race-intent strategy.",
+  "rationale": "Official F1 material makes clear that pre-season testing is operationally different from races: teams run experiments, reliability programs, and setup checks rather than normal race-intent strategy. Since `Pre-Season Testing` is mixed into the same `Race` field, it may create a domain-shift trap in both CV and leaderboard generalization.",
+  "implementation_hint": "Treat `Race == Pre-Season Testing` as a separate domain. Test three variants: separate model for that domain, down-weight it in global training, or learn a domain classifier and use its OOF probability as an importance-weight feature for the main classifier. Also report CV with and without that domain to see if it is inflating fit.",
+  "expected_effect": "Reduced contamination from non-race behavior and more honest validation if test distribution differs from standard Grands Prix.",
+  "risk": "If test contains a lot of pre-season rows, aggressive down-weighting may hurt; this needs fold-level ablation rather than assumption.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-f1-pre-season-testing.3CuYMLp6etxlynKLz0j7Ev",
+    "https://www.formula1.com/en/latest/article/explained-why-pre-season-running-is-different-in-2026.7reu6xnBY0kF87Vucgt25s"
+  ]
+}

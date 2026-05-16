@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add an auxiliary laps-to-next-stop target and feed its OOF prediction back into the classifier",
+  "summary": "Recent F1 pit-stop work (SOSTA AI) uses a cascaded multi-task design where the binary next-lap call is complemented by estimating how many laps remain until the stop.",
+  "rationale": "Recent F1 pit-stop work (SOSTA AI) uses a cascaded multi-task design where the binary next-lap call is complemented by estimating how many laps remain until the stop. That auxiliary horizon should encode smoother strategy information than a pure one-step label.",
+  "implementation_hint": "Create `laps_to_next_pit` on train data, with censored handling at race end. Train an out-of-fold regressor or ordinal model for this horizon, then add `pred_horizon`, `1/(pred_horizon+1)`, and coarse horizon bins as features to the main classifier.",
+  "expected_effect": "Should sharpen predictions in the 1–5 lap pre-stop region where binary labels are noisy but the strategic intent is already visible.",
+  "risk": "Label generation can leak if the horizon is built across fold boundaries without care; censored rows need a consistent convention.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

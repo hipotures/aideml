@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost Native Categorical Ensemble",
+  "summary": "The best solutions rely on AutoGluon GBM/XGB.",
+  "rationale": "The best solutions rely on AutoGluon GBM/XGB. CatBoost’s ordered target statistics are specifically designed for high-cardinality categorical features without leakage, which is relevant for Driver, Race, and crossed categorical pit-window features. Public tabular guidance also finds GBM/XGB/CatBoost ensembles often have complementary errors.",
+  "implementation_hint": "Train a standalone CatBoostClassifier with raw categorical columns plus engineered numeric features, using race-aware validation if feasible. Blend or rank-average CatBoost probabilities with the existing AutoGluon GBM/XGB predictions, tuning only a few weights on OOF predictions.",
+  "expected_effect": "Likely modest AUC gain from different categorical treatment and model diversity.",
+  "risk": "CatBoost can overfit if random holdout shares the same races; use ordered boosting defaults and validate by Race/Year where possible.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC7610170/",
+    "https://tildalice.io/xgboost-lightgbm-catboost-kaggle-tabular-benchmark/",
+    "https://newsletter.datascienceletter.com/p/lightgbm-vs-xgboost-vs-catboost"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

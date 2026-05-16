@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap pit-wave context from same-snapshot field state",
+  "summary": "F1 pit calls are strongly relational: undercut, overcut, and cover-off behavior depend on how rival tyre age and pace compare on the same lap, not just on one driver’s raw features.",
+  "rationale": "F1 pit calls are strongly relational: undercut, overcut, and cover-off behavior depend on how rival tyre age and pace compare on the same lap, not just on one driver’s raw features. Current best solutions are mostly row-local.",
+  "implementation_hint": "Within each `(Year, Race, LapNumber)` snapshot, compute X-only context features such as tyre-life percentile, lap-delta z-score, degradation rank, compound-mix entropy, fraction of field already on later stints, and counts of nearby positions with older tyres or large positive `LapTime_Delta`. Feed these into the existing tabular model.",
+  "expected_effect": "Better detection of collective pit windows and reactive stops when the surrounding field enters the undercut zone.",
+  "risk": "Easy to create leakage if any aggregation accidentally crosses future laps; keep all context strictly same-lap and target-free.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal sequence-to-hazard model over each driver's race history",
+  "summary": "Recent survival papers show recurrent/transformer hazard models handle longitudinal, non-proportional event risk better than static tabular models.",
+  "rationale": "Recent survival papers show recurrent/transformer hazard models handle longitudinal, non-proportional event risk better than static tabular models. Prior work already explored hazard reformulation; the new angle is a strictly causal sequence expert that consumes the whole within-race lap trajectory and outputs next-lap stop hazard.",
+  "implementation_hint": "Train a compact GRU/Transformer on ordered laps within each (Year,Race,Driver), using masking and past-only features; predict next-lap hazard directly or a short horizon PMF, then stack its out-of-fold predictions with the boosted-tree baseline. Keep folds grouped by race to prevent the model from memorizing session-specific dynamics.",
+  "expected_effect": "Can capture temporal motifs like tyre reset, repeated pace fade, and post-pit cooldown that hand-crafted ratios miss.",
+  "risk": "Sequence models on 439k rows can overfit or underperform strong GBDTs if regularization and grouped CV are weak.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://www.microsoft.com/en-us/research/publication/deep-recurrent-survival-analysis/",
+    "https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-024-05799-2"
+  ]
+}

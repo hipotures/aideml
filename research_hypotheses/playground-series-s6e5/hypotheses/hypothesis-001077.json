@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Latent-domain experts instead of one global model with post-hoc regime weights",
+  "summary": "Domain-generalization work with mixture-of-experts argues that heterogeneous data benefit from expert specialization and learned routing, especially when true domains are hidden.",
+  "rationale": "Domain-generalization work with mixture-of-experts argues that heterogeneous data benefit from expert specialization and learned routing, especially when true domains are hidden. This dataset clearly mixes dry/wet compounds, testing vs race sessions, different seasons, and track-energy regimes; current blending adjusts predictions by regime after training, but the base learners themselves remain global.",
+  "implementation_hint": "Cluster rows or race-groups using adversarial-validation features or simple latent-domain descriptors, then train separate experts for 3-5 domains plus one global fallback. Use an OOF gate based on regime features and domain score to combine experts, with minimum-sample guards so wet/testing domains back off to the global model.",
+  "expected_effect": "Should improve robustness under train-test shift and produce a more diverse ensemble member than another small feature tweak to the global XGB/Cat pair.",
+  "risk": "Expert fragmentation can hurt rare regimes and make CV noisy; the gate can overfit unless built from strictly OOF expert predictions.",
+  "sources": [
+    "https://thibaultfaney.github.io/publication/qu-hmoe-2023/",
+    "https://www.researchgate.net/publication/301571502_Prediction_Reweighting_for_Domain_Adaptation"
+  ]
+}

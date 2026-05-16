@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal state-space tyre filter features",
+  "summary": "Recent F1 modelling work shows latent tyre pace/degradation can be estimated with a Bayesian state-space model and pit stops act like state resets.",
+  "rationale": "Recent F1 modelling work shows latent tyre pace/degradation can be estimated with a Bayesian state-space model and pit stops act like state resets. That is a cleaner way to represent true tyre condition than raw `TyreLife`, `LapTime_Delta`, or fixed compound life constants.",
+  "implementation_hint": "Within each `Driver x Race_Year` sequence, fit an online local-level/local-trend filter on lap-time residuals and degradation proxies using only prior laps of the current stint. Export filtered state, slope, uncertainty, and shock residual as new tabular features for the existing model.",
+  "expected_effect": "Improves separation between tyres that are merely old and tyres that are genuinely falling off, especially in noisy or wet conditions.",
+  "risk": "State estimates can become unstable around safety cars, traffic, or outlier laps unless observation noise is robustified.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

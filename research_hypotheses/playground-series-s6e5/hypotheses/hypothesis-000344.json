@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit SC/VSC Detector With Regime-Gated Blend",
+  "summary": "FIA SC/VSC procedures create a different decision regime, and official F1 analysis explicitly notes that cheap Safety Car stops change optimal pit timing.",
+  "rationale": "FIA SC/VSC procedures create a different decision regime, and official F1 analysis explicitly notes that cheap Safety Car stops change optimal pit timing. A concrete neutralization detector is a sharper, testable version of the earlier hidden-regime idea.",
+  "implementation_hint": "Detect likely SC/VSC laps from field-wide lap-time inflation, suppressed position-change variance, and pit-stop clustering. Train separate green-flag and neutralized specialists, then gate or OOF rank-blend them using the detector probability; if you calibrate, prefer rank-preserving sigmoid or pure rank blending for AUC.",
+  "expected_effect": "Most useful on rare but high-leverage pit windows, with potential LB gain from handling regime shifts that current single-model heuristics smear together.",
+  "risk": "A noisy detector can send rows to the wrong expert, and isotonic post-calibration can reduce ROC AUC by introducing ties.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

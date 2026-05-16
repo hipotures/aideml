@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regulation-Aware Sequence Decoder Over Rowwise Scores",
+  "summary": "Pit calls are sequential decisions, not independent rows.",
+  "rationale": "Pit calls are sequential decisions, not independent rows. FIA dry-race rules require two dry compounds unless wets/inters are used, and sequence models such as CRFs/HMM-style decoders are designed to score whole label paths with transition constraints. A post-model decoder can suppress impossible streaks and upweight plausible 'pit-window just opened' transitions without retraining the base learner.",
+  "implementation_hint": "Train the usual rowwise model, convert OOF probabilities to logits, then decode each `(Race, Year, Driver)` sequence with a small dynamic program. Add transition penalties for consecutive `PitNextLap=1`, bonuses when compound-debt remains in dry races, and reset logic after actual `PitStop=1` / `TyreLife` reset. Keep all transition parameters tuned only on OOF folds.",
+  "expected_effect": "Should clean up noisy isolated positives/negatives near stop boundaries and improve leaderboard robustness more than CV if current model is over-triggering around adjacent laps.",
+  "risk": "Over-constrained decoding can hurt races with unusual safety-car or wet transitions; must gate rules when `Compound` is `INTERMEDIATE`/`WET` or the sequence already shows wet running.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_5_-_2024-02-28.pdf",
+    "https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-predictive-analysis-library/conditional-random-field-conditional-random-field-48ece2f?version=latest"
+  ]
+}

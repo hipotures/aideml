@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed leave-race-out model selection",
+  "summary": "Because the label is 'pit next lap', adjacent laps from the same race/driver are highly overlapping.",
+  "rationale": "Because the label is 'pit next lap', adjacent laps from the same race/driver are highly overlapping. Purged or embargoed validation is recommended in other forward-horizon domains to reduce optimistic CV, and race strategy logic is race-specific enough that random/group-lite folds can still leak stint patterns.",
+  "implementation_hint": "Evaluate every candidate with folds grouped by full `Year+Race`, and embargo 1-2 laps around validation race boundaries if mixed-race chronological splits are used. Use this stricter CV only for model selection, not necessarily final refit.",
+  "expected_effect": "May lower local CV but improve leaderboard correlation and reduce overfitting to race-specific pit windows.",
+  "risk": "Could reject genuinely useful features if the stricter split is too pessimistic for the test distribution.",
+  "sources": [
+    "https://handwiki.org/wiki/Purged_cross-validation",
+    "https://pypi.org/project/wfvkit/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost specialist on raw strategy categories",
+  "summary": "CatBoost’s ordered boosting and categorical transformations are designed to reduce prediction shift from target leakage, and its docs explicitly discourage manual one-hot preprocessing for rich categorical structure.",
+  "rationale": "CatBoost’s ordered boosting and categorical transformations are designed to reduce prediction shift from target leakage, and its docs explicitly discourage manual one-hot preprocessing for rich categorical structure. This fits the high-cardinality `Driver`, `Race`, `Year`, `Compound`, and their interactions better than the current mostly hand-built thresholds.",
+  "implementation_hint": "Train a separate CatBoost binary model on mostly raw columns plus only a small set of numeric race-state features. Let CatBoost see combinations such as `Driver x Race`, `Race x Compound`, `Compound x Stint`, and `Driver x Compound x Year`; validate with `GroupKFold` on race-year groups only. Blend its OOF predictions with the current tabular model rather than replacing it.",
+  "expected_effect": "Better capture of driver-, circuit-, and compound-specific priors with less brittle manual feature engineering; likely small but real gain as a complementary specialist.",
+  "risk": "This overlaps with prior raw-categorical ideas, so the test should be strict: it needs to win as a specialist blend, not just match the current model. Leakage risk remains if encodings or folds mix laps from the same race across train/validation.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://huggingface.co/papers/1706.09516",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Sequence-consistent HSMM/HMM post-processor over driver-race trajectories",
+  "summary": "Pit decisions are sequential and duration-constrained: tyre age evolves smoothly, then resets after a stop.",
+  "rationale": "Pit decisions are sequential and duration-constrained: tyre age evolves smoothly, then resets after a stop. Hidden semi-Markov models are designed for latent states with explicit durations, which matches stint progression better than independent row scoring.",
+  "implementation_hint": "Keep the current classifier as an emission model, then run a lightweight per-driver, per-race decoder with latent states like `normal stint`, `pit-imminent`, `pit-lap aftermath`. Use duration penalties so `pit-imminent` cannot persist unrealistically and enforce reset consistency around observed `PitStop`. Compare raw scores vs decoded probabilities.",
+  "expected_effect": "Should reduce spurious isolated spikes and sharpen probability mass around true stop windows, potentially helping AUC by improving ordering within each sequence.",
+  "risk": "If transition assumptions are too rigid, the decoder can oversmooth and hurt leaderboard generalization; needs strict validation by race-year groups.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0004370209001416",
+    "https://www.microsoft.com/en-us/research/publication/stream-prediction-using-a-generative-model-based-on-frequent-episodes-in-event-sequences/?lang=ja",
+    "https://doi.org/10.1177/22150218261446170"
+  ]
+}

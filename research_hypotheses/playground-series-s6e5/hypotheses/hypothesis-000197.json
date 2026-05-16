@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-safe OOF calibration and specialist blending with sigmoid, not isotonic",
+  "summary": "You care about ROC AUC, so preserving ranking matters.",
+  "rationale": "You care about ROC AUC, so preserving ranking matters. Scikit-learn notes isotonic can change AUC by introducing ties, while sigmoid calibration is strictly monotonic. LightGBM also warns imbalance handling can hurt probability quality, which matters when blending heterogeneous specialists.",
+  "implementation_hint": "Train 2-4 diverse specialists such as baseline GBDT, AFT survival score, and possibly a ranker or CatBoost categorical model. Produce strict OOF predictions, then fit a simple sigmoid/Platt calibrator or logistic stacker globally or by broad regime (`wet/dry`, `early/mid/late`, `slick/wet`). Avoid isotonic unless used only for Brier-style diagnostics.",
+  "expected_effect": "Cleaner public-score transfer from diverse models without sacrificing the base ranking signal that already gives strong CV.",
+  "risk": "If specialists are too correlated, calibration alone will do little. Regime-wise calibrators can overfit if bins are too small.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdarank"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

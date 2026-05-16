@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-hard-negative specialist",
+  "summary": "AUC is fundamentally pairwise ranking, and imbalance papers show AUC-focused training and hard-negative mining help when easy negatives dominate.",
+  "rationale": "AUC is fundamentally pairwise ranking, and imbalance papers show AUC-focused training and hard-negative mining help when easy negatives dominate. For this task, the most informative negatives are the non-pit laps that look almost ready to pit.",
+  "implementation_hint": "Train a specialist on all positives plus weighted hard negatives drawn from high-risk windows: late stint, high degradation, large positive lap-time drift, and laps adjacent to real stops within the same driver-race history. Use pairwise/AUC-oriented optimization or strong cost weighting, then blend the specialist score by rank with the main model.",
+  "expected_effect": "Improves ordering on ambiguous boundary cases without spending model capacity on obvious stay-out laps.",
+  "risk": "Too-aggressive mining can overfit niche windows and hurt global robustness if not blended conservatively.",
+  "sources": [
+    "https://papers.nips.cc/paper/2518-auc-optimization-vs-error-rate-minimization.pdf",
+    "https://openaccess.thecvf.com/content_ICCV_2017/papers/Dong_Class_Rectification_Hard_ICCV_2017_paper.pdf",
+    "https://users.cs.duke.edu/~tomasi/papers/lieberman/liebermanIclr24.pdf"
+  ]
+}

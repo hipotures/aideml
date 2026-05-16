@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Residualized Undercut Opportunity Features",
+  "summary": "F1 strategy papers emphasize the trade-off between tyre degradation, pit-loss, and traffic/competition.",
+  "rationale": "F1 strategy papers emphasize the trade-off between tyre degradation, pit-loss, and traffic/competition. Rather than raw LapTime_Delta and degradation alone, model the expected lap-time baseline first and use residual pace loss, residual trend, and relative field position as explicit undercut/overcut opportunity features.",
+  "implementation_hint": "Fit a fold-local regression or state-space baseline for LapTime or LapTime_Delta from Compound, TyreLife, RaceProgress, LapNumber, and race identity. Add features like current residual, 2-3 lap residual slope, residual percentile within same race-lap, and estimated gain from a tyre reset relative to peers.",
+  "expected_effect": "More physically grounded features may isolate the true trigger for pitting and reduce noise from track-specific pace levels.",
+  "risk": "Two-stage modeling adds complexity and can leak if the baseline is fit on all rows; residual estimates may be unstable in wet or highly anomalous laps.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

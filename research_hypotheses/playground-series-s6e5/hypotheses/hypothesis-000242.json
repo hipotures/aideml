@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stint-survival prior from historical stint-end curves",
+  "summary": "The target is effectively a one-step hazard: will the current stint end next lap?",
+  "rationale": "The target is effectively a one-step hazard: will the current stint end next lap? Instead of hand-coded compound life tables, estimate empirical survival/hazard of stint endings by tyre age under context such as `Compound`, `Race`, `Year`, wet vs slick, and estimated laps remaining. Discrete-time survival work supports this representation for panel event prediction.",
+  "implementation_hint": "From train only, reconstruct stint-end ages and build OOF Kaplan-Meier or smoothed discrete hazard tables for groups like `Compound×Race`, `Compound×slick/wet`, or `Compound×estimated_total_laps_bin`. Feed `S(TyreLife)`, hazard at current tyre age, expected remaining stint laps, and percentile-of-observed-stint-age as features into the main classifier.",
+  "expected_effect": "Replaces brittle fixed expected-life constants with data-driven stop-pressure features that should be more portable across compounds and tracks.",
+  "risk": "Sparse groups can be noisy, so aggressive shrinkage to broader groups is required. This overlaps conceptually with hazard modeling, so it must be implemented simply to avoid duplication with past ideas.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

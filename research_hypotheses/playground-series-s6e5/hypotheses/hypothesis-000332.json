@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cascaded auxiliary head for laps-to-next-stop",
+  "summary": "Recent lap-level F1 work reports a cascaded multi-task setup where next-lap stop classification is complemented by a horizon-to-stop regression head.",
+  "rationale": "Recent lap-level F1 work reports a cascaded multi-task setup where next-lap stop classification is complemented by a horizon-to-stop regression head. This is a stronger, more specific version of generic horizon-aware supervision because the auxiliary prediction itself becomes a learned summary of stop imminence.",
+  "implementation_hint": "Create a training-only label for laps_until_next_pit within each driver-race sequence. Train an auxiliary model for that target, generate strict out-of-fold predictions for train and one-pass predictions for test, then feed predicted horizon, log-horizon, and uncertainty/error bins into the main ROC-AUC model.",
+  "expected_effect": "Improves ranking around 2-6 laps before a stop, where binary labels alone are sparse and noisy.",
+  "risk": "If in-fold auxiliary predictions are reused on train, leakage is severe; only OOF auxiliary predictions should enter the final classifier.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://doi.org/10.3389/frai.2025.1673148"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

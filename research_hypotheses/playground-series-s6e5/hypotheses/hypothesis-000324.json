@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use shift-aware specialists for year, testing, and wet/dry regimes",
+  "summary": "The data mixes seasons, testing, and wet compounds, and official F1 testing guidance says testing lap times are not directly representative.",
+  "rationale": "The data mixes seasons, testing, and wet compounds, and official F1 testing guidance says testing lap times are not directly representative. Grouped validation and covariate-shift weighting are better aligned with that regime mix than one pooled model.",
+  "implementation_hint": "Train separate experts for slick dry races, wet-compound laps, and `Pre-Season Testing`, or at minimum by `Year`. Validate with `LeaveOneGroupOut` on `Race_Year` or `Year`, then optionally fit a train-vs-test classifier and use its density-ratio proxy as sample weights for the pooled model or blender.",
+  "expected_effect": "Improves robustness when leaderboard data over-represents a regime that the pooled model underfits, especially testing or wet rows.",
+  "risk": "Importance weighting can increase variance; small specialist slices may undertrain without strong shrinkage or fallback blending.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5070592/",
+    "https://www.formula1.com/en/latest/article/essential-guide-how-to-read-bahrain-pre-season-testing-with-f1-strategy.2CkqwrzR0PSA013BRRnOQR"
+  ]
+}

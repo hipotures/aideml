@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-Loss Adjusted Optimal Stint Gap",
+  "summary": "Strategy models compare degradation loss against pit-lane time loss; simple expected tyre life misses race-specific pit loss and degradation slope.",
+  "rationale": "Strategy models compare degradation loss against pit-lane time loss; simple expected tyre life misses race-specific pit loss and degradation slope. Public F1 modelling uses pit loss and degradation to estimate optimal stint length and undercut timing.",
+  "implementation_hint": "Infer race-year pit-loss proxy from rows with PitStop=1 using LapTime spikes versus neighboring non-pit laps or race median pace. Estimate degradation slope per compound/race from Cumulative_Degradation/TyreLife or lap-time residual trend. Add features: sqrt(2*pit_loss/degradation_slope), TyreLife minus optimal_stint, and in_optimal_window bands.",
+  "expected_effect": "Converts raw wear into a race-specific decision boundary, likely useful where the same TyreLife means different pit urgency by circuit.",
+  "risk": "LapTime outliers can corrupt inferred pit loss; winsorize lap times and use smoothed race/compound fallbacks.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

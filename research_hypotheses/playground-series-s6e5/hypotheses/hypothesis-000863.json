@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AFT sidecar for laps-until-next-stop, then convert to next-lap hazard",
+  "summary": "This target is naturally a time-to-event problem.",
+  "rationale": "This target is naturally a time-to-event problem. XGBoost’s AFT objective explicitly supports censored time-to-event labels, which matches drivers who reach race end before another stop. A sidecar predicting remaining laps until the next pit can add a smoother notion of stop imminence than a pure binary next-lap model.",
+  "implementation_hint": "Create per-driver/per-race labels for `laps_to_next_pit`; right-censor sequences with no future pit before race end. Train an XGBoost `survival:aft` model on current-lap state, then transform predicted remaining-time distributions into `P(stop in 1 lap)` or use the AFT score as a blend feature for the main classifier.",
+  "expected_effect": "Better discrimination near the pit window and fewer brittle threshold effects, especially on long stints and end-of-race censored cases.",
+  "risk": "AFT optimization target is not ROC AUC, so standalone performance may lag; the win may come mainly as a sidecar feature or blend member.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

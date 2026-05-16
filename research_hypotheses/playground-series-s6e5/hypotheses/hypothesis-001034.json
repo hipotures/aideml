@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Opponent-response and pit-window interaction features",
+  "summary": "F1 strategy is highly interactive: undercut, overcut, and safety-car windows change pit likelihood based on what nearby rivals do, not just a driver’s own tyre age.",
+  "rationale": "F1 strategy is highly interactive: undercut, overcut, and safety-car windows change pit likelihood based on what nearby rivals do, not just a driver’s own tyre age. Public F1 strategy analysis and game-theoretic work both emphasize that ignoring competitor actions loses meaningful information.",
+  "implementation_hint": "Build race-lap interaction features from rows already present in the tabular data: count of other cars pitting this lap and previous lap, share of field on each compound, driver tyre-life percentile within current race-lap, position bucket, and 'within undercut range' proxies such as top-10 position with old tyres and recent negative LapTime_Delta trend. Also test features conditioned on nearby position band rather than whole field.",
+  "expected_effect": "Can surface strategic trigger moments that the current per-row model misses, especially clustered pit waves and defensive/undercut reactions.",
+  "risk": "No explicit gap-to-car-ahead data exists, so interaction features are proxies; poorly designed aggregates may just add noise.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

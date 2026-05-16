@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Untouched-Fold Logit Blend With Beta or Venn-Abers Calibration",
+  "summary": "Prior work already pointed toward specialist blends; public calibration literature suggests Beta calibration and Venn-Abers are stronger post-hoc options than plain Platt in many binary settings.",
+  "rationale": "Prior work already pointed toward specialist blends; public calibration literature suggests Beta calibration and Venn-Abers are stronger post-hoc options than plain Platt in many binary settings. Inference: the gain is likeliest after stacking heterogeneous specialists, not from calibrating one model alone.",
+  "implementation_hint": "Generate OOF predictions from the baseline classifier, ranker, monotone specialist, and latent-wear specialist; fit a simple blender on one grouped OOF layer, then reserve a final untouched grouped fold only for Beta or Venn-Abers calibration.",
+  "expected_effect": "Mostly a stability play: cleaner probability scale for ensemble combination and less public-LB drift from overconfident rare positives.",
+  "risk": "Calibration alone will not improve AUC much and can waste data if the held-out calibration fold is too small.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://arxiv.org/abs/1211.0025"
+  ]
+}

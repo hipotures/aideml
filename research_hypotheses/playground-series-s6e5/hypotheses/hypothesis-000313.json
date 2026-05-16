@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online Stint Phase-Change Features For Cliff Detection",
+  "summary": "Teams react when tyres move from stable to cliff behavior, not just when absolute tyre age is high.",
+  "rationale": "Teams react when tyres move from stable to cliff behavior, not just when absolute tyre age is high. Online change-point methods are built to detect persistent shifts from past observations only, which fits lap-by-lap degradation and lap-time delta sequences. This is a different signal than the current fixed age/degradation ratios.",
+  "implementation_hint": "Within each sorted driver-race stint, compute causal change signals from `LapTime_Delta`, `Cumulative_Degradation` increments, and position loss: rolling slope, rolling slope acceleration, residual-to-rolling-median, and simple Bayesian/CUSUM-style change scores. Add 'laps since last detected regime shift' and interact it with compound and laps remaining.",
+  "expected_effect": "Can surface sudden pit urgency on tracks or stints where degradation accelerates earlier or later than the handcrafted expected-life thresholds.",
+  "risk": "Noisy laps from traffic or yellow-flag effects can trigger false cliffs; robustify with median-based windows and require persistence across 2-3 laps.",
+  "sources": [
+    "https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-predictive-analysis-library/online-bayesian-change-point-detection-online-bayesian-change-point-detection-1398751?locale=en-US&state=PRODUCTION&version=2025_3_QRC",
+    "https://www.sciencedirect.com/science/article/pii/S0031320322005027"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-wise OOF beta calibration and expert blending",
+  "summary": "AUC models often benefit from blending differently biased experts, but uncalibrated specialists can over-dominate.",
+  "rationale": "AUC models often benefit from blending differently biased experts, but uncalibrated specialists can over-dominate. Calibration literature suggests beta calibration is a stronger parametric fix than plain Platt scaling when score shapes are skewed, which is common for boosted trees and ranking models.",
+  "implementation_hint": "Train 2-4 complementary experts only if they are genuinely different, for example a CatBoost categorical model, a ranking specialist, and the current heuristic-rich binary booster. Produce OOF predictions, then fit regime-specific beta calibration or isotonic-on-large-regimes for splits like wet vs slick, early/mid/late race, and low/high TyreLife. Blend only calibrated OOF predictions.",
+  "expected_effect": "Turns diverse specialists into usable probabilities and may recover leaderboard gain even when single-model CV differences are small.",
+  "risk": "Over-segmented calibration overfits fast; keep regimes coarse and fit calibrators strictly on OOF predictions only.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-/",
+    "https://journals.sagepub.com/doi/full/10.1177/24518492261436231",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

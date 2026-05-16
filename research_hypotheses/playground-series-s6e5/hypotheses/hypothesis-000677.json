@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strict OOF stacking plus post-hoc calibration instead of raw averaging",
+  "summary": "Different families should capture different structure here: CatBoost for categoricals, GBDT/AFT for event timing, and ranking models for pit-window ordering.",
+  "rationale": "Different families should capture different structure here: CatBoost for categoricals, GBDT/AFT for event timing, and ranking models for pit-window ordering. Stacking and calibration only help if all meta-features are generated out-of-fold with the same group-aware splits; scikit-learn explicitly warns calibration must use data independent from base-model fitting.",
+  "implementation_hint": "Generate group-safe OOF predictions from 3-4 diverse models, stack them with a light logistic/meta-GBM using `StackingClassifier`-style logic or manual OOF blending, then calibrate the final score with sigmoid or isotonic on held-out OOF predictions only. Compare raw mean, rank-mean, and calibrated stack.",
+  "expected_effect": "Often yields a modest but robust AUC gain by combining complementary inductive biases and fixing overconfident tails near pit windows.",
+  "risk": "Easy to accidentally leak if base and meta layers use inconsistent folds; isotonic can overfit if applied on too little validation data.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.StackingClassifier.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html"
+  ]
+}

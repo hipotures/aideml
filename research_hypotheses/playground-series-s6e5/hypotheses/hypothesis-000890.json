@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Try CatBoost on raw categorical interactions instead of manual frequency encoding",
+  "summary": "The strongest public guidance for mixed tabular data with high-cardinality categories is to let CatBoost build ordered target statistics and category combinations.",
+  "rationale": "The strongest public guidance for mixed tabular data with high-cardinality categories is to let CatBoost build ordered target statistics and category combinations. That is materially different from the current manual frequency-encoding approach and is designed to reduce prediction shift from target leakage.",
+  "implementation_hint": "Train CatBoost with raw categorical columns (`Driver`, `Race`, `Compound`, `Year`, `Stint`) plus a compact numeric set. Test explicit combos such as `Race×Compound`, `Driver×Compound`, and `Year×Race` under the stricter grouped CV above. Keep preprocessing minimal; avoid manual one-hot for these columns.",
+  "expected_effect": "Potential lift from better handling of rare categories, unseen combinations, and track-specific strategy effects.",
+  "risk": "Benefits can disappear under weak CV; CatBoost defaults around one-hot thresholds and random seeds need controlled tuning.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://arxiv.org/abs/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

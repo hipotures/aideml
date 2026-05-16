@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Tyre Warm-Up And Cliff Change-Point Features",
+  "summary": "F1 analysis shows pit timing depends on two nonlinear effects the baseline only approximates statically: fresh-tyre warm-up weakness can favor the overcut, while sudden old-tyre falloff can trigger an undercut or emergency stop.",
+  "rationale": "F1 analysis shows pit timing depends on two nonlinear effects the baseline only approximates statically: fresh-tyre warm-up weakness can favor the overcut, while sudden old-tyre falloff can trigger an undercut or emergency stop. A causal onset detector should be more expressive than fixed expected-life constants.",
+  "implementation_hint": "Within each Driver x Race x Stint sequence, compute prior-only rolling slope, acceleration, EWMA residual, and CUSUM-style change indicators for LapTime_Delta, Cumulative_Degradation, and race-relative pace residuals. Add track-compound warm-up priors learned from historical out-lap success by Race x Compound and interact them with current stint age and position.",
+  "expected_effect": "Should catch the exact lap where degradation behavior changes, improving stop-timing precision beyond average tyre-life heuristics.",
+  "risk": "Short stints and post-stop reset laps can create noisy false alarms. Mask the first few laps of each stint, require minimum history for change detectors, and verify gains with race-block CV rather than random folds.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/tech-tuesday-how-kind-on-tyres-red-bull-nearly-handed-verstappen-brazil-win.39tdGATqb62qIoKiwakauI.39tdGATqb62qIoKiwakauI"
+  ]
+}

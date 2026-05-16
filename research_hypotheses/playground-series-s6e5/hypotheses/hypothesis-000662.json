@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit Window Gap Pressure Proxies",
+  "summary": "Strategy models emphasize traffic, pit-loss windows, and undercut/overcut incentives.",
+  "rationale": "Strategy models emphasize traffic, pit-loss windows, and undercut/overcut incentives. Prior attempts used coarse rival-ahead tyre life and field pit counts, but not whether a car would rejoin into traffic or has a free-air gap based on positions and lap-time deltas.",
+  "implementation_hint": "For each Race-Lap sorted by Position, add features for neighbour context: position_ahead/behind lap-time deviation, tyre-life deltas to 1-2 cars ahead/behind, local pack density from adjacent lap-time gaps, and estimated pit-window flag such as Position_after_loss_proxy = Position + round(track_pit_loss / median_lap_gap_proxy) using race-level constants learned from pit-lap time anomalies.",
+  "expected_effect": "Could improve ranking around strategic stop decisions where similar tyre age drivers differ by traffic incentives.",
+  "risk": "The dataset lacks explicit time gaps, so proxies from lap times/positions may be weak or unstable.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.ijraset.com/research-paper/optimum-racing-a-f1-strategy-predictor-using-reinforcement-learning"
+  ]
+}

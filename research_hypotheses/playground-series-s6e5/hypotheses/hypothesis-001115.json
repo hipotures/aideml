@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Physically constrained LightGBM expert with selective monotonicity",
+  "summary": "A small monotone expert can reduce fold-specific quirks that grouped CV may reward but future races will not.",
+  "rationale": "A small monotone expert can reduce fold-specific quirks that grouped CV may reward but future races will not. LightGBM explicitly supports monotone constraints and advanced methods, making it feasible to encode only high-confidence physics-like directions.",
+  "implementation_hint": "Train a separate LightGBM binary expert with monotone constraints on a small subset only: positive on `TyreLife`, `DegPerTyreLap`, filtered latent degradation, and maybe `RaceProgress` within dry-race expert; negative on estimated laps left or pit-loss-normalized urgency where justified. Leave ambiguous features unconstrained. Use it as a low-variance ensemble member, not a replacement.",
+  "expected_effect": "May slightly lower peak local CV but improve chronology-robust generalization and leaderboard stability by preventing implausible inversions.",
+  "risk": "Wrong constraints on non-monotone regions, especially around wet tyres or early mandatory-stop behavior, can hurt materially; use regime-specific experts rather than one global constrained model.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html"
+  ]
+}

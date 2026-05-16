@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged walk-forward OOF stacking with sigmoid calibration",
+  "summary": "Because the label is a one-lap-forward event, nearby samples are leakage-prone; the strongest ensemble candidate is to generate strictly chronological OOF predictions from heterogeneous models and stack them with a rank-preserving calibrator rather than calibrating in-sample or using isotonic ties.",
+  "rationale": "Because the label is a one-lap-forward event, nearby samples are leakage-prone; the strongest ensemble candidate is to generate strictly chronological OOF predictions from heterogeneous models and stack them with a rank-preserving calibrator rather than calibrating in-sample or using isotonic ties.",
+  "implementation_hint": "Build OOF predictions from race-ordered folds with a small embargo/purge around fold boundaries, train 2-3 diverse base models (for example current GBDT, CatBoost, pseudo-horizon model), then fit a logistic/sigmoid stacker on OOF scores only; prefer sigmoid over isotonic if preserving ROC-AUC ranking is the priority.",
+  "expected_effect": "Better leaderboard transfer than single-model tuning, with reduced CV optimism and better probability stability.",
+  "risk": "More moving parts; if fold design is weak, the stacker will overfit the same leakage the ensemble is meant to avoid.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html"
+  ]
+}

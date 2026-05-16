@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add causal latent degradation features via a Kalman/state-space style filter per `Race-Driver-Stint`",
+  "summary": "Recent F1 work shows lap time can be decomposed into fuel effect plus latent tyre pace, with pit stops acting as structural resets.",
+  "rationale": "Recent F1 work shows lap time can be decomposed into fuel effect plus latent tyre pace, with pit stops acting as structural resets. Your current features approximate degradation with static ratios; a filtered latent state can encode cleaner signals such as current degradation level, slope, shock after pit reset, and residual volatility.",
+  "implementation_hint": "Sort by `Year,Race,Driver,LapNumber` and build causal rolling/filter features only from past laps: filtered clean pace, local degradation slope, residual variance, change-point score, and post-pit recovery speed. Feed those numeric summaries into the existing tabular model.",
+  "expected_effect": "Should separate true wear from noisy lap deltas and make the model more robust across compounds and races.",
+  "risk": "If the filter is too aggressive or accidentally uses symmetric smoothing, it will leak future laps and inflate CV.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Group-DRO over season-regime environments instead of average-risk training",
+  "summary": "Robust-optimization papers show ERM can overfit majority environments and underperform on atypical groups.",
+  "rationale": "Robust-optimization papers show ERM can overfit majority environments and underperform on atypical groups. This dataset mixes years, races, wet/dry laps, and rare compounds, so worst-group robustness may matter more than another average-case feature tweak.",
+  "implementation_hint": "Define soft or hard environments such as Year x wet/dry x race phase x tyre-age bin, or Race x Compound. Train a small neural/tabular expert, or reweight tree-training rows, with a DRO-style objective that upweights high-loss groups. Select by worst-group AUC and forward-fold robustness, not overall CV alone.",
+  "expected_effect": "May reduce leaderboard fragility by protecting against rare but important slices like wet/intermediate laps or shifted 2025-style race patterns.",
+  "risk": "Average CV can stay flat or drop slightly while public LB improves; environment design is critical and too many tiny groups will make training noisy.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/26394",
+    "https://huggingface.co/papers/1911.08731",
+    "https://thesai.org/Publications/ViewPaper?Code=IJACSA&Issue=2&SerialNo=86&Volume=14"
+  ]
+}

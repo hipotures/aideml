@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race archetype priors for undercut vs overcut strength",
+  "summary": "Public F1 strategy sources consistently separate high-degradation/undercut tracks from low-degradation or hard-warmup/overcut tracks.",
+  "rationale": "Public F1 strategy sources consistently separate high-degradation/undercut tracks from low-degradation or hard-warmup/overcut tracks. The current pipeline uses race IDs but not explicit strategy archetypes, so mapping each circuit to degradation severity, warm-up sensitivity, and overtaking difficulty could help the model generalize beyond raw race labels.",
+  "implementation_hint": "Create a small hand-built lookup by `Race` with 3-6 ordinal priors: degradation severity, warm-up difficulty, overtake difficulty, undercut strength, overcut viability. Interact these with `Compound`, `TyreLife`, `LapTime_Delta`, and `RaceProgress`; compare against plain race categorical in grouped CV.",
+  "expected_effect": "Better separation of pit windows across tracks with similar tyre behavior, especially when race identity is sparse or shifted between years.",
+  "risk": "Manual priors can be noisy or subjective; gains may vanish if race label already captures the same signal.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/tech-tuesday-how-kind-on-tyres-red-bull-nearly-handed-verstappen-brazil-win.39tdGATqb62qIoKiwakauI",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/"
+  ]
+}

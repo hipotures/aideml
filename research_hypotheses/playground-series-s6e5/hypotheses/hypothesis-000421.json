@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver archetype features instead of flat driver IDs",
+  "summary": "Recent F1 theses found useful strategic clusters built from performance, tactical, and behavioral metrics.",
+  "rationale": "Recent F1 theses found useful strategic clusters built from performance, tactical, and behavioral metrics. With hundreds of sparse driver IDs, archetypes like aggressive early-pitters vs endurance-oriented drivers may generalize better than raw identity frequencies, especially for rare or historical drivers.",
+  "implementation_hint": "From train only, compute historical driver summaries using only prior races/folds: average stint length, stop count, compound aggressiveness, late-stop tendency, position-change volatility, wet usage rate. Cluster drivers into 4-8 archetypes or use distances to centroids as features, then add the archetype to the main model or fit archetype-specific residual specialists.",
+  "expected_effect": "Can preserve strategic style while reducing overfitting to individual IDs and improving transfer to rare drivers.",
+  "risk": "If summaries accidentally include future information from the same session or fold, CV will be inflated; clusters may also reflect team/car strength more than driver style.",
+  "sources": [
+    "https://run.unl.pt/bitstreams/a499e921-2a2c-4da8-b5b6-361633abdab3/download",
+    "https://run.unl.pt/bitstreams/c56ef932-3c13-40d1-8df9-57124cc1ed51/download"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace hand-made tyre-fade heuristics with causal latent degradation state features",
+  "summary": "The strongest current code already uses rolling deltas and tyre-life ratios, but recent F1 research shows a state-space degradation model with pit-reset structure outperforms a simpler AR baseline and yields interpretable latent pace-loss states.",
+  "rationale": "The strongest current code already uses rolling deltas and tyre-life ratios, but recent F1 research shows a state-space degradation model with pit-reset structure outperforms a simpler AR baseline and yields interpretable latent pace-loss states. That suggests the remaining gain is in denoising stint dynamics, not adding more raw lag columns.",
+  "implementation_hint": "For each driver-race-stint, run a simple causal state filter or exponentially-updated local linear model on lap time after adjusting for race progress/field pace. Emit latent degradation level, latent slope, innovation shock, and uncertainty; reset at pit/stint boundaries.",
+  "expected_effect": "Better separation of true tyre collapse from noisy laps, traffic, or one-off driver mistakes.",
+  "risk": "Misspecified filters can overfit clean races and break on wet laps or atypical pace-management regimes.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2501.04067",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

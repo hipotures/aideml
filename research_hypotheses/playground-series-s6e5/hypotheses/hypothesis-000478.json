@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Merge real track status and weather",
+  "summary": "Pit calls are strongly affected by safety cars, VSC, rain, and track temperature, but the current features only infer these indirectly from compounds and lap times.",
+  "rationale": "Pit calls are strongly affected by safety cars, VSC, rain, and track temperature, but the current features only infer these indirectly from compounds and lap times. FastF1/OpenF1 expose track status, weather, pit timing, tyre, and lap data for F1 sessions.",
+  "implementation_hint": "Map Year+Race+LapNumber to external FastF1/OpenF1 current-lap TrackStatus, Rainfall, TrackTemp, AirTemp, Wind, and lagged changes. Use only current/past lap values in validation; add missing-source flags for unmatched races or pre-season rows.",
+  "expected_effect": "Should improve wet-weather transitions, caution-period pit discounts, and anomalous pit clusters not captured by tyre-life thresholds.",
+  "risk": "Race-name/session matching may be messy; external data coverage may be incomplete for synthetic or pre-season rows; next-lap weather/status would leak if used carelessly.",
+  "sources": [
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://docs.fastf1.dev/api_reference/api_autogen/fastf1.core.Laps.html",
+    "https://openf1.org/docs/"
+  ]
+}

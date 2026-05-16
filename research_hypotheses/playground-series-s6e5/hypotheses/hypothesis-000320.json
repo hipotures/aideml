@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Circuit-Specific Warmup And Undercut Regime Priors",
+  "summary": "Official F1 strategy pieces note that low-degradation, low-energy tracks can favor overcuts because fresh tyres warm slowly, while higher-degradation tracks strengthen the undercut.",
+  "rationale": "Official F1 strategy pieces note that low-degradation, low-energy tracks can favor overcuts because fresh tyres warm slowly, while higher-degradation tracks strengthen the undercut. That suggests a circuit-level regime prior, not a single global tyre-life mapping.",
+  "implementation_hint": "From training folds only, estimate per Race or Race_Year priors such as median stint length, overcut-favorability proxy, and compound-specific stop-lap hazard curves. Use these as base priors or residual targets, then let the main model learn deviations from circuit norms. A separate expert for slick low-energy circuits vs wet/high-deg circuits is also testable.",
+  "expected_effect": "Should reduce bias from one-size-fits-all expected tyre life and improve transfer across circuits with very different warmup/degradation behavior.",
+  "risk": "With only 26 races, circuit priors can overfit fast; they need shrinkage, fold-wise generation, and possibly fallback to broader compound/weather buckets.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue"
+  ]
+}

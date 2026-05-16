@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend A Survival-Style Sidecar With Rank Averaging Instead Of Probability Averaging",
+  "summary": "AUC evaluates ranking, and ROC/AUC is invariant to monotone score transforms, so diverse models often combine better via rank blending than raw-probability averaging.",
+  "rationale": "AUC evaluates ranking, and ROC/AUC is invariant to monotone score transforms, so diverse models often combine better via rank blending than raw-probability averaging. A discrete-time survival or random survival forest sidecar can learn event-time structure differently from the current pointwise tree stack.",
+  "implementation_hint": "Train one sidecar on person-period style sequential features, using either a discrete-time hazard learner or random survival forest/landmark-style model, then ensemble it with the best pointwise GBDT by fold-wise rank averaging or a tiny leak-safe stacker on OOF predictions. If calibration is needed for stacking stability, prefer beta calibration over isotonic on small OOF sets.",
+  "expected_effect": "May add incremental AUC through model diversity even if the sidecar is not individually best, especially on edge cases near stop/no-stop boundaries.",
+  "risk": "Survival sidecars can be cumbersome to validate on this non-censored setup, and rank blending only helps if model errors are meaningfully decorrelated.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10994-008-5070-x",
+    "https://research-information.bris.ac.uk/en/publications/beyond-sigmoids-how-to-obtain-well-calibrated-probabilities-from-"
+  ]
+}

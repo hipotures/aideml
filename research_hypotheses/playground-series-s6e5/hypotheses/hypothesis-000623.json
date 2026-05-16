@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-aware race-group ensemble",
+  "summary": "The metric is ROC AUC, so ordering positives above negatives matters more than calibrated probability.",
+  "rationale": "The metric is ROC AUC, so ordering positives above negatives matters more than calibrated probability. Pit decisions are naturally compared within a race context: which driver is most likely to pit next on this lap or soon.",
+  "implementation_hint": "Train an additional LightGBM/XGBoost ranking-style model by grouping rows at Race or Race-Lap level, using PitNextLap as relevance. If ranking objectives are awkward, approximate with per-race balanced sampling and AUC-focused hyperparameters: shallow trees, high min_child_samples, subsample by Race, and multiple seeds. Blend its rank-normalized predictions with the current best classifier.",
+  "expected_effect": "Could improve AUC by optimizing relative ordering within the same strategic context, especially when global probabilities differ across years/races.",
+  "risk": "Ranking group choice is delicate: Race-Lap groups may have too few positives, Race groups may be too broad. Raw ranker scores may need monotonic rescaling before blending.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

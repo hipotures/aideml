@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -11,5 +11,6 @@
   "risk": "Current PitStop can be a strong proxy but can be misused if future stops are counted. Keep separate prior-only and including-current features so causality is explicit.",
   "sources": [
     "[https://www.kaggle.com/competitions/playground-series-s6e5/discussion/696380"
-  ]
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

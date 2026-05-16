@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "For Year-Race-LapNumber groups, compute row-aligned leave-one-out means and deltas for a small set of engineered pressure features, TyreLife, LapTime_Delta, Cumulative_Degradation, Position, and PitStop. Use transform-based group sizes and sums to avoid MultiIndex alignment failures.",
   "expected_effect": "Small AUC gain with medium-low confidence; useful as a distinct relative-context mechanism.",
   "risk": "Contemporaneous peer data must be considered available for batch prediction; if enforcing per-driver online causality only, restrict to prior-lap peer aggregates. Implementation risk is high unless groupby outputs are row-aligned.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

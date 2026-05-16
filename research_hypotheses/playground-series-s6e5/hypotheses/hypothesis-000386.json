@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-Constrained Physics Specialist",
+  "summary": "Official XGBoost and LightGBM docs both support monotonic constraints, and the best current features are already physics-like.",
+  "rationale": "Official XGBoost and LightGBM docs both support monotonic constraints, and the best current features are already physics-like. Inference: a small constrained specialist can generalize better under year/race shift by forcing sensible directions on features like wear pressure, stop debt, and finish margin.",
+  "implementation_hint": "Train a separate tree model only on interpretable strategy features and impose sign constraints where direction is genuinely defensible; use larger `max_bin` if needed, then stack it with the unconstrained main model.",
+  "expected_effect": "Should reduce brittle threshold fitting and improve public-LB robustness even if raw CV gain is small.",
+  "risk": "Wrong sign assumptions or over-constraining ambiguous features can flatten useful nonlinear structure.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone"
+  ]
+}

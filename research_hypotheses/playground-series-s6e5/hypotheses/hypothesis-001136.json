@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Tiny same-lap set-transformer expert for field context",
+  "summary": "Pit decisions are relational: team coverage, rival reactions, and field state are properties of the whole lap, not just a single row.",
+  "rationale": "Pit decisions are relational: team coverage, rival reactions, and field state are properties of the whole lap, not just a single row. Set Transformer gives a permutation-invariant way to model same-lap competitors as a set, which trees only approximate via handcrafted aggregates.",
+  "implementation_hint": "Build a small expert where each sample consumes the focal driver row plus the set of all cars in the same `(Year,Race,LapNumber)` with masked features. Use inducing-point attention to keep it cheap, output a focal next-lap probability, and train only on ambiguous slices where the current ensemble has high disagreement or mid-range scores. Blend as a low-correlation specialist rather than replacing the tabular stack.",
+  "expected_effect": "Best chance is on strategic interaction cases: multiple old-tyre cars, teammate/rival clustering, and synchronized stop windows that row-wise models smooth away.",
+  "risk": "Neural tabular/set models can underperform trees if trained naively. Keep it tiny, regularized, and fold-safe; if it cannot beat the base model globally, keep it only as an ambiguity-slice expert.",
+  "sources": [
+    "https://proceedings.mlr.press/v97/lee19d.html",
+    "https://proceedings.mlr.press/v162/zhang22ac.html"
+  ]
+}

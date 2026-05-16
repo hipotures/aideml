@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-year grouped validation and OOF training",
+  "summary": "Random row splits can leak near-identical race/lap/stint context across train and validation.",
+  "rationale": "Random row splits can leak near-identical race/lap/stint context across train and validation. Public sources on grouped CV recommend non-overlapping groups, and F1 strategy backtests are naturally race/session based. A race-year or race-only holdout may reduce misleading local AUC and reveal features that generalize to unseen races.",
+  "implementation_hint": "Replace the single random train_test_split with StratifiedGroupKFold using groups such as Year + '_' + Race, or Race if Year is sparse. Use out-of-fold predictions for validation and then refit on full train for submission. Compare current random AUC with grouped AUC before trusting leaderboard moves.",
+  "expected_effect": "May not immediately raise random CV, but should improve public/private robustness and prevent selection of leakage-prone row-neighbor features.",
+  "risk": "If Kaggle test contains same races as train, grouped validation may be too conservative and reject useful transductive race-level features.",
+  "sources": [
+    "https://sklearn.org/1.7/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://sklearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

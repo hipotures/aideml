@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace naive CV with grouped, stratified, time-aware splits plus embargoed encodings",
+  "summary": "This dataset is repeated race sequences, so row-random CV can overstate AUC by leaking race-, stint-, and season-specific patterns.",
+  "rationale": "This dataset is repeated race sequences, so row-random CV can overstate AUC by leaking race-, stint-, and season-specific patterns. scikit-learn documents both non-overlapping grouped folds and time-aware splits with a gap to avoid future-to-past contamination.",
+  "implementation_hint": "Evaluate `StratifiedGroupKFold` on `Race_Year` or `Race_Year` x `Driver`, then a stricter forward split ordered by race date/year with a 1-2 lap embargo inside each sequence for any lag/target encoding features. Recompute all count/mean encodings OOF only.",
+  "expected_effect": "May lower local CV but improve leaderboard transfer and help identify which ideas are genuinely robust.",
+  "risk": "The stricter scheme can be noisier with only 26 races; if test distribution mixes years differently, over-conservative CV may underfit tuning.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

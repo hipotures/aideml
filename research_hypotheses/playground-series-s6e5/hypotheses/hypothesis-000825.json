@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Overcut/Warm-Up Regime Specialist",
+  "summary": "Public F1 strategy analyses stress that undercut is not universal: on low-deg, hard-warm-up tracks, staying out can beat fresh tyres for 1-2 laps.",
+  "rationale": "Public F1 strategy analyses stress that undercut is not universal: on low-deg, hard-warm-up tracks, staying out can beat fresh tyres for 1-2 laps. The current best solutions are much richer on tyre-age pressure than on overcut viability, so a dedicated expert for low-energy/track-position regimes could add complementary rank signal.",
+  "implementation_hint": "Train a separate model or interaction block activated by circuit/compound regime features: low-stress track prior, high track-position value, compound warm-up penalty proxy, clean-air proxy, and whether tyre age is high but LapTime_Delta is still stable. Test blended OOF predictions against the baseline only on races/compounds where overcut conditions are plausible.",
+  "expected_effect": "Should improve discrimination on false positives where the baseline over-calls imminent pits on tracks where tyres take time to switch on or track position dominates.",
+  "risk": "If the dataset lacks enough explicit overcut cases, this may add noise and mostly reshuffle already-correct low-probability rows.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

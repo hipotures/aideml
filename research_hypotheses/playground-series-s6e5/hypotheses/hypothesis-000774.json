@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Temporal Entity-History Encodings Instead Of Raw Frequencies",
+  "summary": "The strongest current code still relies on simple in-sample frequency features for high-cardinality categories.",
+  "rationale": "The strongest current code still relies on simple in-sample frequency features for high-cardinality categories. CatBoost and target-encoding literature suggest ordered or cross-fit entity histories are much stronger and less leaky for sparse categorical fingerprints like driver, race, compound, and their interactions.",
+  "implementation_hint": "Build expanding or OOF encodings for stop rate, median tyre-life-at-stop, and hazard residual on keys such as `Driver`, `Race`, `Driver x Compound`, `Race x Compound`, and `Race x Stint`, with year-aware backoff. Compare native-cat CatBoost against LightGBM on these strictly OOF encodings.",
+  "expected_effect": "Likely the cleanest orthogonal gain if the leaderboard rewards hidden categorical strategy fingerprints not captured by physics proxies.",
+  "risk": "Easy to overfit same-race rows and rare entities; unseen combinations need strong priors and backoff hierarchy.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://sklearn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html"
+  ]
+}

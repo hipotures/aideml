@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add tyre-cliff and change-point features instead of simple rolling lags",
+  "summary": "Public tyre modeling references emphasize nonlinear end-of-stint loss, thermal fade, graining, and flat-spot step changes rather than smooth linear degradation.",
+  "rationale": "Public tyre modeling references emphasize nonlinear end-of-stint loss, thermal fade, graining, and flat-spot step changes rather than smooth linear degradation. The worst local solutions already tried generic lag/rolling features and underperformed, which suggests the useful signal is likely in curvature or abrupt regime shifts relative to the field, not raw rolling means.",
+  "implementation_hint": "Within each driver-race-stint, compute past-only slope and acceleration of `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation`; add deviation from race-lap median slope, cumulative positive-delta streak length, recent max deterioration, and change-point flags when pace loss jumps beyond compound/race-normal bands. Interact these with `TyreLife`, absolute compound, and `Position` to separate genuine tyre cliffs from traffic noise.",
+  "expected_effect": "Could recover last-lap-before-pit behavior that current static feasibility windows and naive lags miss, especially on high-deg circuits.",
+  "risk": "Very sensitive to noisy laps, traffic, and safety-car contamination; requires careful past-only construction and robust clipping.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.raceteq.com/articles/2024/08/the-science-behind-tyre-degradation-in-formula-1",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

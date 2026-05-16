@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap conditional logit over the active field",
+  "summary": "A pit call is a choice made within a lap-level choice set, not an IID binary event.",
+  "rationale": "A pit call is a choice made within a lap-level choice set, not an IID binary event. Conditional logit is designed for selecting one alternative from competing options, and a grouped choice model can capture why one driver pits now while others on the same lap do not.",
+  "implementation_hint": "Reshape each (Year,Race,LapNumber) into a choice set. Train a conditional-logit-style model or grouped softmax scorer on driver-lap utilities built from current features plus within-lap centered versions. Compare against binary GBDT using race-blocked CV; optionally blend its probabilities with the baseline.",
+  "expected_effect": "Better relative ordering within the same lap, especially in crowded pit windows where absolute tyre-age signals are similar across drivers.",
+  "risk": "If many laps have zero or multiple pitters, the choice-set assumption is imperfect; needs careful handling of 'no pit this lap' and multi-pit laps.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00199-020-01281-1",
+    "https://www.sciencedirect.com/science/article/pii/S1755534516301002",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

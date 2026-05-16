@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strategy-economics features from optimal stint length and undercut condition",
+  "summary": "Public F1 strategy references frame pit timing as a trade-off between degradation slope and pit-loss, with a first-order optimal stint length near sqrt(2P/d) and an explicit undercut inequality.",
+  "rationale": "Public F1 strategy references frame pit timing as a trade-off between degradation slope and pit-loss, with a first-order optimal stint length near sqrt(2P/d) and an explicit undercut inequality. That is a cleaner feature family than fixed per-compound stop windows.",
+  "implementation_hint": "Estimate a local degradation rate d from causal lap-history or current wear proxies, assign a race-level pit-loss prior P, then derive features like Optimal_Stint_Length, TyreLife_minus_Optimal, RemainingLaps_minus_OptimalFresh, and an Undercut_Advantage proxy based on old-tyre next-lap loss versus fresh-tyre recovery minus pit loss. Use race-specific shrinkage priors rather than hard-coded regex buckets only.",
+  "expected_effect": "Should especially help middle-stint dry-race decisions where the model must choose between undercut, overcut, and extending.",
+  "risk": "P and d are latent and noisy; bad pit-loss priors can create sharp but wrong features.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.f1technical.net/news/25828"
+  ]
+}

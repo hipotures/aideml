@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use test-shift-aware stacking and post-hoc calibration instead of fixed raw-probability averaging",
+  "summary": "Kaggle tabular writeups repeatedly warn that train/test shift breaks naive CV selection.",
+  "rationale": "Kaggle tabular writeups repeatedly warn that train/test shift breaks naive CV selection. Your current blend is a simple XGB/CatBoost weighted average; a stronger variant is to detect shift, define more test-like folds/weights, then stack hazard/ranker/tree models with a small calibrator.",
+  "implementation_hint": "Run adversarial validation on train vs. test using current engineered features; if AUC is meaningfully above 0.5, weight training rows by test-likeness or build validation from the most test-like races/drivers. Stack OOF predictions from pointwise, hazard, and ranking models with logistic/isotonic calibration on OOF only.",
+  "expected_effect": "Better leaderboard transfer and smoother ensemble behavior than a fixed convex blend, especially if 2025 drivers/races differ from older seasons.",
+  "risk": "Extra meta-modeling can overfit if the OOF protocol is not perfectly nested; isotonic can overfit if calibration folds are too small.",
+  "sources": [
+    "https://developer.nvidia.com/blog/the-kaggle-grandmasters-playbook-7-battle-tested-modeling-techniques-for-tabular-data/",
+    "https://www.kdnuggets.com/2016/10/adversarial-validation-explained.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html"
+  ]
+}

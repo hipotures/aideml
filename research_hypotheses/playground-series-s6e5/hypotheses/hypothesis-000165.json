@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Past-only latent tyre-state and uncertainty features via simple state-space filtering",
+  "summary": "Recent F1 tire modeling work shows degradation can be represented as a latent stochastic state with pit-stop resets, not just raw `TyreLife` or cumulative degradation.",
+  "rationale": "Recent F1 tire modeling work shows degradation can be represented as a latent stochastic state with pit-stop resets, not just raw `TyreLife` or cumulative degradation. The useful new signal is the filtered hidden state and its uncertainty, which can capture when the tyre has entered an unstable regime before a stop.",
+  "implementation_hint": "Within each `Driver`+`Race_Year` sequence, fit a lightweight past-only Kalman/state-space style filter on lap-time residuals after removing race/compound medians; emit filtered degradation level, filtered slope, innovation, and state variance, resetting on `PitStop==1`.",
+  "expected_effect": "Should add orthogonal information to existing handcrafted windows by separating true degradation from noisy lap events.",
+  "risk": "If residualization is poor, the latent state may mostly track traffic/noise rather than tyre condition.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.raceteq.com/articles/2024/08/the-science-behind-tyre-degradation-in-formula-1"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

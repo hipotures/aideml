@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged race-group CV with 1-lap embargo",
+  "summary": "The target is explicitly next-lap, so adjacent rows within the same driver-race-stint can leak label-near information even if race groups are separated imperfectly.",
+  "rationale": "The target is explicitly next-lap, so adjacent rows within the same driver-race-stint can leak label-near information even if race groups are separated imperfectly. Purged/embargoed validation is widely used for event labels with overlapping horizons and should give a less optimistic CV estimate than ordinary grouped folds.",
+  "implementation_hint": "Split by `Race_Year` or finer `Race_Year+Driver`, then purge training rows that are within 1 lap of any validation row for the same race-driver sequence; compare score drop vs current CV and trust the purged estimate for model selection.",
+  "expected_effect": "May not raise raw CV, but should improve leaderboard alignment and reduce over-selection of brittle features.",
+  "risk": "If the test set is less shifted than expected, stricter purging can underuse data and slightly lower fitted model quality.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation"
+  ]
+}

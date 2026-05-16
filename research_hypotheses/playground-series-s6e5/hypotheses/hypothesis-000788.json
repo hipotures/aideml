@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Tyre-Cliff Change-Point Features",
+  "summary": "Recent F1 tyre papers model degradation as a latent, time-varying process with pit-stop resets, and generic degradation literature shows two-phase change-points are often more informative than raw age.",
+  "rationale": "Recent F1 tyre papers model degradation as a latent, time-varying process with pit-stop resets, and generic degradation literature shows two-phase change-points are often more informative than raw age. Your current best features encode static service windows but not online evidence that a stint has just entered a failure phase.",
+  "implementation_hint": "Within each `(Year,Race,Driver,Stint)` sequence, fit an online 5-8 lap piecewise trend or Kalman-style filter on `LapTime_Delta`, `LapTime (s)`, and `Cumulative_Degradation`; emit causal features such as change-point probability, pre/post slope, residual variance, and laps since detected cliff. Keep computation strictly past-only inside each fold.",
+  "expected_effect": "Should improve recall on abrupt pit-trigger laps and reduce dependence on hand-set compound life constants.",
+  "risk": "Noisy laps, traffic, or yellow-flag effects can create false cliffs unless the detector is smoothed or clipped.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-",
+    "https://www.sciencedirect.com/science/article/pii/S0951832021004324"
+  ]
+}

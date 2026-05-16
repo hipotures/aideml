@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-range and pit-wave interaction features",
+  "summary": "Public F1 strategy analysis and recent competition-aware race-strategy papers argue pit timing is strongly driven by rival proximity, clean-air opportunity, and reaction to opponent stops, not just a car’s own tyre age.",
+  "rationale": "Public F1 strategy analysis and recent competition-aware race-strategy papers argue pit timing is strongly driven by rival proximity, clean-air opportunity, and reaction to opponent stops, not just a car’s own tyre age.",
+  "implementation_hint": "Within each `Race_Year` + `LapNumber`, build same-lap features only: neighbors by `Position` (±1/±2), their `Compound`/`TyreLife`/`PitStop`, counts of nearby fresh-tyre cars, counts of same-lap pitters, and own `LapTime_Delta` rank versus nearby cars. Treat these as undercut/overcut and traffic proxies.",
+  "expected_effect": "Should improve recall on reaction/defensive stops that current single-row tyre-window features miss.",
+  "risk": "No true time-gap column exists, so position-band proxies may be noisy; any cross-lap aggregation would leak.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

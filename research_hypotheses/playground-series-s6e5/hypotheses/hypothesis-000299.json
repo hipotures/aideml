@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pure CatBoost categorical specialist with ordered CTRs",
+  "summary": "Your current best solutions handcraft ordinal/frequency encodings for Driver, Race, Compound, and Race_Year.",
+  "rationale": "Your current best solutions handcraft ordinal/frequency encodings for Driver, Race, Compound, and Race_Year. CatBoost’s official guidance is to keep categoricals raw, avoid manual one-hot preprocessing, and rely on ordered categorical statistics and combinations. That is especially attractive here because Driver and Race identities are high-cardinality and interaction-heavy.",
+  "implementation_hint": "Train a separate CatBoost specialist on mostly raw features plus a compact set of strong numeric tyre-window features. Pass categorical columns directly, preserve sequence order inside folds when generating OOF predictions, and let CatBoost learn Driver x Race x Compound interactions rather than manually frequency-encoding all of them.",
+  "expected_effect": "Can recover signal from rare drivers/races and category combinations that linear frequency features flatten away.",
+  "risk": "If folds are not grouped by race session and predictions are not truly OOF, ordered CTR benefits can be overstated; ranking mode is tempting but start with a plain probabilistic specialist first.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/references/training-parameters/common"
+  ]
+}

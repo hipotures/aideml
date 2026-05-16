@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "DP-lite action-value features: `pit_now` vs `wait_1` vs `wait_2`",
+  "summary": "Operations-research work on F1 strategy models pit timing as a sequential decision problem, not a single threshold rule.",
+  "rationale": "Operations-research work on F1 strategy models pit timing as a sequential decision problem, not a single threshold rule. Your best code already has heuristic `Wait1` features; a stronger version is to compute approximate action values from empirical degradation and pit-loss curves learned from the data.",
+  "implementation_hint": "Fit simple race-local pace/degradation templates by compound and tyre age using train rows after excluding immediate pit laps. Then simulate a tiny decision tree for each row: total expected remaining cost under `pit_now`, `wait_1`, and `wait_2`, including out-lap warmup and feasible compound choices. Feed value gaps like `Q_wait1-Q_pit`, `best_future_compound`, and `pit_now_regret` to the booster.",
+  "expected_effect": "Converts hand-built pressures into a coherent short-horizon control signal and may improve cases where the model must choose between pitting slightly early and slightly late.",
+  "risk": "Bad empirical pace templates will inject structured error; if the simulator is too detailed it becomes brittle and duplicates prior heuristic noise.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://repositorio.uchile.cl/handle/2250/199664"
+  ]
+}

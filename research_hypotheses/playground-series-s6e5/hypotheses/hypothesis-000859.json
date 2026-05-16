@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-Debt State Machine Features",
+  "summary": "FIA rules create hard discontinuities that the current feature sets only approximate.",
+  "rationale": "FIA rules create hard discontinuities that the current feature sets only approximate. Dry races require two dry specs unless wet tyres are used, and Monaco has a special mandatory two-stop rule from 2025, so pit urgency should jump when a driver still owes a compound or stop and laps remaining shrink.",
+  "implementation_hint": "Build per driver-race chronological state: dry compounds already used, wet-usage flag, pit-count-to-date, remaining mandatory-stop debt, remaining mandatory-compound debt, and a Monaco-2025 special-case remaining-stop counter. Interact these with laps remaining, stint, and compound.",
+  "expected_effect": "Should improve late-stint precision and reduce validation noise from rows where pit probability is rule-forced rather than degradation-driven.",
+  "risk": "If race metadata is incomplete or Monaco rows are sparse, the special-case features may overfit and need shrinkage or simple binary flags only.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq.html"
+  ]
+}

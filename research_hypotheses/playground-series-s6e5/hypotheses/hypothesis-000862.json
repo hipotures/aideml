@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-Safe Multi-Expert Blend With Purged Group-Time CV",
+  "summary": "The strongest public guidance here is that calibration can change ROC AUC if isotonic introduces ties, while grouped and temporal splits are needed to avoid optimistic leakage.",
+  "rationale": "The strongest public guidance here is that calibration can change ROC AUC if isotonic introduces ties, while grouped and temporal splits are needed to avoid optimistic leakage. A blend of orthogonal experts is more promising than adding yet more correlated handcrafted features to one model.",
+  "implementation_hint": "Validate with race-level GroupKFold plus a forward holdout or TimeSeriesSplit-style year ordering and a small gap/embargo around held-out races if constructing lagged encodings. Blend binary, ranker, and hazard models using OOF rank-average or sigmoid/temperature scaling only; avoid isotonic unless AUC is checked explicitly.",
+  "expected_effect": "Should improve leaderboard transfer by selecting only stable experts and preserving ranking quality during calibration.",
+  "risk": "Stricter CV may lower local CV immediately, making good ideas look worse unless model selection is stability-weighted instead of single-fold-score driven.",
+  "sources": [
+    "https://scikit-learn.org/1.6/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

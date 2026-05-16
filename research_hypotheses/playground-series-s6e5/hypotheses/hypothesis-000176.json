@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cheap-stop and undercut opportunity proxies from peer context",
+  "summary": "Public F1 strategy references emphasize pit timing as a function of pit-loss discount, traffic, undercut/overcut viability, and caution windows.",
+  "rationale": "Public F1 strategy references emphasize pit timing as a function of pit-loss discount, traffic, undercut/overcut viability, and caution windows. Even without explicit SC/VSC labels, race-lap peer dispersion can proxy when a stop is unusually attractive or defensible.",
+  "implementation_hint": "Engineer race-lap contextual features such as: driver gap-to-race-lap median pace, percentile of tyre age within current lap, fraction of peers already on older/newer tyres, pit-wave intensity in previous 1-2 laps, outlier lap-time delta spikes indicating incidents, and estimated cheap-stop score from sudden compression in field pace dispersion. Interact these with position and compound.",
+  "expected_effect": "Adds competitive context missing from solo tyre-life rules, especially around pit waves and opportunistic stops.",
+  "risk": "Context features built with same-lap aggregates can leak if they accidentally use future-ordered rows; must rely only on contemporaneous race-lap information available for all cars.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/",
+    "https://flowracers.com/blog/f1-pit-stop-safety-car/"
+  ]
+}

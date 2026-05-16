@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule- and Regime-Gated Experts",
+  "summary": "Official F1 rules differ materially by regime: dry races require at least two slick compounds, wet races waive that requirement, and the Monaco Grand Prix had a mandatory two-stop rule in 2025.",
+  "rationale": "Official F1 rules differ materially by regime: dry races require at least two slick compounds, wet races waive that requirement, and the Monaco Grand Prix had a mandatory two-stop rule in 2025. A single global model likely averages incompatible policies, especially with wet laps and pre-season testing mixed into training.",
+  "implementation_hint": "Train separate experts for normal dry slick races, wet/intermediate-wet races, Monaco-2025, and optionally pre-season testing; blend them with a small gate using Race, Year, Compound family, and wet/dry indicators. Compare against a single-model baseline under race-group CV.",
+  "expected_effect": "Should reduce policy averaging and improve generalization on odd regimes; most likely a modest CV lift with better fold stability.",
+  "risk": "Small special-regime slices can overfit, especially Monaco-2025 and pre-season testing.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

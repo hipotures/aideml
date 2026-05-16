@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Chronology-aware CatBoost with `has_time=True`",
+  "summary": "Current CatBoost likely uses random permutations, but CatBoost’s ordered boosting/ordered categorical statistics were designed to reduce prediction shift from target leakage.",
+  "rationale": "Current CatBoost likely uses random permutations, but CatBoost’s ordered boosting/ordered categorical statistics were designed to reduce prediction shift from target leakage. Here the row order is inherently temporal within race/stint, and rare `Driver`/`Race` categories are abundant, so preserving time order may help more than adding more ratio features.",
+  "implementation_hint": "Sort train/test by `Year, Race, Driver, Stint, LapNumber, id`, set a timestamp/order column, train CatBoost with `has_time=True`, and compare against the same feature set with default permutations. Use OOF predictions as a new expert in the existing rank-blend rather than replacing the whole stack first.",
+  "expected_effect": "Small but plausible gain from cleaner categorical handling and better generalization on rare drivers/races, especially if current CV is mildly optimistic.",
+  "risk": "If the competition rows are not truly chronological within race contexts, forcing order can add noise; test only under forward or embargoed validation, not just shuffled group folds.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdfNeurIPS.Papers%2B1NeurIPS.Papers%2B1",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

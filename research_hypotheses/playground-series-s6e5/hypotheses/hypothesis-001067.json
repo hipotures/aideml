@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a decorrelated DART booster to the ensemble",
+  "summary": "Current best solutions are all standard gbtree-style XGB/Cat variants and their blends, so ensemble diversity is limited.",
+  "rationale": "Current best solutions are all standard gbtree-style XGB/Cat variants and their blends, so ensemble diversity is limited. XGBoost’s DART dropout booster is explicitly designed to reduce boosted-tree overfitting and often yields meaningfully different score geometry for rank blending.",
+  "implementation_hint": "Train one XGBoost `booster=dart` model on the same validated feature set with conservative dropout settings; do not tune for best standalone CV only. Judge it by correlation with current OOF predictions and whether a 2- or 3-way rank/logit blend improves OOF and fold consistency.",
+  "expected_effect": "Even if standalone CV is flat or slightly worse, it may improve the final blend through lower prediction correlation.",
+  "risk": "DART is noisier and slower, and its early stopping can be unstable; easy to over-tune to OOF blend search.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/parameter.html",
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/dart.html"
+  ]
+}

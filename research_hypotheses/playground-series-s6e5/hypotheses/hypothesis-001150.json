@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use soft regime memberships for robust training instead of hard regime bins",
+  "summary": "You already use hard regime keys and shrinkage blends.",
+  "rationale": "You already use hard regime keys and shrinkage blends. PG-DRO suggests robustness improves when group membership is probabilistic rather than hard, which fits this task because samples near race-phase, tire-age, and position cutoffs are ambiguous and likely misgrouped by fixed bins.",
+  "implementation_hint": "Define soft memberships over phase/tyre-age/position/compound regimes from distances to bin edges, then use those weights either in a probabilistic group DRO loss for a light model or as soft sample reweighting when fitting XGB/CatBoost experts. Compare against the current hard regime blend under the same folds.",
+  "expected_effect": "Should reduce overfitting to arbitrary cut boundaries and improve worst-slice behavior under season/track drift.",
+  "risk": "More moving parts in weighting can make CV noisy; if soft groups are too diffuse, the method collapses back to average-risk training.",
+  "sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/26394",
+    "https://huggingface.co/papers/1911.08731"
+  ]
+}

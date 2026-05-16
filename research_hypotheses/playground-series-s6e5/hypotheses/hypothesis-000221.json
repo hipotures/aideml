@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Short-window time-series transform specialist for last-k lap shape",
+  "summary": "Adjacent work on pit-stop prediction favors sequence models, and ROCKET/MiniRocket-style transforms are strong, cheap baselines for short ordered signals.",
+  "rationale": "Adjacent work on pit-stop prediction favors sequence models, and ROCKET/MiniRocket-style transforms are strong, cheap baselines for short ordered signals. Your rows already form short causal histories, so a specialist on the last 4-8 laps may extract shape information that trees on point features miss.",
+  "implementation_hint": "For each row, build causal per-driver sequences from recent `LapTime_Delta`, `LapTime (s)` residuals, degradation increments, position change, and pit history within the current stint; train a MiniRocket or MultiRocket classifier on those short sequences, then blend its OOF probabilities with the main tabular model.",
+  "expected_effect": "Adds genuinely different temporal shape signal, especially for pace-falloff patterns that precede stops by a few laps rather than one.",
+  "risk": "Sequence construction may be sparse at stint starts, and the gain can vanish if short histories are too noisy or poorly aligned across races.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://link.springer.com/article/10.1007/s10618-022-00844-1",
+    "https://www.researchgate.net/publication/347398037_MINIROCKET_A_Very_Fast_Almost_Deterministic_Transform_for_Time_Series_Classification"
+  ]
+}

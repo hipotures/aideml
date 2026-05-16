@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Add a dedicated learning-to-rank expert on race-lap queries",
+  "summary": "The decision is inherently competitive within each race-lap: a few cars are much closer to pitting than the rest.",
+  "rationale": "The decision is inherently competitive within each race-lap: a few cars are much closer to pitting than the rest. XGBoost and CatBoost both support grouped ranking objectives, which can learn relative stop imminence inside each query better than pure pointwise logloss.",
+  "implementation_hint": "Create query groups at least at Year-Race-LapNumber, optionally split by wet/dry regime; train a ranking model with binary relevance using XGBoost LambdaMART or CatBoost QueryCrossEntropy/YetiRankPairwise, then blend its OOF ranks with the current classifier stack.",
+  "expected_effect": "Should add a decorrelated expert that improves ordering among same-lap cars, which is exactly where the current blend is already doing manual rank tricks.",
+  "risk": "If query definition is too coarse or many queries have zero positives, the ranker can become noisy and underperform pointwise trees.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

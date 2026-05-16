@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use public Pirelli strategy-window priors",
+  "summary": "Pirelli and F1 media publish expected one-stop/two-stop strategies and pit windows before races.",
+  "rationale": "Pirelli and F1 media publish expected one-stop/two-stop strategies and pit windows before races. These windows summarize track abrasion, compound selection, and simulation assumptions that are not fully visible in the tabular columns.",
+  "implementation_hint": "Create a small Race-Year prior table with PlanA/PlanB stop count, first-stop lap range, second-stop lap range, and preferred compound transitions. Add distance_to_nearest_strategy_window, inside_plan_a_window, and plan_stop_count_pressure features.",
+  "expected_effect": "Can sharpen probability peaks at realistic stop windows and reduce diffuse positive probability on unlikely laps.",
+  "risk": "Published strategies are imperfect and safety cars/weather alter realized stops; keep them as soft features, not hard rules.",
+  "sources": [
+    "https://www.si.com/onsi/f1/news/formula-1-italian-grand-prix-strategy-guide",
+    "https://www.autohebdof1.com/news/f1/What-are-the-possible-strategies-for-the-2025-Emilia-Romagna-Grand-Prix.html",
+    "https://www.news24.com/sport/motorsport/formula-one/strategies-and-pit-windows-heres-when-f1-drivers-could-pit-during-the-mexican-gp-20231029"
+  ]
+}

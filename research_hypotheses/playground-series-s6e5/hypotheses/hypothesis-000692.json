@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pseudo-horizon multitask stacker",
+  "summary": "Recent F1 pit-stop work reports gains from predicting both next-lap pit probability and remaining laps until the next stop; the auxiliary horizon target should expose structure that hard pit-window heuristics miss.",
+  "rationale": "Recent F1 pit-stop work reports gains from predicting both next-lap pit probability and remaining laps until the next stop; the auxiliary horizon target should expose structure that hard pit-window heuristics miss.",
+  "implementation_hint": "Within each Year/Race/Driver sequence, derive `laps_to_next_stop` from the next observed `PitStop==1` in train only, cap it (for example 12-15), train a regression/ordinal model on that target, then feed its OOF prediction into the final binary classifier as a meta-feature.",
+  "expected_effect": "Better separation of borderline cases where the car is not pitting now but is clearly approaching the stop window.",
+  "risk": "Pseudo-label construction must be strictly fold-safe and the regression target will be noisy near race end or incomplete stints.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/abstract"
+  ]
+}

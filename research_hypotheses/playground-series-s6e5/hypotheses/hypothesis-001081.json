@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "True race-lap query ranking model, not just rank blending",
+  "summary": "The strongest current solutions only rank-blend binary classifiers, but CatBoost and LightGBM support query/group ranking objectives directly.",
+  "rationale": "The strongest current solutions only rank-blend binary classifiers, but CatBoost and LightGBM support query/group ranking objectives directly. This problem is naturally grouped by `Year/Race/LapNumber`: on each lap, some drivers are more stop-imminent than others. Adjacent competitions often gain when a ranking model is added as a decorrelated member instead of forcing all signal through logloss.",
+  "implementation_hint": "Build queries as all cars on the same `Year/Race/LapNumber`. Start with binary relevance `PitNextLap`; if too sparse, try soft relevance such as inverse laps-until-next-stop clipped to a short horizon. Train CatBoost `QueryCrossEntropy` or `YetiRank` with group ids, then blend its OOF ranks with the existing XGB/Cat classifiers. Evaluate only with race-level grouped splits plus a forward gap because neighboring laps are highly correlated.",
+  "expected_effect": "Can improve cross-sectional ordering within each lap, which is exactly where ROC AUC gains can still come from after feature engineering saturates.",
+  "risk": "Ranking loss may learn only within-lap order and ignore absolute calibration across laps; it should be an ensemble member, not an outright replacement.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/stable/Parameters.html#lambdarank",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

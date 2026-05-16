@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-preserving calibrated stacking rather than raw-probability averaging",
+  "summary": "Scikit-learn notes sigmoid calibration is strictly monotonic and therefore preserves each model’s ranking, unlike isotonic which can change AUC through ties.",
+  "rationale": "Scikit-learn notes sigmoid calibration is strictly monotonic and therefore preserves each model’s ranking, unlike isotonic which can change AUC through ties. For an AUC task, that makes sigmoid-calibrated OOF predictions attractive as safer stacker inputs than raw probabilities from heterogeneous specialists.",
+  "implementation_hint": "For each base model, fit fold-wise Platt/sigmoid calibration on OOF scores, then train a very small meta-learner on calibrated OOF columns plus a few regime indicators (`wet`, `late-race`, `pre-season`, `compound class`). Compare against simple mean/rank averaging; keep isotonic only if it materially helps blend diversity.",
+  "expected_effect": "Can improve ensemble robustness and public generalization by aligning score scales without destroying within-model ordering.",
+  "risk": "Calibration alone does not create signal; gains depend on having genuinely different specialists. Overfit meta-learners can erase the benefit.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://sklearn.org/stable/modules/isotonic.html"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state filter as auxiliary features",
+  "summary": "Recent F1 tyre modeling work argues degradation is better treated as a latent stochastic state with pit-stop resets than as a fixed deterministic curve.",
+  "rationale": "Recent F1 tyre modeling work argues degradation is better treated as a latent stochastic state with pit-stop resets than as a fixed deterministic curve. That maps well to this dataset, where raw `TyreLife` and cumulative degradation likely mix wear, fuel, and noise.",
+  "implementation_hint": "Fit a simple per-compound/per-race state model on historical laps only, producing filtered latent states such as hidden pace loss, hidden degradation slope, and surprise residual since last pit. Feed those states into the existing tabular classifier rather than replacing it.",
+  "expected_effect": "Can compress noisy sequential signals into more stable stint-health features and improve edge cases around nonlinear cliff behavior.",
+  "risk": "If the latent filter is misspecified, it may just restate existing rolling means with extra variance.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php?title=Tyres_and_degradation_models",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

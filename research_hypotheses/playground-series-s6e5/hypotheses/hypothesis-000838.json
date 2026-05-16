@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train An Ordered Hierarchical Target-Encoding Specialist For High-Cardinality Cats",
+  "summary": "`Driver`, `Race`, and their interactions are high-cardinality, and regularized target encoding often beats crude frequency encoding when done out-of-fold.",
+  "rationale": "`Driver`, `Race`, and their interactions are high-cardinality, and regularized target encoding often beats crude frequency encoding when done out-of-fold. Prior research already pointed toward leak-safe categorical priors; the concrete missing step is a strictly ordered, hierarchical backoff encoder rather than only counts/frequencies.",
+  "implementation_hint": "Build cross-fitted or ordered encodings with shrinkage for `Driver`, `Race`, `Compound`, `Driver_Compound`, `Race_Compound`, `Driver_Stint`, and `Driver_Race` using chronology-aware folds. Back off hierarchically, e.g. `Driver_Race_Compound -> Driver_Race -> Driver -> global`, then train a simple LightGBM/XGBoost specialist or CatBoost model on raw cats plus these encodings.",
+  "expected_effect": "Could unlock signal from repeat strategic tendencies and circuit-compound interactions that frequency features leave unused.",
+  "risk": "Easy to leak if folds are wrong; over-shrinking may erase the benefit because many drivers/races are sparse.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6",
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ]
+}

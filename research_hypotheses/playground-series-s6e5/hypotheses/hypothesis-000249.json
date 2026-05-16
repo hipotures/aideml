@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Domain-Adapted Specialists For Pre-Season Testing And Wet/Intermediate Sessions",
+  "summary": "Official F1 coverage repeatedly notes that pre-season testing pace is distorted by sandbagging, glory runs, and data-collection objectives, while wet/VSC-like conditions materially alter stop economics.",
+  "rationale": "Official F1 coverage repeatedly notes that pre-season testing pace is distorted by sandbagging, glory runs, and data-collection objectives, while wet/VSC-like conditions materially alter stop economics. That points to distribution shift severe enough for dedicated specialists or sample weighting rather than a single global model.",
+  "implementation_hint": "Train separate specialists for `Race == Pre-Season Testing`, slick races, and wet/intermediate races; or use one gate feature plus importance weighting so testing rows contribute less to the main dry-race model. Blend by regime at inference using compound/weather proxies already in the table.",
+  "expected_effect": "Should reduce bias from non-representative testing behavior and from wet-race strategy rules that differ from normal dry degradation logic.",
+  "risk": "Small subgroup sizes may make specialist models unstable, especially for wet compounds; gains depend on enough regime-specific examples in train.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/everything-you-need-to-know-about-pre-season-testing-as-f1-heads-to-bahrain.5TFJ9pFqUKGP0B0lydxsF4",
+    "https://www.formula1.com/en/latest/article/testing-explained-rob-smedley-on-glory-runs-vs-sandbagging.6DXSHe9CkvxClRanUnjPCH",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

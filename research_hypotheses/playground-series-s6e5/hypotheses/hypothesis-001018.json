@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Archetype Mixture Of Experts Using Undercut/Overcut Regimes",
+  "summary": "Official F1 strategy coverage highlights that pit timing value changes by degradation regime and circuit behavior: high-degradation tracks favor undercuts, while low-degradation tracks can favor overcuts.",
+  "rationale": "Official F1 strategy coverage highlights that pit timing value changes by degradation regime and circuit behavior: high-degradation tracks favor undercuts, while low-degradation tracks can favor overcuts. A single global model may blur these race archetypes.",
+  "implementation_hint": "Build race-level train-only priors such as average degradation growth, lap-time drop-off by compound, and historical same-race pit timing distributions, then cluster or threshold races into 2-4 archetypes like high-deg dry, low-deg dry, and wet/intermediate. Train separate experts per archetype and use a simple gate from current-race observable features.",
+  "expected_effect": "Should help when the same tyre-age or pace-loss pattern means different pit urgency on Suzuka-style low-deg races versus Singapore-style high-deg races.",
+  "risk": "Archetypes can overfragment the data, and any race prior computed using full-race information from the validation fold is leakage.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/stella-explains-why-mclarens-hands-were-tied-in-strategic-japanese-gp-battle.21tD15oGZTjJP7uXpoOOQY.html"
+  ]
+}

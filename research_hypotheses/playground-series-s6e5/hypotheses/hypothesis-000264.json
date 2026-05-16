@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-aware legality pressure and remaining-compound path features",
+  "summary": "In dry races, FIA rules require two different dry compounds, and Pirelli weekend allocations constrain what legal strategy paths remain.",
+  "rationale": "In dry races, FIA rules require two different dry compounds, and Pirelli weekend allocations constrain what legal strategy paths remain. That means pit pressure is not just wear-driven: some rows are forced by remaining legal compound options or by having delayed the mandatory second slick too long.",
+  "implementation_hint": "Build stricter legality features than the current prior-slick-count heuristic: has mandatory second dry compound already been satisfied, number of distinct slick compounds already used this race, whether current compound repeats a previous slick, laps remaining versus feasible one-stop/two-stop legal paths, and dry-versus-wet regime overrides. Keep all path inference row-causal within each driver-race sequence.",
+  "expected_effect": "Improves late-race and first-stop decisions where legality pressure dominates pure degradation, especially in dry races with limited prior slick diversity.",
+  "risk": "Without actual weekend set-allocation data, some path features are approximate. Wet/intermediate races can break dry-rule assumptions unless explicitly gated.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres"
+  ]
+}

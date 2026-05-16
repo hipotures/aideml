@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Lap Undercut-Pocket and Traffic Opportunity Features",
+  "summary": "Official F1 strategy analyses repeatedly emphasize that pitting is not just tyre age; it depends on being within undercut range, having clean air after the stop, and avoiding rejoin traffic.",
+  "rationale": "Official F1 strategy analyses repeatedly emphasize that pitting is not just tyre age; it depends on being within undercut range, having clean air after the stop, and avoiding rejoin traffic. Your current features approximate strategy pressure but not the local choice set on that exact lap.",
+  "implementation_hint": "For each `Year/Race/LapNumber`, build field-relative features: rank/percentile of `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`; gaps in `Position`; density of nearby rivals by position band; count of rivals ahead/behind on old tyres; whether the driver sits in a sparse rejoin pocket versus a congested cluster. Interact these with track-level undercut/pit-loss priors already in the best solutions.",
+  "expected_effect": "This is one of the most competition-specific ways to add orthogonal signal and could improve decisions on marginal pit-window laps where own-tyre features alone are ambiguous.",
+  "risk": "Without true time gaps, position-based proxies may be noisy; badly designed field features can mostly encode race identity and inflate easy CV.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

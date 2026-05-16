@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Structural-reset latent tyre-state features",
+  "summary": "Recent F1 tyre-state work models degradation as a latent state with pit stops acting as resets, which matches this task better than static tyre-life thresholds.",
+  "rationale": "Recent F1 tyre-state work models degradation as a latent state with pit stops acting as resets, which matches this task better than static tyre-life thresholds. That can capture hidden pace loss from nonlinear wear when TyreLife and Cumulative_Degradation alone are too crude.",
+  "implementation_hint": "Per Race-Year-Driver, fit a simple leakage-safe state filter on lap-time residuals using only prior laps: residualize LapTime or LapTime_Delta by race-lap medians, update a latent degradation level and slope, and hard-reset the state after PitStop=1. Feed current state, one-step forecast, and uncertainty width into the tabular model.",
+  "expected_effect": "Should improve recall on nonlinear cliff laps and reduce overreliance on hand-picked compound life constants, especially late in stints.",
+  "risk": "Easy to leak if the residual baseline uses future laps or full-race statistics; overfitting is possible if the state model is too flexible.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-stint candidate ranking blended with calibrated classifier",
+  "summary": "Official strategy analysis emphasizes that pit calls are local comparisons between stopping now, stopping one lap later, or reacting to a nearby rival.",
+  "rationale": "Official strategy analysis emphasizes that pit calls are local comparisons between stopping now, stopping one lap later, or reacting to a nearby rival. A within-stint candidate ranker makes that comparison directly, which is closer to the operational decision than global row-wise classification.",
+  "implementation_hint": "Within each driver-race stint, build a query group over laps and train a ranking model so true stop-adjacent laps outrank neighboring laps, using CatBoost QueryCrossEntropy/QuerySoftMax or pairwise losses; convert ranks to scores and blend them out-of-fold with the main probabilistic classifier, then calibrate the blend with fold-safe sigmoid or isotonic scaling.",
+  "expected_effect": "Should improve relative ordering inside the narrow pit window while the classifier preserves global probability structure.",
+  "risk": "This overlaps conceptually with earlier ranking experiments, so it must be implemented as a strict within-stint candidate ranker rather than a generic race-level ranker; poor OOF blending can erase gains.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html"
+  ]
+}

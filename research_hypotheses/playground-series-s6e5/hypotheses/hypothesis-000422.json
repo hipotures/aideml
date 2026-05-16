@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary next-compound choice model feeding the pit classifier",
+  "summary": "Public compound-decision work treats tyre choice after a stop as its own prediction problem.",
+  "rationale": "Public compound-decision work treats tyre choice after a stop as its own prediction problem. For next-lap pit prediction, knowing whether the current state strongly points toward a plausible incoming compound can add strategy context that a pure binary label misses.",
+  "implementation_hint": "Within each driver-race sequence, derive `next_compound_after_pit` from actual pit events. Train a multiclass OOF model on pit rows only, using current race state to predict the next compound class. Feed the resulting class probabilities, entropy, and top-margin back into the main `PitNextLap` model for all rows using neutral defaults where needed.",
+  "expected_effect": "Adds branch-selection information around one-stop vs two-stop decisions and may sharpen probabilities near genuine pit windows.",
+  "risk": "Label extraction around pit-in/pit-out rows or wet races can be noisy, and this must be done strictly OOF to avoid future-label leakage.",
+  "sources": [
+    "https://run.unl.pt/bitstreams/c56ef932-3c13-40d1-8df9-57124cc1ed51/download",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

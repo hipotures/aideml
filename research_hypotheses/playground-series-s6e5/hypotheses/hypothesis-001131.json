@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Shift-aware pseudo-labeling on only the easiest test rows",
+  "summary": "Recent tabular self-training and shift-aware self-training papers report gains when pseudo-labels are both high-confidence and distribution-consistent.",
+  "rationale": "Recent tabular self-training and shift-aware self-training papers report gains when pseudo-labels are both high-confidence and distribution-consistent. With a large unlabeled test set and known train-test shift, extremely selective pseudo-labeling could help more than generic semisupervision.",
+  "implementation_hint": "Run the current best ensemble, keep only the most extreme-confidence test rows after density or adversarial-shift filtering, and retrain once with small weights. Prefer curriculum entry, temporal/seed consistency, and agreement across XGB/CatBoost; abort if forward-fold simulation degrades.",
+  "expected_effect": "Could slightly adapt the model toward the test distribution and improve rare-pattern ranking without changing the core pipeline.",
+  "risk": "High leakage risk in evaluation design and easy to fool yourself with transductive overfitting; only worth trying with strict simulated pseudo-label CV and tiny weights.",
+  "sources": [
+    "https://www.emergentmind.com/papers/2302.14013",
+    "https://www.emergentmind.com/papers/2411.00586",
+    "https://www.frontiersin.org/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

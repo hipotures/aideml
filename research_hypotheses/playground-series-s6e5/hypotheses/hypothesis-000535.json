@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "State-Space Tyre Health Distillation",
+  "summary": "A new F1 tyre-degradation paper models pit-stop-relevant wear as a latent state with stint resets and reports better one-step forecasts than an AR(1) benchmark under rolling-origin CV.",
+  "rationale": "A new F1 tyre-degradation paper models pit-stop-relevant wear as a latent state with stint resets and reports better one-step forecasts than an AR(1) benchmark under rolling-origin CV. That suggests your current hand-built wear proxies may be leaving signal on the table; a lightweight latent-state estimate can be used as an extra feature rather than replacing the pipeline.",
+  "implementation_hint": "Fit a simple per-driver-per-race latent degradation filter on lap times and stint resets using only past laps, then add 3-6 causal features such as latent_tyre_state, latent_state_slope, residual_vs_expected_laptime, and post-pit reset magnitude to the existing GBDT/CatBoost stack.",
+  "expected_effect": "Should improve discrimination around ambiguous mid-stint and late-stint decisions where raw TyreLife and degradation ratios are too noisy.",
+  "risk": "Easy to leak future information if the latent state is smoothed bidirectionally instead of filtered causally; keep it strictly forward-only inside each driver-race sequence.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6"
+  ]
+}

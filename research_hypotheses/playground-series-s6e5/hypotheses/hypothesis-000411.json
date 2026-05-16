@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-phase expert split: opening stint vs lap-20-plus",
+  "summary": "A recent F1 pit-strategy optimization study reports that online strategy aligns much more closely with offline optimal once enough race information accumulates, around lap 20.",
+  "rationale": "A recent F1 pit-strategy optimization study reports that online strategy aligns much more closely with offline optimal once enough race information accumulates, around lap 20. Official strategy guides also separate early commitment laps from later flexible windows.",
+  "implementation_hint": "Train two specialists with a smooth gate around `LapNumber` 18-22 or equivalent `RaceProgress`: an opening-phase model emphasizing start compound, track position, and rule debt, and a later-phase model emphasizing degradation, opponent context, and feasible finish windows.",
+  "expected_effect": "Should reduce the common error of using late-race logic too early, while preserving strong degradation logic once the race state is informative.",
+  "risk": "This is a stronger version of regime specialization and can overfit because there are only 26 race names; gate choice must be cross-validated by race block.",
+  "sources": [
+    "https://repositorio.uchile.cl/handle/2250/199664",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-2022-us-grand.5tiDhCCh8nay336LaMic9X.html"
+  ]
+}

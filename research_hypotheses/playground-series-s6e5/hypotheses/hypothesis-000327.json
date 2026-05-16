@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace fixed pit windows with a one-lap counterfactual pit-value score",
+  "summary": "Official F1 strategy breakdowns frame undercut/overcut as an economic trade: current tyre fade, fresh-tyre warm-up, clean air, striking range, and pit-loss delta.",
+  "rationale": "Official F1 strategy breakdowns frame undercut/overcut as an economic trade: current tyre fade, fresh-tyre warm-up, clean air, striking range, and pit-loss delta. That is richer than the current mostly static \"can this tyre finish\" heuristics.",
+  "implementation_hint": "Create features for `pit_now_edge` versus `stay_out_one_more_lap`: predicted old-tyre penalty next lap, fresh-tyre out-lap penalty by compound/regime, cheap-stop discount from hypothesis 1, and simple traffic penalty from position/field context. Keep it shallow: a few handcrafted continuous scores are enough.",
+  "expected_effect": "Should sharpen ranking near the real decision boundary, where current solutions already know a stop is needed eventually but not whether it should happen on the next lap.",
+  "risk": "If coefficients are tuned on the full training set, this becomes hidden target leakage. Estimate or tune the score only inside folds, and do not use future laps from the same driver-race sequence.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf"
+  ]
+}

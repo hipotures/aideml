@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone Physics Residual Expert",
+  "summary": "Some relationships should be directionally stable even when raw trees wobble: more service-window pressure, more remaining rule debt, and more laps since last pit should not usually lower pit risk all else equal.",
+  "rationale": "Some relationships should be directionally stable even when raw trees wobble: more service-window pressure, more remaining rule debt, and more laps since last pit should not usually lower pit risk all else equal. Official GBDT tooling supports monotone constraints specifically for this kind of prior.",
+  "implementation_hint": "Train a constrained LightGBM or XGBoost expert on a compact physics/rules subset only: service pressure, finish pressure, cannot-finish flag, laps-since-last-pit, remaining mandatory-stop debt, remaining mandatory-compound debt, and maybe tyre-life-at-finish margin. Blend it with the unconstrained main model rather than replacing the main model.",
+  "expected_effect": "Should reduce fold-to-fold instability and improve generalization on sparse races/drivers by supplying a low-variance prior model.",
+  "risk": "Over-constraining the full feature space can flatten useful local effects; keep constraints to a small expert and raise `max_bin` if XGBoost/LightGBM becomes too shallow.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a time-to-next-stop auxiliary model",
+  "summary": "Recent F1 pit-stop work uses multi-task heads for both next-lap classification and laps-until-stop regression, and discrete-time survival modeling treats each lap as a hazard step.",
+  "rationale": "Recent F1 pit-stop work uses multi-task heads for both next-lap classification and laps-until-stop regression, and discrete-time survival modeling treats each lap as a hazard step. That matches this target better than a single independent binary classifier.",
+  "implementation_hint": "From train sequences, derive LapsToNextPit, StopWithin3, StopWithin5, and censored-to-finish flags. Train auxiliary regressors/classifiers or a discrete hazard model, then feed OOF predictions into AutoGluon or blend them with the main probability.",
+  "expected_effect": "May sharpen ranking around the one-to-five-lap decision window where AUC is won, while adding model diversity beyond static tabular features.",
+  "risk": "Needs strict group-aware OOF generation to avoid future leakage; noisy sequence boundaries can corrupt the derived labels.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

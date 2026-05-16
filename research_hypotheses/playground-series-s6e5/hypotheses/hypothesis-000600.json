@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored AFT model for laps-until-next-stop, then convert to next-lap risk",
+  "summary": "This target is naturally a time-to-event problem, not just a one-step binary label.",
+  "rationale": "This target is naturally a time-to-event problem, not just a one-step binary label. XGBoost AFT explicitly supports right-censoring, which fits rows where the next stop is not observed before race end; that should use more signal from long non-stop stretches than plain binary classification.",
+  "implementation_hint": "Create a per-row label for laps until the driver’s next PitStop within the same race. Use uncensored [d,d] when a future stop exists and right-censored [remaining_laps,+inf) when it does not. Train `xgboost.train` with `survival:aft`, then transform predicted survival time into `P(stop in 1 lap)` and blend with the current binary GBDT.",
+  "expected_effect": "Better late-race and long-stint discrimination, especially where the binary model now compresses many non-stop rows together.",
+  "risk": "Target construction is easy to leak if future stops are computed before fold splitting; all censoring labels must be built fold-safely inside race-blocked CV.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/stable/index.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

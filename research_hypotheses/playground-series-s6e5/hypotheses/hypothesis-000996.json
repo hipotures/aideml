@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost on raw identities plus cross features",
+  "summary": "The dataset has very high-cardinality `Driver` and composite identities.",
+  "rationale": "The dataset has very high-cardinality `Driver` and composite identities. CatBoost’s ordered scheme is explicitly designed to reduce target leakage from target statistics, which is relevant because naive same-fold encodings on repeated lap rows can overstate local CV.",
+  "implementation_hint": "Train a CatBoostClassifier with raw categorical columns plus composites like `Driver+Compound`, `Year+Race`, `Race+Stint+Compound`, and keep numerical rolling features. Use grouped folds by race/weekend and compare ordered boosting against current frequency-encoding-only trees.",
+  "expected_effect": "Higher-value use of categorical history than simple frequency counts, potentially capturing driver- and track-specific pit tendencies without leaking label frequency.",
+  "risk": "If folds are not grouped correctly, gains may be illusory; CatBoost can also underperform if numeric engineered features already dominate.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions.html",
+    "https://catboost.ai/docs/en/references/text-processing__feature_calcers",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Monotone constrained specialist for tyre-age and degradation physics",
+  "summary": "Official XGBoost and LightGBM docs note that monotonic constraints can improve generalization when strong prior shape knowledge exists.",
+  "rationale": "Official XGBoost and LightGBM docs note that monotonic constraints can improve generalization when strong prior shape knowledge exists. Pit risk should usually rise with tyre life/degradation and fall with laps remaining, at least within dry-regime subsets, so a constrained expert may generalize better across seasons than unconstrained trees.",
+  "implementation_hint": "Train a separate constrained model on regime-filtered data or with regime interaction features, enforcing monotone increases for TyreLife, Cumulative_Degradation, and maybe StintProgress, and monotone decreases for EstimatedLapsLeft or RaceRemaining where appropriate. Use it as a specialist blend member rather than replacing the main model. Compare XGBoost constrained trees against an EBM/GA2M specialist with a few selected interactions.",
+  "expected_effect": "Likely modest standalone score but potentially valuable as a drift-robust, low-correlation ensemble component.",
+  "risk": "Wrong global constraints can flatten real strategy reversals, especially around wet tyres, mandatory compounds, or end-of-race non-pit zones.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone",
+    "https://interpret.ml/docs/ebm.html"
+  ]
+}

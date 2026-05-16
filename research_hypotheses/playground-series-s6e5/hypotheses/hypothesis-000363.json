@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-specific post-hoc recalibration tree on out-of-fold scores",
+  "summary": "Public sources on calibration show that one global map can miss region-specific distortions, and beta calibration is often safer than plain logistic scaling for skewed score distributions.",
+  "rationale": "Public sources on calibration show that one global map can miss region-specific distortions, and beta calibration is often safer than plain logistic scaling for skewed score distributions. For ROC AUC, a global monotone map changes little, but piecewise or regime-specific calibration can reorder examples across wet/dry, early/late, or debt/no-debt states.",
+  "implementation_hint": "Generate out-of-fold base scores, then fit a very small calibration tree or segmented beta calibrators using only coarse state variables such as wet vs slick, Monaco-like exception races, early/mid/late race, fresh vs old tyre, and rule-debt status. Blend calibrated scores only if race-held-out CV improves, since this is a cheap second-stage experiment.",
+  "expected_effect": "Likely a modest but low-cost lift that mainly improves generalization from local CV to public leaderboard by correcting regime-dependent score distortion.",
+  "risk": "Too many segments will overfit and hurt AUC. Keep the partition shallow, train only on OOF predictions, and evaluate on strict grouped folds.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v77/leathart17a.html",
+    "https://proceedings.mlr.press/v89/vaicenavicius19a.html"
+  ]
+}

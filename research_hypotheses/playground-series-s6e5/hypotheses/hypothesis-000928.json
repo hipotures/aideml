@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent stint pace-state features",
+  "summary": "Recent F1 degradation research models lap times with latent tyre pace and pit-stop state resets, including compound-specific and time-varying degradation.",
+  "rationale": "Recent F1 degradation research models lap times with latent tyre pace and pit-stop state resets, including compound-specific and time-varying degradation. Prior work tried one simple rolling pace delta, but not a fuller set of reset-aware state summaries.",
+  "implementation_hint": "Sort by Race, Driver, Stint, LapNumber. Add shift-safe expanding/rolling features within each stint: rolling median lap time, rolling slope of LapTime and LapTime_Delta over 3/5/8 laps, current residual versus stint expanding median, residual z-score within Race+LapNumber field, degradation acceleration, and flags for abrupt pace cliff. Restore original row order before returning.",
+  "expected_effect": "May capture the latent degradation/pace cliff that triggers pit decisions, improving separability near marginal pit-window laps.",
+  "risk": "If test rows are not complete chronological sequences, shift features may be partially missing. Rolling features can leak if current/future target-derived columns are used; only observed current and past lap features should be used.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.emergentmind.com/papers/2512.00640",
+    "https://www.researchgate.net/publication/387862679_Explainable_Time_Series_Prediction_of_Tyre_Energy_in_Formula_One_Race_Strategy"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

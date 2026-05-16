@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost ordered-CTR interaction sidecar",
+  "summary": "The table has high-cardinality Driver plus Race/Race_Year interactions.",
+  "rationale": "The table has high-cardinality Driver plus Race/Race_Year interactions. CatBoost is designed to build ordered target-statistic features for categorical variables and combinations while reducing target leakage compared with manual global encodings.",
+  "implementation_hint": "Train a separate CatBoostClassifier with native categorical columns Driver, Race, Compound, Race_Year and engineered categorical crosses like Race_Year_Compound, Driver_Race, Compound_Stint, and binned TyreLife/RaceProgress. Generate OOF predictions under Race_Year-grouped folds and blend/rank-average with the current AutoGluon or GBDT predictions.",
+  "expected_effect": "Could add ranking signal from sparse strategy identities that frequency encoding and generic AutoGluon handling may underuse, especially driver-race and compound-stint habits.",
+  "risk": "CatBoost CTRs must be fit inside each fold; random row folds can leak race identity and inflate local CV.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://arxiv.org/abs/1706.09516"
+  ]
+}

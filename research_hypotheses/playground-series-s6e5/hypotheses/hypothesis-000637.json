@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Mandatory Compound Rule Pressure",
+  "summary": "F1 dry races require using multiple tyre compounds, so late-race pit hazard depends not only on tyre wear but also whether the driver has already satisfied the compound rule.",
+  "rationale": "F1 dry races require using multiple tyre compounds, so late-race pit hazard depends not only on tyre wear but also whether the driver has already satisfied the compound rule. This rule pressure is absent from the current top feature set.",
+  "implementation_hint": "For each Race-Year-Driver, infer previous compounds from earlier laps and create has_seen_two_dry_compounds, current_compound_only_so_far, laps_remaining_proxy = max_lap_in_race - LapNumber, and rule_pressure = current_compound_only_so_far * RaceProgress or / max(laps_remaining_proxy,1). Keep features causal by using compounds observed before or at current lap only.",
+  "expected_effect": "May rank late-stint one-compound drivers higher even when tyre degradation features look moderate.",
+  "risk": "If synthetic data does not enforce real F1 rules, the feature may add noise; max_lap_in_race from combined train/test should be treated as a non-target schedule feature but still validated carefully.",
+  "sources": [
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

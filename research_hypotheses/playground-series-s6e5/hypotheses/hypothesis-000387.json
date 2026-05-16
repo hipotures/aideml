@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Kalman-Style Latent Wear and Innovation Features",
+  "summary": "A recent F1-specific state-space paper models tire performance as a latent process with pit-stop resets and interpretable degradation dynamics.",
+  "rationale": "A recent F1-specific state-space paper models tire performance as a latent process with pit-stop resets and interpretable degradation dynamics. This is a concrete upgrade over generic latent tyre-state ideas: filtered state, slope, innovation, and uncertainty may be more stable than raw `LapTime_Delta` and `Cumulative_Degradation`.",
+  "implementation_hint": "Within each `Driver x Race x Stint`, fit a simple linear-Gaussian filter or lightweight state-space approximation using lap-time-derived observations and reset on pit stops; export filtered wear level, acceleration, one-step residual, and posterior variance as tabular features.",
+  "expected_effect": "Can denoise noisy lap observations and sharpen pre-stop hazard around genuine degradation cliffs.",
+  "risk": "Traffic, yellow-flag effects, and outlier laps can contaminate the observation model if the filter is too naive.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged-forward ordered pipeline instead of shuffled grouped CV",
+  "summary": "The current best code still uses shuffled grouped CV and several transductive transforms built on train+test together.",
+  "rationale": "The current best code still uses shuffled grouped CV and several transductive transforms built on train+test together. Public guidance on purging/embargo and CatBoost ordered statistics suggests small CV gains can disappear when future-adjacent rows or future category information leak into training.",
+  "implementation_hint": "Create event-ordered folds by Year/Race with a 1-race embargo, recompute all category frequencies/interaction counts/adversarial weights inside each fold from train-slice only, and test a CatBoost branch with rows sorted chronologically and `has_time=True` plus ordered CTRs only.",
+  "expected_effect": "Likely lowers optimistic local CV slightly but should improve robustness and may reveal real leaderboard-positive changes that are currently hidden by leakage-friendly validation.",
+  "risk": "Can look worse on current CV even if it is more correct; fold-safe recomputation is slower and removes some of the apparent benefit from transductive stats.",
+  "sources": [
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://catboost.ai/docs/en/references/training-parameters/",
+    "https://catboost.ai/docs/en/concepts/educational-materials-papers"
+  ]
+}

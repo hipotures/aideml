@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Year-aware FIA rule-exception features and specialists",
+  "summary": "The current best features approximate dry-race tyre obligations, but FIA rules are conditional: the two-dry-compound obligation is waived once intermediates/wets are used, Monaco has a special 2025 three-set rule, and pre-season testing is a different regime.",
+  "rationale": "The current best features approximate dry-race tyre obligations, but FIA rules are conditional: the two-dry-compound obligation is waived once intermediates/wets are used, Monaco has a special 2025 three-set rule, and pre-season testing is a different regime. A rule-corrected obligation state should separate strategic stops from purely degradational stops.",
+  "implementation_hint": "Create causal features for `dry_rule_active_so_far`, `mandatory_compound_used_so_far`, `distinct_slicks_used_so_far`, `owes_dry_change`, `wet_used_so_far`, `monaco_2025_special`, and `is_testing_session`. Train either one global model with these flags or a small specialist blend for dry-race vs wet/testing vs Monaco-2025 rows. Validation trap: build all obligation counters only from prior/current laps within Driver x Race.",
+  "expected_effect": "Should improve late-race and edge-case ranking where the current slick-count heuristic is too blunt, with upside if public test contains wet/testing/Monaco mixtures.",
+  "risk": "If Monaco or wet/testing rows are sparse, a specialist can overfit; keep the split coarse and back off to flags if sample counts are low.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.fia.com/news/fia-and-formula-1-confirm-bahrain-will-host-2025-pre-season-testing"
+  ]
+}

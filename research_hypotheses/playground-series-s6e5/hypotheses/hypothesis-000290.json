@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-gated ensemble with rank-preserving blend instead of probability-heavy calibration",
+  "summary": "Recent pit-stop papers find sequence models capture long dependencies, while tree models remain strong on tabular regime interactions.",
+  "rationale": "Recent pit-stop papers find sequence models capture long dependencies, while tree models remain strong on tabular regime interactions. Given ROC AUC is rank-based, a practical adjacent-competition pattern is to blend heterogeneous specialists by rank rather than aggressively calibrating probabilities, which can add ties or chase logloss instead of ranking.",
+  "implementation_hint": "Train 2-3 complementary specialists: current tabular tree model, a short-sequence model over prior laps or lag features, and optionally the race-lap ranking model. Blend out-of-fold predictions by rank-average globally or with simple gates for wet vs slick, early vs late race, and first stint vs later stint. Prefer monotone meta-blends over isotonic recalibration when optimizing AUC.",
+  "expected_effect": "Improves leaderboard robustness by exploiting complementary error patterns across regimes without needing a full end-to-end sequence system.",
+  "risk": "Sequence models can overfit because public F1 papers often use richer telemetry and non-AUC metrics; gating rules must be chosen out-of-fold or they become another leakage path.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

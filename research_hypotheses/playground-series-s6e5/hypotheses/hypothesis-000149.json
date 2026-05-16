@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/overcut pressure score from race-lap context and stint opportunity windows",
+  "summary": "F1 strategy sources emphasize that pit timing depends on degradation, warmup, track position, and whether a rival is within striking range.",
+  "rationale": "F1 strategy sources emphasize that pit timing depends on degradation, warmup, track position, and whether a rival is within striking range. Current best features are mostly self-state tyre-window heuristics; they appear to underuse competitor-triggered stop pressure.",
+  "implementation_hint": "Build leakage-safe same-lap context features within each race: percentile rank of `LapTime_Delta`, rank-based local pressure from cars in nearby positions, count of nearby drivers on older/newer compounds, and an `undercut_opportunity` score combining high degradation, hard-to-overtake races, and inferred close-rival pressure. Approximate warmup-sensitive overcut regimes using race-level historical medians of post-stop pace response by compound and year.",
+  "expected_effect": "Should improve recall on reactive stops caused by nearby rivals rather than pure tyre exhaustion.",
+  "risk": "No explicit gap-to-car-ahead/behind is available, so proxy design may add noise if positional neighborhoods are weak stand-ins for actual time gaps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://ssrn.com/abstract=4470115",
+    "https://ssrn.com/abstract=3769652"
+  ]
+}

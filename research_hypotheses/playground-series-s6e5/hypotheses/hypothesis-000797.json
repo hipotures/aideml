@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use adversarial validation and clipped importance weighting for train-test race-shift",
+  "summary": "This train/test split spans multiple seasons and a shrinking driver pool, so covariate shift is plausible.",
+  "rationale": "This train/test split spans multiple seasons and a shrinking driver pool, so covariate shift is plausible. Covariate-shift literature shows ordinary CV can misestimate generalization when train and test feature distributions differ; importance-weighted validation is a principled correction.",
+  "implementation_hint": "Train a train-vs-test classifier on raw plus engineered features with Race-Year grouping preserved, inspect which races/years/drivers are most test-like, and derive clipped sample weights from the predicted density ratio. Use the weights only if they improve agreement between race-held-out CV and submission results.",
+  "expected_effect": "May not raise local CV, but can improve leaderboard alignment and reduce over-selection of solutions that exploit obsolete historical regimes.",
+  "risk": "Noisy weights can increase variance and overfit to the public test distribution; weight clipping and ablation are mandatory.",
+  "sources": [
+    "https://www.jmlr.org/beta/papers/v8/sugiyama07a.html",
+    "https://papers.nips.cc/paper/3248-direct-importance-estimation-with-model-selection-and-its-application-to-covariate-shift-adaptation",
+    "https://proceedings.mlr.press/v108/li20b.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace fixed compound life with a circuit-prior online wear posterior",
+  "summary": "A 2024 F1 strategy thesis estimates tyre-wear coefficients online using only data up to the current lap and shrinks them with priors from the same circuit in a prior year; a 2026 state-space paper argues latent degradation with pit-stop resets is a better foundation than deterministic wear constants.",
+  "rationale": "A 2024 F1 strategy thesis estimates tyre-wear coefficients online using only data up to the current lap and shrinks them with priors from the same circuit in a prior year; a 2026 state-space paper argues latent degradation with pit-stop resets is a better foundation than deterministic wear constants. Your current best code still hard-codes compound life windows.",
+  "implementation_hint": "For each `Race`/`Year`/`Compound` or circuit cluster, fit a robust rolling wear model on non-pit, non-outlier laps only; shrink early-lap estimates toward prior-year circuit coefficients; add posterior wear slope, finish-margin, and uncertainty features to the existing tabular model.",
+  "expected_effect": "Should reduce circuit/year mismatch and make pit-window features less brittle than static expected-life maps.",
+  "risk": "Sparse early-race or wet-tyre data can make posteriors noisy; exclude pit-entry/exit and future laps to avoid leakage.",
+  "sources": [
+    "https://repositorio.uchile.cl/bitstream/handle/2250/199664/Optimization-of-pit-stop-strategies-in-Formula-1-racing.pdf?isAllowed=y&sequence=1",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

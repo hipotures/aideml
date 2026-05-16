@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Online lap-time innovation and uncertainty features",
+  "summary": "Recent F1 degradation work models lap pace as a latent state with pit-stop resets and evaluates it with one-step-ahead rolling-origin validation.",
+  "rationale": "Recent F1 degradation work models lap pace as a latent state with pit-stop resets and evaluates it with one-step-ahead rolling-origin validation. For this task, the useful signal may be not just expected degradation, but surprise: large positive one-step forecast errors, rising predictive variance, or repeated adverse innovations can mark a driver entering an earlier-than-expected pit window.",
+  "implementation_hint": "Within each Race-Year-Driver sequence, fit a simple online filter on LapTime (s) or LapTime_Delta using only prior laps in that stint; emit per-row features such as predicted next-lap pace, residual z-score, rolling innovation mean, and posterior uncertainty. Feed those features into the existing tabular classifier rather than replacing it.",
+  "expected_effect": "Should add a leakage-safe, adaptive notion of tyre distress and separate true pit pressure from static TyreLife heuristics.",
+  "risk": "A too-heavy filter can overfit or duplicate existing degradation features; it must be computed strictly forward in time and reset correctly at pit stops.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

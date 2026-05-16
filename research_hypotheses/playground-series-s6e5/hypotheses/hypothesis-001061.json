@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged rolling-origin CV with race-order embargo for model selection",
+  "summary": "Current grouped folds avoid within-race leakage, but they still let future races/years inform validation choices.",
+  "rationale": "Current grouped folds avoid within-race leakage, but they still let future races/years inform validation choices. Recent leakage literature on clustered data and standard calibration guidance both imply that unbiased OOF estimates matter when rows are dependent. For this task, a small temporal embargo around held-out races should better reflect deployment and may change which feature sets actually generalize.",
+  "implementation_hint": "Order races by Year then calendar order within year. Validate with forward-chaining splits, holding out contiguous race blocks and embargoing adjacent races or a few laps of neighboring events from training. Re-run only model/feature selection under this CV; keep the existing train-all fit logic unchanged.",
+  "expected_effect": "Lower but more trustworthy local CV, with better correlation between CV and leaderboard movement; may rescue ideas that looked neutral under StratifiedGroupKFold.",
+  "risk": "If the test set is not truly forward-shifted in time, stricter CV can understate achievable score and slow iteration.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00477-024-02715-1",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

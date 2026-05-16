@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use regime-specific experts with rolling-origin validation and OOF stacking",
+  "summary": "The literature repeatedly points to compound-specific and context-dependent degradation, while scikit-learn notes grouped stratification is only approximate.",
+  "rationale": "The literature repeatedly points to compound-specific and context-dependent degradation, while scikit-learn notes grouped stratification is only approximate. A single global model may blur dry/wet, first-stop/late-stop, and early/late-race behaviors.",
+  "implementation_hint": "Train separate experts for regimes like dry vs wet, stint 1 vs later stints, and early/mid/late race; generate OOF predictions under stricter splits such as leave-one-race-out plus a year-blocked or rolling-origin sanity check; then stack with a tiny meta-learner using regime indicators.",
+  "expected_effect": "Better specialization and a more trustworthy CV estimate; can also reveal whether current 0.935 CV is optimistic under temporal shift.",
+  "risk": "Smaller regime subsets may overfit, and stricter validation may reduce local CV even if leaderboard generalization improves.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

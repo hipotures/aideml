@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "ID-Delayed CatBoost",
+  "summary": "Driver identity is very high-cardinality and train/test entity coverage differs, so the model may memorize historical driver behavior too early.",
+  "rationale": "Driver identity is very high-cardinality and train/test entity coverage differs, so the model may memorize historical driver behavior too early. CatBoost exposes feature weights and first-feature-use penalties that can defer ID reliance until physics/context features explain most of the signal.",
+  "implementation_hint": "Train a CatBoost variant with penalties or downweights on Driver, Race_Year, and other sparse identifiers, while leaving tyre/race-state variables unpenalized. Compare this specialist alone and in late fusion against the normal CatBoost/autogluon stack.",
+  "expected_effect": "Should improve cold-start robustness for rare or shifted drivers/races and make leaderboard behavior less brittle.",
+  "risk": "If identity carries strong stable signal, over-penalizing it can reduce CV and LB alike.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://catboost.ai/docs/en/concepts/algorithm-score-functions",
+    "https://catboost.ai/docs/en/references/training-parameters/"
+  ]
+}

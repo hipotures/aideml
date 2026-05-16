@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Candidate-window LambdaRank reranker on top of the current classifier",
+  "summary": "ROC AUC is a pairwise ranking metric, and ranking objectives are designed to optimize pair ordering directly.",
+  "rationale": "ROC AUC is a pairwise ranking metric, and ranking objectives are designed to optimize pair ordering directly. A small reranker focused on ambiguous candidate laps can improve ordering near true stop windows without replacing the current strong classifier.",
+  "implementation_hint": "Keep the current best classifier as stage 1. Build query groups by `Race_Year` + `Driver`, restrict stage 2 to plausible stop-window laps or high-uncertainty laps, and train XGBoost `rank:pairwise`/`rank:ndcg` or LightGBM `lambdarank` on out-of-fold stage-1 features plus race-state features; blend the rank score back into the final probability.",
+  "expected_effect": "Should lift AUC by correcting near-miss ordering around actual stop laps, where most of the remaining error likely lives.",
+  "risk": "If groups are poorly chosen or positives are too sparse, the reranker will overfit; OOF generation and race-blocked grouping are mandatory.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://www.biz.uiowa.edu/faculty/nstreet/research/atamanIEEE2006.pdf"
+  ]
+}

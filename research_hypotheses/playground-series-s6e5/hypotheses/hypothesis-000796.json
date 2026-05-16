@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a monotone-constrained mechanistic booster as a low-variance expert",
+  "summary": "Your best solutions already compute mechanistic variables like service pressure, finish pressure, and finish-feasibility gaps.",
+  "rationale": "Your best solutions already compute mechanistic variables like service pressure, finish pressure, and finish-feasibility gaps. Public booster docs support monotonic constraints, which can regularize these features so the model cannot learn non-physical inversions in sparse race regimes.",
+  "implementation_hint": "Fit a separate LightGBM/XGBoost model only on interpretable numeric strategy features and enforce increasing constraints on stop-pressure variables and decreasing constraints on remaining-margin / cooldown variables. Blend its OOF ranks with the unconstrained main model rather than replacing the main booster.",
+  "expected_effect": "Usually a small gain, but often improves robustness on held-out races and unseen strategy regimes by reducing noisy local inversions.",
+  "risk": "Wrong sign assumptions can suppress real overcut or track-position effects; constrained hist trees may need larger bins or shallower tuning changes.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html"
+  ]
+}

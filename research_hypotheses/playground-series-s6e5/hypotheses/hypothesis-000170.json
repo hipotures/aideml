@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Empirical stint-hazard baseline blended with residual GBDT",
+  "summary": "Discrete-time survival references fit this label structure exactly: probability of event at lap t given survival until t.",
+  "rationale": "Discrete-time survival references fit this label structure exactly: probability of event at lap t given survival until t. Instead of a fully generic classifier, build a strong empirical baseline hazard from historical stint outcomes conditioned on race regime, then let boosting learn residual deviations.",
+  "implementation_hint": "From training data, construct past-only hazard tables for `P(pit next lap | compound, stint, tyre-life bucket, laps remaining bucket, wet/slick, race or race family)` with smoothing. Feed the table lookup, cumulative survival-to-now, and baseline-minus-observed pace residuals into LightGBM/CatBoost as first-class features.",
+  "expected_effect": "Often gives a stronger inductive bias than raw tyre thresholds and stabilizes predictions for rare regimes like wets or long late stints.",
+  "risk": "Over-conditioning can sparsify tables; must smooth aggressively and compute everything fold-locally.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf"
+  ]
+}

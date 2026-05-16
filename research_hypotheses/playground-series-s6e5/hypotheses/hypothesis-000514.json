@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Wet-Dry Compound Transition Pressure",
+  "summary": "Wet-weather tyre changes are driven by track-condition transitions and are not governed by the same mandatory dry-compound logic.",
+  "rationale": "Wet-weather tyre changes are driven by track-condition transitions and are not governed by the same mandatory dry-compound logic. Current wet flags are static; the stronger signal may be whether the field is collectively switching between slicks, intermediates, and wets.",
+  "implementation_hint": "For each Race_Year and lap, compute slick/intermediate/wet field shares and share deltas versus prior lap. Add driver-on-minority-compound, compound-mismatch-to-field-majority, slick_to_wet_pressure, wet_to_slick_pressure, and interactions with RaceProgress and Position.",
+  "expected_effect": "Should improve rare but high-signal weather-transition stops, where many drivers pit within one or two laps.",
+  "risk": "Wet rows may be sparse, and using next-lap compound mix would leak; keep features current/prior-lap only.",
+  "sources": [
+    "https://www.motorsportweek.com/2024/09/12/f1-rules-explained-how-many-pit-stops-are-required-in-a-race/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

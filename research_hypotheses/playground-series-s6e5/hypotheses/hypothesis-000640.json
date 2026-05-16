@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF pit-window priors",
+  "summary": "High-cardinality categorical encoding benchmarks and sklearn docs support cross-fitted target/statistical encodings to avoid leakage.",
+  "rationale": "High-cardinality categorical encoding benchmarks and sklearn docs support cross-fitted target/statistical encodings to avoid leakage. Here, Driver, Race, Compound, Stint, TyreLife bins, and their combinations likely encode team/track pit windows beyond generic tyre age.",
+  "implementation_hint": "Create smoothed out-of-fold encodings for categorical keys such as Race_Compound_TyreLifeBin, Driver_Stint_TyreLifeBin, Race_LapBin, Year_Race_Compound. Use K-fold or group-aware OOF means/counts on train; map test using full-train smoothed stats with global prior fallback.",
+  "expected_effect": "May add strong race-specific hazard priors while keeping LightGBM/XGBoost compatible and avoiding naive target leakage.",
+  "risk": "Random OOF folds can still overfit repeated race rows; grouped folds by Race or Year are safer but may lower local CV while improving leaderboard robustness.",
+  "sources": [
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

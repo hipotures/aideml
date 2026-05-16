@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered categorical boosting as a separate expert model",
+  "summary": "This dataset has very high-cardinality categorical structure (Driver, Race, Year×Race, Driver×Compound).",
+  "rationale": "This dataset has very high-cardinality categorical structure (Driver, Race, Year×Race, Driver×Compound). CatBoost’s ordered boosting and ordered target statistics are specifically designed to reduce prediction shift and target leakage from categorical encodings, which is relevant here because many strong hand-built features are effectively target-like historical summaries.",
+  "implementation_hint": "Train a strong CatBoostClassifier expert on mostly raw columns plus a small number of chronology-safe numeric features, preserving categorical columns directly. Compare against the current hand-engineered LightGBM/XGBoost style baseline, then blend only via strict OOF predictions.",
+  "expected_effect": "May recover signal from driver/race/category interactions with less manual feature engineering and better generalization to unseen driver-race combinations.",
+  "risk": "If chronology is not respected in permutations or CV, gains can be illusory; CatBoost may also underuse some specialized numeric interactions already engineered into the baseline.",
+  "sources": [
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://sklearn.org/1.7/auto_examples/preprocessing/plot_target_encoder_cross_val.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

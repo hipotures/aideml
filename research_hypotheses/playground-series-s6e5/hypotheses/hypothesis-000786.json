@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recurrent Discrete Hazard Model With Stop Resets",
+  "summary": "This target is literally a one-step hazard.",
+  "rationale": "This target is literally a one-step hazard. Discrete-time survival literature supports using classification models on person-period data, and recurrent-event formulations map well to repeated pit stops within a race. Earlier generic survival ideas likely underused the reset structure after each actual stop.",
+  "implementation_hint": "Model hazard separately within each stint or with explicit reset counters: baseline by `TyreLife`, `Stint`, and `RaceProgress`; add interactions with compound, wet/dry regime, and prior stop count. Try cloglog or logit hazard heads and convert OOF hazard for the current row directly into a blend feature for the main model.",
+  "expected_effect": "Should sharpen probability shape around stint-specific windows and reduce confusion between first-stop and later-stop behavior.",
+  "risk": "If expanded improperly, person-period framing can duplicate rows and distort validation. Keep splits at race-year level and ensure every transformed row inherits its parent fold.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8546916/"
+  ]
+}

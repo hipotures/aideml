@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal stint-state degradation residuals",
+  "summary": "Recent F1 degradation work models tyre pace as a latent state with pit-stop resets, and strategy references emphasize that degradation, not raw tyre age alone, drives stop timing.",
+  "rationale": "Recent F1 degradation work models tyre pace as a latent state with pit-stop resets, and strategy references emphasize that degradation, not raw tyre age alone, drives stop timing. The current best uses static degradation ratios but not a strictly past-only per-driver stint state.",
+  "implementation_hint": "Sort by Race, Driver, LapNumber. Within each Race-Driver-Stint, create lag/rolling-only features: previous lap time, 3/5-lap EWMA pace residual versus race-lap median, residual slope, rolling volatility, cumulative positive residual, and laps since the residual started worsening. Shift all rolling features by one row to avoid using the current target lap outcome.",
+  "expected_effect": "Should improve public robustness if pit decisions are triggered by accelerating pace loss rather than absolute TyreLife; likely small-to-medium AUC gain over static features.",
+  "risk": "If row order or Race/Stint identifiers are synthetic or incomplete, shifted features may add noise. Random row validation can overstate value unless checked with race/year grouped splits.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recast the task as within-driver-race ranking, not only binary classification",
+  "summary": "Each driver-race sequence has only a few true stop moments, so learning relative urgency within a group matches the decision structure.",
+  "rationale": "Each driver-race sequence has only a few true stop moments, so learning relative urgency within a group matches the decision structure. XGBoost and CatBoost ranking docs explicitly support binary relevance inside query groups.",
+  "implementation_hint": "Group rows by Driver x Race x Year, try `rank:map` or `rank:ndcg` in XGBoost and CatBoost pairwise/query losses with group ids, then blend the ranking score with the current probabilistic classifier. Evaluate on race-held-out folds, not random row CV.",
+  "expected_effect": "Often lifts AUC by learning which laps should rise to the top of each stint/race even when absolute calibration is weak.",
+  "risk": "Some groups may contain zero positives or multiple adjacent positives; ranking objectives can be noisy unless groups and sample weights are chosen carefully.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

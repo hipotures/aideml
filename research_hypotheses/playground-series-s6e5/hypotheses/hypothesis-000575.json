@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Forward-Only Latent Tyre-State Filter",
+  "summary": "Recent F1 work models tyre degradation as a latent state with pit stops as state resets, which is closer to the real decision variable than static TyreLife ratios.",
+  "rationale": "Recent F1 work models tyre degradation as a latent state with pit stops as state resets, which is closer to the real decision variable than static TyreLife ratios. Your best pipeline already uses many hand-built wear proxies, so the next gain may come from replacing some of them with a filtered hidden wear/pace estimate updated only from past laps.",
+  "implementation_hint": "For each Year-Race-Driver stint, fit a simple forward filter on lap-time residuals and degradation (EWMA/Kalman-style), reset on PitStop=1, and expose features like latent_wear, latent_wear_slope, residual_vs_expected_wear, and uncertainty. Compute all parameters on train folds only.",
+  "expected_effect": "Better separation of true pit-window pressure from noisy lap-level swings, especially when raw TyreLife and Cumulative_Degradation disagree.",
+  "risk": "Easy to leak if the filter is smoothed bidirectionally or normalized with full-race statistics; keep it strictly causal.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-tyre-and-pit-stop-options-for-the.2eZSjkZR1YI0FLTv1TFdbI"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reconstruct absolute tyre compounds and race-level strategy priors",
+  "summary": "Current features treat `SOFT/MEDIUM/HARD` as globally comparable, but Pirelli only labels the weekend-relative trio; `SOFT` can mean C3 at Qatar or C5 at Las Vegas/Abu Dhabi.",
+  "rationale": "Current features treat `SOFT/MEDIUM/HARD` as globally comparable, but Pirelli only labels the weekend-relative trio; `SOFT` can mean C3 at Qatar or C5 at Las Vegas/Abu Dhabi. Official guides also frame races as one-stop vs two-stop biased based on track characteristics and compound nomination, so the same observed tyre life can imply very different stop risk by race.",
+  "implementation_hint": "Build a `Race_Year -> {hard_C, medium_C, soft_C}` lookup from public Pirelli/F1 nomination pages, then map each row’s `Compound` to an absolute softness index. Add features like absolute compound rank, weekend softness span, `TyreLife / expected_life_by_absolute_compound`, race one-stop/two-stop prior, and interactions with `RaceProgress` and `LapsRemaining_Est`. Validate with grouped folds by race-year so lookup priors do not leak.",
+  "expected_effect": "Should improve generalization on cross-race shifts where current heuristics overfit relative colour labels instead of true compound hardness.",
+  "risk": "Requires a clean race-name/year join and manual coverage for all weekends in train/test; gains may be modest if current `Race` features already proxy most of this.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-qatar-grand-prix.3wg5fMRihKy4tF17WRrDvw",
+    "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-las-vegas-grand-prix.ufsYJ5HkKWCc65K1yWydN",
+    "https://www.pirelli.com/tyres/en-gb/motorsport/f1/tyres",
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-possible-race-strategies-for-the-2024.149KllzWtB6CJIHyNcDMnE"
+  ]
+}

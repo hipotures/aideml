@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Discrete-time survival expert over each stint",
+  "summary": "`PitNextLap` is a one-step hazard from an underlying time-to-pit process.",
+  "rationale": "`PitNextLap` is a one-step hazard from an underlying time-to-pit process. Discrete-time survival literature shows person-period reformulation lets standard classifiers estimate conditional event hazards while handling censoring and the run-up to an event more faithfully than a flat binary label.",
+  "implementation_hint": "For each driver-race-stint, expand rows up to pit or censor, mark the terminal interval as the event, include baseline time terms for tyre age/lap-in-stint/race progress, and fit a discrete hazard model (logit or complementary log-log). Convert the predicted hazard at the current row back to next-lap pit probability and stack it with tree models.",
+  "expected_effect": "Can capture the full stop-horizon structure and duration dependence, yielding a meaningfully different expert from current pointwise GBDTs.",
+  "risk": "Row expansion increases training size a lot; careless censoring or horizon construction can create leakage or class imbalance problems.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ]
+}

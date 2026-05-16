@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored time-to-next-pit model instead of pure binary classification",
+  "summary": "This target is naturally a time-to-event problem: many rows are just earlier snapshots of the same eventual stop, and final stints are right-censored.",
+  "rationale": "This target is naturally a time-to-event problem: many rows are just earlier snapshots of the same eventual stop, and final stints are right-censored. Survival/discrete-hazard formulations use that structure directly instead of forcing every row into an isolated binary label.",
+  "implementation_hint": "Create `laps_to_next_pit` within each `Race_Year x Driver` sequence. For rows with no later pit, mark them right-censored at `LapsRemaining_Est`. Train either a discrete-time hazard model or an XGBoost `survival:aft` model, then convert its output into `P(stop on next lap)` or use its predicted horizon as a blend feature into the current AUC model.",
+  "expected_effect": "Better separation in late-stint edge cases, more efficient use of censored finish data, and a complementary score that should blend well with the current tree baseline.",
+  "risk": "AFT gives time-to-event structure but not a next-lap hazard for free; the probability conversion must be handled carefully, and bad censoring logic can hurt more than help.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

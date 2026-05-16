@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AFT survival target for laps-until-next-pit, then convert to next-lap probability",
+  "summary": "This label is naturally a time-to-event problem: many rows are one lap before a stop, many are earlier in the stint, and final stint rows are effectively right-censored if no later stop occurs.",
+  "rationale": "This label is naturally a time-to-event problem: many rows are one lap before a stop, many are earlier in the stint, and final stint rows are effectively right-censored if no later stop occurs. XGBoost’s AFT objective is built for censored event-time prediction, and recent F1 pit-stop work reports useful gains from jointly modeling pit timing rather than only a binary next-lap label.",
+  "implementation_hint": "Within each driver-race sequence, derive `laps_until_next_pit`; for rows with no later stop in that race, use right-censoring at remaining laps. Train `xgboost.train(objective='survival:aft')` on the same tabular features plus stint-state features, then transform predicted survival time into `P(T<=1)` or rank-normalize it and blend with the existing binary model.",
+  "expected_effect": "Should capture pit-window timing structure better than rowwise binary loss and improve ranking around the true stop lap, especially for late-stint examples.",
+  "risk": "Needs careful label construction and probability mapping; AFT optimizes survival likelihood, not AUC directly, so it may need blending rather than standalone use.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

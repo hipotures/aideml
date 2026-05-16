@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -12,5 +12,6 @@
   "sources": [
     "[https://www.kaggle.com/code/ferariz/f1-pit-stops-does-the-model-know-when-to-pit",
     "https://www.kaggle.com/code/lucabasa/f1-strategy-eda-and-base-models"
-  ]
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

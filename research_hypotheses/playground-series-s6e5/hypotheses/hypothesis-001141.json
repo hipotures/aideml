@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Purged Forward CV With Embargo For Feature Acceptance",
+  "summary": "Public time-series validation references show standard shuffled/grouped CV can stay optimistic when labels depend on near-future events.",
+  "rationale": "Public time-series validation references show standard shuffled/grouped CV can stay optimistic when labels depend on near-future events. Here the target is explicitly next-lap, so neighboring observations inside the same race are highly dependent. A stronger validation scheme may reject misleading features and select more leaderboard-stable blends.",
+  "implementation_hint": "Add a second validation track: event-ordered forward splits by (Year,Race), with a small lap-level embargo around validation windows or whole-race holdouts for adjacent races. Use this track only for feature/model acceptance and ensemble selection, not necessarily for final fitting. Prefer candidates whose AUC degrades least from grouped CV to purged forward CV.",
+  "expected_effect": "May not raise local CV, but should reduce overfitting to race-local temporal leakage and improve public-score transfer.",
+  "risk": "The estimate will be noisier because there are only 26 races; if used as the only CV it may under-select useful models.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://random-docs.readthedocs.io/en/latest/implementations/cross_validation.html",
+    "https://docs.mizar.com/mizar/mizarlabs/model/combinatorial-purged-cross-validation"
+  ]
+}

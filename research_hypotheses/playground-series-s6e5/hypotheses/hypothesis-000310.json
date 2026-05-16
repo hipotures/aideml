@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-CTR CatBoost with high-order strategy categories",
+  "summary": "CatBoost explicitly recommends native categorical handling and builds target statistics/combinations online, which is useful here because Driver, Race, Compound, Stint, and Year interact sparsely.",
+  "rationale": "CatBoost explicitly recommends native categorical handling and builds target statistics/combinations online, which is useful here because Driver, Race, Compound, Stint, and Year interact sparsely. The current best snippets mostly hand-code numeric heuristics; a raw-cat expert may recover rare strategy patterns those heuristics miss.",
+  "implementation_hint": "Train a CatBoost specialist on raw categoricals plus a small numeric core, emphasizing interaction-rich IDs like Driver x Race, Race x Year x Compound, Compound x Stint, and Driver x Compound x Stint. Avoid external one-hot/target encoding, generate OOF predictions with grouped folds, and stack with the main model using sigmoid if calibration is needed without changing rank.",
+  "expected_effect": "Most likely gain is on rare drivers/races and non-slick regimes where manual thresholds are brittle.",
+  "risk": "If folds are not grouped by race context, ordered CTRs can still learn misleading near-duplicates; isotonic post-calibration can hurt AUC by introducing ties, so prefer raw scores or sigmoid for stacking.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

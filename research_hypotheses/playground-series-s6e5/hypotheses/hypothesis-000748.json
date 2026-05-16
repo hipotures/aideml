@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Two-stage dry-race legality model: `needs another stop before finish` then `pit next lap`",
+  "summary": "The FIA rules require at least two dry-weather tyre specifications in a dry race unless inters/wets were used.",
+  "rationale": "The FIA rules require at least two dry-weather tyre specifications in a dry race unless inters/wets were used. That means some cars must still stop even when naive finish-on-current-tyre logic says they can make the distance, especially `Stint==1` dry runners late in the race.",
+  "implementation_hint": "Create a first head for `must_stop_before_finish` using dry/wet regime, stint count, estimated laps remaining, and whether current stint is plausibly the only dry specification used so far; then condition a next-lap classifier on that head or use its OOF score as a feature. Keep a separate path for wet/intermediate rows because the legal constraint changes. Test especially on late-race dry rows with `Stint==1`.",
+  "expected_effect": "Should recover missed late-race mandatory-stop pressure that pure degradation features understate, improving ranking around one-stop vs no-stop edge cases.",
+  "risk": "The dataset may not expose full compound history, so the legality state is partly inferred and can be noisy; Monaco has special wording and should be handled separately or excluded from this feature.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.formula1.com/en/latest/article.the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd.html",
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/the-importance-of-tyres-in-formula-1-53772/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-wide incident and cheap-pit proxies",
+  "summary": "Safety Car/VSC or wet-transition laps make pit stops much cheaper and can cause clustered stops.",
+  "rationale": "Safety Car/VSC or wet-transition laps make pit stops much cheaper and can cause clustered stops. The dataset lacks explicit flags/weather, but global lap-time spikes, compressed field pace, and many simultaneous position/stint changes can proxy these events.",
+  "implementation_hint": "For each Race-LapNumber compute race_lap_median_time, median_time_vs_race_rolling_baseline, lap_time_iqr, count_large_position_changes, fraction_new_stint_or_pitstop_current_lap, and lagged versions shifted by one lap where feasible. Feed these as race-context features rather than only individual pace deviation.",
+  "expected_effect": "May capture clustered pit waves that current individual tyre/degradation features miss.",
+  "risk": "Using same-lap PitStop aggregate may be leakage if PitStop reflects stops on the current lap unavailable before predicting next lap; prefer lagged aggregates or validate both variants carefully.",
+  "sources": [
+    "https://racemate.io/blog/safety-cars-in-strategy-simulation-what-changes-instantly/",
+    "https://podiumprophets.com/blog/f1-tyre-strategy-guide"
+  ]
+}

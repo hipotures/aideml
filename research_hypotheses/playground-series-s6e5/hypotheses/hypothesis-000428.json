@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Candidate-window second stage with focal-loss hard-negative mining",
+  "summary": "A recent lap-level pit-stop paper reports severe class imbalance and uses focal loss.",
+  "rationale": "A recent lap-level pit-stop paper reports severe class imbalance and uses focal loss. For this task, AUC is likely decided on ambiguous pre-stop laps, not on obvious early-stint negatives, so a second stage focused on hard windows may rank better than one global model.",
+  "implementation_hint": "Keep the current broad model as stage 1, then train a stage 2 model only on plausible stop candidates or stage-1 hard negatives. Use focal loss or aggressive class weighting, and blend the refined score back only inside the candidate window.",
+  "expected_effect": "Should improve ordering among near-stop laps without destabilizing the easy majority class, especially late in stints and around caution/weather transitions.",
+  "risk": "A bad candidate filter can miss unusual early or opportunistic stops. Validate with grouped, purged folds rather than random CV.",
+  "sources": [
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://ml4trading.io/docs/diagnostic/methods/cpcv/"
+  ]
+}

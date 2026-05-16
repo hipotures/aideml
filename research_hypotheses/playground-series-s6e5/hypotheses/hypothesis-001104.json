@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "True race-lap ranking model using qid = Year/Race/LapNumber",
+  "summary": "Learning-to-rank is designed for grouped decisions where only relative ordering inside a query matters.",
+  "rationale": "Learning-to-rank is designed for grouped decisions where only relative ordering inside a query matters. Here, the operational question each lap is effectively which cars are most likely to pit next, so a ranker over the race-lap group is more faithful than pure pointwise classification. Both XGBoost and CatBoost provide native ranking objectives with group IDs.",
+  "implementation_hint": "Create `qid` from Year/Race/LapNumber, sort by qid, and train a ranker such as XGBoost `rank:ndcg` or CatBoost `QuerySoftMax`/`YetiRankPairwise`. Keep binary labels, but train only on groups with at least one positive and one negative or weight mixed groups higher. Blend ranker scores with the existing classifier using OOF rank-normalized stacking.",
+  "expected_effect": "Often improves within-lap ordering, which is exactly what ROC AUC rewards when negatives massively outnumber positives across groups.",
+  "risk": "Some laps may have no positives, making query construction/weighting important; pure rank objectives can underuse cross-query calibration information.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ]
+}

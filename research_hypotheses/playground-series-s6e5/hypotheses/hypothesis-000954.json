@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Explicit 2025 Monaco and Rule-Pressure Features, Not Just Generic Dry-Compound Compliance",
+  "summary": "Your current best already tests the normal two-dry-compound rule, but 2025 Monaco changed materially: drivers must use at least three tyre sets there, and wet/intermediate usage changes the obligation structure.",
+  "rationale": "Your current best already tests the normal two-dry-compound rule, but 2025 Monaco changed materially: drivers must use at least three tyre sets there, and wet/intermediate usage changes the obligation structure. That is a concrete, dated regime shift likely to matter in 2025 rows.",
+  "implementation_hint": "Add rule-state features such as `Required_Stops_Remaining`, `Sets_Used_So_Far`, `Dry_Compounds_Used_So_Far`, `Monaco_2025_Special_Rule`, `Rule_Pressure_Per_Lap_Left`, and wet-exemption flags. Gate them by `Race`, `Year`, and current wet/dry compound regime.",
+  "expected_effect": "Likely to help mainly on Monaco 2025 and other rule-pressure edge cases, improving robustness more than average CV.",
+  "risk": "The gain may be narrow if Monaco rows are a small share; incorrect interpretation of sets/stops from available columns could create mislabeled rule state.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

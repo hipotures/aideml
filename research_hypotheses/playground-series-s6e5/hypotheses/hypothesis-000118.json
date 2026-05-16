@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF hazard tables instead of fixed tyre-life heuristics",
+  "summary": "This target is already a discrete next-lap event, so treat each row as a hazard state and learn empirical pit hazard curves rather than hard-coding expected life constants.",
+  "rationale": "This target is already a discrete next-lap event, so treat each row as a hazard state and learn empirical pit hazard curves rather than hard-coding expected life constants. Discrete-time survival literature fits this setup directly, and F1 strategy sources emphasize that stop timing depends on stint phase and degradation, not just absolute tyre age.",
+  "implementation_hint": "Build smoothed out-of-fold hazard features such as P(pit next lap | Compound, TyreLife bin, Stint, RaceProgress bin, dry/wet) and logit-transform them. Compute them only on training folds grouped by `Race_Year`, then feed them to the existing tree model.",
+  "expected_effect": "Should outperform fixed compound windows by learning nonlinear pit windows and late-race effects directly from data; likely modest but real CV gain if leakage is controlled.",
+  "risk": "Naive target encoding will leak badly. Rare bins need smoothing/backoff to coarser groupings.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a censored time-to-next-pit model and convert it to P(stop within 1 lap)",
+  "summary": "This target is naturally a time-to-event problem with right censoring at race end or current stint continuation.",
+  "rationale": "This target is naturally a time-to-event problem with right censoring at race end or current stint continuation. XGBoost’s AFT survival objective gives a distinct model family from the current binary booster and may capture smooth remaining-laps structure better than more hand-built thresholds.",
+  "implementation_hint": "For each row, define remaining laps until the next observed PitStop for that driver-race sequence; right-censor rows with no future stop. Fit an AFT model on engineered features, then convert the predicted survival distribution into Pr(T<=1 lap). Blend its OOF ranks with the binary classifier rather than replacing the baseline outright.",
+  "expected_effect": "Adds a genuinely different inductive bias and may especially help rows far from or near the stop boundary where binary labels are noisy snapshots of a longer process.",
+  "risk": "Constructing the censored target must be strictly forward-looking within each sequence; AFT misspecification can underperform if stop timing is highly multimodal by regime.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://proceedings.mlr.press/v146/sloma21a.html"
+  ]
+}

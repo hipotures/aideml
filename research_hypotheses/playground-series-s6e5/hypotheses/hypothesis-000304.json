@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-stint ranking model for imminent-stop ordering",
+  "summary": "The decision is effectively an ordering problem inside each driver stint: which laps are most stop-imminent before the actual stop or finish.",
+  "rationale": "The decision is effectively an ordering problem inside each driver stint: which laps are most stop-imminent before the actual stop or finish. CatBoost supports grouped ranking objectives such as `YetiRankPairwise` and `PairLogitPairwise`, which may learn the boundary between ordinary old-tyre laps and the final pre-stop lap differently from plain binary loss.",
+  "implementation_hint": "Create grouped ranking data by `Race x Year x Driver x Stint`, labeling later pre-stop laps above earlier ones or constructing pairs that force the actual final non-pit lap to outrank earlier laps in the same stint. Train as a specialist and blend only its OOF score with the binary classifier. Keep groups wholly inside race folds.",
+  "expected_effect": "Could sharpen local ordering near pit windows even if global calibration is weak, making it a strong blend candidate for ROC AUC.",
+  "risk": "Naive ranking setup can be noisy because many stints end at the flag rather than a pit stop, and CatBoost pairwise modes are slower and handle categorical features differently. This should be treated as a specialist, not a standalone replacement.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace Raw Driver Identity With Driver Archetypes Or Embeddings",
+  "summary": "A recent pit-stop timing thesis found value in driver clustering for strategy analysis.",
+  "rationale": "A recent pit-stop timing thesis found value in driver clustering for strategy analysis. Your current pipeline uses raw Driver categories and frequencies, but many drivers are sparse or unseen; a behavior-level abstraction should transfer better than memorizing IDs.",
+  "implementation_hint": "Within each training fold, build target-safe driver profiles from historical rows only: median stint length by compound, average stop count, late-stop tendency, pace fade, position-change aggressiveness, and wet/dry split. Cluster drivers or learn a low-dimensional embedding, then join cluster/embedding features to both train and test; use race-level priors for unseen drivers.",
+  "expected_effect": "Should regularize high-cardinality driver effects and improve generalization to rare or unseen drivers in test.",
+  "risk": "Poorly built profiles can leak target information across folds or collapse to noise for low-sample drivers.",
+  "sources": [
+    "https://run.unl.pt/bitstream/10362/175111/1/FROM_DATA_TO_PODIUM_A_MACHINE_LEARNING_MODEL_FOR_PREDICTING_FORMULA_1_PIT_STOP_TIMING.pdf"
+  ]
+}

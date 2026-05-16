@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Joint Policy Auxiliary Stack With OOF Calibration",
+  "summary": "Strategy papers treat pit timing jointly with compound choice and opponent interaction, not as an isolated binary label.",
+  "rationale": "Strategy papers treat pit timing jointly with compound choice and opponent interaction, not as an isolated binary label. A useful extension is to predict auxiliary strategic labels and then calibrate/blend them strictly OOF, which may add structured signal beyond another raw feature block.",
+  "implementation_hint": "Derive auxiliary train labels such as PitWithin2Laps, IsFinalStop, and NextCompoundFamily from future rows in train only; fit separate models for each, generate OOF/test probabilities, and feed them into a final CatBoost/LightGBM meta-model. Calibrate the final stack with fold-local sigmoid or isotonic only after OOF generation.",
+  "expected_effect": "Regularizes the rare positive class, injects longer-horizon strategy context, and may improve public LB stability through better calibrated ensemble ordering.",
+  "risk": "High leakage risk if auxiliary targets, ordered stats, or calibrators are fit on full data; all meta-features must be produced out-of-fold only.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf",
+    "https://scikit-learn.org/stable/api/sklearn.calibration.html"
+  ]
+}

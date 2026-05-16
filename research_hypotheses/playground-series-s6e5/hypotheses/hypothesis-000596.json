@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking auxiliary model grouped by race-lap",
+  "summary": "Pit calls are relative decisions among cars exposed to the same lap and race state.",
+  "rationale": "Pit calls are relative decisions among cars exposed to the same lap and race state. Learning-to-rank objectives explicitly optimize ordering inside a group, which matches the competition’s same-lap candidate set better than pure independent binary loss. This develops the earlier ranking-head idea into a concrete test: rank cars within each `(Year, Race, LapNumber)` query, then blend with the binary model.",
+  "implementation_hint": "Train a LightGBM `lambdarank` or CatBoost ranking model with `GroupId=(Year,Race,LapNumber)`. Use target `PitNextLap` as relevance, optionally upweight top positions in each group, generate OOF rank scores, and blend them with the binary classifier logits or probabilities.",
+  "expected_effect": "Sharper separation among simultaneously eligible cars on the same lap, improving AUC on clustered pit-wave decisions.",
+  "risk": "Some race-lap groups may have zero or many positives, so ranking alone can be unstable; treat it as an auxiliary expert, not a standalone replacement.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

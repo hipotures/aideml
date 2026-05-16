@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Opponent-Aware Undercut/Overcut Features",
+  "summary": "Pit decisions are competitive, not purely individual.",
+  "rationale": "Pit decisions are competitive, not purely individual. Public F1 strategy analysis and game-theoretic pit-stop work both emphasize that tyre wear only matters relative to nearby rivals, traffic, and whether an undercut or overcut is live.",
+  "implementation_hint": "For each `(Year, Race, LapNumber)`, derive nearest-ahead/nearest-behind rivals by `Position`; compare tyre age, compound, lap delta, degradation, and stint against those neighbors; add flags like `within_undercut_window` when a driver is close enough in position and has fresher/slower-heat compound context. Also test local traffic density features: count of cars within +/-2 positions sharing older tyres or pit-vulnerable compounds.",
+  "expected_effect": "Can capture racecraft effects missed by current same-lap z-scores, especially where pitting is triggered by a nearby rival rather than absolute tyre life.",
+  "risk": "Without explicit time gaps, position-based proxies may be blunt and can overfit track-specific behavior.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

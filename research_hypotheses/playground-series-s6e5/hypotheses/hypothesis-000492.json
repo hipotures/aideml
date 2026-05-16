@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Used-set stint age normalization",
+  "summary": "FastF1 documents TyreLife as including laps from other sessions when a set is reused, so raw TyreLife mixes current-stint laps with pre-existing tyre age.",
+  "rationale": "FastF1 documents TyreLife as including laps from other sessions when a set is reused, so raw TyreLife mixes current-stint laps with pre-existing tyre age. The current feature set treats TyreLife mostly as absolute wear, but pit decisions may depend separately on laps since the last stop and whether the stint started on a used set.",
+  "implementation_hint": "Within each Race_Year-Driver-Stint sequence, compute StintStartTyreLife, CurrentStintLap = TyreLife - StintStartTyreLife + 1, UsedSetAtStintStart = StintStartTyreLife > 1, and interactions with Compound, RaceProgress, and LapsRemaining_Est. Use only rows up to the current lap when sorting.",
+  "expected_effect": "Should improve separation around early-stint rows where an old used tyre looks like an end-of-stint tyre, and around strategic second/third stints that begin on scrubbed tyres.",
+  "risk": "If the dataset's TyreLife was synthetically reset per stint rather than FastF1-style, these features may be redundant or noisy.",
+  "sources": [
+    "https://docs.fastf1.dev/core.html",
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf"
+  ]
+}

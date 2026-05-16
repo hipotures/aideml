@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Target-safe pit hazard priors by stint state",
+  "summary": "PitNextLap is a discrete hazard: probability of stopping on the next lap conditional on still running the current stint.",
+  "rationale": "PitNextLap is a discrete hazard: probability of stopping on the next lap conditional on still running the current stint. Pit timing is strongly governed by compound, tyre age, stint number, race progress, and circuit-specific strategy windows, which are only partly captured by raw interactions.",
+  "implementation_hint": "Create smoothed OOF target encodings for bins like Compound x TyreLife, Compound x Stint x RaceProgressBin, Race x LapNumberBin, Driver x Stint, and Year x Race x Stint. Compute encodings inside folds only, with global-prior smoothing and minimum-count shrinkage; apply fold-specific encoders to validation and full-train encoder to test.",
+  "expected_effect": "Should add direct ranking signal around common pit windows and may lift AUC beyond generic tree-discovered interactions.",
+  "risk": "High leakage risk if encodings are computed on all train before validation; rare race/driver combinations need strong smoothing.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.f1ago.com/glossary/undercut/",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

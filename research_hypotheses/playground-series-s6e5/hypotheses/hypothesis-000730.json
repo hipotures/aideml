@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Change-Point Features Within Each Stint",
+  "summary": "The current pipeline uses level features like cumulative degradation and lap-time delta, but not explicit detection of a pace-cliff or regime switch.",
+  "rationale": "The current pipeline uses level features like cumulative degradation and lap-time delta, but not explicit detection of a pace-cliff or regime switch. Recent F1 tyre modeling uses latent state evolution with pit-stop resets, and online change-point methods are designed to flag abrupt baseline shifts in streaming time series.",
+  "implementation_hint": "Reconstruct causal sequences by `Year/Race/Driver/LapNumber`. Within each stint, compute online scores such as BOCPD change probability, current run length, and CUSUM-style deviations on `LapTime_Delta`, `Cumulative_Degradation`, and residualized lap time. Feed only current and past information, never centered windows.",
+  "expected_effect": "Better capture of sudden ‘box now’ states caused by tyre cliffs, traffic-clean-air transitions, or weather/track-state shifts that raw cumulative features smooth away.",
+  "risk": "If row ordering or race reconstruction is imperfect, these features can leak or become noisy. They also need careful normalization across compounds and wet/dry laps.",
+  "sources": [
+    "https://iapress.org/index.php/soic/article/view/1072",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170"
+  ]
+}

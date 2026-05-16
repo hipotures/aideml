@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-Aware Peer-Context Experts",
+  "summary": "Recent F1 pit-stop work highlights clean air, undercut/overcut, and nearby drivers’ pit actions as important.",
+  "rationale": "Recent F1 pit-stop work highlights clean air, undercut/overcut, and nearby drivers’ pit actions as important. FIA rules also create a distinct dry-race mandatory-stop regime. Current best code has little causal peer context.",
+  "implementation_hint": "Add within-race causal peer features such as `driver_ahead_pitted_now`, `driver_behind_pitted_now`, recent pit-wave count on the same lap, field-relative lap-time percentile, pack density by position band, and a `mandatory_dry_stop_debt` flag derived from compound history under FIA dry-race rules. Train separate experts for dry first-stop, dry later-stop, and wet/intermediate regimes, then blend by regime.",
+  "expected_effect": "Captures strategic contagion and rule-state effects that self-only tyre heuristics miss, especially around first-stop windows.",
+  "risk": "No explicit gaps/flags are available, so peer-context proxies may be noisy and require strict causal construction.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_2_-_2024-10-17.pdf",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3769652"
+  ]
+}

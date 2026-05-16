@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial split and purged sequence validation",
+  "summary": "The train/test ids are contiguous and the task is sequential, so random CV can reward features that exploit race-order artifacts or future-adjacent rows.",
+  "rationale": "The train/test ids are contiguous and the task is sequential, so random CV can reward features that exploit race-order artifacts or future-adjacent rows. Search results on time-series CV emphasize chronological splits and gaps to prevent future leakage.",
+  "implementation_hint": "Build a train-vs-test adversarial classifier using only original and engineered features. Use its high-importance shift features to define validation folds: hold out later ids/years/race-years, purge neighboring laps within the same driver-race sequence, and compare against current CV before trusting new features.",
+  "expected_effect": "Should improve public-LB reliability by selecting features/models that survive realistic sequence and distribution shift, even if local CV drops slightly.",
+  "risk": "May reduce local CV and slow iteration; the adversarial model must not be used to overfit public test distribution directly.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://en.wikipedia.org/wiki/Purged_cross-validation",
+    "https://arxiv.org/abs/1706.09516"
+  ]
+}

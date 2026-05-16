@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add a Short-History Sequence Specialist Over the Last 5-10 Laps",
+  "summary": "Public F1 pit-stop papers are increasingly using sequence models because pit calls depend on recent pace trend, volatility, and degradation trajectory, not just the current row.",
+  "rationale": "Public F1 pit-stop papers are increasingly using sequence models because pit calls depend on recent pace trend, volatility, and degradation trajectory, not just the current row. The current pipeline is mostly row-wise feature engineering, so a compact temporal specialist is a clean orthogonal addition.",
+  "implementation_hint": "For each driver-race sequence, feed the last 5-10 laps of numeric features and derived deltas into a small TCN/GRU/BiLSTM specialist. Keep leakage control strict: sequence windows may use only past laps, and splits must hold out entire `Year_Race` groups.",
+  "expected_effect": "Can capture pace collapse, stabilization, and pre-stop drift patterns that hand-built one-row ratios miss.",
+  "risk": "If folds or padding are mishandled, sequence leakage is easy; a deep model may also overfit given only four seasons.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ]
+}

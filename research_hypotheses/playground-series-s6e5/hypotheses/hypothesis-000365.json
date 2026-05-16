@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual Stop-Now Value Score",
+  "summary": "Dynamic-programming and game-theoretic F1 papers treat pit timing as a value decision, not just a tyre-age threshold.",
+  "rationale": "Dynamic-programming and game-theoretic F1 papers treat pit timing as a value decision, not just a tyre-age threshold. A simple counterfactual score for \"pit now vs stay out 1-2 more laps\" should capture the economics of pit loss, finishability, and yellow-flag optionality more directly than fixed compound windows.",
+  "implementation_hint": "Estimate track/race-level pit-loss baselines from historical pit laps in training folds, combine them with simple compound degradation templates, and emit features like `best_stop_now_advantage`, `regret_if_wait_1lap`, `best_next_compound_margin`, and `yellow_flag_option_value_proxy`.",
+  "expected_effect": "Better separation for borderline rows where the car is near, but not yet past, a raw tyre-life threshold.",
+  "risk": "Pit-loss or degradation templates can leak if computed from the same held-out race/year; cross-fit them strictly by training folds or prior seasons.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3769652",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4470115"
+  ]
+}

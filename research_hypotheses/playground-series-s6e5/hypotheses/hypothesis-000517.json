@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-First Race-Grouped Ranker",
+  "summary": "ROC AUC rewards ordering, not calibrated probabilities.",
+  "rationale": "ROC AUC rewards ordering, not calibrated probabilities. Ranking losses such as CatBoost YetiRankPairwise or LightGBM LambdaRank can directly learn to rank imminent pit stops above same-race negatives, adding diversity to logloss-trained classifiers.",
+  "implementation_hint": "Train CatBoostRanker/LightGBM ranker with query groups such as Race_Year or Race_Year+Stint. Use existing engineered features, rank-normalize predictions within Race_Year, then blend raw rank scores with the best classifier probabilities.",
+  "expected_effect": "Improves pairwise ordering around rare pit events and may lift AUC even if probabilities are less calibrated.",
+  "risk": "Too-narrow query groups can hurt global ordering across races; validate several grouping schemes.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

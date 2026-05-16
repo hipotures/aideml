@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap learning-to-rank sidecar",
+  "summary": "Pit calls are competitive, not independent: strategists react to nearby rivals, and official F1 explanations emphasize undercut/overcut viability only when a rival is within striking range.",
+  "rationale": "Pit calls are competitive, not independent: strategists react to nearby rivals, and official F1 explanations emphasize undercut/overcut viability only when a rival is within striking range. A query-group ranker over each `(Year, Race, LapNumber)` can learn who is most likely to pit next lap relative to the rest of the field, then be blended with the existing pointwise classifier.",
+  "implementation_hint": "Train an XGBoost/LightGBM ranker with query id = `(Year, Race, LapNumber)` and label = `PitNextLap`. Use only leakage-safe current-lap features plus relative features already available or easy to add: percentile tyre age, percentile degradation, rank of lap delta within lap, position bucket, compound, stint, laps remaining, and nearest-position context. Blend rank scores with current binary model OOF predictions.",
+  "expected_effect": "Should improve ordering among simultaneous pit candidates, especially in laps where 1-3 drivers are realistically in the window; likely modest standalone gain but useful ensemble diversity.",
+  "risk": "If many groups have zero or multiple positives, rank training can be noisy; this needs race-blocked OOF blending rather than direct replacement.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_2.0.0/tutorials/learning_to_rank.html",
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

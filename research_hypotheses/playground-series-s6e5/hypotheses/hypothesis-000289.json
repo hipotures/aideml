@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-time hazard reformulation with stint-aware censoring",
+  "summary": "This target is naturally a next-interval event hazard: probability of pitting next lap given no pit yet on the current stint.",
+  "rationale": "This target is naturally a next-interval event hazard: probability of pitting next lap given no pit yet on the current stint. Discrete-time survival literature supports framing such problems as conditional hazards, and the newest F1 degradation paper validates one-step-ahead rolling-origin evaluation within race sessions.",
+  "implementation_hint": "Create a hazard specialist trained only on laps where the current stint is ongoing, with baseline hazard terms over `LapInStint`, `LapsRemaining_Est`, and interactions with compound/weather regime. Validate with expanding or rolling origin splits by race-driver sequence, optionally with a fold gap, and ensemble its scores with the base classifier.",
+  "expected_effect": "Often improves temporal consistency and reduces CV inflation from random folds, while explicitly modeling rising stop probability over a stint.",
+  "risk": "If the current CV is random rather than chronological/grouped, scores may drop initially because leakage disappears; hazard framing can also underperform if censoring/reset logic is mishandled.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

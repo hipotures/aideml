@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Active-window query ranking with CatBoost QuerySoftMax/QueryAUC",
+  "summary": "CatBoost supports querywise objectives and QueryAUC over grouped items.",
+  "rationale": "CatBoost supports querywise objectives and QueryAUC over grouped items. For this task, the natural query is all cars on the same race-lap; however, most laps have no realistic pit decision, so ranking signal is diluted. Restricting or upweighting groups near likely pit windows should sharpen the model around actual choice sets.",
+  "implementation_hint": "Build groups as `(Year,Race,LapNumber)`. Train a ranker with `QuerySoftMax` or `YetiRankPairwise`, but only include full weight for rows with medium/high hazard proxies such as `TyreLife`, `DegPerTyreLap`, late-race dry compounds, or recent pace deterioration; downweight obvious non-window laps. Score with fold-local `QueryAUC:type=Classic` and blend by rank with the current binary models.",
+  "expected_effect": "Could improve AUC by learning who is most likely to pit within each lap-level choice set, especially when only a few cars are plausible stoppers.",
+  "risk": "If the weighting heuristic is wrong, the ranker can overfocus on a narrow regime and hurt global ordering.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html"
+  ]
+}

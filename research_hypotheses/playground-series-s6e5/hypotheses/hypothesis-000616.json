@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF pit-window hazard priors",
+  "summary": "Pit decisions are closer to discrete-time hazard modeling than generic classification: probability rises at compound/stint-specific tyre ages and race-progress windows.",
+  "rationale": "Pit decisions are closer to discrete-time hazard modeling than generic classification: probability rises at compound/stint-specific tyre ages and race-progress windows. Prior summaries mentioned hazard framing, but the testable step is explicit out-of-fold empirical priors for pit rate by Compound, Stint, TyreLife bins, RaceProgress bins, and Race/Year when safe.",
+  "implementation_hint": "Create smoothed OOF target encodings such as pit_rate_by_compound_stint_tyrelife, pit_rate_by_stint_progress_bin, and cumulative historical hazard within each stint. Use fold-only statistics for train and full-train statistics for test; blend with global prior for rare bins.",
+  "expected_effect": "Should sharpen ranking around typical stop windows and complement tree interactions already present.",
+  "risk": "High leakage risk if encodings are computed on all train rows before validation; rare race-specific bins can overfit.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

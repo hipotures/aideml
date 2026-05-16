@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Archetype Priors Instead of Raw Race IDs",
+  "summary": "Public strategy guides show large circuit-to-circuit differences in pit-lane loss and preferred stop count: COTA’s relatively low pit loss makes extra stops cheaper, while Sochi’s higher loss favors one-stops, and Monaco strategy is dominated by undercut/traffic balance.",
+  "rationale": "Public strategy guides show large circuit-to-circuit differences in pit-lane loss and preferred stop count: COTA’s relatively low pit loss makes extra stops cheaper, while Sochi’s higher loss favors one-stops, and Monaco strategy is dominated by undercut/traffic balance. That structure is richer than a plain `Race` category and should transfer better across years.",
+  "implementation_hint": "Create 2-4 race archetype features such as `pit_loss_band`, `degradation_band`, `overtake_difficulty`, and `wet_sensitivity`, using public guides plus train-only summaries. Interact them with `Compound`, `TyreLife_ExpectedLife_Ratio`, `Stint`, and `Estimated_Laps_Remaining`. If you build empirical race priors, compute them strictly out-of-fold by `Year+Race`.",
+  "expected_effect": "Better generalization than raw race frequency/one-hot features, especially when the same venue reappears under different seasonal conditions.",
+  "risk": "Manual archetype labels can be noisy, and in-fold race priors would leak race-specific stop timing.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-russian-grand.292fIM7raBljiTrw2XRscl",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

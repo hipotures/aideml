@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Use regime-gated experts for undercut/overcut and traffic states",
+  "summary": "Strategy papers and F1 race analysis emphasize that pit timing changes sharply with traffic, tyre warm-up, wet/dry state, and whether an undercut or overcut is viable.",
+  "rationale": "Strategy papers and F1 race analysis emphasize that pit timing changes sharply with traffic, tyre warm-up, wet/dry state, and whether an undercut or overcut is viable. A single global classifier may blur these regimes. Even without explicit gap telemetry, the dataset contains usable proxies: compound family, same-lap ranks, position, stint age, wet flags, and testing-vs-race context.",
+  "implementation_hint": "Define a small set of regimes such as dry vs wet, early/mid/late race, post-pit cold-tyre laps, and traffic-sensitive windows using same-lap pace/position proxies. Train separate experts or a gated ensemble per regime, then combine them with OOF logistic stacking. Include features like ‘old tyre + poor same-lap pace rank + trapped position’ as undercut-pressure proxies.",
+  "expected_effect": "Can capture strategy nonlinearity that a global model smooths away, especially around pit windows where competition context matters most.",
+  "risk": "Regime slicing reduces sample size and bad gates can add variance; this should be kept to a few interpretable experts, not many micro-models.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

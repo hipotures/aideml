@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add wet crossover and drying-track detectors",
+  "summary": "Pirelli explicitly describes crossover points between slicks, intermediates, and wets, with lap-time inflation thresholds and wide crossover windows on inters.",
+  "rationale": "Pirelli explicitly describes crossover points between slicks, intermediates, and wets, with lap-time inflation thresholds and wide crossover windows on inters. Wet-race pit calls are partly driver-led and differ from dry degradation logic, so a separate regime detector is likely orthogonal to current dry-focused heuristics.",
+  "implementation_hint": "For rows on slick/inter/wet compounds, build normalized pace-loss features within race-lap and within compound, then flag crossover pressure when lap time inflates beyond dry/inter baselines. Add transitions such as slick->inter pressure, inter->slick drying pressure, and wet-compound overstay risk; train either a wet-only sidecar or explicit regime features.",
+  "expected_effect": "Should especially help on rain-affected laps where current tyre-life windows are weak and decision boundaries are sharper.",
+  "risk": "Few wet laps may make the regime sparse; use simple thresholds or shrinkage rather than a large wet-only model.",
+  "sources": [
+    "https://www.pirelli.com/global/en-ww/race/racingspot/formula-1/when-it-s-time-to-change-from-slick-to-wet-tyres-in-formula-1-52943/",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

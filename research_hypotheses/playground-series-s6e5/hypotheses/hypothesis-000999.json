@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-safe regime blend with parametric calibration, not isotonic",
+  "summary": "Calibration docs warn isotonic can create ties and change ROC AUC.",
+  "rationale": "Calibration docs warn isotonic can create ties and change ROC AUC. For this competition, a better use of calibration is regime-aware blending: combine specialists for dry vs wet/intermediate, early vs late race, or first-stop vs later-stop regimes, then apply Platt or beta-style monotone calibration on out-of-fold predictions only if it preserves rank quality.",
+  "implementation_hint": "Train 2-4 specialists on disjoint strategy regimes, convert each OOF prediction to rank, and blend ranks with a simple meta-learner or weighted average. If probability calibration is needed for submission stability, prefer logistic/beta-style post-processing over isotonic and verify no AUC drop on OOF.",
+  "expected_effect": "Small but robust uplift from letting different models dominate different pit regimes while avoiding AUC loss from tied calibrated outputs.",
+  "risk": "Too many specialists can overfit fold noise; calibration may be unnecessary because ROC AUC only depends on ranking.",
+  "sources": [
+    "https://sklearn.org/stable/modules/calibration.html",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

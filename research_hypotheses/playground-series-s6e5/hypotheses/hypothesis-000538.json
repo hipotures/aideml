@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Gated Experts by Strategy Context",
+  "summary": "Inference from the sources: the FIA tyre rule, wet-tyre exemption, testing sessions, and competition effects imply different stop policies across dry mandatory-two-compound races, wet races, and unusual sessions.",
+  "rationale": "Inference from the sources: the FIA tyre rule, wet-tyre exemption, testing sessions, and competition effects imply different stop policies across dry mandatory-two-compound races, wet races, and unusual sessions. A single global learner may be averaging incompatible decision boundaries.",
+  "implementation_hint": "Train 3-4 experts on coarse regimes such as dry-race, wet/intermediate, pre-season testing, and final-stint/no-more-stop zones, then either hard-route with rules or soft-blend using a small meta-model from race_progress, compound family, weather flags, and rule-pressure features.",
+  "expected_effect": "Should reduce bias from mixing fundamentally different strategic regimes and may especially help the rare wet/testing slices that distort a global model.",
+  "risk": "Sample fragmentation is the main danger; only split on broad regimes with enough support and verify each expert beats the global model on its own slice.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2024_formula_1_sporting_regulations_-_issue_3_-_2023-12-06.pdf",
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

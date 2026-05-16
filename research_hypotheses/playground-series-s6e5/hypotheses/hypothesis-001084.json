@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Online degradation-cliff features from changepoint detection",
+  "summary": "A stop often happens after a stint enters a new regime rather than after smooth linear wear alone.",
+  "rationale": "A stop often happens after a stint enters a new regime rather than after smooth linear wear alone. Bayesian online changepoint detection gives a principled run-length posterior for when a sequence has shifted, which is a more specific signal than generic lag smoothing.",
+  "implementation_hint": "Within each driver-stint, run BOCPD or a cheaper approximation on causal `LapTime_Delta`, degradation gain, and position-loss residuals; derive features like current run length, posterior changepoint probability, and laps since last inferred shift. Feed those as extra tabular features into XGB/Cat.",
+  "expected_effect": "Sharper detection of 'cliff' laps where the stop hazard jumps, especially for dry compounds and late-stint nonlinearity.",
+  "risk": "This is close to latent-state modeling and may duplicate existing lag features if the observed sequences are too short or too noisy.",
+  "sources": [
+    "https://www.researchgate.net/publication/1771282_Bayesian_Online_Changepoint_Detection",
+    "https://www.frontiersin.org/article/10.3389/fphys.2017.01112/full",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

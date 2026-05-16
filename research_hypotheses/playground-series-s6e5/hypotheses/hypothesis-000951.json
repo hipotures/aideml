@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Time-Ordered CatBoost Instead of Plain Category Handling",
+  "summary": "Current strong runs use category dtypes and frequency encoding, but not a model that natively builds leakage-resistant categorical statistics in chronological order.",
+  "rationale": "Current strong runs use category dtypes and frequency encoding, but not a model that natively builds leakage-resistant categorical statistics in chronological order. CatBoost’s ordered boosting plus `has_time` is a strong adjacent-competition pattern when high-cardinality IDs matter and row order is meaningful.",
+  "implementation_hint": "Sort by `Year,Race,Driver,LapNumber`, keep raw categorical columns, and test CatBoost with `has_time=True`, `boosting_type=\"Ordered\"`, plus the existing numeric features. Compare against the current GBDT baseline under race-grouped CV and watch whether unseen 2025 drivers/races improve.",
+  "expected_effect": "Could add a small but real gain by extracting richer Driver/Race/Compound interactions without manual target encoding leakage.",
+  "risk": "If the row order is not reconstructed correctly, quality can get worse; CatBoost may also be slower and harder to tune than the current baseline.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://huggingface.co/papers/1706.09516"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Discrete-Time Hazard Instead Of Only Binary Next-Lap",
+  "summary": "Discrete-time survival models are designed for integer event times and censoring, which matches lap-by-lap pit timing better than a single binary label.",
+  "rationale": "Discrete-time survival models are designed for integer event times and censoring, which matches lap-by-lap pit timing better than a single binary label. This is a distinct survival framing from the current AFT approach and may better model the opening and closing of pit windows.",
+  "implementation_hint": "Expand each driver-race-stint into person-period rows for the remaining laps, or approximate with multi-horizon heads such as `pit_in_1`, `pit_in_2`, `pit_in_3`. Train a logistic/cloglog hazard model and recover `P(PitNextLap)` as the first-step hazard; feed later-step hazards into the stacker too.",
+  "expected_effect": "Sharper probabilities around pit-window boundaries and improved calibration for cars that are clearly approaching, but not yet at, the stop lap.",
+  "risk": "Row explosion can slow training substantially, and fold construction must be leak-safe at the stint/race level.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

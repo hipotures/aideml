@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete pit-window hazard priors",
+  "summary": "Pit decisions are naturally a per-lap hazard with stint resets, not just an independent row classification problem.",
+  "rationale": "Pit decisions are naturally a per-lap hazard with stint resets, not just an independent row classification problem. F1 strategy references describe optimal stint length as a function of degradation and pit-loss, while recent pit-stop research uses both next-lap classification and remaining-laps-to-stop signals.",
+  "implementation_hint": "From training only, create OOF smoothed hazard tables by Race x Compound x Stint x binned TyreLife, RaceProgress, and Estimated_Laps_Remaining. Add features such as historical next-lap pit rate, cumulative survival since stint start, and distance to modal pit lap for each race/compound/stint bucket.",
+  "expected_effect": "Should improve AUC by sharpening ranking around common pit windows while preserving the current strong continuous tyre features.",
+  "risk": "Sparse buckets and train-test year drift can overfit; use KFold/GroupKFold out-of-fold encoding with strong smoothing and fallback global priors.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ]
+}

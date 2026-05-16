@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-wave and competitor-action pressure features",
+  "summary": "Recent F1 strategy work emphasizes that pit timing adapts to competitors' actions, not only own tyre state.",
+  "rationale": "Recent F1 strategy work emphasizes that pit timing adapts to competitors' actions, not only own tyre state. This dataset already has enough race-level context to approximate pit waves: whether nearby rivals are stopping now, whether the whole field is entering a stop phase, and whether the driver is old for the current race-lap snapshot.",
+  "implementation_hint": "For each `Race_Year x LapNumber`, add causal snapshot features such as current-lap pit count share, previous-lap pit count share, pit count in same compound bucket, percentile/rank of `TyreLife`, `Cumulative_Degradation`, and `LapTime_Delta` within the lap snapshot, plus versions within position bands. Blend these with existing row-wise tyre-window features. Validation trap: if `PitStop` semantics are ambiguous in the raw row timing, keep both current-lap and lagged-only variants and compare.",
+  "expected_effect": "Should help identify collective stop windows and undercut/traffic responses that single-car features miss.",
+  "risk": "Snapshot aggregates can be noisy in small groups or unusual sessions; use robust ranks/quantiles rather than raw means.",
+  "sources": [
+    "https://arxiv.org/abs/2602.23056",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed race-blocked OOF for every encoder, stacker, and calibrator",
+  "summary": "Recent leakage work on grouped/temporal data shows near-duplicate neighbors can make CV materially optimistic.",
+  "rationale": "Recent leakage work on grouped/temporal data shows near-duplicate neighbors can make CV materially optimistic. This dataset has dense within-race driver sequences, so any target encoding, stacking layer, or calibrator built without strict race blocking can silently learn future-adjacent patterns.",
+  "implementation_hint": "Use folds blocked by full Race_Year, and when producing OOF features add a lap-neighborhood embargo so adjacent laps from the same driver/race never contribute to validation-side encoders or meta-models. Refit historical priors, stackers, and calibrators only on fold-pure OOF predictions.",
+  "expected_effect": "May not raise nominal local CV immediately, but it should reduce false lifts and improve transfer from local validation to public leaderboard.",
+  "risk": "Scores may drop at first because the estimate gets harsher; with only 26 races, fold count and sample efficiency become tighter.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00477-024-02715-1",
+    "https://arxiv.org/abs/2512.06932",
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3836631"
+  ]
+}

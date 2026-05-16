@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regime-Specific OOF Blend With Venn-Abers Or Beta Calibration",
+  "summary": "Current improvements seem to come from different experts capturing different parts of the problem.",
+  "rationale": "Current improvements seem to come from different experts capturing different parts of the problem. Calibration literature suggests isotonic can overfit, while beta and Venn-Abers can stabilize probabilities; applying calibration after an OOF blend is especially relevant when experts have different score distortions.",
+  "implementation_hint": "Blend 2-4 diverse experts by rank or logistic stack, then calibrate OOF predictions separately for a small set of regimes such as slick vs wet, early/mid/late race, or one-stop-like vs high-deg tracks. Compare beta, isotonic, and Venn-Abers on fold-held-out data; choose by CV AUC plus reliability.",
+  "expected_effect": "May not change individual-model rank much, but often improves ensemble robustness and public-LB transfer when different regimes have different score compression.",
+  "risk": "Calibration can flatten useful extremes and overfit if regimes are too granular. Keep regime partition coarse and calibrate strictly on held-out OOF predictions.",
+  "sources": [
+    "https://www.researchgate.net/publication/321830249_Beyond_Sigmoids_How_to_obtain_well-calibrated_probabilities_from_binary_classifiers_with_beta_calibration",
+    "https://link.springer.com/article/10.1007/s10994-018-5753-x",
+    "https://proceedings.mlr.press/v179/giovannotti22a.html"
+  ]
+}

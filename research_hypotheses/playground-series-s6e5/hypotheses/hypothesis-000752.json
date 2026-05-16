@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rule-Aware Cause-Specific Hazard Instead of One Binary Target",
+  "summary": "Pit decisions are not one homogeneous process: dry-race mandatory compound usage, wet/intermediate crossover stops, and ordinary wear-driven stops follow different mechanisms.",
+  "rationale": "Pit decisions are not one homogeneous process: dry-race mandatory compound usage, wet/intermediate crossover stops, and ordinary wear-driven stops follow different mechanisms. FIA rules remove the dry mandatory-compound logic once wets/inters are used, and Pirelli explicitly describes wide crossover windows around intermediates, so a single binary model may blur distinct hazard shapes.",
+  "implementation_hint": "Infer coarse stop archetypes in train from current/next compound family and field-level wet/dry context, then train separate next-lap hazards for at least `dry-strategic`, `wet_to_dry`, and `dry_to_wet_or_reactive` regimes with a small gate. Recombine to final `P(PitNextLap=1)` and validate with grouped folds on `Year_Race` only.",
+  "expected_effect": "Should reduce label noise on wet and transition laps, improving generalization more than another global tyre-age heuristic.",
+  "risk": "Archetype inference can be noisy, especially without explicit weather; if the gate is weak this can over-segment sparse positive cases.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres",
+    "https://link.springer.com/article/10.1186/s12859-024-05799-2"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF strategy-state prior plus residual learner",
+  "summary": "F1 pit decisions are state policies, not just tyre-age thresholds: VSE-style work models pit choice from race state, and dynamic-programming/game-theory papers define decisions from lap-by-lap state.",
+  "rationale": "F1 pit decisions are state policies, not just tyre-age thresholds: VSE-style work models pit choice from race state, and dynamic-programming/game-theory papers define decisions from lap-by-lap state. Build a leakage-safe empirical prior for P(PitNextLap) from coarse state buckets, then let the main GBDT learn residual deviations.",
+  "implementation_hint": "Create OOF priors using only training folds, grouped by race-time state such as Year bucket, dry/wet flag, compound, stint, race-progress bucket, tyre-life percentile, laps-remaining bucket, prior-stop count, and dry-rule status. Use hierarchical smoothing/backoff so sparse buckets shrink to broader groups. Feed the prior, logit(prior), and model-minus-prior residual features into the existing classifier.",
+  "expected_effect": "Should improve calibration of the pit window and reduce variance from hand-picked tyre-life heuristics, especially on rare compounds/race phases.",
+  "risk": "Big leakage trap if priors are computed on full data or with same-race rows. Over-bucketing can also memorize track-specific quirks and hurt held-out races.",
+  "sources": [
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

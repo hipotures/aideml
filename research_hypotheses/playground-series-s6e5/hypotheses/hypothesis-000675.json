@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "External race-state enrichment: safety car, weather, and traffic-gap features",
+  "summary": "Real pit calls depend on more than tyre age: safety car/VSC periods, rain onset, and undercut traffic windows heavily alter stop timing.",
+  "rationale": "Real pit calls depend on more than tyre age: safety car/VSC periods, rain onset, and undercut traffic windows heavily alter stop timing. OpenF1 and FastF1 expose race-control, weather, pit, and gap fields that map directly to these strategy triggers.",
+  "implementation_hint": "Join race/session metadata by year-race-lap from OpenF1/FastF1: track status, safety car/VSC flags, rainfall/track temp, gap to leader, interval to car ahead, and recent pit activity. Create features like `under_vsc`, `laps_since_status_change`, `gap_ahead_small_for_undercut`, `field_pit_wave_last_2laps`, and weather-change deltas.",
+  "expected_effect": "Most likely to help on exceptions where the current tyre-life heuristics fail: sudden caution periods, rain transitions, and traffic-driven undercuts/overcuts.",
+  "risk": "External joins may be messy across seasons/naming conventions, and missing coverage could add noise if not validated race-by-race.",
+  "sources": [
+    "https://openf1.org/",
+    "https://docs.fastf1.dev/api.html",
+    "https://www.autosport.com/f1/news/f1-strategy-explained-whats-an-undercut-overcut-a-drs-train-and-more/10488979/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state filter features with stint resets",
+  "summary": "A new F1 state-space paper models tyre pace as a latent process with pit-stop resets and compound-specific degradation.",
+  "rationale": "A new F1 state-space paper models tyre pace as a latent process with pit-stop resets and compound-specific degradation. That is a better match to this task than raw cumulative degradation, because the target is really about unobserved tyre state crossing a stop threshold.",
+  "implementation_hint": "Fit a simple per-driver-race Kalman/state-space filter on lap times within stints using compound-specific slopes and pit resets. Export posterior latent pace, latent degradation slope, one-step-ahead residual, and post-reset freshness features into the tree model.",
+  "expected_effect": "Should capture hidden wear and abnormal pace decay more cleanly than raw rolling means, especially when observed lap time is noisy from traffic or mistakes.",
+  "risk": "Model misspecification can hurt if lap-time noise from race incidents dominates tyre signal; keep the latent model lightweight and use OOF-generated features only.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

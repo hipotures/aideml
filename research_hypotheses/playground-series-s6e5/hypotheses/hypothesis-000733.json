@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Inject absolute tyre-compound and rule context from official F1/Pirelli sources",
+  "summary": "Current features treat `SOFT/MEDIUM/HARD` as globally comparable, but F1 uses race-specific absolute compounds (`C1`-`C5/C6`), so the same `SOFT` can mean very different durability and degradation.",
+  "rationale": "Current features treat `SOFT/MEDIUM/HARD` as globally comparable, but F1 uses race-specific absolute compounds (`C1`-`C5/C6`), so the same `SOFT` can mean very different durability and degradation. Official dry-race rules also create different baseline stop incentives than wet races, and Monaco 2025 is a special two-stop regime.",
+  "implementation_hint": "Build a small external lookup keyed by `Year+Race` for actual hard/medium/soft compound nominations, sprint vs standard weekend, and special mandatory-stop rules. Add features like absolute compound ordinal, softness gap within the nominated trio, `current_is_softest_of_weekend`, and `mandatory_second_compound_still_unmet` for dry races.",
+  "expected_effect": "Should improve race-to-race transfer and reduce the model’s reliance on crude fixed tyre-life thresholds.",
+  "risk": "External mapping errors or incomplete race metadata can silently hurt CV; keep the first test to low-cardinality rule/compound features only.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-formula-1-tyres.61SvF0Kfg29UR2SPhakDqd",
+    "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres",
+    "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-las-vegas-grand-prix.ufsYJ5HkKWCc65K1yWydN",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent neutralization/weather shock expert",
+  "summary": "F1 strategy changes sharply when Safety Car/VSC windows open or grip suddenly drops; official analysis notes reduced pit-loss under Safety Car and teams can pre-arm stops for those windows.",
+  "rationale": "F1 strategy changes sharply when Safety Car/VSC windows open or grip suddenly drops; official analysis notes reduced pit-loss under Safety Car and teams can pre-arm stops for those windows. The dataset has no explicit flag-state column, so hidden neutralization/wet-shift laps may be recoverable from same-lap field-wide spikes in LapTime, LapTime_Delta, multi-car Position_Change, and clustered PitStop activity.",
+  "implementation_hint": "Create per-(Year,Race,LapNumber) shock features: field median/iqr of LapTime_Delta, fraction of cars with extreme slow laps, fraction pitting, spread of Position_Change, and deviation from prior 3-lap baselines. Train either a small regime classifier or a gated expert that only activates on high-shock laps, then blend with the base tabular model via OOF stacking.",
+  "expected_effect": "Should improve recall on abrupt strategy laps that tyre-age formulas miss, especially free-stop or sudden wet-transition behavior.",
+  "risk": "Field aggregates can become noisy if inferred from shuffled rows or if test races have different shock prevalence; must compute strictly within current lap only.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E"
+  ]
+}

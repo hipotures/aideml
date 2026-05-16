@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Degradation State via Causal Rolling Pace",
+  "summary": "Recent F1 degradation modeling uses state-space ideas where latent tyre pace evolves during a stint and resets at pit stops.",
+  "rationale": "Recent F1 degradation modeling uses state-space ideas where latent tyre pace evolves during a stint and resets at pit stops. The current best uses static pace deviation and degradation ratios, but not causal rolling estimates of whether degradation is accelerating.",
+  "implementation_hint": "Sort by Race-Year-Driver-LapNumber and compute lagged/rolling features within current stint only: rolling mean/std/slope of LapTime_Delta, Pace_Deviation_From_Median, Cumulative_Degradation increments, and change since stint start. Shift rolling windows by one row so the current target lap is not encoded by future information.",
+  "expected_effect": "Should help distinguish normal old tyres from tyres reaching a performance cliff, making next-lap pit risk more separable.",
+  "risk": "If local CV is random row split, causal sequence features may look less dramatic than leakage-prone centered aggregations; sorting and stint reset logic must be correct.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

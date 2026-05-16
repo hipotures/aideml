@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add teammate and double-stack coordination signals",
+  "summary": "Pit calls are coordinated by team operations, and double-stacking or staggering teammates changes next-lap stop probability.",
+  "rationale": "Pit calls are coordinated by team operations, and double-stacking or staggering teammates changes next-lap stop probability. The dataset lacks Team, but FastF1-style source data includes team information, and public race entry lists can map driver-year to team.",
+  "implementation_hint": "Join or infer Team for each Driver-Year. Within Race-Year-Team, add teammate_pitted_this_lap, teammate_pitted_previous_lap, teammate_old_tyre_pressure, team_double_stack_possible, and stagger_after_teammate_stop indicators computed causally by lap.",
+  "expected_effect": "Captures coordinated team behavior not represented by driver/race/compound features, adding signal when two cars share strategy calls.",
+  "risk": "Synthetic or historical driver codes may not all map cleanly; missing teams should fall back to unknown so bad joins do not create noise.",
+  "sources": [
+    "https://docs.fastf1.dev/core.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://en.wikipedia.org/wiki/Pit_stop"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

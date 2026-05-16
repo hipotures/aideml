@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal Stint-Shape And Tyre-Cliff Detector",
+  "summary": "F1 strategy sources emphasize that undercut/overcut viability depends on recent tyre behavior, warm-up, and cliff onset, not just absolute tyre life.",
+  "rationale": "F1 strategy sources emphasize that undercut/overcut viability depends on recent tyre behavior, warm-up, and cliff onset, not just absolute tyre life. The current best features are mostly row-wise scalars, so they likely miss trajectory information inside the current stint.",
+  "implementation_hint": "Sort causally by driver-race-stint and add only backward-looking features: lagged `LapTime_Delta`, rolling slope, second difference, EWMA pace loss, degradation acceleration, and a simple filtered latent wear state. Interact these with compound, track type, and laps remaining.",
+  "expected_effect": "Should reduce false positives early in stints and improve recall when degradation suddenly turns nonlinear near the real stop cliff.",
+  "risk": "Any sequencing mistake creates silent leakage; noisy lap-time spikes may also need robust clipping or smoothing.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

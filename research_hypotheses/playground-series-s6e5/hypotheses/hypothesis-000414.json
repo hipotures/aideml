@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-driver pairwise ranker for AUC",
+  "summary": "ROC AUC is a pairwise ranking metric, and each driver-race is a sparse event timeline with many easy negatives.",
+  "rationale": "ROC AUC is a pairwise ranking metric, and each driver-race is a sparse event timeline with many easy negatives. A pointwise classifier can waste capacity on probability calibration instead of ordering the few laps that matter near the stop window.",
+  "implementation_hint": "Train a LightGBM ranker with groups=`Race_Year x Driver` using the current feature set; compare `lambdarank` vs `rank_xendcg`, then blend its percentile rank with the existing classifier output rather than averaging raw probabilities.",
+  "expected_effect": "Improves ordering of candidate pit laps inside each stint/race sequence, which should help local and public AUC even if calibration does not improve.",
+  "risk": "Some groups have very few or zero positive laps, so grouping and negative sampling need care; raw ranker scores may transfer poorly without rank-based blending.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://www.jmlr.org/papers/volume10/rudin09b/rudin09b.pdf"
+  ]
+}

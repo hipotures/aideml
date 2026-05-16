@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Counterfactual rejoin-window features",
+  "summary": "Official F1 strategy pieces repeatedly frame pit timing around whether a stop opens a safe rejoin gap, avoids traffic, or covers an undercut.",
+  "rationale": "Official F1 strategy pieces repeatedly frame pit timing around whether a stop opens a safe rejoin gap, avoids traffic, or covers an undercut. Your current features model tyre wear well but do not explicitly encode the counterfactual: ‘if I pit now, do I rejoin into traffic or clear air, and do I emerge near the target rival?’",
+  "implementation_hint": "Build approximate rejoin features from current position order and race-lap field context: estimated pit-loss bucket by race, expected rejoin position after a stop now, distance to nearest cars ahead/behind in position order, whether current lap is an ‘open window’ lap from prior pitter patterns, and whether pitting now likely covers/attacks a nearby rival. Keep everything fold-local and based only on information available up to the current lap.",
+  "expected_effect": "Targets the strategic mechanism behind real pit calls, so it may add signal in ambiguous mid-race windows where tyre-age rules alone are insufficient.",
+  "risk": "The dataset lacks explicit lap gaps, so rejoin estimates are proxy features; over-engineering weak proxies can hurt unless they are few and regularized.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-united-states.4HyI0KEibogOQCDV5Wr2Ue"
+  ]
+}

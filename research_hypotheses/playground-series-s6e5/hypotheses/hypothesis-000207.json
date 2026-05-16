@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial Test-Likeness Reweighting",
+  "summary": "The train/test overview already shows distribution shift risk across years, races, and driver identities.",
+  "rationale": "The train/test overview already shows distribution shift risk across years, races, and driver identities. Importance weighting is a standard response to covariate shift, and this competition’s unseen or differently mixed race contexts make that more plausible than another round of static feature additions.",
+  "implementation_hint": "Train a lightweight train-vs-test discriminator on features only, convert its scores into bounded sample weights, and refit the main classifier with those weights. Compare against unweighted training under strict Race-Year grouped CV, and optionally blend weighted and unweighted OOF models.",
+  "expected_effect": "Can improve leaderboard robustness if the public test set emphasizes a different mixture of seasons, drivers, or race regimes than local CV.",
+  "risk": "Noisy weights can raise variance or hurt if the shift detector mostly learns leakage-prone identifiers rather than meaningful covariate drift.",
+  "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8478611/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5070592/",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_sample_weight.html"
+  ]
+}

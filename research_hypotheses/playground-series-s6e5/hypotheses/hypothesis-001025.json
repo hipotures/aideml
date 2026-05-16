@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Lap LambdaMART Urgency Specialist",
+  "summary": "Pit calls are relative decisions against the field on the same lap, not just absolute thresholds.",
+  "rationale": "Pit calls are relative decisions against the field on the same lap, not just absolute thresholds. XGBoost ranking objectives are explicitly designed for grouped ordering problems, so a lap-group ranker can learn which cars are most pit-urgent within each (Year,Race,LapNumber) slice and supply a complementary signal to the binary classifier.",
+  "implementation_hint": "Train an XGBoost ranker with query groups set to (Year,Race,LapNumber), label 1 for PitNextLap and 0 otherwise. Use the ranker’s OOF score, within-group percentile, and top-k flags as meta-features or blend its test predictions with the base classifier.",
+  "expected_effect": "Should capture relative urgency and opponent-context interactions that plain pointwise trees underuse.",
+  "risk": "Validation must keep whole races isolated; otherwise same-race group structure can make the ranking signal look better locally than it generalizes.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://developer.nvidia.com/blog/learning-to-rank-with-xgboost-and-gpu/",
+    "https://scikit-learn.org/stable/modules/cross_validation.html?highlight=cross_validate"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

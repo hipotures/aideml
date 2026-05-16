@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a monotone-constrained booster on physically directional features",
+  "summary": "Several engineered features should be monotone in pit propensity under fixed context, such as service pressure, finish-stop pressure, and impossibility of finishing on current tyres.",
+  "rationale": "Several engineered features should be monotone in pit propensity under fixed context, such as service pressure, finish-stop pressure, and impossibility of finishing on current tyres. XGBoost supports explicit monotonic constraints, which can reduce brittle tree interactions and improve generalization when hand-built strategy features are already strong.",
+  "implementation_hint": "Select a compact feature subset with strong physical directionality and fit an XGBoost model with signed monotone constraints. Blend it with the unconstrained main model rather than replacing it; test whether it improves OOF-to-public stability more than raw CV.",
+  "expected_effect": "Likely modest CV gain but potentially better leaderboard transfer by regularizing pathological splits around sparse race/driver regimes.",
+  "risk": "Wrong constraint signs or overly broad constrained feature sets can make trees too shallow and suppress useful interactions.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1/",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

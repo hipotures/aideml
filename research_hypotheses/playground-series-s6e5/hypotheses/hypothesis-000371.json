@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic And Free-Air Rejoin Proxy",
+  "summary": "This is a more concrete version of generic competitor-interaction modeling: F1 sources repeatedly note that undercuts only work in clean air and that strategists manage pit windows around traffic.",
+  "rationale": "This is a more concrete version of generic competitor-interaction modeling: F1 sources repeatedly note that undercuts only work in clean air and that strategists manage pit windows around traffic. Current features model tyre viability, but not whether stopping now likely rejoins the car into a train.",
+  "implementation_hint": "From each race-lap snapshot, derive local congestion proxies using neighboring positions' lap times and recent position changes: approximate ahead/behind pressure, density in a 3-5 car neighborhood, and 'free air' indicators. Add interactions with compound, current pace loss, and lap-remaining window; compare a simple tree model with and without these same-lap order-statistic features.",
+  "expected_effect": "Should improve discrimination between aggressive early stops that can undercut versus cases where teams extend because a stop would dump the car into traffic.",
+  "risk": "Lap-time-based congestion is only a proxy for actual gaps, so it may be noisy on circuits with uneven sector behavior or SC conditions. Keep features rank/quantile based and normalized within race-lap.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.formula1.com/en/latest/article/palmer-punchy-pace-and-shrewd-strategy-calls-how-gasly-went-from-the-pit.2bnPdoLSiRIhSYqwD04yCv",
+    "https://www.formula1.com/en/latest/article/watch-the-insiders-guide-to-f1-strategists.6VT3445ugVd0bh85Pw5slO"
+  ]
+}

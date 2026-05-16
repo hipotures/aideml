@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "State-space latent tyre-wear specialist with pit-stop resets",
+  "summary": "Recent F1 research models tyre degradation as a latent state rather than raw cumulative proxies.",
+  "rationale": "Recent F1 research models tyre degradation as a latent state rather than raw cumulative proxies. Your current features use static heuristics; a filtered hidden wear/pace state can denoise `LapTime_Delta` and `Cumulative_Degradation`, especially around noisy laps, while naturally resetting after `PitStop`.",
+  "implementation_hint": "Build a lightweight per-driver-per-race filter over lap order: observed signal could be `LapTime_Delta` after subtracting race-lap baseline and compound baseline; latent states include wear level and wear slope. Reset state on `PitStop`, then feed filtered wear, innovation, and one-step-ahead deterioration into the existing tabular model.",
+  "expected_effect": "Should improve ranking near the decision boundary where raw degradation is noisy, especially late in stints and on tracks with variable pace loss.",
+  "risk": "If the filter is mis-specified or uses future information in smoothing, it will hurt; keep it causal within each stint for training-time feature generation.",
+  "sources": [
+    "https://doi.org/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

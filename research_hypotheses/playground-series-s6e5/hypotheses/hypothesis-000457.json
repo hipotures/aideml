@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Caution-Regime Proxy Features",
+  "summary": "Official F1/FIA material shows pit decisions change sharply when Safety Car or VSC windows open and when a stop becomes effectively cheaper.",
+  "rationale": "Official F1/FIA material shows pit decisions change sharply when Safety Car or VSC windows open and when a stop becomes effectively cheaper. The table lacks an explicit caution flag, so race-wide synchronous pace shocks are likely a missing latent state.",
+  "implementation_hint": "Create race-lap aggregates on observables only: median lap time, median lap delta, IQR, share with very large positive lap deltas, share pitting this lap, and lap-to-lap changes in those aggregates. Add lagged shock/restart flags and interact them with tyre-life pressure, compound, and laps remaining.",
+  "expected_effect": "Should recover a hidden regime that explains clustered stops and improve generalization on races with interruptions or restart windows.",
+  "risk": "Field aggregates can be noisy; ensure they use only current-lap observable columns and not any future-derived signal.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-error-cost-me-victory-shot-says-bottas.4P9YL3BMRsTOpGnqcIhOSS/"
+  ]
+}

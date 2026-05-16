@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-overcut and pit-wave pressure features from same-lap rivals",
+  "summary": "Public F1 strategy analysis emphasizes that pit timing depends on nearby rivals, warm-up penalties, and whether a local pit wave is starting.",
+  "rationale": "Public F1 strategy analysis emphasizes that pit timing depends on nearby rivals, warm-up penalties, and whether a local pit wave is starting. The current best features are mostly self-state and finish-window heuristics, not opponent-triggered opportunity cost.",
+  "implementation_hint": "Add leakage-safe race-lap context features using only current-lap information: number of nearby-position rivals within 2s-equivalent rank band, count of same-compound cars older than you, same-lap field pit count, whether adjacent rivals just pitted last lap, and soft/hard warm-up favorability proxies by race-level degradation regime.",
+  "expected_effect": "Likely adds orthogonal signal for tactical stops that are driven by cover/attack behavior rather than absolute tyre exhaustion.",
+  "risk": "Without true time-gap telemetry these are proxies; crude approximations may be noisy on circuits where track position matters differently.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Sparse undercut-cover features with monotone-constrained XGBoost",
+  "summary": "Game-theoretic F1 work reports that accounting for competition materially changes optimal pit timing, but the worst local runs suggest broad opponent feature dumps are too noisy.",
+  "rationale": "Game-theoretic F1 work reports that accounting for competition materially changes optimal pit timing, but the worst local runs suggest broad opponent feature dumps are too noisy. A narrower version may work: build a few high-signal rival-response scores, then regularize them with monotone constraints so the tree cannot learn implausible reversals.",
+  "implementation_hint": "Create only a small set of causal rival features: nearest car ahead/behind tyre-age gap, same-compound pace gap, whether a nearby rival pitted in the previous lap, and a cover-threat score for top positions. Train a separate XGBoost with monotone constraints on physically directional variables like tyre age, degradation stress, and undercut threat, then test it as an ensemble member rather than replacing the baseline.",
+  "expected_effect": "Adds a genuinely different model family bias and may improve hard strategic cases where pit timing depends on one or two nearby rivals, not the full field average.",
+  "risk": "Wrong monotonic assumptions or inaccurate rival proxies can flatten useful interactions and reduce raw AUC.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

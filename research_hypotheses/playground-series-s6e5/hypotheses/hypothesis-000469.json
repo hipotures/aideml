@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Use a separate pre-season testing regime",
+  "summary": "The dataset includes Pre-Season Testing, where teams follow custom run plans, tyre usage, fuel loads, and pit-stop practice rather than race strategy constraints.",
+  "rationale": "The dataset includes Pre-Season Testing, where teams follow custom run plans, tyre usage, fuel loads, and pit-stop practice rather than race strategy constraints. Treating testing rows like grands prix can inject label noise into rule and tyre-window features.",
+  "implementation_hint": "Add IsTesting and train either a small testing-only expert or regime interaction features. Suppress mandatory-compound debt features for testing, rely more on TyreLife resets, stint/run length, current PitStop, and driver-run cadence.",
+  "expected_effect": "Improves rows from testing sessions and reduces overfitting of race-specific rules to non-race behavior.",
+  "risk": "Testing rows may be few; a separate expert can overfit unless blended conservatively or backed by CV grouped by session.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/the-beginners-guide-to-f1-pre-season-testing.3CuYMLp6etxlynKLz0j7Ev",
+    "https://www.autosport.com/f1/news/f1-pre-season-testing-2023-what-is-it-when-is-it-and-can-i-watch-it-/10434219/"
+  ]
+}

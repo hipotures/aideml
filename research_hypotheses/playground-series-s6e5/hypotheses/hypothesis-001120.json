@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Train a stable-subset expert using adversarial-validation feature pruning, not just weighting",
+  "summary": "You already use adversarial weights, but covariate-shift literature warns that weighting alone can be high-variance when shift is large.",
+  "rationale": "You already use adversarial weights, but covariate-shift literature warns that weighting alone can be high-variance when shift is large. Stable-learning work suggests part of the gain can come from identifying a minimal stable variable set, so a second expert trained on low-drift features/interactions may generalize better than the full feature space.",
+  "implementation_hint": "Run adversarial validation with train vs test labels, score feature importances/SHAP, and split features into stable vs unstable groups. Train one model on the full set with current weights and a second on only stable features plus handpicked robust interactions; blend them by OOF robustness under forward/grouped splits. Also test clipping or removing especially transductive category-frequency features if they dominate drift.",
+  "expected_effect": "May improve public-LB transfer even if local CV changes little, because it targets distribution mismatch directly rather than maximizing in-fold AUC.",
+  "risk": "Too aggressive pruning can throw away genuinely predictive race-specific signal and lower CV. This is more likely to help leaderboard robustness than headline local score.",
+  "sources": [
+    "https://researchportal.hkust.edu.hk/en/publications/a-theoretical-analysis-on-independence-driven-importance-weightin-2/",
+    "https://research.ibm.com/publications/direct-importance-estimation-with-model-selection-and-its-application-to-covariate-shift-adaptation",
+    "https://pure.korea.ac.kr/en/publications/importance-weighted-cross-validation-for-covariate-shift/"
+  ]
+}

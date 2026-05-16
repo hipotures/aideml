@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary Laps-To-Stop Target Instead Of Pure Binary Training",
+  "summary": "A recent F1 pit-stop paper reports a cascaded multi-task design where next-lap classification is complemented by predicting remaining laps to the stop.",
+  "rationale": "A recent F1 pit-stop paper reports a cascaded multi-task design where next-lap classification is complemented by predicting remaining laps to the stop. That is a more informative target than a lone `PitNextLap` bit and can regularize ambiguous pre-stop rows.",
+  "implementation_hint": "From train only, compute causal `laps_until_next_pit` within each driver-race sequence. Train either: `1)` a separate regressor/ordinal model for capped distance bins like `0,1,2,3,4+`, or `2)` a hazard-style model for the next 1-3 laps. Feed its OOF prediction into the main classifier or blend the outputs. Treat race-end censoring explicitly.",
+  "expected_effect": "Smoother supervision around the stop window, less label noise, and sharper probabilities on the few laps before a true stop.",
+  "risk": "Censoring at race end and wet-race behavior can distort the auxiliary label if not handled separately.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC9316420/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

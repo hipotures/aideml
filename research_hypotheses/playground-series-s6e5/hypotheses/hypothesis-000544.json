@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-race-lap query ranking sidecar",
+  "summary": "The decision is relative: on a given lap, only a few drivers are realistic pit candidates.",
+  "rationale": "The decision is relative: on a given lap, only a few drivers are realistic pit candidates. CatBoost exposes pairwise and groupwise ranking objectives, which can train directly on within-query ordering rather than only global classification; that often aligns well with ROC-AUC tasks where the main challenge is ranking hard positives above contemporaneous negatives.",
+  "implementation_hint": "Define each query as (Year, Race, LapNumber). Train a CatBoost ranker such as PairLogit or YetiRankPairwise to rank drivers by next-lap pit likelihood within the query, using the current engineered features. Convert OOF rank scores to probabilities with fold-wise sigmoid calibration only if needed for blending.",
+  "expected_effect": "Should sharpen local discrimination on crowded decision windows and add ensemble diversity relative to pure pointwise GBDTs.",
+  "risk": "Ranking loss may underweight absolute calibration and can be noisy on laps with zero or one positive; keep it as a sidecar, not a full replacement.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

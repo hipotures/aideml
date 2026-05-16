@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Rank-Preserving Two-Model Blend With Beta Calibration On OOF Predictions",
+  "summary": "AUC usually benefits from blending complementary score shapes, and beta calibration is a stronger parametric calibrator than plain Platt scaling when score distributions are skewed.",
+  "rationale": "AUC usually benefits from blending complementary score shapes, and beta calibration is a stronger parametric calibrator than plain Platt scaling when score distributions are skewed. Even when AUC itself is rank-based, calibrated blending can stabilize public-LB performance when specialist models over- or under-shoot in different regimes.",
+  "implementation_hint": "Keep the current best tree model, add one complementary specialist (for example ordered CatBoost or the curvature model), generate strict OOF predictions, then fit a simple logistic or beta-calibration meta-layer on the OOF scores only. Compare raw rank average, logistic stack, and beta-calibrated stack on grouped CV.",
+  "expected_effect": "Likely modest but robust lift from combining different inductive biases while reducing overconfident tails that often hurt leaderboard transfer.",
+  "risk": "If the specialists are too correlated, the stack adds noise; calibrators must be fit strictly out-of-fold or they will leak.",
+  "sources": [
+    "https://research-information.bris.ac.uk/en/publications/beta-calibration-a-well-founded-and-easily-implemented-improvemen",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-Fitted Specialist Blend With Calibration",
+  "summary": "ROC AUC is rank-based, so calibrating a single model does not help much directly, but blending multiple specialists can fail if their score scales are misaligned.",
+  "rationale": "ROC AUC is rank-based, so calibrating a single model does not help much directly, but blending multiple specialists can fail if their score scales are misaligned. Scikit-learn’s calibration guidance emphasizes disjoint fitting for the calibrator, which fits an OOF specialist-blend workflow.",
+  "implementation_hint": "Build 2-4 diverse specialists such as the baseline classifier, caution-regime expert, constrained booster, and ID-delayed CatBoost. Generate OOF predictions with race-group folds, calibrate each specialist on held-out folds via sigmoid or isotonic, then compare plain average, rank average, and calibrated logit stacking.",
+  "expected_effect": "Usually a small but robust LB gain from safer ensembling and less fold-specific score-scale instability.",
+  "risk": "Extra OOF plumbing; isotonic can overfit if calibration slices are too small.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html"
+  ]
+}

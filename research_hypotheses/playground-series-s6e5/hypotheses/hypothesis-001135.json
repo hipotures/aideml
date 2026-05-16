@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Worst-group robust training over season-race-regime slices",
+  "summary": "Recent GDRO/DORO work is aimed at subpopulation shift, which is plausible here because seasons, compounds, wet races, and testing sessions can have materially different stop dynamics.",
+  "rationale": "Recent GDRO/DORO work is aimed at subpopulation shift, which is plausible here because seasons, compounds, wet races, and testing sessions can have materially different stop dynamics. Your current adversarial weighting handles train-test covariate shift globally, but not worst-slice underperformance.",
+  "implementation_hint": "Define coarse groups such as `(Year,Race)`, `(Year,CompoundWetFlag,stint_bin,progress_bin)`, or race archetypes. Train a robust expert by reweighting batches or rows toward high-loss groups each fold; if full GDRO is too heavy, approximate with iterative group-loss reweighting or DORO-style trimmed worst-group emphasis. Blend only if worst-group AUC rises without collapsing mean CV.",
+  "expected_effect": "More stable public leaderboard behavior and fewer catastrophic failures on rare wet/testing/regime slices, even if mean CV gain is modest.",
+  "risk": "Robust objectives can hurt average AUC or chase noisy tiny groups. Use minimum group-size thresholds and compare both mean AUC and lower-tail group AUC, not just the overall fold mean.",
+  "sources": [
+    "https://proceedings.mlr.press/v139/zhai21a.html",
+    "https://proceedings.mlr.press/v235/yu24a.html"
+  ]
+}

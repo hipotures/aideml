@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recast as time-to-next-pit with censoring, then derive next-lap risk",
+  "summary": "This task is naturally an event-time problem.",
+  "rationale": "This task is naturally an event-time problem. XGBoost’s AFT survival objective supports censored labels, which matches rows near race end or rows where the next pit is not observed within the remaining laps. That is a cleaner inductive bias than plain binary classification on every row.",
+  "implementation_hint": "For each training row, compute laps until the driver’s next pit; use exact intervals when observed and right-censor rows that reach race end without another pit. Train an AFT model or discrete hazard sidecar, then convert predicted survival into `P(pit in next lap)` via `S(t)-S(t+1)` or a 1/2/3-lap hazard head. Blend this score with the base classifier.",
+  "expected_effect": "Could improve ranking around ambiguous pit-window rows by using full time-to-event structure instead of a one-step label only.",
+  "risk": "Label construction is subtle around current-lap pits, red-flag-like anomalies, and final stints. If censoring logic is wrong, performance will drop despite a sound objective.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add team identity and team-level strategy priors",
+  "summary": "Pit calls are made by teams, not drivers.",
+  "rationale": "Pit calls are made by teams, not drivers. FastF1 session results expose team names, and official F1 pit-stop coverage notes that teams optimize and guard their own pit-loss and stop-execution characteristics, which driver code alone does not represent well.",
+  "implementation_hint": "Externally map Driver/Race/Year to TeamName, then create leakage-safe cross-fit priors such as team x compound pit rate, team x caution-stop tendency, team x race first-stop timing, and team x wet-race aggressiveness.",
+  "expected_effect": "Should capture persistent strategic style and operational aggressiveness that frequency-encoded Driver cannot fully absorb.",
+  "risk": "Reserve drivers, team changes across years, and small-sample team-race priors can overfit unless cross-fit strictly within folds.",
+  "sources": [
+    "https://docs.fastf1.dev/data_reference/index.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

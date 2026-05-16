@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native ordered categorical model with minimal manual target-style preprocessing",
+  "summary": "Your best code still relies on many hand-built frequency and median features over high-cardinality identifiers.",
+  "rationale": "Your best code still relies on many hand-built frequency and median features over high-cardinality identifiers. CatBoost’s ordered boosting and categorical combinations are designed to reduce prediction shift and leakage from categorical statistics, which is especially relevant with Driver and Race identities across seasons.",
+  "implementation_hint": "Test a lean feature set with raw categoricals kept as strings: Driver, Race, Compound, Year, Stint, plus a small number of strong numerics and physically motivated interactions. Let CatBoost build ordered CTR-style combinations; compare against the handcrafted baseline under the same folds.",
+  "expected_effect": "Could recover signal from high-cardinality identity interactions that manual frequency encoding misses while reducing overfit from dataset-level aggregates.",
+  "risk": "If the competition test distribution has many unseen drivers/races or if folds are not time/group safe, gains can vanish or turn into misleading CV improvements.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://huggingface.co/papers/1706.09516",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

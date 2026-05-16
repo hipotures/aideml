@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Cross-fitted hierarchical target encoding for strategy identities",
+  "summary": "Your strongest runs still use category codes/frequencies for `Driver`, `Race`, and `Compound`.",
+  "rationale": "Your strongest runs still use category codes/frequencies for `Driver`, `Race`, and `Compound`. With 800+ drivers and race-specific behavior, leakage-safe target encodings can capture stable pit priors that ordinal codes miss. scikit-learn explicitly warns that target encoding without cross-fitting overfits high-cardinality features.",
+  "implementation_hint": "Build OOF encodings under the same race-grouped folds for `Driver`, `Race`, `Compound`, plus interactions like `Driver×Compound`, `Race×Compound`, `Year×Race`, `Driver×Race`. Use shrinkage toward global mean and optionally toward parent means (for example `Driver×Compound` -> `Driver` -> global). Apply learned mappings to validation/test only from training folds.",
+  "expected_effect": "Better use of high-cardinality entities and compound/race interactions with low implementation cost; likely small but real AUC lift if current codes are underfitting.",
+  "risk": "If any encoding is fit on full data or ignores race grouping, CV will inflate badly. Gains may vanish if CatBoost already captures most categorical signal.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

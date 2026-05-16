@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF time-to-next-pit as an auxiliary latent state",
+  "summary": "A standalone survival expert was already a reasonable idea in prior research, but it may be more valuable as a feature generator than as a final submission model.",
+  "rationale": "A standalone survival expert was already a reasonable idea in prior research, but it may be more valuable as a feature generator than as a final submission model. A censored time-to-next-pit model can compress sequential stint context into a latent urgency estimate that a binary AUC model can exploit.",
+  "implementation_hint": "Create a training-only target for laps until next pit, with right-censoring at race end for final observed stints. Fit an AFT survival model or discrete horizon model in strict OOF fashion, then add OOF predictions such as expected remaining laps, log-time-to-pit, or bucketed hazard to the main classifier and to any blend gating logic.",
+  "expected_effect": "Adds sequence-aware signal without forcing survival predictions to be the final ranking, which may outperform a standalone hazard expert.",
+  "risk": "Bad censoring logic, leakage across laps of the same race, or noisy final-stint labels can negate the benefit.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://xgboost.readthedocs.io/en/release_3.2.0/parameter.html",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap peer-relative normalization features",
+  "summary": "F1 strategy depends on relative rather than absolute pace: out-lap strength, warm-up, field degradation, and track evolution matter.",
+  "rationale": "F1 strategy depends on relative rather than absolute pace: out-lap strength, warm-up, field degradation, and track evolution matter. The current best code uses absolute values plus global frequencies, but not where a driver sits relative to the field on that exact lap/race context.",
+  "implementation_hint": "Within each (Year,Race,LapNumber) and optionally (Year,Race,LapNumber,Compound), compute percentile/rank/z-score style features for TyreLife, LapTime_Delta, Cumulative_Degradation, Position_Change, and current stint age. Add gaps to race-lap median, fastest quartile, and same-compound median. Also test interaction features like relative_tyre_age x position and relative_lap_delta x compound.",
+  "expected_effect": "Should capture hidden pit waves and track-evolution effects without requiring explicit rival identities or future information.",
+  "risk": "If computed jointly on train+test or across folds, these features leak race-level distribution information; must be generated inside each fold and separately on inference races.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full"
+  ]
+}

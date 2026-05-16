@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-control and tyre-rule finite-state expert",
+  "summary": "Official FIA rules make dry-race compound obligations path-dependent, and FastF1 exposes weather plus track-status channels including Safety Car and VSC.",
+  "rationale": "Official FIA rules make dry-race compound obligations path-dependent, and FastF1 exposes weather plus track-status channels including Safety Car and VSC. Those events materially change both whether a stop is strategically cheap and whether a driver still faces mandatory compound pressure, which the current feature set only approximates.",
+  "implementation_hint": "Join FastF1 race-level weather, rainfall, and track-status timelines to laps; create a finite-state machine tracking dry/wet legality, mandatory dry-compound obligation, Monaco special rule, laps since SC/VSC onset, and 'cheap stop' windows under neutralization. Use these features in a small specialist model or as gating variables for the main model.",
+  "expected_effect": "Should improve rare but high-leverage laps where neutralizations or wet-track exemptions dominate tyre-life logic.",
+  "risk": "External joins can be brittle across sessions and years; alignment errors will silently hurt CV.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://docs.fastf1.dev/_modules/fastf1/_api.html"
+  ]
+}

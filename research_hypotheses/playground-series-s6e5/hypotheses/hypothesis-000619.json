@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation state plus diverse categorical models",
+  "summary": "Recent F1 tyre research models degradation as a latent state with pit stops as resets.",
+  "rationale": "Recent F1 tyre research models degradation as a latent state with pit stops as resets. A compact approximation can create residual degradation states, while CatBoost/stacked AutoGluon can exploit categorical Race/Driver/Compound interactions differently from the current GBM/XGB-only setup.",
+  "implementation_hint": "Fit per Race-Lap or Race-Compound baseline pace, then build driver-stint residual features: exponentially weighted residual pace, residual slope, residual acceleration, and post-pit reset indicators. Train a CatBoost model with native categorical columns and blend it with the current AutoGluon GBM/XGB; optionally allow AutoGluon bagging/weighted ensemble under a larger time limit.",
+  "expected_effect": "Adds both new sequential signal and model-family diversity, often useful when top single-tree pipelines plateau near the same CV score.",
+  "risk": "Sequential residual features are sensitive to row ordering and missing early-stint history; larger ensembles increase runtime and can overfit random validation.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://auto.gluon.ai/stable/tutorials/tabular/tabular-essentials.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Degradation Filter With Uncertainty And Shock Features",
+  "summary": "Recent F1 research models tyre degradation as a latent stochastic process with pit-stop resets and emphasizes uncertainty, warm-up, and asymmetric errors.",
+  "rationale": "Recent F1 research models tyre degradation as a latent stochastic process with pit-stop resets and emphasizes uncertainty, warm-up, and asymmetric errors. Prior proposals mentioned latent state broadly, but a practical next step is not a full replacement model: generate causal filtered features like latent pace slope, posterior variance, and one-step surprise.",
+  "implementation_hint": "Per `Year/Race/Driver`, fit a simple online state-space/Kalman-style filter or lightweight AR-with-reset model on lap times using only past laps. Emit features such as latent degradation level, slope, slope acceleration, post-pit warm-up state, forecast residual, and forecast variance. Exclude current pit-in/pit-out artifacts when estimating the filter.",
+  "expected_effect": "Should capture sudden pace cliffs and uncertainty that fixed sigmoid pressure features miss, especially in long or messy stints.",
+  "risk": "Implementation complexity is higher than standard feature engineering, and poor filtering assumptions may wash out the benefit. Must stay causal to avoid hidden leakage.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic and undercut neighbor features",
+  "summary": "F1 pit timing depends on the cars immediately ahead/behind, not just a driver's tyre age.",
+  "rationale": "F1 pit timing depends on the cars immediately ahead/behind, not just a driver's tyre age. Undercut/overcut decisions are triggered by relative pace, track position, and tyre offset to nearby rivals; current best only uses median lap pace and tyre-life rank, missing local competitive context.",
+  "implementation_hint": "Within each Race-LapNumber, sort by Position and add features for ahead/behind driver TyreLife, Compound, LapTime_Delta, Pace_Deviation, Position gap proxy, and whether nearby rivals pitted recently via PitStop/Stint change. Also add field counts of cars on older/newer tyres by compound.",
+  "expected_effect": "Likely improves AUC on borderline pit calls where strategy is driven by traffic rather than absolute degradation.",
+  "risk": "Feature computation must preserve original row order and avoid using future laps; if Position is noisy after pit cycles, neighbor signals may add variance.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

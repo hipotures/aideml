@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered CatBoost binary specialist with rich categorical combinations",
+  "summary": "Current best snippets are feature-engineering heavy but still mostly tabular-numeric in spirit.",
+  "rationale": "Current best snippets are feature-engineering heavy but still mostly tabular-numeric in spirit. CatBoost’s ordered boosting and categorical combinations are designed to handle high-cardinality IDs and interaction-rich categorical structure without manual one-hot, which is a strong fit for `Driver`, `Race`, `Compound`, `Year`, and their combinations.",
+  "implementation_hint": "Train a standalone CatBoostClassifier in binary mode with categorical columns left raw, enable combinations via depth and CTRs, and compare against the current model on strict grouped CV. Test minimal manual preprocessing; let CatBoost learn `Driver x Race x Compound` style interactions implicitly.",
+  "expected_effect": "May capture identity-strategy interactions that hand-built heuristics miss, while remaining less leak-prone than ad hoc mean encodings.",
+  "risk": "If validation is not strictly race-grouped, CatBoost can still look deceptively strong; GPU/seed variance may also be nontrivial.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://huggingface.co/papers/1706.09516",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

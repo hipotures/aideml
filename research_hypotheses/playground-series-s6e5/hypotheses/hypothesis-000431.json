@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train-Test Density-Ratio Reweighting For Covariate Shift",
+  "summary": "The dataset already shows distribution-shift risk: unseen drivers/entities in test and possible 2025/session mix changes.",
+  "rationale": "The dataset already shows distribution-shift risk: unseen drivers/entities in test and possible 2025/session mix changes. Importance-weighting literature says when train and test covariates differ, reweighting training rows toward the test distribution can improve generalization without using labels from test.",
+  "implementation_hint": "Train a lightweight domain classifier to distinguish train vs test rows using raw/event features; convert its outputs to clipped density-ratio weights and refit the main model or only the final blender with those weights. Evaluate with both ordinary grouped CV and a train-vs-test AUC diagnostic.",
+  "expected_effect": "Better leaderboard robustness on underrepresented 2025/rare-entity regimes and a useful hedge against overfitting to older or easier races.",
+  "risk": "Estimated weights can be unstable and over-amplify outliers; clipping and a strong ablation against unweighted folds are necessary.",
+  "sources": [
+    "https://proceedings.mlr.press/v108/li20b.html",
+    "https://proceedings.mlr.press/v89/stojanov19a.html",
+    "https://proceedings.mlr.press/v108/park20b.html"
+  ]
+}

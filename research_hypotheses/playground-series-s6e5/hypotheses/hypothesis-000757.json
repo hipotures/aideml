@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Adversarial-validation weighting for train-test drift",
+  "summary": "The train/test split likely shifts by driver mix, season, and race composition.",
+  "rationale": "The train/test split likely shifts by driver mix, season, and race composition. A strong local CV can still miss leaderboard behavior if it overfits source-heavy regions. Covariate-shift literature supports importance weighting when the test covariates differ from train.",
+  "implementation_hint": "Train a classifier to distinguish train vs test using only covariates. Convert its OOF probabilities into clipped importance weights, then retrain the main GBDT/CatBoost with those weights or use them only for model selection/blend weighting. Validate with grouped folds by `Year_Race`, and compare weighted vs unweighted models on both standard CV and year-held-out CV.",
+  "expected_effect": "Small standalone AUC gain or, more likely, better public/private robustness and fewer CV-to-LB disappointments.",
+  "risk": "Noisy weights can increase variance; all adversarial scores and weights must be OOF to avoid leakage, and extreme weights should be clipped.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0925231211006011",
+    "https://www.researchgate.net/publication/357203459_Managing_dataset_shift_by_adversarial_validation_for_credit_scoring",
+    "https://www.researchportal.hkust.edu.hk/en/publications/a-theoretical-analysis-on-independence-driven-importance-weightin-2"
+  ]
+}

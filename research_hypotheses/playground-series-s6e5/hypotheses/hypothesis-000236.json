@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Neutralization Proxy Specialist",
+  "summary": "F1 strategy sources note that Safety Car/VSC periods materially reduce pit-loss and shift optimal stop timing.",
+  "rationale": "F1 strategy sources note that Safety Car/VSC periods materially reduce pit-loss and shift optimal stop timing. Your table lacks an explicit flag-state column, so there may be hidden signal in simultaneous field-wide lap-time inflation/compression that the current global model treats as noise.",
+  "implementation_hint": "Build race-lap regime features such as race-lap median `LapTime_Delta`, IQR/std of `LapTime_Delta`, fraction of drivers with large positive delta, and driver delta minus race-lap median. Train a small specialist model only on rows flagged as likely neutralized or near-neutralized, then blend with the base model using the proxy score as a gate.",
+  "expected_effect": "Better recall on opportunistic pit calls under SC/VSC-like conditions and less dilution of dry green-flag patterns.",
+  "risk": "Proxy labels for neutralization will be noisy; if the detector is crude it can overfit unusual slow laps or wet conditions.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

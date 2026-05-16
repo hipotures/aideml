@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Sequence Residual Model Over Last 5-8 Laps",
+  "summary": "Recent pit-stop prediction work found sequential deep models strongest because pit calls depend on evolving trends, not one-row snapshots.",
+  "rationale": "Recent pit-stop prediction work found sequential deep models strongest because pit calls depend on evolving trends, not one-row snapshots. The current solution is almost entirely tabular; a small sequence model can contribute orthogonal signal without replacing the main booster.",
+  "implementation_hint": "Build per-driver race sequences using only the last 5-8 laps of features such as LapTime_Delta, Position_Change, TyreLife, Cumulative_Degradation, field-relative z-scores, and recent pit cooldown flags. Train a compact GRU/TCN/BiLSTM or even a 1D-CNN, then use strict OOF probabilities as one extra meta-feature for the tabular model.",
+  "expected_effect": "Adds sensitivity to acceleration in wear and pace loss, improving recall on emerging pit windows that static ratios miss.",
+  "risk": "Window construction can silently leak if sequences are built before fold splitting or if padding crosses pit resets/race boundaries.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

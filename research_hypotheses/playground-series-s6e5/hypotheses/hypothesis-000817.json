@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Legality-State Expert With Actual Pirelli Compound Mapping",
+  "summary": "FIA rules require two different dry specifications unless wets/inters were used, and official race previews show that weekend `SOFT/MEDIUM/HARD` map to different underlying C-compounds by race.",
+  "rationale": "FIA rules require two different dry specifications unless wets/inters were used, and official race previews show that weekend `SOFT/MEDIUM/HARD` map to different underlying C-compounds by race. Current features treat `SOFT/MEDIUM/HARD` generically and only partially encode dry-compound usage, missing rule pressure and true softness context.",
+  "implementation_hint": "Join official race-weekend tyre nominations by `Year,Race` so each row knows whether weekend hard/medium/soft were e.g. `C2/C3/C4` or `C3/C4/C5`. Build a small dry-race expert with features like `dry_specs_used_so_far`, `mandatory_spec_used`, `wet_exception_active`, `second_dry_stop_pressure`, and `weekend_softness_index`.",
+  "expected_effect": "Improves late-race and one-stop/two-stop boundary decisions where legality or actual compound hardness matters more than generic tyre age.",
+  "risk": "Requires robust external joins and special-casing of non-standard events such as pre-season testing; wrong mapping coverage could hurt more than help.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.formula1.com/en/latest/article/what-tyres-will-the-teams-and-drivers-have-for-the-2024-united-states-grand.8QfDCtgqiePxAvvNol577",
+    "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join FastF1 Exogenous Race-State Features",
+  "summary": "FastF1 exposes weather, track status, session status, race-control messages, telemetry, and position data; those are exactly the exogenous triggers that often cause non-tyre-driven pit calls.",
+  "rationale": "FastF1 exposes weather, track status, session status, race-control messages, telemetry, and position data; those are exactly the exogenous triggers that often cause non-tyre-driven pit calls. This is a strong adjacent signal because the provided table is lap-level but strategy changes are often caused by VSC/SC, rain onset, or traffic windows rather than pure wear.",
+  "implementation_hint": "Create a side dataset keyed by Year/Race/LapNumber from FastF1 with track_status, rainfall, track temp, wind, total_laps, race-control flags, and simple traffic metrics such as distance/gap to driver ahead when available; test a narrow ablation first: safety-car flag, rainfall flag, session total_laps, and wet/dry transition indicators.",
+  "expected_effect": "Most likely gain is better recall on atypical stops and wet/intermediate races, plus improved generalization across tracks and seasons.",
+  "risk": "Entity matching across race names/years can be messy, and telemetry-derived gap features can accumulate integration error if computed over long windows.",
+  "sources": [
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://docs.fastf1.dev/api_reference/telemetry.html",
+    "https://docs.fastf1.dev/"
+  ]
+}

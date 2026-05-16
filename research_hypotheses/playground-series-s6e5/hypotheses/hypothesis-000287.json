@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut-overcut and traffic-window features from race-relative ordering",
+  "summary": "Public F1 strategy explanations repeatedly center pit timing on gap evolution, clean air, and whether a rival can undercut or overcut.",
+  "rationale": "Public F1 strategy explanations repeatedly center pit timing on gap evolution, clean air, and whether a rival can undercut or overcut. Your current features barely model local traffic geometry, yet available columns (`Position`, `LapTime_Delta`, `Position_Change`, `LapNumber`) can approximate who is boxed into traffic or has a clean-air incentive to stop now.",
+  "implementation_hint": "Within each `Race x Year x LapNumber`, compute leakage-safe relative features: percentile/rank of lap-time delta, tyre life, and degradation; gaps to nearby positions using same-lap lap-time surrogates; indicators for being stuck behind slower traffic; and regime flags for plausible undercut vs overcut opportunities by comparing a driver’s current pace deterioration to the race-lap median and nearby-position cohort.",
+  "expected_effect": "Adds tactical signal beyond raw tyre wear, especially for cases where pitting is triggered by rival pressure or traffic release rather than absolute degradation.",
+  "risk": "Without true time gaps, proxy features can be noisy; race-lap aggregates must use only same-row contemporaneous information, not future laps.",
+  "sources": [
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://motorsportscalendar.com/glossary/undercut",
+    "https://motorsportscalendar.com/glossary/overcut"
+  ]
+}

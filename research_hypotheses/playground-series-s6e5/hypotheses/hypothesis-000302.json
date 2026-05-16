@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Recursive latent degradation state plus uncertainty features",
+  "summary": "Recent F1 tyre research models degradation as a latent state with pit-stop resets and shows value from probabilistic state-space updates, not just observed tyre age.",
+  "rationale": "Recent F1 tyre research models degradation as a latent state with pit-stop resets and shows value from probabilistic state-space updates, not just observed tyre age. That suggests the useful signal may be the filtered hidden pace loss and its uncertainty, rather than more fixed compound-life cutoffs.",
+  "implementation_hint": "For each driver-race stint, build lightweight online features from a recursive filter on lap-time residuals after subtracting race-lap and compound baselines: filtered degradation level, slope, shock term, and posterior uncertainty proxy. Reset at `PitStop==1`; never use future laps. Feed these features into the existing tabular learner instead of replacing it with a full Bayesian model.",
+  "expected_effect": "Should separate true wear pressure from noisy single-lap spikes, especially where `LapTime_Delta` is volatile; uncertainty may help flag imminent-stop regimes.",
+  "risk": "Very similar in spirit to earlier latent-degradation proposals, so it needs to be operationalized more simply and tested for incremental value over existing degradation ratios. Poor baseline subtraction could just repackage noise.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ]
+}

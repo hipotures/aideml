@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Query Ranker As Auxiliary Expert",
+  "summary": "A stop call is partly a relative decision: among all drivers on this lap, who is most pit-ready now?",
+  "rationale": "A stop call is partly a relative decision: among all drivers on this lap, who is most pit-ready now? Ranking objectives are designed for within-group ordering and are a natural fit for grouped race-lap competition among drivers.",
+  "implementation_hint": "Train a CatBoost or LightGBM ranking model with `group_id = Year|Race|LapNumber`, target = `PitNextLap`, and evaluate via OOF predictions stacked into the main AUC model. Start with QuerySoftMax/LambdaMart or optimize classification while tracking QueryAUC. Compare against pure classification on the same features.",
+  "expected_effect": "Often improves the ordering of borderline cases within each lap even if absolute calibration is worse; stacking can convert that better ordering into AUC gain.",
+  "risk": "Groups with very few positives are noisy, and ranking scores are not calibrated probabilities by themselves. Use only as an auxiliary OOF feature or blend component.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

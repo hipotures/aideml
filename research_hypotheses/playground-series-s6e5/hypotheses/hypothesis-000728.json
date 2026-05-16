@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Physics-Constrained Boosting Specialist",
+  "summary": "Current best solutions already encode pit-window pressure, but the final learner is still free to fit non-physical reversals.",
+  "rationale": "Current best solutions already encode pit-window pressure, but the final learner is still free to fit non-physical reversals. CatBoost supports monotone constraints, and F1 tyre-strategy literature treats degradation and pit timing as structurally directional processes with pit-stop resets. A small monotone specialist on the most causal pressure features could regularize sparse race/driver regimes better than another unconstrained feature expansion.",
+  "implementation_hint": "Train a second model on a compact feature block such as `TyreLife`, `Laps_Remaining_Est`, `Service_Window_Pressure`, `Finish_Stop_Pressure`, `Cannot_Finish_On_Current_Tyre`, and degradation-rate features, with monotone signs chosen only where direction is defensible. Blend its OOF predictions with the main unconstrained model instead of replacing the main model.",
+  "expected_effect": "More stable grouped CV and better leaderboard transfer from fewer overfit sign-flips in rare compounds, drivers, and late-race states.",
+  "risk": "True effects are not globally monotone in wet/transition laps or near pit-window boundaries, so over-constraining too many raw features can hurt AUC.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/",
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

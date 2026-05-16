@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-cat specialist with purged OOF rank blending",
+  "summary": "CatBoost’s ordered boosting and ordered categorical statistics are designed to reduce prediction-shift leakage on sparse categories, which fits this dataset’s many rare drivers and race contexts.",
+  "rationale": "CatBoost’s ordered boosting and ordered categorical statistics are designed to reduce prediction-shift leakage on sparse categories, which fits this dataset’s many rare drivers and race contexts. For ROC-AUC, scikit-learn notes isotonic can change ranking via ties, and CV-stacking literature warns naive holdout stacking can create spurious AUC effects, so ensemble hygiene matters as much as the base learner.",
+  "implementation_hint": "Train a CatBoost Ordered-mode specialist on raw high-cardinality categoricals and composites such as `Driver x Compound`, `Race x LapBucket`, `Driver x Stint`, and `Race x Compound`, under strict race-group CV. Blend specialists with the current best tabular model using purged OOF predictions plus rank averaging or sigmoid/Platt calibration only, not isotonic.",
+  "expected_effect": "Improves sparse categorical interaction handling and gives a safer ensemble lift without damaging AUC rank order.",
+  "risk": "This develops an already-explored direction, so gains may be incremental; strict group-aware OOF generation is mandatory.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/faq",
+    "https://papers.neurips.cc/paper_files/paper/2018/file/14491b756b3a51daac41c24863285549-Paper.pdf",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://www.researchgate.net/publication/220519957_On_Cross-Validation_and_Stacking_Building_seemingly_predictive_models_on_random_data"
+  ]
+}

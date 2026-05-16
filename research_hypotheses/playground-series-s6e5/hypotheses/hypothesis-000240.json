@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Optimal-Stint Excess-Age Features From Estimated Degradation",
+  "summary": "Race-engineering references give a first-order optimal stint length relationship `N* ≈ sqrt(2P/d)`, where `d` is degradation slope and `P` is pit-loss.",
+  "rationale": "Race-engineering references give a first-order optimal stint length relationship `N* ≈ sqrt(2P/d)`, where `d` is degradation slope and `P` is pit-loss. That suggests a more principled feature family than fixed expected tyre life: estimate each driver-stint’s current degradation rate and compare current tyre age to its implied optimal stop zone.",
+  "implementation_hint": "Estimate `d_hat` from recent within-stint changes in `LapTime_Delta` or `Cumulative_Degradation / TyreLife`, optionally smoothed by compound and race. Use a coarse race-specific pit-loss prior `P` or just a normalized constant. Create features like `OptimalStintLen_Est`, `TyreLifeMinusOptimal`, `LapsRemainingMinusOptimalFreshWindow`, and interaction terms with `Compound` and `RaceProgress`.",
+  "expected_effect": "Captures nonlinear stop pressure from current stint shape, not just absolute tyre age, and should be complementary to existing finish-window rules.",
+  "risk": "`d_hat` is noisy on sparse or disturbed laps; if estimated from contaminated laps it can become a high-variance feature.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

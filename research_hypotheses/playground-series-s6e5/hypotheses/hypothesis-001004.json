@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a within-lap ranker, then beta-calibrate and blend",
+  "summary": "At each lap only a few cars are plausible pit candidates, so relative urgency within the same lap may be easier to learn than absolute probability.",
+  "rationale": "At each lap only a few cars are plausible pit candidates, so relative urgency within the same lap may be easier to learn than absolute probability. Learning-to-rank is a common adjacent pattern when leaderboard metric is rank-based and positives are sparse within natural query groups.",
+  "implementation_hint": "Define query groups as Year×Race×LapNumber and train an XGBoost ranker with positive labels for drivers who pit next lap. Use the ranker score as an additional feature or specialist model; convert OOF scores to probabilities with held-out beta calibration before blending.",
+  "expected_effect": "Should improve local ordering among contemporaneous drivers, complementing the baseline’s global probability estimates and potentially lifting ROC AUC after blending.",
+  "risk": "Rank objectives optimize within-group ordering, not calibrated probabilities, so post-processing is required. Groups with zero positives or unusual lap counts need careful handling.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://link.springer.com/article/10.1007/s10994-023-06336-7"
+  ]
+}

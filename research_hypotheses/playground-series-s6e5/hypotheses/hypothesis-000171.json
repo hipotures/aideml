@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state residual features from a state-space degradation model",
+  "summary": "Recent F1 tyre-degradation work models latent tyre pace as a hidden state with pit stops acting as resets.",
+  "rationale": "Recent F1 tyre-degradation work models latent tyre pace as a hidden state with pit stops acting as resets. That is more expressive than raw `TyreLife`, `LapTime_Delta`, or cumulative degradation because it can separate temporary pace noise from true stint decay.",
+  "implementation_hint": "Fit a lightweight past-only state-space or Kalman-style model per driver-race-stint to estimate latent degradation slope, acceleration, and surprise residuals relative to expected lap-time evolution after controlling for lap count and compound. Use those latent states as features in the existing tabular model.",
+  "expected_effect": "Could sharpen the trigger signal for 'degradation cliff next lap' cases that static windows miss, especially on compounds/circuits with nonlinear falloff.",
+  "risk": "Easy to leak if the latent state is smoothed with future laps; use filtering only, never full-sequence smoothing.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577",
+    "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres"
+  ]
+}

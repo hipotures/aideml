@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Exploit next-row PitStop consistency as a data construction probe",
+  "summary": "Because the target is PitNextLap and both train/test include current-lap PitStop, the next row for the same Year/Race/Driver sequence may directly reveal the label for all non-terminal laps.",
+  "rationale": "Because the target is PitNextLap and both train/test include current-lap PitStop, the next row for the same Year/Race/Driver sequence may directly reveal the label for all non-terminal laps. This is a validation trap worth testing explicitly before adding more weak features.",
+  "implementation_hint": "Sort by Year, Race, Driver, LapNumber, then create NextObservedPitStop = groupby(...).PitStop.shift(-1). Use it either as a feature or as a rule-based override where the next lap exists; fall back to the current best model for terminal/missing sequence rows.",
+  "expected_effect": "Could produce a step-change in AUC if the dataset contains complete future telemetry; otherwise it will quickly expose whether local CV has been inflated by row-order leakage.",
+  "risk": "May be considered leakage if the intended prediction setting forbids using future test rows; public LB will decide whether Kaggle’s provided test table permits it.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

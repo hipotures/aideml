@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap set encoder over the whole field context",
+  "summary": "Each row is not independent: pit windows open relative to the whole race state, traffic, and who else may box.",
+  "rationale": "Each row is not independent: pit windows open relative to the whole race state, traffic, and who else may box. Set Transformer style models are built for permutation-invariant interactions among items in a set, which matches the per-lap grid snapshot better than flat row-wise tabular models.",
+  "implementation_hint": "For each `Year+Race+LapNumber`, treat all cars on that lap as a set with per-car features; predict each car’s next-lap pit probability using a small set encoder plus a per-row head. Keep it lightweight and use it as a specialist whose OOF predictions are blended with GBDTs rather than replacing the main model.",
+  "expected_effect": "May capture synchronized strategy states and relative pressure patterns that row models miss, especially around mass pit windows or weather-driven collective behavior.",
+  "risk": "This is architecturally heavier and can underperform trees if the grouping logic or padding/masking is sloppy; strict race-group validation is essential.",
+  "sources": [
+    "https://www.maths.ox.ac.uk/node/32806",
+    "https://huggingface.co/papers/1810.00825",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1"
+  ]
+}

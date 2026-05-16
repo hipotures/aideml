@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone constrained pit-pressure expert",
+  "summary": "Several current features encode obvious directional priors: more finish-pressure, more stop-debt, and worse positive lap-time drift should usually not reduce pit likelihood ceteris paribus.",
+  "rationale": "Several current features encode obvious directional priors: more finish-pressure, more stop-debt, and worse positive lap-time drift should usually not reduce pit likelihood ceteris paribus. Monotone constraints can regularize tree models toward physically plausible behavior and sometimes improve generalization.",
+  "implementation_hint": "Train a separate XGBoost or LightGBM expert with monotonic constraints on a small trusted subset of features: increasing on TyreLife_ToFinish pressure, degradation-per-life, positive LapTime_Delta, prior mandatory-stop debt, and late-race pressure; decreasing on fresh-tyre indicators or finish margin. Blend this constrained expert with the unconstrained model.",
+  "expected_effect": "Likely small but robust gain, especially on public LB/OOD races where unconstrained trees overfit spurious local reversals.",
+  "risk": "Wrong-sign constraints on noisy features can cap upside. Apply only to features with strong domain directionality.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/v4.2.0/Parameters.html"
+  ]
+}

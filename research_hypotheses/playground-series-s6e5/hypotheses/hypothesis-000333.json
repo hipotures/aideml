@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Regulation-and-event gated specialists",
+  "summary": "FIA rules create structurally different stop mechanisms: dry races require two slick specs, wet races waive that requirement, 2025 Monaco had a special mandatory two-stop rule, and pre-season testing is not a normal Grand Prix.",
+  "rationale": "FIA rules create structurally different stop mechanisms: dry races require two slick specs, wet races waive that requirement, 2025 Monaco had a special mandatory two-stop rule, and pre-season testing is not a normal Grand Prix. Treating these rows as one regime likely blurs distinct label-generating processes.",
+  "implementation_hint": "Add explicit flags for slick-obligation-active, wet-exception-active, Monaco-2025 special rule, and testing_event. Train at least two specialists: dry strategic stops vs wet/testing/special-rule stops, then gate or blend by the rule/event flags instead of a single global model.",
+  "expected_effect": "Lower CV/LB mismatch and cleaner handling of rare but structurally different subsets.",
+  "risk": "Subset models can overfit because some regimes are small; keep the gating simple and back off to the global model when sample counts are low.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/2022_formula_1_sporting_regulations_-_iss_3_-_2021-04-30.pdf",
+    "https://api.fia.com/news/first-world-motor-sport-council-2025-heralds-start-vision-2030-and-announces-strategic-overhaul",
+    "https://www.fia.com/news/fia-and-formula-1-confirm-bahrain-will-host-2025-pre-season-testing"
+  ]
+}

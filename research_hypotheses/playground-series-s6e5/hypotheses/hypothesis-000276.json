@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "One-lap hazard reformulation with survival-consistent features",
+  "summary": "Pit-on-next-lap is a discrete-time event decision, so a hazard-style model should fit the label structure better than a generic tabular classifier.",
+  "rationale": "Pit-on-next-lap is a discrete-time event decision, so a hazard-style model should fit the label structure better than a generic tabular classifier. Discrete-time survival literature emphasizes modeling event probability conditional on survival so far, which matches lap-by-lap pit timing.",
+  "implementation_hint": "Create a specialist model trained only on pre-pit laps, with features like stint age, laps remaining, degradation slope proxies, and hazard-baseline bins for lap-in-stint and race progress. Keep CV grouped by race-year and ordered within driver-race so any baseline hazard table is estimated only from earlier rows/folds.",
+  "expected_effect": "Better ranking around borderline stop-now vs wait-one-lap cases; likely small CV lift if current model underuses sequential event structure.",
+  "risk": "Easy to leak if hazard priors or per-bin rates are computed on full races or full folds; also may add little if the wrapper already captures most nonlinearities.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

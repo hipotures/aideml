@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Censored time-to-next-stop model as an auxiliary specialist",
+  "summary": "XGBoost AFT is built for censored time-to-event targets.",
+  "rationale": "XGBoost AFT is built for censored time-to-event targets. For pit timing, many laps are naturally right-censored because the stop has not happened yet by sequence end, so survival-style supervision is a cleaner fit than only binary next-lap labels.",
+  "implementation_hint": "Create per-row target bounds for laps until next pit for the same Race-Year-Driver: exact [k,k] when a future stop exists, right-censored [k,+inf) when none remains. Train an AFT model and convert its implied survival/hazard near t=1 into a next-lap probability feature or blend member.",
+  "expected_effect": "Should add a smoother notion of stop imminence and help separate “not next lap but soon” from “not stopping for a long time.”",
+  "risk": "Target construction must be done only on training folds and may be noisy around race-end or weather-driven stops; converting AFT output to a calibrated next-lap probability may need careful OOF mapping.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

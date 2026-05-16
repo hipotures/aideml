@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Physics-informed monotone-constrained boosting",
+  "summary": "The current best features encode physically ordered quantities like tyre age, degradation pressure, and finish-window deficit, but unconstrained trees can learn brittle reversals.",
+  "rationale": "The current best features encode physically ordered quantities like tyre age, degradation pressure, and finish-window deficit, but unconstrained trees can learn brittle reversals. CatBoost supports monotone constraints, which is a good fit when higher window pressure or larger laps-beyond-finish should generally not reduce pit likelihood all else equal.",
+  "implementation_hint": "Apply monotone increasing constraints to selected engineered features such as TyreLife_ToFinish_CompoundRatio, Compound_LapsBeyondFinishWindow, positive degradation pressure, and possibly laps-since-last-stop, while leaving context features unconstrained; compare against the same feature set without constraints.",
+  "expected_effect": "May slightly lower train fit but improve public robustness by suppressing implausible local splits in sparse regimes.",
+  "risk": "Wrong-sign constraints can hurt if a feature is only conditionally monotone; CatBoost monotone constraints are CPU-only, so training may slow.",
+  "sources": [
+    "https://catboost.ai/docs/en/references/training-parameters/common.html",
+    "https://catboost.ai/docs/en/concepts/r-reference_catboost-train"
+  ]
+}

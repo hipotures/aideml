@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/overcut pressure features from estimated post-stop rejoin battles",
+  "summary": "Game-theoretic F1 strategy work shows competition materially changes optimal pit timing; ignoring opponents can reduce winning odds.",
+  "rationale": "Game-theoretic F1 strategy work shows competition materially changes optimal pit timing; ignoring opponents can reduce winning odds. The current baseline has little explicit undercut/traffic modeling, so causal rival-pressure signals are a distinct next step.",
+  "implementation_hint": "At each lap, estimate post-stop rejoin position using only current-lap field order and historical/OOF pit-loss priors by race-year. Build features like nearest rival gaps in front/behind, count of cars within the expected rejoin band, whether stopping now avoids emerging into traffic, and whether one more lap increases rejoin congestion or undercut threat.",
+  "expected_effect": "Should help separate 'can continue' from 'must pit now before traffic/undercut closes the window,' especially in midfield strategy battles.",
+  "risk": "Using realized future positions or future pit behavior will leak badly; any rejoin estimate must be based only on current standings plus training-fold priors.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

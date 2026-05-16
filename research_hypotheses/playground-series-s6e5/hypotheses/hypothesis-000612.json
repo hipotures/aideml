@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap pit-window and traffic context features",
+  "summary": "F1 pit decisions respond to the field, not only the driver's tyre wear: traffic, nearby rivals, undercut windows, and safety-car/VSC discounts change optimal stop timing.",
+  "rationale": "F1 pit decisions respond to the field, not only the driver's tyre wear: traffic, nearby rivals, undercut windows, and safety-car/VSC discounts change optimal stop timing. The available tabular data can approximate this through same-race same-lap cohort features without using the target.",
+  "implementation_hint": "For each Race-LapNumber cohort, add tyre-life rank/percentile, position rank vs tyre age, count/share of drivers with PitStop on current lap, previous-lap pit count by Race, median tyre life by position band, and gaps in Position/TyreLife to cars immediately ahead/behind. Preserve row order with groupby-transform and use only current or previous lap aggregates.",
+  "expected_effect": "May improve detection of coordinated pit phases and undercut responses, especially rows where individual degradation alone is ambiguous.",
+  "risk": "Current-lap cohort features may be transductive; validate with race-group folds to ensure they are allowed and stable.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.f1ago.com/glossary/undercut/",
+    "https://docs.fastf1.dev/data_reference/index.html"
+  ]
+}

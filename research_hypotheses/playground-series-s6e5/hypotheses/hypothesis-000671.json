@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join FastF1 race-state signals to create undercut/traffic and neutralization features",
+  "summary": "FastF1 exposes track-status, race-control messages, weather, pit in/out timing, pit-stop counts, and stream gaps to leader/car ahead.",
+  "rationale": "FastF1 exposes track-status, race-control messages, weather, pit in/out timing, pit-stop counts, and stream gaps to leader/car ahead. Those are exactly the ingredients behind real F1 pit calls: SC/VSC windows, traffic release, and undercut viability.",
+  "implementation_hint": "For overlapping seasons/races, align rows to FastF1 session time and add features like SC/VSC active or just-ended, laps since yellow/VSC start, GapToLeader, IntervalToPositionAhead, prior pit-stop count, pit-lane in/out timing proxies, and weather deltas. Also derive ‘cheap stop window’ and ‘rejoin in traffic’ indicators.",
+  "expected_effect": "High upside if the competition split includes the same public races, because current features lack explicit neutralization and traffic context.",
+  "risk": "Timestamp alignment can be messy; if race naming or timing alignment is off, this adds noise fast. Availability may differ by season/session.",
+  "sources": [
+    "https://docs.fastf1.dev/api_reference/session.html",
+    "https://docs.fastf1.dev/api.html"
+  ]
+}

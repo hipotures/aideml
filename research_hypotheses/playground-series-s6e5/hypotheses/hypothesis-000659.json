@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Standalone CatBoost CTR blend",
+  "summary": "The current best relies on AutoGluon GBM/XGB; CatBoost is specifically designed for high-cardinality categoricals and ordered target statistics that reduce leakage.",
+  "rationale": "The current best relies on AutoGluon GBM/XGB; CatBoost is specifically designed for high-cardinality categoricals and ordered target statistics that reduce leakage. Driver, Race, Compound, stint bins, and tyre-life bins are strong categorical interactions for pit behavior.",
+  "implementation_hint": "Train a separate CatBoostClassifier with raw categorical columns plus engineered categorical crosses such as Race_Stint, Driver_Compound, Race_Compound_TyreLifeBin, PositionBin_Compound. Use ordered boosting, moderate depth, class weights if needed, and blend rank-normalized predictions with the current GBM/XGB output.",
+  "expected_effect": "Likely adds model-family diversity and better categorical priors, improving ensemble AUC more than another GBM feature tweak.",
+  "risk": "CatBoost can overfit tiny race-driver combinations; group-aware validation is needed before trusting random CV gains.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://huggingface.co/papers/1706.09516"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

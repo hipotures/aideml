@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Listwise Same-Lap Ranker With Query Groups",
+  "summary": "Current work already uses within-lap heuristics, but public ranking docs suggest moving from pairwise/heuristic blends to true query-group losses.",
+  "rationale": "Current work already uses within-lap heuristics, but public ranking docs suggest moving from pairwise/heuristic blends to true query-group losses. Treat each (Year, Race, LapNumber) as a query and learn which drivers should rank highest for imminent pit risk. This matches the competition structure better than independent binary rows.",
+  "implementation_hint": "Train a separate expert with `qid=(Year,Race,LapNumber)` using XGBoost LTR or CatBoost querywise ranking. Start with binary relevance `PitNextLap`, then test graded relevance like 3=pit next lap, 2=pit within 2 laps, 1=pit within 3-4 laps, 0 otherwise. Blend its OOF ranks, not raw probabilities, into the existing ensemble.",
+  "expected_effect": "Could add a low-correlation expert that improves ordering inside crowded same-lap decisions, where AUC is won or lost.",
+  "risk": "Easy to leak if graded labels or querywise normalizations peek forward across folds; very small query groups may add noise.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

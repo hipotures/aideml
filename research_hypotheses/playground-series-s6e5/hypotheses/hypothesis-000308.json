@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-race-lap ranking expert",
+  "summary": "At any given race-lap only a few drivers are realistic next-stop candidates, so ranking drivers against same-lap peers can capture pit waves better than pure independent classification.",
+  "rationale": "At any given race-lap only a few drivers are realistic next-stop candidates, so ranking drivers against same-lap peers can capture pit waves better than pure independent classification. Official ranking objectives in CatBoost and LightGBM are designed exactly for grouped comparisons.",
+  "implementation_hint": "Build a specialist with group_id = Race-Year-LapNumber and relevance = PitNextLap. Train QuerySoftMax/YetiRank or LambdaRank on features that are comparable within the lap: tyre-age percentile, degradation percentile, position, delta-to-race-lap median, stint number, and stop-debt flags. Blend its scores with the base classifier OOF.",
+  "expected_effect": "Should improve ordering among simultaneous candidates and sharpen probabilities on clustered stop laps.",
+  "risk": "Query groups with zero or one positive are common, so ranking may be unstable unless blended; group leakage occurs if race-level normalizations use held-out laps.",
+  "sources": [
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdarank",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/"
+  ]
+}

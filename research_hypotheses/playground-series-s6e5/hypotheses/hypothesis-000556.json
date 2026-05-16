@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Strict OOF Blend With Post-Hoc Calibration",
+  "summary": "Different objectives can be complementary: binary classifiers estimate marginal stop risk, rankers estimate within-lap ordering, and regime experts capture heterogeneity.",
+  "rationale": "Different objectives can be complementary: binary classifiers estimate marginal stop risk, rankers estimate within-lap ordering, and regime experts capture heterogeneity. Calibration docs and stacking literature both stress that combination should use disjoint out-of-fold predictions.",
+  "implementation_hint": "Build OOF predictions from the current best classifier, the lap-group ranker, and the regime expert/CatBoost model. Train a tiny logistic or isotonic/sigmoid/temperature calibrator only on OOF predictions, then refit base models on full train and apply the learned combiner.",
+  "expected_effect": "Can convert model diversity into a small but real AUC gain while improving submission probability shape.",
+  "risk": "If the base models are too correlated, stacking adds variance without lift; isotonic can overfit on small calibration slices.",
+  "sources": [
+    "https://sklearn.org/1.8/modules/generated/sklearn.calibration.CalibratedClassifierCV.html",
+    "https://www.researchgate.net/publication/222467943_Stacked_Generalization",
+    "https://sklearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

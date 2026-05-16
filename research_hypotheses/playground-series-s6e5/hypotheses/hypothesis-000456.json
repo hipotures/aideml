@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Optimize for robustness with forward race-aware stacking weights, not mean CV alone",
+  "summary": "Scikit-learn’s guidance is explicit that random CV is unsafe for grouped or time-dependent data.",
+  "rationale": "Scikit-learn’s guidance is explicit that random CV is unsafe for grouped or time-dependent data. Given the small CV-to-public gap in the current best runs, the next gain may come from reducing optimistic validation and weighting models by worst-fold stability rather than average AUC.",
+  "implementation_hint": "Evaluate models on forward `Year`/`Race_Year` splits plus leave-one-race-out checks, record both mean and worst-fold AUC, then stack only models that are stable across folds. If calibrating, prefer strictly monotonic sigmoid scaling over isotonic when leaderboard AUC preservation matters.",
+  "expected_effect": "Lower local-CV optimism and safer public leaderboard performance, even if headline CV moves only slightly.",
+  "risk": "Can reject aggressive models that look best on mean CV, so local score may stagnate while generalization improves.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/cross_validation.html?highlight=cross_validate",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cover-stop pressure and undercut-vulnerability features",
+  "summary": "F1 strategy decisions are explicitly shaped by undercut/overcut pressure and competitors’ actions, and game-theoretic pit-stop work shows competition materially changes optimal decisions.",
+  "rationale": "F1 strategy decisions are explicitly shaped by undercut/overcut pressure and competitors’ actions, and game-theoretic pit-stop work shows competition materially changes optimal decisions. The current row already contains contemporaneous field context (`PitStop`, position, lap pace) that can proxy whether a team should cover a rival on the next lap.",
+  "implementation_hint": "Build strictly causal same-lap features such as number of nearby-position rivals who pitted this lap, field pit count on the lap, pace loss versus race/compound peers, and a simple clean-air or traffic-window proxy from position clustering; interact these with laps remaining and current compound.",
+  "expected_effect": "Should improve recall on reactive stops that are triggered by rival behavior rather than by the driver’s own tyre-age window alone.",
+  "risk": "Same-lap aggregates can accidentally leak if they use future ordering or target-derived info; keep them contemporaneous and preferably leave-one-row-out within lap aggregates.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discounted Pit-Loss EV From SC/VSC Risk",
+  "summary": "Public F1 strategy material consistently notes that pit loss collapses under Safety Car or VSC, and teams explicitly plan around caution probability; a next-lap pit model should depend on expected pit-cost discount, not only tyre age and finishability.",
+  "rationale": "Public F1 strategy material consistently notes that pit loss collapses under Safety Car or VSC, and teams explicitly plan around caution probability; a next-lap pit model should depend on expected pit-cost discount, not only tyre age and finishability.",
+  "implementation_hint": "Create per-race priors for green-flag pit loss and SC/VSC discount factors, then form features such as expected pit loss, caution-adjusted undercut value, and 'wait-for-cheap-stop' pressure by interacting those priors with progress, position, and service-window pressure.",
+  "expected_effect": "Improves ranking on tracks where optimal behavior is to stretch stints while waiting for a likely cheap stop, especially late-stint borderline cases.",
+  "risk": "Caution priors are approximate and may inject noise if circuit mappings are crude or not year-aware.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/",
+    "https://www.formula1.com/en/latest/article/albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E"
+  ]
+}

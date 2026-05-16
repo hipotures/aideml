@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Track-Template Residual Features Instead Of Global Tyre Windows",
+  "summary": "Official F1 strategy guides repeatedly show that pit windows are circuit-specific because pit-loss, degradation, warm-up, and overtaking differ by track.",
+  "rationale": "Official F1 strategy guides repeatedly show that pit windows are circuit-specific because pit-loss, degradation, warm-up, and overtaking differ by track. A global expected-life map misses this. Leakage-safe race-template priors can capture that Mexico-like long hard stints and Monaco-like overcut tracks should produce different residual signals even with the same compound and tyre age.",
+  "implementation_hint": "From training folds only, build race-level priors such as median first-stop lap, median stint length, and lap-window quantiles by `(Race, Compound, wet/dry)` and optionally `(Race, Compound, Position bucket)`. Feed the model residual features like `LapNumber - expected_first_stop_lap`, `TyreLife - expected_stint_age_at_this_progress`, and `distance_to_track_window_start/end`. Use fallback shrinkage to global priors for sparse races.",
+  "expected_effect": "Should improve generalization across tracks by replacing hand-set compound constants with track-aware timing residuals.",
+  "risk": "Small-sample races or format shifts across years can make templates noisy; use hierarchical shrinkage and year-aware backoff.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-possible-race-strategies-for-the-mexico-city.7iKvaSoen2IUbB1S9LaaV",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz/",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1"
+  ]
+}

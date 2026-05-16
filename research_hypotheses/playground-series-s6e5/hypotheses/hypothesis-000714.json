@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer safety-car, VSC, red-flag, and weather-shift regimes from peer lap anomalies",
+  "summary": "Public F1 strategy analysis says pit windows change sharply under Safety Car and low-grip tyre switches.",
+  "rationale": "Public F1 strategy analysis says pit windows change sharply under Safety Car and low-grip tyre switches. The current best features are mostly row-local; they likely miss race-lap shocks visible only in cross-driver context.",
+  "implementation_hint": "Build strictly causal race-lap aggregates such as median/quantile LapTime_Delta, median degradation change, fraction of drivers pitting on that lap, and deviations from each driver’s prior-lap baseline. Add short rolling shock flags and interactions with compound, tyre life, and position.",
+  "expected_effect": "Should improve recall on opportunistic stops triggered by neutralizations or sudden grip/weather changes that row-only models mis-rank.",
+  "risk": "If aggregates are not built causally within each race timeline, leakage is easy. Red-flag laps may also create noisy outliers.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Native-categorical XGBoost specialist",
+  "summary": "The data has high-cardinality raw categories (`Driver`, `Race`, interactions by year/compound), and current best code mostly compresses them into frequency features.",
+  "rationale": "The data has high-cardinality raw categories (`Driver`, `Race`, interactions by year/compound), and current best code mostly compresses them into frequency features. XGBoost’s native categorical partitioning can learn grouped category splits that freq encoding cannot express cleanly.",
+  "implementation_hint": "Train a lean XGBoost specialist with `enable_categorical=True` on raw categorical columns plus a compact numeric state set, using race-held-out folds only. Compare against the current freq-encoded baseline, then use OOF rank averaging if it is complementary rather than individually superior.",
+  "expected_effect": "Orthogonal gain from better categorical partitioning, especially for race/driver/compound combinations underrepresented by manual combo features.",
+  "risk": "Native categorical handling can still overfit if folds are not strict by race/year, and category consistency must be preserved.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/categorical.html",
+    "https://xgboost.readthedocs.io/en/latest/tutorials/categorical.html",
+    "https://catboost.ai/docs/en/features/categorical-features.html"
+  ]
+}

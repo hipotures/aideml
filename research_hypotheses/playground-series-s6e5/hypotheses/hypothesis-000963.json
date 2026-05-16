@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Forward-Only Latent Degradation State",
+  "summary": "A new F1 tire-degradation paper models wear as a latent state with explicit pit-reset dynamics and reports better predictive behavior than simpler autoregressive baselines.",
+  "rationale": "A new F1 tire-degradation paper models wear as a latent state with explicit pit-reset dynamics and reports better predictive behavior than simpler autoregressive baselines. That fits this dataset well because observed `Cumulative_Degradation` and lap-time noise likely under-measure the true stint state.",
+  "implementation_hint": "Fit a lightweight forward-only filter per Year/Race/Driver/Stint, using past `LapTime_Delta` and `Cumulative_Degradation` to update a latent wear level and slope, with reset after pit. Emit posterior wear, posterior slope, and innovation/shock as new features. Keep it filtering-only, not two-sided smoothing.",
+  "expected_effect": "Should reduce sensitivity to one-off slow laps and create cleaner pit-window signals, especially in noisy or mixed-condition stints.",
+  "risk": "Any backward smoothing leaks future information; an over-parameterized filter may just repackage noise and add instability.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

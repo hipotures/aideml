@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged race-blocked rank stacker with a monotone physics expert",
+  "summary": "Grouped leakage literature implies adjacent laps from the same driver-race can make CV too optimistic, especially once you add encoders or stackers.",
+  "rationale": "Grouped leakage literature implies adjacent laps from the same driver-race can make CV too optimistic, especially once you add encoders or stackers. A small monotone expert can regularize the most physics-like relationships while rank-only stacking stays aligned with AUC.",
+  "implementation_hint": "Use race-blocked or walk-forward folds with an embargo/gap around held-out races; train base models as the current GBDT, the pairwise ranker, and a monotone CatBoost/XGBoost specialist on features like latent wear, tyre life, laps remaining, and rule-based stop debt; stack only OOF percentile ranks.",
+  "expected_effect": "Usually lowers optimistic local variance and can improve public robustness by combining diverse inductive biases without over-trusting fold-specific probabilities.",
+  "risk": "Stricter CV may make local scores look worse before public scores improve; monotone constraints hurt if applied to the wrong features or too broadly.",
+  "sources": [
+    "https://link.springer.com/article/10.1007/s00477-024-02715-1",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://catboost.ai/docs/en/references/training-parameters/",
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf"
+  ]
+}

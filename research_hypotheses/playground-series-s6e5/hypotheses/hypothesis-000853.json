@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "AUC-safe foldwise sigmoid stacker instead of isotonic post-calibration",
+  "summary": "The evaluation metric is ROC AUC.",
+  "rationale": "The evaluation metric is ROC AUC. Scikit-learn explicitly notes that isotonic calibration can change AUC by introducing ties, while sigmoid calibration is strictly monotonic and preserves within-model ranking. That makes a foldwise sigmoid stacker a safer ensemble-finishing step than generic isotonic calibration.",
+  "implementation_hint": "Collect OOF predictions from diverse base models or experts, then fit a logistic meta-model or `CalibratedClassifierCV(method='sigmoid')` on held-out folds only. Compare against plain rank averaging and avoid isotonic unless a leaderboard test justifies the extra tie risk.",
+  "expected_effect": "Can stabilize cross-model probability scales and improve blend robustness without sacrificing the core ranking signal each base learner found.",
+  "risk": "If base learners are highly correlated, the stacker adds little; averaging calibrated models can still move global rank slightly, so it needs direct AUC validation.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

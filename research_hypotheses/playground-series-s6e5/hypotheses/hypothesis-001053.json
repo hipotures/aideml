@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Online tyre-cliff changepoint features from residualized stint sequences",
+  "summary": "Recent F1 tyre research models degradation as a latent state with pit-stop resets.",
+  "rationale": "Recent F1 tyre research models degradation as a latent state with pit-stop resets. Separately, changepoint methods are built to detect short-series regime shifts. That suggests a more specific feature family than generic rolling means: detect the first local break where pace/degradation moves from smooth wear to cliff behavior.",
+  "implementation_hint": "Within each `(Year,Race,Driver,Stint)`, residualize lap-time delta and degradation against lap-level field/compound means, then compute online changepoint proxies: cumulative sum shocks, breakpoint probability, last-break distance, pre/post-break slope, and cliff intensity. Use only past laps when constructing them.",
+  "expected_effect": "Should help separate normal old-tyre laps from imminent-stop laps where degradation suddenly accelerates.",
+  "risk": "Short stints and noisy wet laps can create false breaks; needs compound- and weather-aware smoothing.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://www.researchgate.net/publication/398227195_A_State-Space_Approach_to_Modeling_Tire_Degradation_in_Formula_1_Racing",
+    "https://www.mdpi.com/2504-4990/5/4/71"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation state proxies",
+  "summary": "Recent F1 degradation research models tyre pace as a latent state with pit stops as resets, not just static tyre age.",
+  "rationale": "Recent F1 degradation research models tyre pace as a latent state with pit stops as resets, not just static tyre age. Current best features include degradation ratios but not an explicit recursively updated stint state.",
+  "implementation_hint": "Within each Driver-Race-Stint ordered by LapNumber, compute causal EWMA and rolling slopes of LapTime_Delta, Pace_Deviation_From_Median, Cumulative_Degradation, and Position_Change. Add reset-aware features like ewma_pace_loss_since_stint_start, degradation_acceleration, and z-scored lap delta versus prior laps in same stint.",
+  "expected_effect": "May identify tyres approaching the performance cliff before the model sees a large absolute degradation value.",
+  "risk": "Sorting and lag construction must preserve row order and avoid future laps; noisy early-stint estimates may need min-period flags.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://papers.cool/arxiv/2501.04067",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

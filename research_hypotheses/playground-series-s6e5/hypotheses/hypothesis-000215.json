@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-window and pit-wave field-state features",
+  "summary": "F1 strategy articles repeatedly emphasize undercut range, clean air, traffic, and Safety Car pit-loss discounts.",
+  "rationale": "F1 strategy articles repeatedly emphasize undercut range, clean air, traffic, and Safety Car pit-loss discounts. The current best features mostly model tyre-window feasibility, but not whether pitting now creates a usable rejoin window or responds to a field-wide pit wave.",
+  "implementation_hint": "Within each `Race_Year x LapNumber`, derive features such as cars within undercut range by position band, local field median/dispersion of LapTime_Delta, percentile tyre age, count of nearby rivals already on old tyres, gap-proxy to clean air using neighboring position pace/order statistics, and lap-over-lap spikes in field slowdown to flag Safety Car/VSC-like states.",
+  "expected_effect": "Adds missing race-context signal for why a theoretically feasible stop happens now rather than 2-3 laps later.",
+  "risk": "Without true interval gaps, traffic proxies may be noisy; overly aggressive peer aggregates can leak if built with future information instead of same-lap-only context.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-tactical-options-for-the-united-states-grand.1ZzOOUjb17dsbzjjYoHBIT/",
+    "https://www.formula1.com/en/latest/article/strategy-unpacked-dissecting-the-red-flag-dilemma-facing-the-teams-in.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8.6srkF5Qds4PyK5XPuPP1F8"
+  ]
+}

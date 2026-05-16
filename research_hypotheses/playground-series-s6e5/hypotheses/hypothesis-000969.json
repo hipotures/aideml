@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Small sequence model over recent driver laps, rank-blended with the tree model",
+  "summary": "Recent F1 research on tyre-energy prediction reports strong performance from deep time-series models, while classic motorsport strategy work also uses neural models for pit decisions.",
+  "rationale": "Recent F1 research on tyre-energy prediction reports strong performance from deep time-series models, while classic motorsport strategy work also uses neural models for pit decisions. The current pipeline is heavily tabular; a compact GRU/TCN/Transformer over the last k laps per driver-race could capture temporal motifs like steady management versus sudden collapse that hand-built lag features miss.",
+  "implementation_hint": "Construct fixed-length histories per Year-Race-Driver using only past laps and current-lap covariates. Train a lightweight sequence classifier to predict next-lap pit probability, then blend its OOF ranks with the best CatBoost/GBDT model. Keep architecture small and compare raw probability blend versus rank-average blend for AUC stability.",
+  "expected_effect": "Primarily diversity gain rather than standalone superiority; the best case is a small but real ensemble boost if temporal patterns differ from tree-learned interactions.",
+  "risk": "Higher engineering and validation complexity. With only ~439k rows and many short sequences, a deep model can overfit unless masking, padding, and race-grouped OOF evaluation are handled carefully.",
+  "sources": [
+    "https://arxiv.org/abs/2501.04067",
+    "https://www.mdpi.com/2076-3417/10/21/7805",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

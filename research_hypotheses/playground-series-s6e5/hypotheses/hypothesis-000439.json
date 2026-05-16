@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Same-lap battlefield features plus weak undercut/overcut labels",
+  "summary": "Official F1 strategy explanations are relative, not absolute: the tyre graphic compares cars in a battle, and Palmer reduces pit timing to undercut, overcut, and go-long archetypes.",
+  "rationale": "Official F1 strategy explanations are relative, not absolute: the tyre graphic compares cars in a battle, and Palmer reduces pit timing to undercut, overcut, and go-long archetypes. The current best solutions are mostly single-car physics heuristics, so they likely miss whether a driver is strategically off-cycle versus the field.",
+  "implementation_hint": "For each `Race x LapNumber`, compute ranks or percentiles of `TyreLife`, `LapTime_Delta`, `Cumulative_Degradation`, and stint age overall and within compound. Add counts of rivals who already stopped, are on older tyres, or sit on alternative strategies. Then weak-label historical pit laps as undercut/overcut/go-long from nearby-rival timing and train an auxiliary archetype model or use archetype probabilities as features.",
+  "expected_effect": "Adds competitive-context signal and should better separate strategic cover stops from pure wear-driven stops.",
+  "risk": "Same-lap aggregates are legal but easy to misalign; weak labels will be noisy and should be treated as soft targets.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explaining-the-new-tyre-performance-graphics-seen-on-tv.21CVJlHg0St8zrzaaVbU4L",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

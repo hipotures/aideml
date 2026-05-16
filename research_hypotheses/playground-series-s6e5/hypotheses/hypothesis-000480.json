@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add cohort strategy-template priors",
+  "summary": "F1 pit timing is planned around one-stop/two-stop windows, compound cohorts, and traffic, not just individual tyre age.",
+  "rationale": "F1 pit timing is planned around one-stop/two-stop windows, compound cohorts, and traffic, not just individual tyre age. Public strategy descriptions emphasize common first-stop windows and undercut/overcut responses around rivals.",
+  "implementation_hint": "Build smoothed OOF priors by Race, Year, Stint, starting compound, current compound, position band, and normalized race progress: historical stop hazard at this lap, cumulative stop share, cohort median first/second stop lap, and deviation from cohort plan.",
+  "expected_effect": "Should capture race-specific strategy phases and planned pit waves without hand-tuning compound life thresholds.",
+  "risk": "High-cardinality priors can leak or overfit unless computed OOF and smoothed; weak for unseen Race_Year combinations.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://podiumprophets.com/blog/f1-tyre-strategy-guide",
+    "https://www.pirelli.com/tires/en-us/motorsport/f1/tires"
+  ]
+}

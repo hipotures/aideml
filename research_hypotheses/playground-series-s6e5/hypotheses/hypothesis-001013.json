@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-constrained regime model for pit-window features",
+  "summary": "The best features already encode intuitive pit pressure variables like tyre age vs expected life, finish-tyre deficit, and old-tyre late-race pressure.",
+  "rationale": "The best features already encode intuitive pit pressure variables like tyre age vs expected life, finish-tyre deficit, and old-tyre late-race pressure. Tree ensembles can still learn jagged local inversions from noise; monotonic constraints are a direct way to stabilize those strategy relationships when the domain direction is clear.",
+  "implementation_hint": "Train an XGBoost or LightGBM constrained model where probability is non-decreasing in features such as tyre_age_vs_expected, finish_tyre_deficit, laps_remaining_vs_expected_life, and perhaps pit-window pressure, while constraining obviously inverse features if justified. Use it as either a standalone challenger or a low-weight ensemble member against the unconstrained baseline.",
+  "expected_effect": "Could improve generalization on rare compounds/races by forcing smoother, more physically plausible pit-window behavior instead of memorizing local quirks.",
+  "risk": "Wrong constraint signs or over-constraining interaction-heavy features can hurt AUC; some features are only conditionally monotone so constraints should be limited to the clearest ones.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=monotone"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut/overcut value proxy from simplified stop-now vs stop-later simulation",
+  "summary": "Pit-stop research and strategy references frame timing as comparing the value of stopping now versus extending the stint under degradation and pit-loss tradeoffs.",
+  "rationale": "Pit-stop research and strategy references frame timing as comparing the value of stopping now versus extending the stint under degradation and pit-loss tradeoffs. A one-step policy-value feature is more faithful to race strategy than thresholding TyreLife alone.",
+  "implementation_hint": "Build features that approximate delta race time for stop now, stop next lap, or extend two laps using current degradation rate, fresh-tyre finish margin, and simple pit-loss constants inferred per race type. Add interaction features with position and position-change to capture undercut pressure.",
+  "expected_effect": "Should sharpen predictions near the real decision boundary, especially late-stint rows where several compounds are still feasible but timing matters.",
+  "risk": "Pit-loss constants are unobserved and noisy; bad approximations can add variance. Keep it as a feature block, not a hard rule engine.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID3854948_code2013259.pdf?abstractid=3769652&mirid=1",
+    "https://www.mdpi.com/2076-3417/10/21/7805"
+  ]
+}

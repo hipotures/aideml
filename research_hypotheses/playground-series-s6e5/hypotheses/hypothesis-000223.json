@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "GPBoost mixed-effects model for driver and circuit heterogeneity",
+  "summary": "The dataset has very high-cardinality `Driver` plus repeated race structure.",
+  "rationale": "The dataset has very high-cardinality `Driver` plus repeated race structure. GPBoost is explicitly built to combine boosted trees with grouped random effects, which is a strong fit for driver-specific and race-specific baseline pit propensity that plain GBDTs may only memorize crudely.",
+  "implementation_hint": "Train a GPBoost binary model with fixed-effect tabular features and grouped random intercepts for `Driver`, `Race_Year`, and possibly `Driver x Compound` or random coefficients on `TyreLife` by driver. Use it as a standalone specialist or OOF meta-feature for the existing booster.",
+  "expected_effect": "Improves generalization on rare or shifted driver/race combinations by shrinking entity effects instead of overfitting one-hot/frequency signals.",
+  "risk": "Operational complexity is higher than standard LightGBM/XGBoost, and gains may be modest if split strategy already captures most entity variation.",
+  "sources": [
+    "https://gpboost.readthedocs.io/en/stable/",
+    "https://gpboost.readthedocs.io/en/latest/pythonapi/gpboost.GPModel.html",
+    "https://www.nature.com/articles/s41598-025-16526-z"
+  ]
+}

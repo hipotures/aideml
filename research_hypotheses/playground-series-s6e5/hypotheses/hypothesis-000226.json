@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Low-weight AUC-optimized pairwise specialist blended with tree baseline",
+  "summary": "Since the metric is ROC AUC, a model trained with pairwise AUC/ranking loss can add diversity beyond logloss-trained tabular boosters.",
+  "rationale": "Since the metric is ROC AUC, a model trained with pairwise AUC/ranking loss can add diversity beyond logloss-trained tabular boosters. Direct AUC-optimization literature exists, and ranking-boosting work shows pairwise objectives can outperform plain classification when the goal is ordering.",
+  "implementation_hint": "Train a compact specialist on OOF folds using a pairwise objective: LightGBM `lambdarank` with race-lap or stint-window grouping, or a linear / shallow NN pairwise AUC loss over positive-negative pairs sampled within comparable race contexts. Blend its OOF predictions conservatively with the current best GBDT rather than replacing the baseline.",
+  "expected_effect": "Adds orthogonal ranking signal and can improve leaderboard AUC even if standalone CV is only similar to the baseline.",
+  "risk": "Pair construction and grouping choice matter a lot; an overly global pairwise setup may waste capacity on trivial negatives.",
+  "sources": [
+    "https://www.microsoft.com/en-us/research/publication/learning-to-rank-using-classification-and-gradient-boosting/",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0031320311004729",
+    "https://research.monash.edu/en/publications/optimising-area-under-the-roc-curve-using-gradient-descent/"
+  ]
+}

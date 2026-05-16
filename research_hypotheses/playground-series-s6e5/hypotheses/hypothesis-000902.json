@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Infer Safety-Car/VSC Regimes From Lap-Wide Distortions",
+  "summary": "Public F1 strategy work treats FCY state as one of the highest-value pit predictors, and distinguishes first-lap SC/VSC from later laps because most opportunistic stops happen immediately.",
+  "rationale": "Public F1 strategy work treats FCY state as one of the highest-value pit predictors, and distinguishes first-lap SC/VSC from later laps because most opportunistic stops happen immediately. Your current features approximate pit waves, but they do not explicitly infer neutralization state from the available tabular signals.",
+  "implementation_hint": "Build race-lap proxy features from available columns only: field median LapTime inflation vs recent race baseline, field LapTime_Delta inflation, prior-lap pit-wave size, and continuation flags. Create a 3-5 state inferred regime feature such as normal/first-wave/continuation/late-wave, then either add it to the main model or train a separate expert for suspected neutralization laps and rank-blend OOF predictions.",
+  "expected_effect": "Should improve recall on strategically opportunistic stops and reduce noise from treating neutralized laps like normal degradation-driven laps.",
+  "risk": "Proxy labels may be noisy because the dataset lacks explicit SC/VSC annotations; overfitting to extreme lap-time spikes is possible on wet or disrupted laps.",
+  "sources": [
+    "https://res.mdpi.com/d_attachment/applsci/applsci-10-07805/article_deploy/applsci-10-07805.pdf",
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://f1briefing.com/how-safety-cars-change-f1-race-strategies/"
+  ]
+}

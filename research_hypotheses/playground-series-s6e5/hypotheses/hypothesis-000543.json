@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Competing-risks discrete-time hazard: pit vs finish-without-pit",
+  "summary": "Generic hazard framing is already known, but this dataset has a specific competing event: many rows will never pit again before the race ends.",
+  "rationale": "Generic hazard framing is already known, but this dataset has a specific competing event: many rows will never pit again before the race ends. Discrete-time competing-risks methods are designed exactly for event-at-lap data with right censoring and can separate 'pit soon' from 'survive to finish'.",
+  "implementation_hint": "Derive time-to-next-pit and a competing event label for finish-without-further-pit. Train a cause-specific discrete-time model or two-head sidecar on expanded person-lap rows; use the t+1 cause-specific pit hazard or cumulative incidence at 1 lap as a blend feature.",
+  "expected_effect": "Should reduce false positives late in races and on tyres that are old but still intended to run to the finish.",
+  "risk": "Row expansion increases training cost, and poor censoring logic can create label bugs; keep it as a narrow sidecar first.",
+  "sources": [
+    "https://academic.oup.com/biometrics/article/81/2/ujaf040/8120014",
+    "https://academic.oup.com/biometrics/article-pdf/74/4/1468/55809737/biometrics_74_4_1468.pdf"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-Pocket And Rejoin-Position Game Features",
+  "summary": "F1 strategy sources repeatedly note that the success of an undercut depends on rejoining in clean air, not just tyre age.",
+  "rationale": "F1 strategy sources repeatedly note that the success of an undercut depends on rejoining in clean air, not just tyre age. That suggests adding local opponent context: whether pitting now likely drops the driver into traffic, or whether a rival ahead is vulnerable to a clean-air undercut.",
+  "implementation_hint": "Within each Year-Race-LapNumber snapshot, build field-relative features: gaps in current position order, density of cars within a small lap-time/position window, estimated pit-window pocket size, cars likely to be jumped after a stop, and a crude clean-air score using nearby rivals’ tyre age/pace. Use only same-lap information; do not leak future pit reactions.",
+  "expected_effect": "Should improve ranking among medium-probability cases where two drivers have similar tyre wear but only one has a strategically usable pit window.",
+  "risk": "Without exact time gaps, proxy traffic features may be noisy; benefit depends on whether position/lap-time surrogates are strong enough to approximate rejoin traffic.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://f1chronicle.com/how-the-undercut-works-in-f1/"
+  ]
+}

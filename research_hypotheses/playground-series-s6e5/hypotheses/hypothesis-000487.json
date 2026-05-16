@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Train a groupwise ranking model for AUC",
+  "summary": "ROC AUC evaluates ordering, not probability calibration.",
+  "rationale": "ROC AUC evaluates ordering, not probability calibration. A pairwise/listwise ranker grouped by Race_Year or Race_Year-Driver can focus on ranking true pit-next laps above many adjacent non-pit laps, which ordinary binary logloss may underemphasize.",
+  "implementation_hint": "Add a CatBoost PairLogitPairwise or LightGBM ranker branch using the same engineered features; group rows by race-year or driver-race stint, output raw decision scores, and blend with the existing classifier by OOF AUC.",
+  "expected_effect": "Small AUC lift from better within-race ordering, especially around dense pit windows where probabilities are close.",
+  "risk": "Pairwise objectives can overfit groups or produce poorly scaled scores; compare with rank-normalized OOF predictions, not raw probabilities.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://arxiv.org/abs/1706.09516"
+  ]
+}

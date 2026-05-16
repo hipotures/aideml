@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Learned next-compound transition priors with hierarchical smoothing",
+  "summary": "The best code already checks whether fresh soft/medium/hard can finish, but teams do not choose those compounds uniformly.",
+  "rationale": "The best code already checks whether fresh soft/medium/hard can finish, but teams do not choose those compounds uniformly. Strategy guides emphasize track-specific tyre choice, warm-up, and offset tradeoffs, and the dry-race rule means the preferred next compound depends on what has already been used.",
+  "implementation_hint": "Recover actual post-stop compounds from training sequences, then create out-of-fold priors such as `P(next_compound | current_compound, stint, laps_remaining_bin, race, year, wet_dry, slicks_used, prior_pits)`, smoothed hierarchically from race-year to race to global. Convert them into features like `prob_switch_to_hard`, `prob_same_compound_repeat`, `transition_entropy`, and `expected_finish_margin_under_likely_next_compound`.",
+  "expected_effect": "Adds track- and regime-specific strategic preference information without external labels, especially for separating one-stop extension rows from genuine stop-call rows.",
+  "risk": "Sparse transition tables can overfit and same-race leakage is a real trap; build priors strictly out-of-fold and shrink aggressively.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_5_-_2025-04-30.pdf",
+    "https://www.formula1.com/en/latest/article/strategy-guide-what-are-the-tactical-options-for-the-united-states-grand.1ZzOOUjb17dsbzjjYoHBIT/",
+    "https://www.formula1.com/en/latest/article/mercedes-explain-how-they-engineered-hamiltons-hungary-win.6boKz816SMYDaEPetkdWlq"
+  ]
+}

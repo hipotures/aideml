@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stop-in-k-laps discrete hazard head with next-lap extraction",
+  "summary": "Discrete-time survival literature recommends modeling event hazard as conditional probability over person-period data.",
+  "rationale": "Discrete-time survival literature recommends modeling event hazard as conditional probability over person-period data. For pit strategy, predicting `stop in 1,2,3,...,H laps` is often easier than directly learning only `next lap`, and the `k=1` hazard becomes the submission target.",
+  "implementation_hint": "Within each driver-race stint, derive future stop distance from observed `PitStop` rows; expand or relabel rows with horizon bins (for example `1..6`, `7+`, `no more stop`). Train a multiclass or multi-label hazard model using only past/current features, then use the `k=1` posterior as `PitNextLap`. Compare to a direct binary model under embargoed race-level CV.",
+  "expected_effect": "Improves signal density near stops and should sharpen ordering around true pit windows.",
+  "risk": "Label construction can silently leak if post-row stop information is merged incorrectly; horizon choice may overfit if too fine.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

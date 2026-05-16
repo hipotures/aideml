@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Purged group CV plus regime-specific sigmoid-calibrated ensemble",
+  "summary": "This task has strong within-race dependence, so optimistic local CV can come from race-group leakage even when features are legal.",
+  "rationale": "This task has strong within-race dependence, so optimistic local CV can come from race-group leakage even when features are legal. For deployment, sklearn notes sigmoid calibration preserves ranking, while isotonic can change AUC via ties. That makes a purged grouped OOF pipeline plus regime-wise sigmoid calibration attractive for ROC-AUC submissions.",
+  "implementation_hint": "Model selection should use LeaveOneGroupOut or GroupKFold on Year_Race, optionally with purging of adjacent same-driver laps around validation races if any history features are used. Build 2-3 heterogeneous models, generate strict OOF predictions, then fit separate Platt/sigmoid calibrators for regimes such as dry vs wet and early/mid/late race. Blend calibrated OOF outputs only after all base predictions are fully OOF.",
+  "expected_effect": "Likely improves LB alignment more than raw CV, and can turn a flat ensemble into a slightly stronger, stabler submission without changing base feature logic much.",
+  "risk": "More pipeline complexity; if regime buckets are too small, calibration noise can outweigh the benefit.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

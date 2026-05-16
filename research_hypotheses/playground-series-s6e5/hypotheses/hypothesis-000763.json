@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Shadow-rival pairwise pressure model instead of full-field aggregates",
+  "summary": "Recent F1 game-theoretic work argues that ignoring direct competition materially degrades pit strategy quality, and official analysis notes undercut/overcut decisions usually matter only when a rival is within striking range.",
+  "rationale": "Recent F1 game-theoretic work argues that ignoring direct competition materially degrades pit strategy quality, and official analysis notes undercut/overcut decisions usually matter only when a rival is within striking range. That suggests a focused ‘most relevant opponent’ representation may outperform broad race-level summaries.",
+  "implementation_hint": "Within each `Year+Race+LapNumber`, construct a shadow rival for each row: nearest car ahead/behind by position and same/adjacent stint phase; derive pairwise features like position proximity, tyre-age gap, degradation gap, lap-delta gap, compound mismatch, and whether pitting now likely jumps that rival after pit-loss priors. Train a specialist on these pairwise features and blend with the global model.",
+  "expected_effect": "Could recover strategic interaction signal that simple position or race-level features miss, especially for midfield undercut battles where the next-lap decision is highly local.",
+  "risk": "Without true time gaps, the shadow rival is approximate; bad rival matching can add structured noise.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

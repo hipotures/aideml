@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Model each lap as a set, then distill or blend",
+  "summary": "Pit decisions depend on field context: rival tyre ages, lap-wide pressure, and who else looks near a stop.",
+  "rationale": "Pit decisions depend on field context: rival tyre ages, lap-wide pressure, and who else looks near a stop. Set Transformer is designed for permutation-invariant set inputs and can model interactions among all drivers in the same lap snapshot without imposing arbitrary row order.",
+  "implementation_hint": "For each `Year/Race/LapNumber`, build a set of driver feature vectors. Train a lightweight DeepSets/SetTransformer expert to output one score per driver in the set, using masking for varying field size. Use its OOF predictions directly in the ensemble or distill them into a GBM as an extra feature.",
+  "expected_effect": "Could add genuinely new signal beyond hand-built cohort pressure features by learning higher-order field interactions automatically.",
+  "risk": "Higher engineering cost and weaker single-model performance than GBMs if training is not well regularized; must avoid leakage from future laps in the set construction.",
+  "sources": [
+    "https://proceedings.mlr.press/v97/lee19d.html",
+    "https://www.ijcai.org/proceedings/2022/434"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

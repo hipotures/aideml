@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Leakage-hardened ordered encodings and harsher validation splits",
+  "summary": "The dataset has repeated drivers, races, and temporal dependence within race, so naive encodings and random grouped folds can still overstate signal.",
+  "rationale": "The dataset has repeated drivers, races, and temporal dependence within race, so naive encodings and random grouped folds can still overstate signal. CatBoost’s ordered target statistics exist precisely to reduce this leakage, and newer cross-validation literature shows dependent data can materially inflate AUC when structure is ignored.",
+  "implementation_hint": "Compare the current StratifiedGroupKFold against stricter schemes: leave-one-race-out within year, leave-one-year-out, and a hybrid where encodings for Driver, Driver×Compound, and Race×Compound are generated OOF in fold order only. Use these encodings for XGBoost/LightGBM rather than global frequency codes, and keep CatBoost as a leakage-resistant reference model.",
+  "expected_effect": "May lower local CV slightly but improve leaderboard transfer and reveal whether current feature gains are partly validation artifacts.",
+  "risk": "This is more about trustworthiness than guaranteed CV uplift; if the leaderboard distribution matches current folds, the stricter setup may not pay off immediately.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://sciety.org/articles/activity/10.21203/rs.3.rs-9357577/v1",
+    "https://www.tandfonline.com/doi/abs/10.1080/00949655.2020.1783262"
+  ]
+}

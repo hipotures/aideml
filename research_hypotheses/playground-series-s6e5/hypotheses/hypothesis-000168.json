@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Embargoed race-sequence CV plus fold-safe encoders",
+  "summary": "Next-lap labels create overlap between adjacent laps of the same driver/race, so naive row-wise or lightly grouped CV can overstate AUC.",
+  "rationale": "Next-lap labels create overlap between adjacent laps of the same driver/race, so naive row-wise or lightly grouped CV can overstate AUC. Time-series leakage literature and sklearn target-encoder docs both point to near-neighbor leakage and non-cross-fit encoders as common failure modes, especially with high-cardinality IDs like Driver and Race-Year.",
+  "implementation_hint": "Split by ordered `(Race, Year, Driver)` sequences, purge at least 1 lap on each side of validation segments, and apply any target/frequency encoding with fold-local fit_transform only. Compare current CV to embargoed CV before trusting feature gains.",
+  "expected_effect": "Likely lowers optimistic local CV a bit but improves leaderboard correlation and helps reject misleading features faster.",
+  "risk": "May reduce apparent CV and make tuning noisier if folds become too small or too imbalanced.",
+  "sources": [
+    "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3836631",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html"
+  ]
+}

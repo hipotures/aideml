@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monaco-2025 rule-aware legality state",
+  "summary": "Inference from the 2025 FIA rules: Monaco is a special case.",
+  "rationale": "Inference from the 2025 FIA rules: Monaco is a special case. In dry conditions, most races only require two slick compounds, but Monaco 2025 also requires three tyre sets; the wet/intermediate exemption still applies. A generic 'owes one stop' feature likely under-models this one-race regime shift.",
+  "implementation_hint": "Add a causal state machine per driver-race with features such as `dry_rule_active`, `used_wet_or_inter`, `slick_compounds_used`, `sets_used`, `stops_completed`, `required_stops_remaining`, and interactions with `LapsRemaining_Est` and current finish-margin features. Gate the extra stop-pressure features to `Race == Monaco Grand Prix` and `Year >= 2025`.",
+  "expected_effect": "Small but clean lift from better handling of Monaco rows and late-race stop-pressure calibration.",
+  "risk": "Low coverage and easy overfit if Monaco naming/versioning is inconsistent; all state features must be computed only from prior laps within the race.",
+  "sources": [
+    "https://www.fia.com/system/files/documents/fia_2025_formula_1_sporting_regulations_-_issue_4_-_2025-02-26.pdf",
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE/"
+  ]
+}

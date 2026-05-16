@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-held-out ordered-categorical stack with purge-aware validation",
+  "summary": "CatBoost’s ordered boosting was built to reduce prediction shift from categorical leakage, which is highly relevant here because Driver/Race/Compound interactions are high-cardinality and repeated within race sequences.",
+  "rationale": "CatBoost’s ordered boosting was built to reduce prediction shift from categorical leakage, which is highly relevant here because Driver/Race/Compound interactions are high-cardinality and repeated within race sequences. This is also the cleanest way to stress-test whether current CV is inflated by same-race future context.",
+  "implementation_hint": "Train a CatBoost classifier using raw categoricals plus existing numeric features, but generate all meta-features and stacks with whole-race `GroupKFold` only; add an embargo by dropping neighboring laps from training when validating a race if you build any race-level encodings. Blend CatBoost and the tree baseline only from OOF predictions.",
+  "expected_effect": "May recover signal from high-cardinality categorical combinations without manual frequency engineering and improve generalization if current encodings leak subtle same-race future information.",
+  "risk": "If the leaderboard/test distribution is close to train races, stricter grouped validation may lower local CV while actually being the more trustworthy estimate; stacking must stay fully OOF.",
+  "sources": [
+    "https://arxiv.org/abs/1706.09516",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

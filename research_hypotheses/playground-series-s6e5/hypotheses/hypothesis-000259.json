@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-sequence candidate-lap reranking",
+  "summary": "This target is fundamentally about choosing the imminent stop lap within a short driver-race-stint sequence, not just classifying independent rows.",
+  "rationale": "This target is fundamentally about choosing the imminent stop lap within a short driver-race-stint sequence, not just classifying independent rows. Learning-to-rank methods are designed to order items inside a group and can complement a standard ROC-AUC classifier by improving local ordering near true stop windows.",
+  "implementation_hint": "Form groups by driver-race-stint and restrict training to candidate windows, e.g. laps with moderate base hazard or late TyreLife. Train a LightGBM/XGBoost ranker to order candidate laps within each group using the existing handcrafted urgency features plus race-lap context; blend its rank-normalized output with the base binary model.",
+  "expected_effect": "Should convert broad hazard signals into better lap-to-lap discrimination, especially when several adjacent laps all look plausible to a pure classifier.",
+  "risk": "Ranking objectives optimize within-group ordering, not probability calibration; poor candidate-window construction can drop recall. Keep the classifier as the backbone and use the ranker as a local refiner.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart"
+  ]
+}

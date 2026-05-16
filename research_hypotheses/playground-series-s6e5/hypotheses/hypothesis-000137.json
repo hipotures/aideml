@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Categorical specialist using ordered CTRs or hierarchical empirical-Bayes encodings",
+  "summary": "The dataset has very high-cardinality driver identities across only four seasons, and published encoding benchmarks show regularized target encoding is usually stronger than crude integer or frequency encodings.",
+  "rationale": "The dataset has very high-cardinality driver identities across only four seasons, and published encoding benchmarks show regularized target encoding is usually stronger than crude integer or frequency encodings. CatBoost’s ordered categorical transformations are specifically designed to create target-based numeric features without naive leakage.",
+  "implementation_hint": "Train a specialist model that keeps raw categorical columns and interactions such as `Driver×Year`, `Race×Compound`, and possibly `Driver×Compound`, using CatBoost ordered CTRs or manual out-of-fold smoothed empirical-Bayes encodings with hierarchy global -> year -> race -> driver; blend this specialist with the current numeric-heavy model.",
+  "expected_effect": "Should recover signal from repeated driver/race/compound patterns that the current ordinal-plus-frequency treatment is likely underusing.",
+  "risk": "This is highly leakage-sensitive; encodings must be computed fold-safely and grouped so the model does not see future rows from the same race sequence.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://link.springer.com/article/10.1007/s00180-022-01207-6"
+  ]
+}

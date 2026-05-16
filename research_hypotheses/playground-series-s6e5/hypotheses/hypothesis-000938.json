@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Mandatory Compound Compliance State",
+  "summary": "In dry F1 races, drivers generally must use at least two dry tyre specifications, so late-race cars still on one dry compound have a structural pit obligation.",
+  "rationale": "In dry F1 races, drivers generally must use at least two dry tyre specifications, so late-race cars still on one dry compound have a structural pit obligation. Current features know compound and stint but not whether the driver has already satisfied the compound rule.",
+  "implementation_hint": "Within each Year-Race-Driver ordered by LapNumber, build past-only flags/counts: unique dry compounds used so far, current dry compound seen before, has_used_two_dry_compounds, late_race_must_switch proxy, and interactions with laps remaining. Keep wet/intermediate rows separate because dry-compound obligation changes in wet races.",
+  "expected_effect": "Improves high-probability late-race cases where tyre age alone underestimates required stops.",
+  "risk": "Dataset may include simulations/testing or wet races where real FIA rule assumptions are imperfect; gate on Race != Pre-Season Testing and dry compounds only.",
+  "sources": [
+    "https://f1chronicle.com/why-do-f1-cars-need-pit-stops/",
+    "https://www.gpfans.com/en/f1-news/1010929/f1-pit-stops/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-year grouped validation and model selection",
+  "summary": "The current holdout is random stratified, but lap data are autocorrelated within races and drivers.",
+  "rationale": "The current holdout is random stratified, but lap data are autocorrelated within races and drivers. Scikit-learn warns that standard random CV is inappropriate for time-dependent samples because nearby observations violate independence, so local AUC may overestimate public performance or choose brittle features.",
+  "implementation_hint": "Evaluate candidate feature sets with GroupKFold by Race-Year or leave-one-race/year-out folds, optionally preserving chronology by training on earlier years and validating later years. Use this validation only for feature/model selection, then retrain the chosen configuration on full train for submission.",
+  "expected_effect": "May reduce misleading local gains and identify features that generalize across races instead of memorizing event-specific pit windows.",
+  "risk": "If Kaggle test is randomly sampled from the same races as train, stricter grouped CV may under-rank useful race-specific encodings; compare both random and grouped CV before discarding ideas.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/cross_validation.html?highlight=cross_validate"
+  ]
+}

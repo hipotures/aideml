@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Hold-out beta or Venn-Abers calibration on blended/rank-based scores",
+  "summary": "ROC AUC is ranking-based, but post-hoc monotone calibration can still improve blend behavior, threshold stability, and public-LB robustness when combining heterogeneous specialists.",
+  "rationale": "ROC AUC is ranking-based, but post-hoc monotone calibration can still improve blend behavior, threshold stability, and public-LB robustness when combining heterogeneous specialists. Recent calibration literature and classic beta-calibration results suggest isotonic is not always best, especially on moderate calibration sets.",
+  "implementation_hint": "Reserve a race-grouped calibration fold after model training. Compare raw scores, isotonic, beta calibration, and Venn-Abers on a single model and on any ensemble or ranker-derived score. Use calibration only as a final mapping layer and validate on untouched grouped folds to ensure AUC does not degrade materially.",
+  "expected_effect": "Likely a small but cheap improvement in ensemble quality and probability realism; especially useful if trying separate specialists whose score scales differ.",
+  "risk": "Calibration cannot create signal and may slightly hurt AUC if the calibration fold is too small or distribution-shifted; needs strict grouped holdout.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://arxiv.org/abs/2601.19944",
+    "https://pubmed.ncbi.nlm.nih.gov/28316511/"
+  ]
+}

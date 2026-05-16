@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Inject latent degradation state features instead of only static tyre-age ratios",
+  "summary": "Recent F1 research models tyre pace as a latent state with resets at pit stops, and Mercedes-associated tyre-energy forecasting work shows dynamic tyre condition is highly predictive.",
+  "rationale": "Recent F1 research models tyre pace as a latent state with resets at pit stops, and Mercedes-associated tyre-energy forecasting work shows dynamic tyre condition is highly predictive. The current feature set mostly uses snapshot ratios such as TyreLife, degradation per lap, and same-lap ranks; it does not explicitly estimate whether the driver is currently entering a cliff or stabilizing.",
+  "implementation_hint": "Per Driver-Race-Stint, fit a simple local-linear or Kalman-style filter on lap-time residuals after removing coarse effects from race progress, compound, and position. Export filtered level, slope, acceleration, shock from the previous lap, and state uncertainty. Mask or downweight obvious in-laps/out-laps and recent pit-stop rows when fitting the filter.",
+  "expected_effect": "Should separate ‘old but stable’ tyres from ‘old and collapsing’ tyres, improving pit-window discrimination without needing a full sequential deep model.",
+  "risk": "Residual estimation can be noisy because lap times contain traffic and pit artifacts; overfitting the filter parameters per race is a real danger.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://papers.cool/arxiv/2501.04067",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

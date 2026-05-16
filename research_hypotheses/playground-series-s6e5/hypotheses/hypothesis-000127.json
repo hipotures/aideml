@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF horizon distillation plus sigmoid-calibrated blending",
+  "summary": "Lap-level pit-stop papers and RUL literature both report gains from jointly predicting the event and its remaining horizon.",
+  "rationale": "Lap-level pit-stop papers and RUL literature both report gains from jointly predicting the event and its remaining horizon. Even if you do not train a full multitask net, an auxiliary out-of-fold horizon model can provide a strong distilled feature; calibrated OOF scores then make cross-family blending less brittle.",
+  "implementation_hint": "Train an auxiliary OOF model for `laps_to_next_pit` or `P(stop within k laps)` for small k. Feed those OOF predictions into the main binary model, and when ensembling tree/survival/ranking branches, apply fold-safe sigmoid calibration to each branch before weighted blending so their scales are more comparable while preserving rank order.",
+  "expected_effect": "Usually improves the final blend more than any single branch alone, especially if the new models capture different failure modes around late-stint decisions.",
+  "risk": "Strict OOF generation is mandatory; otherwise the distilled horizon features leak heavily. Calibration itself should not raise single-model AUC, so gains depend on ensemble complementarity.",
+  "sources": [
+    "https://www.researchgate.net/publication/399787583_SOSTA_AI_Multi-Task_Residual_Learning_for_Lap-Level_Pit_Stop_Decision_Support_in_Formula_One",
+    "https://www.sciencedirect.com/science/article/pii/S0951832023002648",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html"
+  ]
+}

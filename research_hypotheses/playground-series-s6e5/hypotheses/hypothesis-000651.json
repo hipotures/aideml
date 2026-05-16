@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Driver-race rank post-processing",
+  "summary": "ROC AUC is rank-based, and pit stops occur as sparse, structured events within each driver-race trajectory.",
+  "rationale": "ROC AUC is rank-based, and pit stops occur as sparse, structured events within each driver-race trajectory. F1 strategy sources frame pit stops as optimized windows, suggesting model probabilities can be improved by local ranking constraints rather than global calibration.",
+  "implementation_hint": "After prediction, group by Race-Driver-Stint or Race-Driver and smooth probabilities over adjacent LapNumber with a short centered/causal window on test only, then optionally boost local maxima in plausible windows where TyreLife is high and RaceProgress is not terminal. Preserve global rank mostly by blending 80-95% raw prediction with 5-20% within-group percentile score.",
+  "expected_effect": "May reduce noisy one-lap spikes and better rank the true next-lap stop within each stint, improving AUC without changing model training.",
+  "risk": "Over-smoothing can hurt if the target is sharply one-lap-ahead; tune blend weight only on robust race-aware validation.",
+  "sources": [
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://f1-strategy-prediction.vercel.app/",
+    "https://www.ijml.org/index.php?a=show&c=index&catid=130&id=1337&m=content"
+  ]
+}

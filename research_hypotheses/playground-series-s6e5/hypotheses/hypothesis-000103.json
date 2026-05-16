@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Race-held-out cross-fitting for every high-leakage feature",
+  "summary": "The current best code uses random StratifiedKFold and builds some statistics on concatenated train+test data.",
+  "rationale": "The current best code uses random StratifiedKFold and builds some statistics on concatenated train+test data. In this task, rows from the same Year/Race share strong context, so random folds can overstate AUC. scikit-learn explicitly recommends group-based holdouts when groups encode experiments or time-like collections, and CatBoost’s ordered-boosting paper motivates leakage-safe categorical statistics.",
+  "implementation_hint": "Use `groups = Year + '__' + Race` and compare `GroupKFold` or `LeaveOneGroupOut` against the current random CV. Recompute frequency encodings, target encodings, and same-lap aggregates inside each fold from training rows only. Select features/blend weights by a robust score such as mean(random AUC, grouped AUC) or the minimum of the two.",
+  "expected_effect": "Lower local CV is possible, but leaderboard robustness should improve and any gains from new features will be more trustworthy.",
+  "risk": "May expose that some current gains are transductive rather than generalizable, so short-term CV could drop before improving.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://sklearn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html",
+    "https://papers.nips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf"
+  ]
+}

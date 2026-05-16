@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-release and rival-window counterfactual features",
+  "summary": "F1 strategy sources repeatedly emphasize clear air, traffic gaps, and undercut/overcut windows.",
+  "rationale": "F1 strategy sources repeatedly emphasize clear air, traffic gaps, and undercut/overcut windows. Existing best code has circuit priors and rough wait-vs-pit heuristics, but it still lacks a strong local field-state representation tied to nearby rivals and likely rejoin traffic.",
+  "implementation_hint": "Within each `(Year, Race, LapNumber)` build local-neighbor features by sorting on `Position`: tyre-age, lap-delta, degradation, and position-change differences to cars at `pos-2..pos+2`; add field percentiles and a proxy `clear_air_after_pit` score from estimated pit-loss and nearby-position pace. Also try a simple counterfactual delta: pit-now versus stay-out-one-lap under local traffic assumptions.",
+  "expected_effect": "Most likely to help in edge cases where the same tyre state should imply opposite actions depending on nearby traffic or undercut threat.",
+  "risk": "Position is only a coarse proxy for actual time gap, so naive neighbor features can be noisy. They may need robust clipping or race-specific normalization.",
+  "sources": [
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

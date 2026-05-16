@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "True Listwise Race-Lap Ranking With Top-k Pair Construction",
+  "summary": "Official ranking docs suggest that for binary labels grouped by query, listwise objectives like `rank:ndcg` or LambdaMart can outperform plain pairwise losses when the practical goal is ordering candidates within each query.",
+  "rationale": "Official ranking docs suggest that for binary labels grouped by query, listwise objectives like `rank:ndcg` or LambdaMart can outperform plain pairwise losses when the practical goal is ordering candidates within each query. Here the natural query is the race-lap choice set: which drivers are most likely to pit next lap.",
+  "implementation_hint": "Group rows by `Year/Race/LapNumber`, sort by query id, and train a ranker with XGBoost `rank:ndcg` plus `lambdarank_pair_method='topk'` or CatBoost `LambdaMart`/`QueryAUC`. Test variants that weight only top candidates, and blend rank-normalized outputs with the probability models instead of using a raw percentile transform from `rank:pairwise` alone.",
+  "expected_effect": "Should improve within-lap discrimination, especially on laps where only a few drivers are realistic pit candidates.",
+  "risk": "Many queries may contain zero positives or multiple positives, so query construction and weighting can dominate the result; naive ranking can be unstable on sparse positive groups.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking"
+  ]
+}

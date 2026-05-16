@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Estimate latent tyre-state and degradation uncertainty with a state-space filter",
+  "summary": "Recent F1 literature models tyre degradation as a latent state rather than treating observed lap-time deltas as the state itself.",
+  "rationale": "Recent F1 literature models tyre degradation as a latent state rather than treating observed lap-time deltas as the state itself. Hidden degradation level, slope, and uncertainty may capture cliff behavior better than raw rolling means.",
+  "implementation_hint": "Fit a simple per-driver-stint linear Gaussian state-space model or Kalman-style filter on causal observations like LapTime_Delta, laptime_vs_field, and Cumulative_Degradation changes. Export filtered state, one-step-ahead residual, slope, and posterior variance as features for the classifier.",
+  "expected_effect": "Could sharpen detection of imminent stops when the driver enters a degradation cliff that is only partially visible in raw lap features.",
+  "risk": "Model misspecification is easy, especially around traffic and safety-car-like anomalies; if the filter is too noisy it just duplicates existing rolling features.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2501.04067"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF empirical stop-percentile priors by track and compound",
+  "summary": "Official strategy guides emphasize that degradation level and pit-lane time change whether a one-stop or two-stop is viable.",
+  "rationale": "Official strategy guides emphasize that degradation level and pit-lane time change whether a one-stop or two-stop is viable. That implies the useful signal is not a universal compound life constant, but how unusual the current tyre age/lap is for this circuit-strategy context.",
+  "implementation_hint": "Build out-of-fold smoothed historical priors from train only: empirical CDF/hazard of stopping at current `TyreLife`, `LapNumber`, or `RaceProgress` for backoff groups like `(Race, Compound, Stint)`, `(Race, Compound)`, `(Compound, Stint)`, and global `(Compound)`. Emit `stop_percentile`, `hazard_now`, `distance_to_group_median_stop`, and `delta_vs_global_compound_prior`.",
+  "expected_effect": "Medium upside by replacing brittle fixed windows with track-aware, data-driven stop-pressure features.",
+  "risk": "Largest validation trap in this set: any in-fold aggregation or use of future seasons/races will inflate CV. Sparse groups need aggressive shrinkage/backoff.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/strategyguide-what-are-the-possible-race-strategies-for-thedutch-grand.26oBdXYQp5OWhmG1cAlxN0",
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB"
+  ]
+}

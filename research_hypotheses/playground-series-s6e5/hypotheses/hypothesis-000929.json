@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Field pit-wave and strategy momentum",
+  "summary": "F1 strategy is coupled: when several cars pit, nearby teams react to cover, undercut, or extend.",
+  "rationale": "F1 strategy is coupled: when several cars pit, nearby teams react to cover, undercut, or extend. Current best includes field medians and immediate neighbor differences, but not same-lap or recent-lap pit-wave signals from the whole race field.",
+  "implementation_hint": "For each Race+LapNumber, compute count/proportion of PitStop=1, median TyreLife of pitted cars, min/mean TyreLife among non-pitters, and compound-specific pit rates. Add lagged field pit counts for previous 1-3 laps by Race, plus cumulative stops so far per Race and per Compound. Exclude the row’s own PitStop from same-lap aggregate when possible to avoid self-dominance.",
+  "expected_effect": "Can identify strategic pit windows and reaction laps that tyre-life-only features miss, especially when many drivers pit around the same lap.",
+  "risk": "Same-lap field aggregates may be unrealistic if the intended prediction setting is strictly online per driver before observing other cars’ current-lap pit status. Compare with a lag-only variant under grouped CV.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1"
+  ]
+}

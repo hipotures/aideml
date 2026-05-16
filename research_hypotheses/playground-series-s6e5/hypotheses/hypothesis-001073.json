@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Distill a causal multi-task sequence model into the tabular ensemble",
+  "summary": "Recent pit-stop papers report that sequence models help because they capture temporal dependencies, and SOSTA explicitly couples next-lap classification with stop-horizon regression.",
+  "rationale": "Recent pit-stop papers report that sequence models help because they capture temporal dependencies, and SOSTA explicitly couples next-lap classification with stop-horizon regression. Instead of replacing the strong tabular stack, use a small causal sequence model as a teacher and feed its OOF signals into XGB/Cat.",
+  "implementation_hint": "Build short causal windows per driver-race-stint, e.g. last 8-12 laps, with only past information. Train a compact GRU/BiGRU-free causal model with two heads: `PitNextLap` and `laps_to_next_pit`. Generate leakage-safe OOF predictions for both heads and add them as numeric features to the existing tabular models or to a final stacked blender.",
+  "expected_effect": "Useful if the current tree ensemble misses temporal acceleration patterns before stops; the regression head should regularize the classifier and produce a more informative teacher than a single binary target.",
+  "risk": "Sequence preprocessing is more brittle than trees; if windows are not strictly causal or folds are not group-safe, leakage will swamp the result.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

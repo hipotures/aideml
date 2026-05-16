@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Cross-fitted hierarchical target encoding for high-cardinality IDs",
+  "summary": "`Driver`, `Race`, `Year`, and their interactions likely carry strong prior strategy tendencies, but naive target encoding can badly overfit.",
+  "rationale": "`Driver`, `Race`, `Year`, and their interactions likely carry strong prior strategy tendencies, but naive target encoding can badly overfit. Scikit-learn TargetEncoder and CatBoost both emphasize leakage-safe ordered/cross-fitted encoding; this is especially relevant here because driver and race IDs are numerous and partially shift between train/test.",
+  "implementation_hint": "Build OOF encodings for `Driver`, `Race_Year`, `Driver x Compound`, `Driver x Stint`, `Race_Year x Compound`, and coarse lap buckets. Use race-grouped folds only. Feed encoded columns into a simple downstream GBDT or logistic stacker rather than replacing the current feature set.",
+  "expected_effect": "Should improve generalization on sparse identities and interactions, especially where public scores lag local CV due to encoding leakage.",
+  "risk": "If folds are not grouped by race-year, the encoding leaks future race context and CV will be inflated.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html",
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

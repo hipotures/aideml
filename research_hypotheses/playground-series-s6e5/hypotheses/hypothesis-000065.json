@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "agent_modes": [
     "legacy"
   ],
@@ -9,5 +9,6 @@
   "implementation_hint": "For fresh SOFT, MEDIUM, and HARD after a next-lap stop, add per-compound finish margins, option count, best and worst viable margin, softest viable ordinal, and a different-from-current-slick viability flag. Compare this against the simpler next-stop-feasibility block.",
   "expected_effect": "Small to medium AUC gain with medium-high confidence; expected to help ranking around final-stop boundaries.",
   "risk": "Avoid generating many aliases of the same option-count logic. Check public/validation consistency with grouped validation, not a single random holdout.",
-  "sources": []
+  "sources": [],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
 }

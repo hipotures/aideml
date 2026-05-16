@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-Stint Curvature And Thermal-Fade Features Instead Of Fixed Life Tables",
+  "summary": "Recent F1 tyre modeling work emphasizes latent degradation, nonlinear wear, and temperature-window effects rather than a single fixed stint-life threshold.",
+  "rationale": "Recent F1 tyre modeling work emphasizes latent degradation, nonlinear wear, and temperature-window effects rather than a single fixed stint-life threshold. A pit decision is often triggered by acceleration in loss, not just absolute tyre age, so curvature-style features may outperform more compound-window constants.",
+  "implementation_hint": "Create leakage-safe within-driver/race/stint features from prior laps only: rolling slope of `LapTime_Delta`, rolling slope of `Cumulative_Degradation`, second-difference/curvature of both, deviation from early-stint baseline, and flags for abrupt fade after stable pace. Interact these with `Compound`, `RaceProgress`, and wet-vs-slick regime.",
+  "expected_effect": "Should better capture the pre-pit transition from linear wear to thermal cliff, especially for soft/high-energy stints where fixed expected-life features are too coarse.",
+  "risk": "Sequence features can overfit if derived with any lookahead or if lap ordering is imperfect around pit/reset laps.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://kclpure.kcl.ac.uk/portal/en/publications/explainable-time-series-prediction-of-tyre-energy-in-formula-one-",
+    "https://www.sciencedirect.com/science/article/pii/S2405896320318577"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state features from a simple state-space or filtered degradation model",
+  "summary": "Recent F1 research models tyre degradation as a latent state with pit-stop resets, fuel adjustment, and uncertainty rather than a fixed lifespan table.",
+  "rationale": "Recent F1 research models tyre degradation as a latent state with pit-stop resets, fuel adjustment, and uncertainty rather than a fixed lifespan table. That is a good match here because `LapTime (s)`, `LapTime_Delta`, `TyreLife`, and `Cumulative_Degradation` are noisy observations of hidden wear, warm-up, and cliff behavior.",
+  "implementation_hint": "For each driver-race stint, fit a lightweight recursive filter or simplified state-space surrogate using only past laps: estimate latent pace level, degradation slope, slope acceleration, residual volatility, and reset strength after stops. Feed these filtered states, plus deviations from expected latent trend, into the existing tabular model rather than hand-coded compound windows alone.",
+  "expected_effect": "More robust stint-phase signal, especially for warm-up laps, degradation cliffs, and compound-specific wear patterns that current static ratios blur.",
+  "risk": "Overengineering is possible; if the filter is estimated using full-stint information it will leak badly. Benefits may be modest if raw timing fields already summarize most wear state.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://f1strategyblog.wordpress.com/2019/05/10/race-simulator-downloadable-r-program-code/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

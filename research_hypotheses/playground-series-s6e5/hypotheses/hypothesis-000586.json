@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent Safety-Car/VSC regime gate",
+  "summary": "F1 strategy decisions change sharply when a Safety Car window opens because pit loss drops and teams can pre-arm instant pit calls.",
+  "rationale": "F1 strategy decisions change sharply when a Safety Car window opens because pit loss drops and teams can pre-arm instant pit calls. Prior summaries mentioned exogenous race-state augmentation, but a concrete latent caution detector from the tabular telemetry-like fields still looks underdeveloped.",
+  "implementation_hint": "Create a fold-local caution score from field-wide same-lap anomalies: sudden lap-time inflation, compressed/erratic position changes, bursts in same-lap pit counts, and degradation discontinuities. Use the score both as a feature and as a gate for separate late-race / caution / green-flag models.",
+  "expected_effect": "Improves recall on opportunistic pit calls that look irrational under normal green-flag tyre degradation logic.",
+  "risk": "False positives from wet-weather or outlier laps; likely needs separate handling for slick vs wet compounds.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/anatomy-of-a-pit-stop-how-do-f1-teams-service-their-cars-in-less-than-two.5p9LNdd8XJdvP4mRsXoGsB",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/albon-laments-very-unlucky-safety-car-timing-in-sao-paulo-while-slow-pit.73R7kBAk1BFB4IkC8JoQ8E.html"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Inject teammate and double-stack strategy context",
+  "summary": "Teams coordinate pit timing across two cars, sometimes double-stacking under urgent conditions but often staggering stops to avoid queueing.",
+  "rationale": "Teams coordinate pit timing across two cars, sometimes double-stacking under urgent conditions but often staggering stops to avoid queueing. The dataset lacks Team, so Driver alone misses this strategic coupling.",
+  "implementation_hint": "Map Driver-Year to Team from public 2022-2025 lineups, then add teammate_pitted_current_lap, teammate_pitted_previous_lap, teammate_tyre_age_gap, teammate_position_gap, same_team_double_stack_pressure, and team_stop_count. For historical/non-F1 or pre-season rows, fall back to learned co-occurrence clusters or missing-team category.",
+  "expected_effect": "Adds ensemble-diverse signal for synchronized safety-car stops and suppressed second-car stops when double-stacking is unattractive.",
+  "risk": "Driver code ambiguity and mid-season substitutions can create wrong team links; keep mapping versioned and add an unknown/ambiguous flag.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.2022-f1-grid-all-the-drivers-and-teams-racing-this-season.3L1E0DrPLfzmN9GNMZcE5m.html/",
+    "https://www.formula1.com/en/latest/article/2023-f1-grid-all-the-drivers-and-teams-racing-next-season.39kWUtoj6oL2HOMcLGO70V",
+    "https://www.formula1.com/en/latest/article/2025-f1-grid-all-the-driver-and-team-line-ups-confirmed-so-far.7yijhWBNHjqKwHTRFEMZUa",
+    "https://flowracers.com/blog/undercut-overcut-double-stack-f1-pit-stops/"
+  ]
+}

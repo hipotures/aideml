@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add rival-stop reaction features to model cover-the-undercut behavior",
+  "summary": "Teams often pit reactively because a nearby rival already pitted or threatened an undercut.",
+  "rationale": "Teams often pit reactively because a nearby rival already pitted or threatened an undercut. Prior ideas covered pack density and clean air, but not the direct contagion pattern where the first mover triggers a response on the next lap.",
+  "implementation_hint": "Within each race, add causal counts for how many cars pitted on the previous 1-2 laps in the same stint/compound band, nearby position band, and same latent regime. Add flags for whether the immediately adjacent position pitted, whether the driver just became exposed to an undercut, and whether a prior pit wave is still propagating.",
+  "expected_effect": "Should help on the sharp next-lap spikes that occur after one frontrunner or nearby rival blinks first.",
+  "risk": "Without actual time gaps, broad counts may be noisy. Keep strata narrow, smooth historical rates out-of-fold, and prefer previous-lap reactions over long lookbacks.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article.jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/palmer-how-bad-timing-stopped-pole-sitter-perez-adding-to-his-win-tally-in.7CyCAlZg0UR2tJHXjfhI7i",
+    "https://www.formula1.com/en/latest/article/analysis-how-vettel-went-from-missing-q3-to-his-first-podium-for-aston.2xrTaKhfcViLQBijxCrnS1"
+  ]
+}

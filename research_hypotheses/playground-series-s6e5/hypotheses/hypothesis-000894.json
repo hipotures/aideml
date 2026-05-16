@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Kalman/state-space latent degradation features instead of raw degradation alone",
+  "summary": "Recent F1 research models tyre pace as a latent state with pit stops as structural resets, producing interpretable degradation rates and time-varying state estimates.",
+  "rationale": "Recent F1 research models tyre pace as a latent state with pit stops as structural resets, producing interpretable degradation rates and time-varying state estimates. Your current features use observed degradation and rolling deltas, but not an inferred hidden pace/degradation state.",
+  "implementation_hint": "For each driver-race-stint, fit a lightweight local-linear/Kalman-style filter on lap time, lap delta, tyre life, and cumulative degradation to estimate latent pace, degradation slope, slope acceleration, and one-step innovation residuals. Feed those latent summaries into the existing tree model rather than replacing it.",
+  "expected_effect": "Can denoise noisy lap-level observables and expose the ‘tyres are going off now’ transition more cleanly than raw rolling means.",
+  "risk": "If the filter is too flexible it can memorize session idiosyncrasies; keep parameterization simple and estimate any global hyperparameters on training folds only.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://arxiv.org/abs/2512.00640"
+  ]
+}

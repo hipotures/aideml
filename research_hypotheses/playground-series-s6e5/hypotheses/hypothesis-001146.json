@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Confidence-routed specialist ensemble with weighted conformal thresholding",
+  "summary": "Selective prediction under shift shows calibrated confidence can be used to defer low-certainty cases while preserving stronger risk-coverage behavior, especially with weighted conformal calibration.",
+  "rationale": "Selective prediction under shift shows calibrated confidence can be used to defer low-certainty cases while preserving stronger risk-coverage behavior, especially with weighted conformal calibration. In this competition, “defer” can mean route only uncertain rows to a specialist model instead of trusting one global expert.",
+  "implementation_hint": "Train the current best global model plus one or two specialists on ambiguous regimes only, such as late-race old-tyre dry laps and wet/intermediate laps. Use strict OOF probabilities, temperature scaling, and a held-out calibration split to learn a confidence threshold; above threshold keep the base score, below threshold replace or blend with the specialist. Test weighted calibration by Year/regime to handle train-test drift.",
+  "expected_effect": "Can improve hard slices without corrupting easy rows, giving a safer ensemble gain than globally reweighting all predictions.",
+  "risk": "If specialists are not genuinely low-correlation, routing just adds noise. Calibration/routing must be learned out-of-fold or it will overstate gains.",
+  "sources": [
+    "https://www.nature.com/articles/s41598-026-40637-w",
+    "https://lightgbm.readthedocs.io/en/stable/Parameters.html"
+  ]
+}

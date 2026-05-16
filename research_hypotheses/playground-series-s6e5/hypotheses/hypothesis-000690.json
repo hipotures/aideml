@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Replace frequency-only categorical features with grouped cross-fitted target priors",
+  "summary": "The current best code uses category frequencies, but public guidance on target encoding shows that cross-fitted target statistics can add much more signal if leakage is controlled.",
+  "rationale": "The current best code uses category frequencies, but public guidance on target encoding shows that cross-fitted target statistics can add much more signal if leakage is controlled. CatBoost’s ordered categorical transforms are based on the same principle.",
+  "implementation_hint": "Generate out-of-fold target encodings with shrinkage for `Driver`, `Race`, `Compound`, `Race_Compound`, `Compound_Stint`, and hierarchical combos like `Race_Compound_Stint`. Use race-grouped folds and Bayesian smoothing toward broader parents such as `Compound` or `Race_Compound`.",
+  "expected_effect": "Likely stronger than raw frequencies for capturing driver/team/track strategy tendencies while preserving robustness on rare categories.",
+  "risk": "Without strict group-wise OOF generation this will overfit badly; unseen-category fallback must be explicit.",
+  "sources": [
+    "https://scikit-learn.org/stable/auto_examples/preprocessing/plot_target_encoder_cross_val.html",
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html"
+  ]
+}

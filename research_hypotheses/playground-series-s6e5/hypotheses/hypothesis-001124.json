@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Leader-follower response features from local rival state, not whole-field averages",
+  "summary": "Recent F1 strategy work models pit timing as a competitive dynamic program or Stackelberg game, implying that immediate rival state matters more than broad field averages.",
+  "rationale": "Recent F1 strategy work models pit timing as a competitive dynamic program or Stackelberg game, implying that immediate rival state matters more than broad field averages. That suggests a narrower expert than the prior broad team/undercut ideas: features describing whether the driver is defending against the car behind or attacking the car ahead right now.",
+  "implementation_hint": "For each row, build causal features using only current and previous laps: nearest car ahead/behind on same lap by position, their compound/stint/tyre life, local tyre-age differential, whether the driver is leader/follower in the local pair, and a simple 'cover vs attack' proxy such as `own_tyre_life - rival_tyre_life`, interacted with position and race phase. Train a small booster on these local-rival features alone, then blend as a specialist.",
+  "expected_effect": "Should improve hard strategic cases where pit decisions are driven by one nearby competitor rather than absolute degradation level.",
+  "risk": "Position is only ordinal and not time-gap, so local-rival proxies may be noisy; if engineered too aggressively this can collapse into weak heuristics.",
+  "sources": [
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484",
+    "https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID4568059_code2013259.pdf?abstractid=4470115&mirid=1",
+    "https://repositorio.uchile.cl/handle/2250/199664"
+  ]
+}

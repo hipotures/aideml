@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Physically constrained XGBoost with monotone signs on wear-related features",
+  "summary": "Pit propensity should usually rise, not fall, with tyre age, cumulative degradation, latent wear, and race remaining near the pit window.",
+  "rationale": "Pit propensity should usually rise, not fall, with tyre age, cumulative degradation, latent wear, and race remaining near the pit window. XGBoost monotonic constraints can regularize away non-physical splits and often help when data are noisy and heterogeneous across races.",
+  "implementation_hint": "Create a constrained feature subset with stable directional priors: positive monotone for `TyreLife`, `Cumulative_Degradation`, filtered wear state, `AbsLapTimeDelta`, `Stint`; negative or zero for features where direction is ambiguous. Train a dedicated constrained XGBoost model with higher `max_bin` than the unconstrained baseline, then blend rather than replace the existing model.",
+  "expected_effect": "Usually modest standalone gain, but can improve generalization and leaderboard stability by removing fold-specific artifacts.",
+  "risk": "Wrong sign assumptions or applying constraints to interaction-heavy features can underfit; constraints with `hist` may need larger `max_bin`.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

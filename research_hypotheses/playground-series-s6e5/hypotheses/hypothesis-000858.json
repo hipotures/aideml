@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dual-Axis OOF Selection With Regime-Wise Sigmoid Calibration",
+  "summary": "Several prior directions already point to CV sensitivity.",
+  "rationale": "Several prior directions already point to CV sensitivity. Official sklearn docs note AUC is a ranking metric and that sigmoid calibration preserves ranking while isotonic can change AUC via ties. The remaining edge may be less about a new model and more about selecting only models/features that survive both race-group and time-forward validation, then calibrating by broad regime without harming rank order.",
+  "implementation_hint": "Evaluate candidates on two orthogonal OOF schemes: `GroupKFold` by race weekend and forward `TimeSeriesSplit` by year/order with a small embargo gap. Keep only changes positive on both mean AUC and low fold variance. After OOF prediction, fit separate sigmoid calibrators for coarse regimes such as dry vs wet and early/mid/late race, then average calibrated probabilities or rank-blend them with raw scores.",
+  "expected_effect": "Reduces false local gains, improves leaderboard transfer, and can smooth score tails without damaging AUC ordering.",
+  "risk": "Too many calibration buckets will overfit; stricter selection may reject genuinely useful but regime-specific ideas.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/1.6/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

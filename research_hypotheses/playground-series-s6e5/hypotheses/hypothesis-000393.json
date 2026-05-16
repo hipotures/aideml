@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-blocked monotone calibration and blend selection",
+  "summary": "Post-hoc monotone calibration can preserve ranking while fixing score shape, and Venn-Abers/Beta calibration are stronger than plain Platt in many binary settings.",
+  "rationale": "Post-hoc monotone calibration can preserve ranking while fixing score shape, and Venn-Abers/Beta calibration are stronger than plain Platt in many binary settings. Because this task is scored on probabilities but selected by AUC, a calibration layer should be fit only on out-of-fold race-blocked predictions to avoid optimistic CV and to stabilize ensembles across regimes.",
+  "implementation_hint": "Generate strict OOF predictions from each base/specialist model under grouped race or `Race_Year` folds, then compare Beta, isotonic/ROC-regularized isotonic, and Venn-Abers calibrators globally and by broad regime (`dry` vs `wet`, early vs late race). Use the calibrated OOF stack for final blending, not raw in-fold scores.",
+  "expected_effect": "Small but real gain from desaturating extreme scores and choosing blends on cleaner OOF distributions rather than noisy raw margins.",
+  "risk": "If calibration folds are too small or not race-blocked, the layer can add variance or fake CV lift.",
+  "sources": [
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://proceedings.mlr.press/v91/nouretdinov18a.html",
+    "https://arxiv.org/abs/2311.12436",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

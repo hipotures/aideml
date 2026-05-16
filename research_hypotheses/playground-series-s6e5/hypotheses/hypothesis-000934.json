@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Pit-Loss And Undercut Pressure Proxy",
+  "summary": "Strategy sources emphasize the tradeoff between time lost in the pits and time gained from fresh tyres, especially undercut/overcut dynamics.",
+  "rationale": "Strategy sources emphasize the tradeoff between time lost in the pits and time gained from fresh tyres, especially undercut/overcut dynamics. Current neighbor features compare tyre life/degradation, but not whether a driver has enough field gap or position pressure to justify stopping now.",
+  "implementation_hint": "Within Race/LapNumber sorted by Position, derive gap proxies from LapTime differences, relative pace to cars ahead/behind, old-tyre slowdown vs recent field median, and estimated pit-loss-normalized windows by circuit/race. Add features like undercut_pressure=(pace_loss_vs_ahead + tyre_age_advantage_behind), traffic_risk in rejoin positions, and clean_air_proxy from position/lap group density.",
+  "expected_effect": "Could add signal for marginal pit decisions where tyre age alone is insufficient, particularly battles in P1-P10 and high-degradation circuits.",
+  "risk": "LapTime is a weak proxy for actual time gaps; position-only ordering can introduce noisy comparisons when cars are lapped or affected by safety cars/outliers.",
+  "sources": [
+    "https://www.gpfans.com/us/f1-news/1016513/f1-undercut-overcut-explained/",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://formula1.wiki/index.php/Race_strategy_modelling"
+  ]
+}

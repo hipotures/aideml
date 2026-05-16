@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Generalize the rule engine beyond Monaco with legality-debt and mandated-stop features",
+  "summary": "Official rules create deterministic pressure to stop that simple tyre-window heuristics do not fully encode: standard races require two dry specs unless wet/intermediate are used, Monaco 2025 added a mandatory two-stop / three-set rule, and Qatar 2023 had an FIA/Pirelli maximum stint cap.",
+  "rationale": "Official rules create deterministic pressure to stop that simple tyre-window heuristics do not fully encode: standard races require two dry specs unless wet/intermediate are used, Monaco 2025 added a mandatory two-stop / three-set rule, and Qatar 2023 had an FIA/Pirelli maximum stint cap. One prior node touched Monaco, but not a full rule-state engine.",
+  "implementation_hint": "Create causal state features such as slick-compounds-used-so-far, mandatory-stop-debt, minimum-stops-remaining, rule-satisfied flag, special-race max-stint breach risk, and remaining legal paths to finish. Apply only to the correct Year x Race regimes with explicit rule tables.",
+  "expected_effect": "Should sharpen probability spikes in special-rule races and reduce confusion where the model currently treats all circuits as standard one/two-stop strategy problems.",
+  "risk": "Small support per special regime means easy overfitting; rule tables must be exact by year and wet/dry exemption.",
+  "sources": [
+    "https://www.fia.com/sites/default/files/fia_2025_formula_1_sporting_regulations_-_issue_1_-_2024-07-31.pdf",
+    "https://www.formula1.com/en/latest/article/fia-world-motor-sport-council-confirms-mandatory-two-stop-strategies-for.UUe16nwpOcqBe9f6PYgkq",
+    "https://www.formula1.com/en/latest/article/explained-what-does-the-maximum-tyre-stint-length-rule-mean-for-the-qatar.4q8iXkNgE3sLnIIASPV1sm"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered-CTR CatBoost on raw race entities",
+  "summary": "The dataset has very high-cardinality categorical structure (`Driver`, `Race`, `Year`, `Compound`) that hand-made frequency features only approximate.",
+  "rationale": "The dataset has very high-cardinality categorical structure (`Driver`, `Race`, `Year`, `Compound`) that hand-made frequency features only approximate. CatBoost’s ordered target statistics and categorical combinations are designed to capture sparse interactions using prior objects only, which is a better fit for lap-level strategy patterns than global encodings.",
+  "implementation_hint": "Train a leak-safe CatBoost classifier on raw categorical columns plus current numeric features; allow combinations like `Driver×Compound`, `Race×Stint`, `Driver×Race`. Build OOF predictions with strict grouped folds by race session and fit everything fold-locally. Compare against the current engineered-feature baseline, and only try a ranking-style CatBoost variant as a secondary blend, not the main model.",
+  "expected_effect": "Should recover signal from sparse entity interactions and unseen combinations that the current manual preprocessing likely leaves on the table.",
+  "risk": "If folds are not strict, ordered categorical statistics will still look great locally and fail on the leaderboard; pairwise ranking variants can also disable some useful categorical handling.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://catboost.ai/en/docs/concepts/loss-functions-ranking"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

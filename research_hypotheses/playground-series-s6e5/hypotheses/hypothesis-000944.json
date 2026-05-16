@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Mandatory-compound and stop-count pressure",
+  "summary": "Dry F1 races normally require at least two slick compounds, while special events can mandate more stops.",
+  "rationale": "Dry F1 races normally require at least two slick compounds, while special events can mandate more stops. A driver late in the race without satisfying the likely compound/stop requirement has a strategic pressure to pit that generic tyre degradation features may miss.",
+  "implementation_hint": "For each Year/Race/Driver sequence, compute cumulative unique dry compounds used so far, has_changed_dry_compound, stops_so_far from PitStop cumulative sum, laps_remaining, and rule-pressure interactions such as dry_no_compound_change_late and one_stop_only_final_third. Add Monaco/known special-race flags only if Race and Year support them.",
+  "expected_effect": "Should help late-race positives and distinguish old-tyre stay-outs from forced stops caused by regulations or minimum strategy obligations.",
+  "risk": "Wet/intermediate races suspend normal dry-compound logic, and special rules vary by year/race; incorrect rule flags can hurt if applied globally.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/explained-what-is-the-new-two-stop-rule-for-the-monaco-grand-prix-and-how.1qropbdmR05S3BqgYsHtpE",
+    "https://www.motorsport.com/f1/news/fia-two-pitstop-strategy-monaco-gp/10698674/",
+    "https://f1racinghub.com/learn/tire-strategy"
+  ]
+}

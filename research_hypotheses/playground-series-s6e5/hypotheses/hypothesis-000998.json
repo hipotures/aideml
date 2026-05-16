@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-lap ranking specialist for relative pit urgency",
+  "summary": "At a given `Year/Race/LapNumber`, strategy is partly relative: some drivers are much closer to the pit window than others.",
+  "rationale": "At a given `Year/Race/LapNumber`, strategy is partly relative: some drivers are much closer to the pit window than others. Ranking objectives can learn who is most pit-ready within the same lap even if absolute probabilities are noisy, and that relative ordering is often what helps ROC AUC.",
+  "implementation_hint": "Train a LightGBM/CatBoost ranking model with groups=`Year,Race,LapNumber`, target=`PitNextLap`, using current numeric features plus field-relative deltas. Blend its out-of-fold ranks with the main classifier rather than replacing probabilities directly.",
+  "expected_effect": "Improved ordering among same-lap competitors, which can add incremental AUC even when absolute calibration stays unchanged.",
+  "risk": "Groups are small, positives are sparse, and ranking loss may ignore useful cross-lap information; needs careful blending.",
+  "sources": [
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Filtered latent tyre-degradation state with stint resets",
+  "summary": "Recent F1 tire-degradation work models lap pace as a latent state that evolves through the stint and resets at pit stops.",
+  "rationale": "Recent F1 tire-degradation work models lap pace as a latent state that evolves through the stint and resets at pit stops. That is materially different from the current baseline’s static TyreLife and degradation ratios, and should capture hidden wear, traffic, and driver-specific pace drift.",
+  "implementation_hint": "Within each Driver-Race-Year sequence, compute a causal residual pace signal such as LapTime minus race-lap median or minus driver rolling best, then estimate online features from only past laps: EWMA residual, EWMA residual slope, rolling variance, cumulative positive residuals, and a reset-on-pit latent wear proxy. Feed those to a tree model; optionally compare against a simple Kalman-style filtered state.",
+  "expected_effect": "Better discrimination near the true pit window, especially when raw TyreLife is noisy or compound rules alone are insufficient.",
+  "risk": "Easy to leak if the residual baseline uses future laps or same-lap aggregates built with the full race; keep all sequence features strictly prefix-only.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/"
+  ]
+}

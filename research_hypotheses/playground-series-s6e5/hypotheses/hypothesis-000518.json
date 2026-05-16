@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordinal Distance-To-Next-Stop Sidecar",
+  "summary": "Recent F1 pit-stop decision work uses both next-lap classification and remaining-laps-to-stop regression; discrete-time survival framing also treats event timing as interval hazards.",
+  "rationale": "Recent F1 pit-stop decision work uses both next-lap classification and remaining-laps-to-stop regression; discrete-time survival framing also treats event timing as interval hazards. This uses more supervision than the binary PitNextLap label alone.",
+  "implementation_hint": "From train sequences, compute laps_until_next_pit for each Race_Year/Driver/Stint. Train an ordinal/regression sidecar for bins like 0, 1, 2, 3-5, 6+, convert P(distance<=1) via OOF isotonic mapping, and stack that score into the main model.",
+  "expected_effect": "Uses near-miss laps as graded signal, smoothing sparse positives and improving next-lap ranking.",
+  "risk": "Race-end censoring and malformed sequences can inject noise; censor final stints explicitly.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://en.wikipedia.org/wiki/Survival_analysis"
+  ]
+}

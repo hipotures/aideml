@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF hierarchical target encoding for driver/race/compound context",
+  "summary": "Current best runs use frequency encodings and category crosses, but not target-aware encodings.",
+  "rationale": "Current best runs use frequency encodings and category crosses, but not target-aware encodings. CatBoost’s ordered/CTR-style handling is specifically designed for high-cardinality categorical combinations and should capture stable pit-tendency priors such as Driver x Compound x Stint or Driver x Race x Year more directly than raw frequencies.",
+  "implementation_hint": "Build only out-of-fold encodings, ideally chronological within each Year-Race-Driver sequence or at minimum GroupKFold by race. Start with smoothed means for Driver, Driver+Compound, Driver+Race, Race+Compound, and Driver+Compound+Stint; compare adding them to the existing booster versus a CatBoost model that natively learns CTRs.",
+  "expected_effect": "Moderate CV lift if hidden pit-propensity priors exist beyond the current freq features; likely strongest on rare drivers/races where simple frequency counts are too weak.",
+  "risk": "High leakage risk if encodings are fit on full data or across same-race fold boundaries; gains may vanish if the current categorical interactions already cover most of this signal.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Dual-CV ensemble with sigmoid-calibrated blend, not raw single-model probabilities",
+  "summary": "For AUC tasks, diversity across model families often beats extra feature tinkering.",
+  "rationale": "For AUC tasks, diversity across model families often beats extra feature tinkering. A grouped-fold CatBoost model, a histogram GBDT model, and a simpler linear/hazard model can be blended; sigmoid calibration preserves ranking, unlike isotonic which may introduce ties.",
+  "implementation_hint": "Generate out-of-fold predictions from 2-3 diverse models under `GroupKFold(Race_Year)` and a harsher holdout such as leave-one-year-out. Blend by rank-average or logistic stacking on OOF predictions, then optionally apply sigmoid calibration on the stack using disjoint folds.",
+  "expected_effect": "Usually improves robustness and public LB transfer even if each single model is only slightly different; especially useful if local CV is optimistic.",
+  "risk": "Calibration done on the same folds as model fitting is leakage. Isotonic may slightly hurt AUC by creating ties.",
+  "sources": [
+    "https://scikit-learn.org/1.5/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://catboost.ai/docs/en/concepts/faq"
+  ]
+}

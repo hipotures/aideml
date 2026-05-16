@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Build hierarchical out-of-fold strategy priors with empirical-Bayes shrinkage",
+  "summary": "Weekend strategy is strongly race-specific: some events are naturally one-stop, others two-stop or high-undercut.",
+  "rationale": "Weekend strategy is strongly race-specific: some events are naturally one-stop, others two-stop or high-undercut. Instead of generic target encoding, a hierarchical prior can estimate stop propensity for cells like `(race-year, absolute_compound, stint, binned_laps_remaining, wet/dry)` and shrink sparse cells toward broader parents. That matches how public strategy guides discuss races in terms of circuit-level priors and compound context.",
+  "implementation_hint": "Create nested OOF priors such as `Race_Year+AbsCompound+Stint+LapBin`, then back off to `Race_Year+AbsCompound+Stint`, `Race_Year+AbsCompound`, `AbsCompound+Stint`, and global mean. Use additive smoothing or Bayesian shrinkage only from training folds; expose both the posterior mean and the gap to parent/global priors as features. This is especially useful after reconstructing absolute compound IDs.",
+  "expected_effect": "Should add strong weekend-context signal without hand-coding thresholds, while staying leak-safe if computed fully OOF.",
+  "risk": "Easy to leak if priors are computed on full data; over-binning can create noise and under-binning can wash out signal.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/pirelli-strategy-guide-what-are-the-possible-race-strategies-for-the-2024.149KllzWtB6CJIHyNcDMnE",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.researchgate.net/publication/341852101_Sampling_Techniques_in_Bayesian_Target_Encoding"
+  ]
+}

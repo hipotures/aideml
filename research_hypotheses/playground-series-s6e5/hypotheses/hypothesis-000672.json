@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "OOF multi-family blend with rank-preserving calibration",
+  "summary": "The strongest public tabular practice here is usually heterogeneous ensembling, but calibration must respect AUC.",
+  "rationale": "The strongest public tabular practice here is usually heterogeneous ensembling, but calibration must respect AUC. Scikit-learn notes sigmoid calibration is strictly monotonic and preserves ranking, while isotonic can alter AUC via ties; beta calibration is a useful parametric alternative when score distortion is skewed.",
+  "implementation_hint": "Train 3 families on identical race-held-out folds: current GBDT classifier, ranking model, and hazard model. Blend only from out-of-fold predictions, then calibrate the final blend with sigmoid first; test beta calibration as a second-stage option only if logloss/Brier improves without hurting AUC on fold holdouts.",
+  "expected_effect": "Usually the safest path to incremental leaderboard gain once single-model feature work saturates.",
+  "risk": "If base models share the same leakage or fold design, the ensemble just amplifies CV optimism. Isotonic on the final blend can hurt AUC.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://proceedings.mlr.press/v54/kull17a.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html"
+  ]
+}

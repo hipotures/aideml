@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal last-k-lap sequence embedding as features for the booster",
+  "summary": "Recent F1 pit-stop work reports strongest gains from sequence models, and dynamic survival literature shows longitudinal prefixes matter more than single-row snapshots.",
+  "rationale": "Recent F1 pit-stop work reports strongest gains from sequence models, and dynamic survival literature shows longitudinal prefixes matter more than single-row snapshots. Your current best runs are almost entirely static row features, so a strict history-only encoder may add signal without replacing the tabular stack.",
+  "implementation_hint": "Within each Driver-Year-Race sequence, build history-only windows over the last 3-8 laps using LapTime (s), LapTime_Delta, TyreLife, Cumulative_Degradation, Position, Position_Change, Compound, Stint, and PitStop. Train a tiny GRU/TCN only on train folds, export its penultimate-layer embedding or next-lap logit as 1-3 numeric features, and feed those into the existing GBDT pipeline.",
+  "expected_effect": "Should improve cases where identical current-row states have different short-term pit intent because recent pace loss or traffic changed abruptly; likely modest but real CV lift if leakage is controlled.",
+  "risk": "Easy leakage trap if windows cross fold boundaries or include post-row information; end-to-end deep models may underperform if used alone, so keep it as feature generation or a blend component.",
+  "sources": [
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://pubmed.ncbi.nlm.nih.gov/30951460/"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend In A Lap-Grouped Ranking Expert Instead Of Another Pure Classifier",
+  "summary": "ROC AUC rewards correct ordering, and pit calls are relative within a race-lap context: only a few drivers are plausible next-lap stoppers at once.",
+  "rationale": "ROC AUC rewards correct ordering, and pit calls are relative within a race-lap context: only a few drivers are plausible next-lap stoppers at once. CatBoost and XGBoost both support pairwise/ranking objectives that can learn 'who is most likely to box now' rather than only absolute probabilities.",
+  "implementation_hint": "Train a second expert with groups such as Year-Race-LapNumber using CatBoost PairLogit/YetiRankPairwise or XGBoost rank:pairwise. Use the same causal features, predict ranking scores for all rows, then OOF rank-normalize and blend with the current classifier rather than calibrating probabilities. Consider filtering or downweighting all-negative groups during training.",
+  "expected_effect": "Can add complementary signal on within-lap ordering and improve AUC even if probability calibration does not move the metric.",
+  "risk": "Many groups may have zero positives, making ranking training sparse or unstable; grouping choice and sample weighting matter.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://xgboost.readthedocs.io/en/stable/parameter.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

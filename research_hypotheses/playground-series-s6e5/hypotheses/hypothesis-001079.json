@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Interval-censored AFT model for laps-until-pit",
+  "summary": "The prior research already pointed toward time-to-event reformulation, but the current best code is still plain binary next-lap classification.",
+  "rationale": "The prior research already pointed toward time-to-event reformulation, but the current best code is still plain binary next-lap classification. XGBoost’s AFT objective supports interval-censored labels directly, which matches rows where the exact future stop lap is known in train and right-censoring can be assigned to terminal/no-further-stop rows. Survival-style targets often outperform myopic classifiers when the event hazard rises smoothly near the stop.",
+  "implementation_hint": "For each train row, derive lower=upper=(next_pit_lap-current_lap) when a future stop exists, else lower=(remaining_laps+1), upper=+inf. Train `survival:aft` with race-group CV ordered by race chronology; convert predicted survival time into a next-lap probability via `P(T<=1)` or blend the rank of negative expected time with the current binary models.",
+  "expected_effect": "Could add a genuinely different signal family and improve ranking near ambiguous medium-horizon stops where binary models flatten probabilities.",
+  "risk": "If many rows have noisy or weakly informative event times, the AFT head may optimize survival likelihood without improving next-lap ROC AUC; conversion from time prediction to next-lap probability must be validated carefully.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/latest/tutorials/aft_survival_analysis.html",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/abstract"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

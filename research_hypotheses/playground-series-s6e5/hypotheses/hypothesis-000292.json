@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-lap grouped ranking model instead of pure binary classification",
+  "summary": "Pit-next-lap is effectively a within-lap ordering problem: among cars alive on the same race lap, a few are much more pit-likely than others.",
+  "rationale": "Pit-next-lap is effectively a within-lap ordering problem: among cars alive on the same race lap, a few are much more pit-likely than others. Learning-to-rank objectives are designed for grouped ordering and can outperform plain logloss when the leaderboard metric is rank-based like ROC AUC.",
+  "implementation_hint": "Train a second specialist with query groups such as Race-Year x LapNumber or Race-Year x rounded RaceProgress. Use XGBoost LambdaMART or CatBoost ranking objectives on the same features, then blend ranks or probabilities with the base classifier. Keep CV grouped by race to avoid query leakage.",
+  "expected_effect": "Can lift AUC by sharpening relative ordering of contemporaneous candidates without needing perfect probability calibration.",
+  "risk": "Group construction matters; too-small or too-noisy query groups can hurt. Ranking outputs may need rank-based blending rather than direct averaging.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/release_3.2.0/tutorials/learning_to_rank.html",
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/concepts/loss-functions-classification"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Blend diverse models with OOF rank averaging or an AUC-maximizing stack",
+  "summary": "For ROC AUC, ranking matters more than calibration.",
+  "rationale": "For ROC AUC, ranking matters more than calibration. scikit-learn notes calibration usually does not improve ROC-AUC, and isotonic can even change ranks via ties. Public ensemble guidance and AUC-focused stacking literature both support rank-based or AUC-optimized blends.",
+  "implementation_hint": "Generate OOF predictions from at least three decorrelated learners: a CatBoost categorical model, a GBDT using hazard/state features, and a small horizon/sequence model. Blend with weighted rank averaging first; if stable, fit a simple meta-learner on OOF predictions optimized for AUC. Skip isotonic unless another metric requires calibrated probabilities.",
+  "expected_effect": "Likely small but real gain once single-model improvements flatten, especially if base models make different ranking errors.",
+  "risk": "If base models are too similar, blending adds noise; stacking must be strictly OOF to avoid hidden leakage.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://www.cnblogs.com/medsci/articles/9160663.html",
+    "https://www.degruyterbrill.com/document/doi/10.1515/ijb-2015-0035/pdf"
+  ]
+}

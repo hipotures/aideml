@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Unsupervised Strategy-Template Distance",
+  "summary": "F1 strategy is usually planned around one-stop, two-stop, or alternative templates, not only tyre age thresholds.",
+  "rationale": "F1 strategy is usually planned around one-stop, two-stop, or alternative templates, not only tyre age thresholds. A driver close to the next template stop lap may be high risk even before tyres look extreme.",
+  "implementation_hint": "From observed PitStop sequences, cluster stop-lap fractions by Race, EstimatedTotalLaps, starting/current compound, and current Stint. For each row, infer the most compatible template from prior stops only and add signed distance to next expected stop, template stop count, and template confidence.",
+  "expected_effect": "Can encode race-specific strategic windows and separate planned stops from degradation-only stops.",
+  "risk": "Template learning can leak if built from validation targets; build templates inside folds for CV and use only train plus test-observed current PitStop history for inference.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://optimization-online.org/wp-content/uploads/2026/02/Pit_Stop_Strategy_Optimization_Model.pdf",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ]
+}

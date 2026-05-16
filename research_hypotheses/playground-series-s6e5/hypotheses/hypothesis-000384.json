@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Ordered High-Cardinality Strategy Priors",
+  "summary": "Inference from CatBoost ordered boosting and Bayesian encoders: the current pipeline underuses rare but important categorical structure such as `Driver x Race`, `Driver x Compound`, and `Race x Stint`, where shrinkage matters more than raw frequency counts.",
+  "rationale": "Inference from CatBoost ordered boosting and Bayesian encoders: the current pipeline underuses rare but important categorical structure such as `Driver x Race`, `Driver x Compound`, and `Race x Stint`, where shrinkage matters more than raw frequency counts.",
+  "implementation_hint": "Create composite categorical keys and encode them with strictly OOF / prior-only ordered target statistics or Beta-binomial posterior means plus counts; keep folds grouped by `Race_Year` and chronology-safe within each `Driver x Race` sequence.",
+  "expected_effect": "Should add signal for team/driver-specific stop tendencies and compound usage patterns that simple frequency features miss, with modest CV lift if leakage is controlled.",
+  "risk": "Easy to leak target information or overfit rare categories; shrinkage strength and fold protocol are critical.",
+  "sources": [
+    "https://arxiv.org/abs/1706.09516",
+    "https://arxiv.org/abs/1904.13001"
+  ]
+}

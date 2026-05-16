@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reframe as discrete-time hazard plus optional time-to-pit auxiliary target",
+  "summary": "Next-lap pit probability is a discrete hazard: probability of stopping in interval t+1 given survival until t.",
+  "rationale": "Next-lap pit probability is a discrete hazard: probability of stopping in interval t+1 given survival until t. Discrete-time survival literature explicitly supports using standard classifiers on person-period data, and recent F1 pit-stop work reports benefit from coupling next-lap classification with a horizon-to-stop regression head.",
+  "implementation_hint": "Create an auxiliary target like `laps_until_next_pit` within each driver-race sequence, train either a joint two-head model or two separate models, then feed the auxiliary prediction back into the final binary model. Keep labels lag-safe by computing future stop distance only from the target sequence, not test-time future rows.",
+  "expected_effect": "Should sharpen pit-window discrimination, especially for medium-risk rows where current features know a stop is coming soon but not whether it is exactly next lap.",
+  "risk": "More label engineering complexity; if not done strictly within train folds it can leak future information and inflate CV.",
+  "sources": [
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6",
+    "https://link.springer.com/article/10.1007/s10985-021-09532-6",
+    "https://sportrxiv.org/index.php/server/preprint/view/700"
+  ]
+}

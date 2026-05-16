@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-group ranking model to identify the most likely next stopper within each lap",
+  "summary": "Pit calls are competitive and relative: on a given `(Year,Race,LapNumber)` only a few drivers are realistic next-lap pit candidates.",
+  "rationale": "Pit calls are competitive and relative: on a given `(Year,Race,LapNumber)` only a few drivers are realistic next-lap pit candidates. Ranking objectives are designed for within-group ordering and may match the leaderboard better than independent binary loss when many rows are easy negatives.",
+  "implementation_hint": "Build a second model with group id `(Year,Race,LapNumber)` or `(Year,Race,LapNumber,compound regime)` and optimize a ranking loss such as `YetiRankPairwise`, `PairLogit`, or `QueryCrossEntropy` in CatBoost/XGBoost-style rankers. Blend its OOF scores with the existing binary classifier rather than replacing it.",
+  "expected_effect": "Sharper ordering among same-lap competitors and better AUC through improved relative ranking, especially if many pit decisions are triggered by field context.",
+  "risk": "Some groups may contain zero or multiple positives, so ranking-only training can be noisy; needs careful handling of tiny groups and may underperform without blending.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://catboost.ai/docs/en/features/categorical-features",
+    "https://link.springer.com/article/10.1186/s40163-020-00112-x"
+  ]
+}

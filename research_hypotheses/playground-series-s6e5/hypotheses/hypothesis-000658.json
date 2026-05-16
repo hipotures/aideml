@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal rolling degradation acceleration",
+  "summary": "Recent research frames tyre degradation as a latent stochastic process with pit-stop resets, while current solutions mostly use static ratios and same-lap medians.",
+  "rationale": "Recent research frames tyre degradation as a latent stochastic process with pit-stop resets, while current solutions mostly use static ratios and same-lap medians. The next-lap pit decision should react to short-term worsening, not just absolute tyre age.",
+  "implementation_hint": "Sort by Race, Driver, Stint, LapNumber and compute lag-only rolling 2/3/5-lap slopes and EWMs for LapTime_Delta, LapTime (s), Cumulative_Degradation, Position_Change, plus acceleration terms. Reset windows at Stint changes and fill first-lap values conservatively.",
+  "expected_effect": "Adds temporal evidence of a tyre cliff and should diversify from static GBM features.",
+  "risk": "Random row order must not be trusted; rolling features must never include current target or future laps.",
+  "sources": [
+    "https://journals.sagepub.com/doi/full/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://f1briefing.com/how-machine-learning-predicts-f1-tire-degradation/"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Model undercut/overcut economics instead of only service windows",
+  "summary": "Public F1 strategy references emphasize that pit timing is governed by the tradeoff between old-tyre loss, fresh-tyre gain, and track-position timing.",
+  "rationale": "Public F1 strategy references emphasize that pit timing is governed by the tradeoff between old-tyre loss, fresh-tyre gain, and track-position timing. Your current features estimate finish feasibility and service age, but they do not explicitly encode whether pitting now is economically superior to extending one more lap.",
+  "implementation_hint": "Create features approximating `pit_now_value - stay_out_value`: expected one-lap old-tyre loss from degradation trend, fresh-tyre recovery by compound, remaining-lap value of a stop, and track-position penalty proxies from `Position`/`Position_Change`. Add interaction terms such as `undercut_pressure = expected_fresh_gain * lost_positions` and `overcut_viability = low_deg_slope * high_position`.",
+  "expected_effect": "Adds a more strategy-faithful decision surface than generic tyre-age thresholds, especially around ambiguous mid-window laps.",
+  "risk": "Without true rival gaps or safety-car data, the economics are only proxies; overly aggressive formulas may just restate existing tyre-life features.",
+  "sources": [
+    "https://formula1.wiki/index.php/Race_strategy_modelling",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models",
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz"
+  ]
+}

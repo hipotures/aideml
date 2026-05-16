@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Develop the prior blend idea into an AUC-preserving specialist rank ensemble",
+  "summary": "For ROC AUC, monotone calibration usually does not help ranking, and scikit-learn notes isotonic can even alter AUC by introducing ties.",
+  "rationale": "For ROC AUC, monotone calibration usually does not help ranking, and scikit-learn notes isotonic can even alter AUC by introducing ties. That suggests the blend should optimize rank diversity across experts rather than chase probability calibration alone.",
+  "implementation_hint": "Train a few intentionally different experts, for example a raw-categorical CatBoost specialist, a numeric/meta-feature booster, a wet-weather expert and a late-race expert. Produce strict out-of-fold predictions on race-held-out splits, convert each expert to fold-wise ranks or sigmoid-calibrated logits, then fit a very small linear blend on OOF AUC. Avoid isotonic in the final rank path.",
+  "expected_effect": "Modest leaderboard lift if experts disagree mainly around pit-window boundaries where ranking is uncertain.",
+  "risk": "If experts are too correlated, the blend adds noise; compare against plain rank-average and keep stacking fully out-of-fold.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/calibration.html",
+    "https://catboost.ai/docs/en/features/categorical-features"
+  ]
+}

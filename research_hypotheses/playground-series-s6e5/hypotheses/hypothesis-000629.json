@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "CatBoost Ordered-Categorical Blend",
+  "summary": "The best runs rely on AutoGluon GBM/XGB, while CatBoost is designed for categorical feature combinations and ordered target statistics.",
+  "rationale": "The best runs rely on AutoGluon GBM/XGB, while CatBoost is designed for categorical feature combinations and ordered target statistics. Race, Driver, Compound, and engineered interaction categories are central here.",
+  "implementation_hint": "Train a separate CatBoostClassifier with native categorical columns plus the best engineered features, using ordered boosting, class weights or scale_pos_weight, and grouped validation by Race-Year for model selection. Blend its rank-normalized predictions with the current AutoGluon GBM/XGB predictions, optimizing blend weight on OOF AUC.",
+  "expected_effect": "Adds model-family diversity and stronger categorical interaction handling without rewriting the feature pipeline.",
+  "risk": "CatBoost can overfit high-cardinality Race/Driver interactions if validation remains random; rank blending helps AUC but calibration may not improve.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/categorical-features.html",
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic.html",
+    "https://scikit-learn.org/stable/modules/calibration.html"
+  ]
+}

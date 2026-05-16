@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Join circuit stop-cost metadata instead of treating `Race` as a pure category",
+  "summary": "Public F1 track data shows pit-lane loss differs materially by circuit, and official strategy analysis says undercut power depends on degradation, overtaking difficulty, and track position.",
+  "rationale": "Public F1 track data shows pit-lane loss differs materially by circuit, and official strategy analysis says undercut power depends on degradation, overtaking difficulty, and track position. The same tyre state should imply different pit probabilities at Monaco than at Zandvoort.",
+  "implementation_hint": "Create a public side table keyed by race with pit-lane time loss, track type, overtaking-difficulty proxy, and pit-lane tightness/speed-limit tags. Interact those with `CurrentTyreFinishPressure`, `Position`, `RaceProgress`, and `LapsRemaining_Est`.",
+  "expected_effect": "Replaces a black-box race label with interpretable stop-cost scalars that can transfer better across years.",
+  "risk": "Manual metadata curation can be noisy, and yearly circuit changes may blur the benefit if the table is too static.",
+  "sources": [
+    "https://www.racefans.net/f1-information/going-to-a-race/monte-carlo-circuit-information/",
+    "https://www.racefans.net/f1-information/going-%20to-a-race/zandvoort/",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW"
+  ]
+}

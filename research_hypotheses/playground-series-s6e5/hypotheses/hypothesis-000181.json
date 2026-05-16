@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Undercut and discounted-stop opportunity features from field context",
+  "summary": "F1 strategy sources emphasize that stop timing depends on undercut viability, traffic, and reduced pit-loss under safety-car/VSC-like conditions.",
+  "rationale": "F1 strategy sources emphasize that stop timing depends on undercut viability, traffic, and reduced pit-loss under safety-car/VSC-like conditions. Without explicit flag data, the dataset can still proxy these regimes from race-lap distributions and local gaps.",
+  "implementation_hint": "Engineer race-lap relative features such as percentile of LapTime_Delta within Race-Year-Lap, distance to nearest cars by Position, local spread/dispersion of lap deltas, abnormal fieldwide slowing, and whether the current lap looks like a pit wave. Add interaction features for tyre age x field slowdown x position band to represent cheap-stop or undercut windows.",
+  "expected_effect": "Captures strategic triggers that static tire-life formulas miss, especially coordinated pit waves and laps where stopping is temporarily cheaper.",
+  "risk": "Full-race aggregates can leak if not computed fold-safely or if future laps are used. Proxying safety-car effects may be noisy on normal slow laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.motorsport.com/f1/news/how-f1-race-strategy-works/6791893/",
+    "https://www.sciencedirect.com/science/article/pii/S0377221724005484"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-blocked plus chronological-gap OOF calibration stack",
+  "summary": "This task has two leakage axes: same-race dependence and temporal drift across years/rules/tyre choices.",
+  "rationale": "This task has two leakage axes: same-race dependence and temporal drift across years/rules/tyre choices. GroupKFold handles non-overlapping races, while TimeSeriesSplit’s `gap` concept motivates an embargo between earlier and later race blocks. After that, OOF calibration should be fold-local; sklearn notes isotonic is stronger with enough samples, while sigmoid is safer on smaller subsets.",
+  "implementation_hint": "Build OOF predictions with splits that never mix a race across train/valid and preserve approximate chronology across `Year` and race order, leaving a small embargo gap around validation race blocks if you use history-derived race statistics. Then calibrate only on OOF predictions: isotonic for the large dry-race subset, sigmoid for smaller wet/intermediate subsets, and average calibrated experts in the final blend.",
+  "expected_effect": "More honest local CV and better public-score transfer, plus cleaner probabilities for ensembling heterogeneous experts.",
+  "risk": "Stricter splits usually reduce local CV at first; if chronology is approximated poorly from the available columns, you can over-penalize training data without gaining leaderboard robustness.",
+  "sources": [
+    "https://scikit-learn.org/dev/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://scikit-learn.org/0.24/modules/calibration.html"
+  ]
+}

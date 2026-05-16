@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stress-test CV with chronology gaps, then keep only ensemble members that survive",
+  "summary": "This dataset mixes years and repeated races/drivers, so leakage-sensitive features can look strong under naive grouped CV.",
+  "rationale": "This dataset mixes years and repeated races/drivers, so leakage-sensitive features can look strong under naive grouped CV. Time-aware docs and survival literature both emphasize evaluating on later periods only; for Kaggle, robust public-LB behavior often comes from pruning models that collapse under stricter splits and calibrating only on unbiased OOF predictions.",
+  "implementation_hint": "Run two validation views: `GroupKFold` by `Race_Year` and forward-only `TimeSeriesSplit` over season order with a gap. Keep models/features whose fold variance stays low across both. Fit final sigmoid/isotonic calibrators on stacked OOF predictions only, and average only stable members.",
+  "expected_effect": "Less optimistic local CV, better leaderboard transfer, and cleaner probabilities from a small stable ensemble rather than a single overfit booster.",
+  "risk": "This may lower local CV while improving real generalization; isotonic can overfit if each calibration slice is too small.",
+  "sources": [
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Add rival-relative undercut/overcut pressure features from same-lap field context",
+  "summary": "Public F1 strategy explanations emphasize that pit calls depend on undercut/overcut risk, traffic, and being within striking range of rivals, not only absolute tyre age.",
+  "rationale": "Public F1 strategy explanations emphasize that pit calls depend on undercut/overcut risk, traffic, and being within striking range of rivals, not only absolute tyre age. Current best features are mostly single-car features.",
+  "implementation_hint": "Within each Race+Lap group, create relative features: position-normalized rank, nearest rival ahead/behind, counts of rivals within +/-2 positions, percentile rank of LapTime_Delta and degradation, compound mismatch versus nearby cars, and proxies for clean-air or traffic after a stop.",
+  "expected_effect": "Should capture strategic pressure that triggers reactive stops, especially in midfield packs where absolute tyre wear alone is insufficient.",
+  "risk": "The dataset lacks true time gaps, so position-based traffic proxies may be noisy or track-dependent.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/undercut-vs-overcut-why-tyre-strategy-was-so-finely-poised-in-monaco-and-why.1YYMDkEBnFols8bDWtSXiz",
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW",
+    "https://www.gpfans.com/en/f1-news/1016512/f1-undercut-overcut-explained/"
+  ]
+}

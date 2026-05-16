@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Chronological CatBoost on raw high-cardinality interactions instead of manual frequency encoding",
+  "summary": "Your strongest solutions still handcraft many categorical surrogates.",
+  "rationale": "Your strongest solutions still handcraft many categorical surrogates. CatBoost’s ordered target statistics are explicitly built from previous objects in random permutations, which is well suited to high-cardinality `Driver`, `Race`, and interaction terms while reducing prediction shift from naive target encoding.",
+  "implementation_hint": "Train a CatBoostClassifier on mostly raw columns plus a smaller numeric feature set, keeping `Driver`, `Race`, `Compound`, `Year`, `Stint`, and combinations such as `Driver x Race`, `Race x Compound`, `Driver x Compound` as categorical. Compare raw CatBoost and CatBoost-as-meta-feature against the current XGBoost/LightGBM-style baseline.",
+  "expected_effect": "Lift from richer categorical interactions, especially for rare drivers/races/compound contexts where frequency features are too blunt.",
+  "risk": "Random permutations in CatBoost are not time-aware by default, so validation must still be race-blocked and, if possible, rows should be chronologically sorted within race before fitting.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/algorithm-main-stages_cat-to-numberic",
+    "https://catboost.ai/docs/en/features/categorical-features.html"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

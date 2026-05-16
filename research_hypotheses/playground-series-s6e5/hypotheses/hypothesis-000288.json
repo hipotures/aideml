@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent degradation state features via simple per-stint filter",
+  "summary": "Recent F1 research argues degradation is better represented as a latent stochastic state with pit-stop resets than as a fixed deterministic wear curve.",
+  "rationale": "Recent F1 research argues degradation is better represented as a latent stochastic state with pit-stop resets than as a fixed deterministic wear curve. That matches this competition, where raw `TyreLife` and `Cumulative_Degradation` likely miss hidden pace-collapse dynamics and driver-specific tyre management.",
+  "implementation_hint": "Build lightweight per-driver-per-race filtered states in lap order: exponentially updated latent pace loss, latent degradation slope, shock term from sudden lap-time delta jumps, and reset-aware residuals after pit stops. Feed only one-step-behind filtered values, never smoothed full-stint estimates. Compare a simple Kalman/EMA-style filter to your current handcrafted window heuristics.",
+  "expected_effect": "Should sharpen decision boundaries near the true pit cliff while remaining interpretable and cheap.",
+  "risk": "The biggest failure mode is accidental smoothing with future laps; noisy lap times from traffic or weather may contaminate the latent state unless clipped or robustified.",
+  "sources": [
+    "https://journals.sagepub.com/doi/10.1177/22150218261446170",
+    "https://formula1.wiki/index.php/Tyres_and_degradation_models"
+  ],
+  "disabled_reason": "Disabled because an external duplicate-detection mechanism marked this hypothesis as duplicate of an existing hypothesis."
+}

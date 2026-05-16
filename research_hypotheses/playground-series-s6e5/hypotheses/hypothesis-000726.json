@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Auxiliary Time-to-Stop Target Instead Of Binary-Only Training",
+  "summary": "Recent F1 pit-stop papers report gains from predicting both next-lap stop and stop horizon.",
+  "rationale": "Recent F1 pit-stop papers report gains from predicting both next-lap stop and stop horizon. This can regularize the model toward a smoother notion of strategic urgency than a single sparse binary label.",
+  "implementation_hint": "Add an auxiliary target such as laps_until_next_pit within the current stint/race, censored at a small horizon like 5 to 8 laps. Test either a multi-output tabular NN, two-stage model where the regression output is fed to the classifier, or a stack of horizon-specific binary heads whose outputs are summarized back into next-lap probability.",
+  "expected_effect": "Improved discrimination around borderline pit windows and fewer brittle threshold-like predictions.",
+  "risk": "Constructing the auxiliary target incorrectly can leak future information; censoring and missing terminal cases must be handled carefully.",
+  "sources": [
+    "https://sportrxiv.org/index.php/server/preprint/view/700",
+    "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1673148/full",
+    "https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-022-01679-6"
+  ]
+}

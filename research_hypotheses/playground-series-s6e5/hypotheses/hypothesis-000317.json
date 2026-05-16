@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Race-Lap Query Ranking Expert",
+  "summary": "The real decision is often relative: among the 20 cars on the current lap, which ones are most likely to pit next.",
+  "rationale": "The real decision is often relative: among the 20 cars on the current lap, which ones are most likely to pit next. CatBoost and LightGBM both expose query/ranking objectives that fit this framing better than pure independent binary classification.",
+  "implementation_hint": "Create a specialist where each query is Race_Year x LapNumber and positives are drivers with PitNextLap=1 on that lap. Train CatBoost QueryCrossEntropy/YetiRank or LightGBM LambdaRank on field-relative features only: lap-wise percentiles, distance from race-lap medians, stint age rank, compound rarity on that lap, and legality/finish-window state. Blend OOF scores with the existing classifier.",
+  "expected_effect": "Can sharpen within-lap ordering and improve AUC when multiple cars share similar absolute tyre-life features but only a few are truly in the pit window.",
+  "risk": "Queries with zero or many positives can be noisy; performance depends on careful grouping and excluding absolute leak-prone race identifiers from the ranker.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking.html",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html"
+  ]
+}

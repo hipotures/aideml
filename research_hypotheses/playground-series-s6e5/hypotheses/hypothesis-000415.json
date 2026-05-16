@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Latent tyre-state posterior features",
+  "summary": "Recent F1 work models tyre degradation as a hidden state with pit stops as resets, which is a better match to strategy decisions than fixed compound life constants or raw cumulative degradation alone.",
+  "rationale": "Recent F1 work models tyre degradation as a hidden state with pit stops as resets, which is a better match to strategy decisions than fixed compound life constants or raw cumulative degradation alone.",
+  "implementation_hint": "Fit a lightweight per-race or per-race-compound state-space/Kalman model on lap-time residuals, then emit posterior wear level, wear acceleration, one-step predictive variance, and reset-adjusted residual as new tabular features.",
+  "expected_effect": "Should make tyre-pressure features less brittle across compounds, wet races, and unusual stint shapes, especially where current fixed thresholds mis-rank edge cases.",
+  "risk": "Posterior estimates can be noisy around safety cars, traffic, or weather shifts; a poor residual baseline can inject model error rather than signal.",
+  "sources": [
+    "https://arxiv.org/abs/2512.00640",
+    "https://arxiv.org/abs/2602.23056"
+  ]
+}

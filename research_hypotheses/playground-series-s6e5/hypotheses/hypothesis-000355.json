@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Within-stint ranking with hard negatives near the actual stop",
+  "summary": "Adjacent ranking literature fits this label structure well: each Driver x Race x Stint is a short sequence where one or a few laps are much more stop-imminent than the others.",
+  "rationale": "Adjacent ranking literature fits this label structure well: each Driver x Race x Stint is a short sequence where one or a few laps are much more stop-imminent than the others. Ranking within the stint is more aligned than global logloss, and hard negatives from the last few non-stop laps before the pit event should be more informative than easy early-stint negatives.",
+  "implementation_hint": "Group by `Race_Year x Driver x Stint` (or `Race x Driver x Stint` if needed). Use CatBoost `QuerySoftMax`/`PairLogitPairwise` or LightGBM `lambdarank`/`rank_xendcg`; assign higher relevance to the positive lap and optionally to laps 1-3 before a stop. Sample or weight negatives by proximity to the stop to focus training on the decision boundary. Validation trap: never split a group across folds.",
+  "expected_effect": "Can lift AUC by improving the ordering of borderline laps within the same stint without requiring a full survival pipeline.",
+  "risk": "If some stints have no positive event or ambiguous boundaries, ranking data construction can get noisy; keep a simple fallback classifier in the ensemble.",
+  "sources": [
+    "https://catboost.ai/docs/en/concepts/loss-functions-ranking",
+    "https://lightgbm.readthedocs.io/en/latest/Parameters.html?highlight=lambdamart",
+    "https://proceedings.neurips.cc/paper/7898-catboost-unbiased-boosting-with-categorical-features.pdf"
+  ]
+}

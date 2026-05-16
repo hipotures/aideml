@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Similarity-and-recency weighted local race expert",
+  "summary": "Concept-drift work for sequential data shows benefit from selecting training data by both temporal proximity and feature-space similarity.",
+  "rationale": "Concept-drift work for sequential data shows benefit from selecting training data by both temporal proximity and feature-space similarity. F1 strategy behavior drifts across years and differs by circuit archetype, so a single global fit may oversmooth race-specific stop logic.",
+  "implementation_hint": "Build race-level meta-features from train-only data, such as estimated total laps, compound mix, degradation percentiles, and early pit-rate profile. For each validation/test race, train or weight a side expert on the nearest historical races with stronger weights for recent seasons, then blend with the global model.",
+  "expected_effect": "Should help under year drift and track-specific strategy variation without relying on fixed hand-written circuit categories.",
+  "risk": "Easy to leak if race descriptors are not built fold-causally; too-local sampling can reduce stability on uncommon regimes.",
+  "sources": [
+    "https://journals.sagepub.com/doi/abs/10.3233/IDA-2011-0484"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Causal field/time-aware sequential tabular specialist per driver-race",
+  "summary": "This data is sequential tabular, not iid tabular: `Race`, `Driver`, and `Year` are static context, while tyre wear and pace features evolve lap by lap.",
+  "rationale": "This data is sequential tabular, not iid tabular: `Race`, `Driver`, and `Year` are static context, while tyre wear and pace features evolve lap by lap. Recent sequence-tabular work explicitly separates static and dynamic fields, which matches this competition better than adding more hand-made thresholds.",
+  "implementation_hint": "Build a causal sequence model over each `Race x Driver` trajectory, with separate embeddings for static fields and dynamic lap tokens, masking future laps. Restrict context to current stint or last N laps, predict next-lap hazard at every step, and optionally late-fuse the sequence score with the existing GBDT/AutoGluon score.",
+  "expected_effect": "Should capture stint shape, abrupt cliff onset, and extension behavior that hand-engineered finish-window rules miss, especially for rows near pit-window boundaries.",
+  "risk": "Overfitting on race/driver ids and unseen drivers is the main failure mode. Use strict grouped folds, shallow capacity, and treat this as a specialist to blend rather than a full replacement.",
+  "sources": [
+    "https://arxiv.org/abs/2310.13818",
+    "https://arxiv.org/abs/1805.00917",
+    "https://arxiv.org/abs/2602.23056"
+  ]
+}

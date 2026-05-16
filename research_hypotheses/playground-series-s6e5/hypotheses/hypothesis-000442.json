@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Traffic-aware relative field-state features",
+  "summary": "Public F1 strategy sources emphasize that pit timing depends on clear air, nearby rivals, pit-window timing, and whether a car is within undercut/overcut range, not just absolute tyre age.",
+  "rationale": "Public F1 strategy sources emphasize that pit timing depends on clear air, nearby rivals, pit-window timing, and whether a car is within undercut/overcut range, not just absolute tyre age. The current best code is mostly absolute-state engineering.",
+  "implementation_hint": "Within each `Race_Year x LapNumber` or narrow `RaceProgress` bucket, add percentile ranks/z-scores for `LapTime (s)`, `LapTime_Delta`, `Cumulative_Degradation`, `TyreLife`, and `Position_Change`. Add local-congestion proxies such as counts of cars in nearby `Position`, same `Compound`, or same `Stint`, plus relative-to-race-median deltas. Keep CV grouped by race to avoid same-race leakage.",
+  "expected_effect": "Better separation of true undercut/overcut opportunities from generic old-tyre laps; likely improves generalization more than adding new hard thresholds.",
+  "risk": "Without actual interval gaps, traffic proxies may be noisy. Over-granular race-lap grouping can add variance on sparse laps.",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/jolyon-palmers-analysis-singapore-and-the-art-of-undercutting.1NgVyVsZnHTDEA9wi0s5lW.html",
+    "https://www.formula1.com/en/latest/article/f1-glossary-p-t.GBhLQtpeu9b8LrK5VM0F1",
+    "https://www.formula1.com/en/latest/article/watch-the-insiders-guide-to-f1-strategists.6VT3445ugVd0bh85Pw5slO"
+  ]
+}

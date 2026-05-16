@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Monotone-constraint booster on physics-safe features",
+  "summary": "XGBoost supports explicit monotonic constraints, which fit several pit-stop priors: more stop debt, more excess tyre age versus finish window, and larger positive degradation pressure should not reduce stop probability all else equal.",
+  "rationale": "XGBoost supports explicit monotonic constraints, which fit several pit-stop priors: more stop debt, more excess tyre age versus finish window, and larger positive degradation pressure should not reduce stop probability all else equal. A constrained expert can cut fold variance from spurious inversions.",
+  "implementation_hint": "Train a separate XGBoost model on a compact set of engineered signals with signed constraints, e.g. increasing for CurrentTyreFinishExcess, Positive_LapTime_Delta, Deg_Per_TyreLife, PriorStopDebt, and decreasing for viable fresh-tyre finish margin. Keep high-cardinality categoricals out of this expert and stack OOF.",
+  "expected_effect": "May not raise standalone CV much, but often improves robustness and ensemble diversity, especially when hand-engineered window features already dominate.",
+  "risk": "Wrong constraints can suppress real interactions, and the hist builder may need larger max_bin to avoid overly shallow trees.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html",
+    "https://www.formula1.com/en/latest/article.mercedes-explain-how-they-engineered-hamiltons-hungary-win.6boKz816SMYDaEPetkdWlq.html"
+  ]
+}

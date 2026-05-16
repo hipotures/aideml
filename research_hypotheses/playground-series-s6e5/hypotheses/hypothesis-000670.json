@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Discrete-time hazard model over laps-since-stint-start",
+  "summary": "This target is naturally a conditional event probability: stop on the next lap given survival so far.",
+  "rationale": "This target is naturally a conditional event probability: stop on the next lap given survival so far. Discrete-time survival literature shows tree or neural classifiers on person-period data can match or beat standard survival baselines and gives a cleaner way to model baseline hazard.",
+  "implementation_hint": "Build a hazard-style table where each lap is an at-risk interval within the current stint, add spline/bin features for laps-in-stint and laps-remaining, and predict conditional stop probability next lap. Enforce fold-safe construction and compare against the current rowwise classifier on held-out Race_Year folds.",
+  "expected_effect": "Should capture the non-linear stop hazard curve within a stint and reduce ad hoc threshold features.",
+  "risk": "If expanded carelessly, person-period framing can overweight long non-event stints and worsen imbalance; weighting and grouped CV matter.",
+  "sources": [
+    "https://link.springer.com/article/10.1186/s12874-022-01679-6",
+    "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection/TimeSeriesSplit.html"
+  ]
+}
