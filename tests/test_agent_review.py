@@ -77,6 +77,53 @@ def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
     assert "checkpoint 000027" not in summary
 
 
+def test_journal_generates_branch_context_from_root_to_parent_only():
+    journal = Journal()
+    root = Node(code="root", plan="Root hypothesis plan")
+    root.metric = MetricValue(0.91, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000101"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child hypothesis plan", parent=root)
+    child.metric = MetricValue(0.92, maximize=True)
+    child.is_buggy = False
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000202"]
+    journal.append(child)
+
+    unrelated = Node(code="other", plan="Unrelated root plan")
+    unrelated.metric = MetricValue(0.99, maximize=True)
+    unrelated.is_buggy = False
+    unrelated.research_mode = "hypothesis"
+    unrelated.research_hypotheses_offered = ["000999"]
+    journal.append(unrelated)
+
+    grandchild = Node(code="grandchild", plan="Grandchild plan", parent=child)
+    grandchild.metric = MetricValue(0.93, maximize=True)
+    grandchild.is_buggy = False
+    grandchild.research_mode = "hypothesis"
+    grandchild.research_hypotheses_offered = ["000303"]
+
+    context = journal.generate_branch_context(child)
+
+    assert "ancestor nodes of this parent, ordered from root to direct parent" in context
+    assert "Branch path:\n000101 -> 000202" in context
+    assert "Ancestor 1 / root:" in context
+    assert "Hypothesis ID: 000101" in context
+    assert "Design: Root hypothesis plan" in context
+    assert "Validation Metric: 0.91000" in context
+    assert "Ancestor 2 / direct parent:" in context
+    assert "Hypothesis ID: 000202" in context
+    assert "Design: Child hypothesis plan" in context
+    assert "Validation Metric: 0.92000" in context
+    assert "000999" not in context
+    assert "Unrelated root plan" not in context
+    assert "000303" not in context
+    assert "Grandchild plan" not in context
+
+
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(
     tmp_path,
     monkeypatch,

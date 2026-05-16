@@ -264,3 +264,58 @@ class Journal(DataClassJsonMixin):
             summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
+
+    def _ancestor_path(self, node: Node) -> list[Node]:
+        path: list[Node] = []
+        current: Node | None = node
+        while current is not None:
+            path.append(current)
+            current = current.parent
+        return list(reversed(path))
+
+    def generate_branch_context(self, parent_node: Node) -> str:
+        """Generate hypothesis-mode context for the selected parent branch."""
+        ancestors = self._ancestor_path(parent_node)
+        hypothesis_path = [
+            n.research_hypotheses_offered[0]
+            for n in ancestors
+            if len(n.research_hypotheses_offered) == 1
+        ]
+        lines = [
+            (
+                "The previous code is the current parent code. The entries below "
+                "are the ancestor nodes of this parent, ordered from root to direct parent."
+            ),
+            "They describe earlier hypotheses already incorporated into the previous code.",
+            "",
+        ]
+        if hypothesis_path:
+            lines.extend(["Branch path:", " -> ".join(hypothesis_path), ""])
+
+        for idx, ancestor in enumerate(ancestors, start=1):
+            labels = []
+            if idx == 1:
+                labels.append("root")
+            if idx == len(ancestors):
+                labels.append("direct parent")
+            label_suffix = f" / {' / '.join(labels)}" if labels else ""
+            lines.append(f"Ancestor {idx}{label_suffix}:")
+            if len(ancestor.research_hypotheses_offered) == 1:
+                lines.append(
+                    f"Hypothesis ID: {ancestor.research_hypotheses_offered[0]}"
+                )
+            lines.append(f"Design: {_summary_plan_text(ancestor.plan)}")
+            if ancestor.metric is not None and ancestor.metric.value is not None:
+                lines.append(f"Validation Metric: {ancestor.metric.value:.5f}")
+            if idx != len(ancestors):
+                lines.extend(["", "-------------------------------"])
+            lines.append("")
+
+        lines.extend(
+            [
+                "Instruction: Use the previous code as the authoritative current state.",
+                "This branch context only describes earlier changes already present in that code.",
+                "Preserve these earlier branch changes unless they directly conflict with the assigned hypothesis.",
+            ]
+        )
+        return "\n".join(lines).strip()
