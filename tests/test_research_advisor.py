@@ -428,6 +428,147 @@ def test_select_manual_hypotheses_filters_by_agent_mode(tmp_path):
     assert source_ref["compatible_hypothesis_count"] == 1
 
 
+def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    for idx in range(1, 3):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    journal = Journal()
+    used_root = _node(0.9, code="print('ok')", plan="root")
+    used_root.research_mode = "hypothesis"
+    used_root.research_hypotheses_offered = ["000001"]
+    journal.append(used_root)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=None,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    assert (
+        research.hypothesis_root_pool_exhausted(
+            cfg,
+            journal=journal,
+            repo_root=tmp_path,
+        )
+        is False
+    )
+
+    second_root = _node(0.91, code="print('ok')", plan="root")
+    second_root.research_mode = "hypothesis"
+    second_root.research_hypotheses_offered = ["000002"]
+    journal.append(second_root)
+
+    assert (
+        research.hypothesis_root_pool_exhausted(
+            cfg,
+            journal=journal,
+            repo_root=tmp_path,
+        )
+        is True
+    )
+
+
+def test_select_hypothesis_for_child_excludes_ancestors_and_siblings(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    for idx in range(1, 5):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    journal = Journal()
+    root = _node(0.9, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+    sibling_a = _node(0.91, code="print('child')", plan="child")
+    sibling_a.parent = root
+    root.children.add(sibling_a)
+    sibling_a.research_mode = "hypothesis"
+    sibling_a.research_hypotheses_offered = ["000002"]
+    sibling_b = _node(0.92, code="print('child')", plan="child")
+    sibling_b.parent = root
+    root.children.add(sibling_b)
+    sibling_b.research_mode = "hypothesis"
+    sibling_b.research_hypotheses_offered = ["000003"]
+    journal.append(root)
+    journal.append(sibling_a)
+    journal.append(sibling_b)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=3,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000004"]
+
+
+def test_select_hypothesis_for_debug_inherits_buggy_parent_hypothesis(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000007",
+        title="Buggy parent hypothesis",
+    )
+    journal = Journal()
+    parent = _node(None, code="raise RuntimeError('bug')", plan="bug")
+    parent.research_mode = "hypothesis"
+    parent.research_hypotheses_offered = ["000007"]
+    journal.append(parent)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=parent,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000007"]
+
+
+def test_format_hypothesis_for_prompt_is_hard_contract_without_source_hash(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Grouped validation",
+        summary="Use grouped validation to reduce public/CV mismatch.",
+    )
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=Journal(),
+        parent_node=None,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    rendered = research.format_hypothesis_for_prompt(selection)
+
+    assert "Hypothesis verification contract" in rendered
+    assert "Hypothesis ID: 000001" in rendered
+    assert "Implement this exact hypothesis" in rendered
+    assert "research_hypotheses_llm_claimed_used" in rendered
+    assert "Research source hash" not in rendered
+
+
 def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -924,6 +1065,49 @@ def test_manual_research_advisor_status_text_shows_latest_offer(tmp_path):
     assert advisor.status_text() == "[green]Research: ✓ manual 000001"
 
 
+def test_hypothesis_research_advisor_does_not_start_llm_checkpoint(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.every_steps = 1
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    journal = Journal()
+    journal.append(_node(0.9, code="print('ok')", plan="ok"))
+
+    def fail_runner(*_args, **_kwargs):
+        raise AssertionError("hypothesis mode must not invoke Codex research runner")
+
+    advisor = ResearchAdvisor(
+        cfg=cfg,
+        task_desc="task",
+        runner=fail_runner,
+        repo_root=tmp_path,
+    )
+
+    assert advisor.maybe_start(journal=journal, completed_steps=1) is False
+    assert not (Path(cfg.log_dir) / "research" / "checkpoint-000001").exists()
+
+
+def test_hypothesis_research_advisor_status_text_shows_latest_hypothesis(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    research.select_hypothesis_for_node(
+        cfg,
+        journal=Journal(),
+        parent_node=None,
+        completed_steps=12,
+        repo_root=tmp_path,
+    )
+    advisor = ResearchAdvisor(
+        cfg=cfg,
+        task_desc="task",
+        runner=lambda *_args, **_kwargs: None,
+        repo_root=tmp_path,
+    )
+
+    assert advisor.status_text() == "[green]Research: ✓ 000012 @ 000001"
+
+
 def test_research_advisor_status_text_shows_checkpoint_status(tmp_path):
     cfg = _cfg(tmp_path)
     checkpoint_dir = Path(cfg.log_dir) / "research" / "checkpoint-000010"
@@ -1065,6 +1249,62 @@ def test_agent_includes_latest_manual_research_hints_in_draft_prompt(
         "External research hints"
     ]
     assert node.research_mode == "manual"
+    assert node.research_hypotheses_offered == ["000001"]
+    assert node.research_source_hash == "sha256:test"
+
+
+def test_agent_includes_hard_hypothesis_contract_in_draft_prompt(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000001",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Grouped validation",
+                summary="Use grouped validation.",
+                rationale="Random holdout can mix race context.",
+                implementation_hint="Build Race_Year groups.",
+                expected_effect="More reliable validation.",
+                risk="Grouped CV may be pessimistic.",
+                sources=[],
+                path=tmp_path / "hypothesis-000001.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "I will verify hypothesis 000001.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent._draft()
+
+    assert "Hypothesis verification contract" in captured["prompt"][
+        "Hypothesis under verification"
+    ]
+    assert "Hypothesis ID: 000001" in captured["prompt"][
+        "Hypothesis under verification"
+    ]
+    assert "Research source hash" not in captured["prompt"][
+        "Hypothesis under verification"
+    ]
+    assert node.research_mode == "hypothesis"
     assert node.research_hypotheses_offered == ["000001"]
     assert node.research_source_hash == "sha256:test"
 

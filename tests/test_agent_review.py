@@ -219,3 +219,98 @@ def test_parse_result_marker_records_manual_research_claim_from_plan(tmp_path):
     assert node.research_usage_note == (
         "Plan text mentioned offered manual research hypothesis id(s): 000002."
     )
+
+
+def test_parse_exec_result_marks_hypothesis_node_failed_when_claim_missing(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000123"]
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.91\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": False,
+            "summary": "Ran a valid metric but omitted the hypothesis id.",
+            "metric": 0.91,
+            "lower_is_better": False,
+            "validity_warning": None,
+            "research_hypotheses_llm_claimed_used": [],
+            "research_usage_note": None,
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.status == "failed"
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert node.research_hypotheses_llm_claimed_used == []
+    assert "expected hypothesis id 000123" in node.analysis
+
+
+def test_parse_exec_result_accepts_exact_hypothesis_claim(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000123"]
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.91\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": False,
+            "summary": "Verified the assigned hypothesis.",
+            "metric": 0.91,
+            "lower_is_better": False,
+            "validity_warning": None,
+            "research_hypotheses_llm_claimed_used": ["000123"],
+            "research_usage_note": "Implemented 000123.",
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.status is None
+    assert node.is_buggy is False
+    assert node.metric.value == 0.91
+    assert node.research_hypotheses_llm_claimed_used == ["000123"]
+    usage = json.loads((Path(cfg.log_dir) / "research_hypotheses" / "usage.json").read_text())
+    assert usage["000123"]["llm_claimed_used_count"] == 1
+
+
+def test_parse_result_marker_requires_hypothesis_claim(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000123"]
+    exec_result = ExecutionResult(
+        term_out=[
+            'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+            '"metric": 0.92, "lower_is_better": false}\n'
+        ],
+        exec_time=1.0,
+        exc_type=None,
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.status == "failed"
+    assert node.is_terminal_failure is True
+    assert node.metric.is_worst

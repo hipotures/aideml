@@ -253,11 +253,28 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     return visible
 
 
-def build_autogluon_wrapper(preprocess_source: str, cfg: Config) -> str:
+def build_autogluon_wrapper(
+    preprocess_source: str,
+    cfg: Config,
+    *,
+    research_hypothesis_id: str | None = None,
+) -> str:
     validate_preprocess_source(preprocess_source)
     settings = resolve_autogluon_settings(cfg)
     constants = build_visible_autogluon_config(cfg, settings)
     constants_literal = pprint.pformat(constants, sort_dicts=True, width=88)
+    research_marker_fields = ""
+    if research_hypothesis_id is not None:
+        research_marker_fields = (
+            "\n        "
+            + '"research_hypotheses_llm_claimed_used": '
+            + json.dumps([research_hypothesis_id])
+            + ","
+            "\n        "
+            + '"research_usage_note": '
+            + json.dumps(f"Verified assigned hypothesis {research_hypothesis_id}.")
+            + ","
+        )
     return (
         f'''from __future__ import annotations
 
@@ -581,6 +598,7 @@ def main() -> None:
         "summary": summary,
         "metric": metric_value,
         "lower_is_better": lower_is_better,
+        {research_marker_fields}
     }}, sort_keys=True))
 
 

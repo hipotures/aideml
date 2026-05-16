@@ -51,6 +51,12 @@ def _good_node(
     return node
 
 
+def _hypothesis_node(node: Node, hypothesis_id: str) -> Node:
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = [hypothesis_id]
+    return node
+
+
 def _bug_node(parent: Node | None = None) -> Node:
     node = Node(code="raise RuntimeError('bug')", plan="bug", parent=parent)
     node.metric = MetricValue(None, maximize=True)
@@ -869,6 +875,71 @@ def test_run_data_shows_checkpoint_and_best_score_statuses_with_times(tmp_path):
     )
     assert "\x1b[32m★ Best Score" in ansi
     assert "\x1b[1;33m★ Best Score" not in ansi
+
+
+def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
+    journal = Journal()
+    best = _hypothesis_node(
+        _good_node(0.95115, ctime=dt.datetime(2026, 5, 8, 19, 13, 0).timestamp()),
+        "000122",
+    )
+    journal.append(best)
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 30/1500",
+            status="Generating code...",
+            research_status="[green]Research: ✓ 000030 @ 000122",
+            synthesis_status=None,
+            journal=journal,
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+        )
+    )
+
+    assert "◇ Research   · 030 @ 000122 ✓" in output
+    assert "★ Best Score · 000 @ 19:13:00 0.95115 @ 000122" in output
+
+
+def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95104), "000122")
+    bug = _hypothesis_node(_bug_node(parent=root), "000205")
+    journal.append(root)
+    journal.append(bug)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "0.95104@000122" in output
+    assert "bug@000205" in output
+
+
+def test_tree_view_shows_hypothesis_protocol_failures_with_id():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95104), "000122")
+    failed = _hypothesis_node(_failed_node(parent=root), "000311")
+    journal.append(root)
+    journal.append(failed)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "failed@000311" in output
 
 
 def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):

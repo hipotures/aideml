@@ -20,7 +20,11 @@ from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
-from .research import ResearchAdvisor, count_scored_working_nodes
+from .research import (
+    ResearchAdvisor,
+    count_scored_working_nodes,
+    hypothesis_id_for_node,
+)
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
     append_node_with_best_score_notification,
@@ -227,6 +231,15 @@ def _is_base_root(node: Node) -> bool:
     )
 
 
+def _node_hypothesis_suffix(node: Node) -> str:
+    hypothesis_id = hypothesis_id_for_node(node)
+    return f"@{hypothesis_id}" if hypothesis_id is not None else ""
+
+
+def _show_hypothesis_failure_in_tree(node: Node) -> bool:
+    return node.status == "failed" and hypothesis_id_for_node(node) is not None
+
+
 def load_resume_state(
     *,
     run_id: str,
@@ -350,7 +363,7 @@ def journal_to_rich_tree(
         )
 
     def append_rec(node: Node, tree):
-        if node.is_terminal_failure:
+        if node.is_terminal_failure and not _show_hypothesis_failure_in_tree(node):
             return
         if (
             node.is_submission_contract_error
@@ -359,30 +372,36 @@ def journal_to_rich_tree(
             return
 
         synthesis_root = is_synthesis_root(node)
-        if synthesis_root and (
+        suffix = _node_hypothesis_suffix(node)
+        if node.status == "failed" and suffix:
+            s = f"[red]failed{suffix}[/red]"
+        elif synthesis_root and (
             node.is_buggy or node.metric is None or node.metric.value is None
         ):
-            s = "[bold blue]◆[/bold blue] [red]bug[/red]"
+            s = f"[bold blue]◆[/bold blue] [red]bug{suffix}[/red]"
         elif node.is_buggy or node.metric is None or node.metric.value is None:
-            s = "[red]● bug"
+            s = f"[red]● bug{suffix}"
         else:
             metric_text = f"{node.metric.value:.5f}"
 
             if disable_oom_saturated_parents and node.is_oom_blocked_parent:
-                s = f"[bright_black]✕ {metric_text}"
+                s = f"[bright_black]✕ {metric_text}{suffix}"
             elif node is best_node:
                 style = "bold "
-                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}"
+                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}{suffix}"
             elif _is_base_root(node):
                 style = "bold " if node is best_node else ""
-                s = f"[bright_magenta]◎[/bright_magenta] [{style}green]{metric_text}"
+                s = (
+                    f"[bright_magenta]◎[/bright_magenta] "
+                    f"[{style}green]{metric_text}{suffix}"
+                )
             elif synthesis_root:
                 style = "bold " if node is best_node else ""
                 metric_style = f"{style}green"
-                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}"
+                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}"
             else:
                 style = "bold " if node is best_node else ""
-                s = f"[{style}green]● {metric_text}"
+                s = f"[{style}green]● {metric_text}{suffix}"
 
         subtree = tree.add(s)
         for child in sorted(
@@ -429,8 +448,9 @@ def _tree_node_label(
     disable_oom_saturated_parents: bool = False,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
+    suffix = _node_hypothesis_suffix(node)
     if node.is_terminal_failure:
-        return Text("failed", style="red")
+        return Text(f"failed{suffix}", style="red")
 
     synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
         node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
@@ -441,13 +461,13 @@ def _tree_node_label(
     ):
         label = Text()
         label.append("◆", style="bold blue")
-        label.append(" bug", style="red")
+        label.append(f" bug{suffix}", style="red")
         return label
     if node.is_buggy or node.metric is None or node.metric.value is None:
-        return Text("● bug", style="red")
+        return Text(f"● bug{suffix}", style="red")
 
     if disable_oom_saturated_parents and node.is_oom_blocked_parent:
-        return Text(f"✕ {node.metric.value:.5f}", style="bright_black")
+        return Text(f"✕ {node.metric.value:.5f}{suffix}", style="bright_black")
 
     label = Text()
     if node is best_node:
@@ -461,7 +481,7 @@ def _tree_node_label(
         label.append("● ", style="green")
 
     metric_style = "bold yellow" if node is best_node else "green"
-    metric_text = f"{node.metric.value:.5f}"
+    metric_text = f"{node.metric.value:.5f}{suffix}"
     label.append(metric_text, style=metric_style)
     return label
 
@@ -564,7 +584,7 @@ def build_tree_view(
         ancestor_has_next: list[bool],
         is_last: bool,
     ) -> None:
-        if node.is_terminal_failure:
+        if node.is_terminal_failure and not _show_hypothesis_failure_in_tree(node):
             return
         if node.is_submission_contract_error and not show_invalid_submission_branches:
             return
@@ -600,7 +620,10 @@ def build_tree_view(
         visible_children = [
             child
             for child in children
-            if not child.is_terminal_failure
+            if (
+                not child.is_terminal_failure
+                or _show_hypothesis_failure_in_tree(child)
+            )
             and (
                 show_invalid_submission_branches
                 or not child.is_submission_contract_error
@@ -621,7 +644,10 @@ def build_tree_view(
     roots = [
         node
         for node in journal.draft_nodes
-        if not node.is_terminal_failure
+        if (
+            not node.is_terminal_failure
+            or _show_hypothesis_failure_in_tree(node)
+        )
         and (
             show_invalid_submission_branches
             or not node.is_submission_contract_error
@@ -1059,6 +1085,13 @@ def _fallback_checkpoint_label(status_text: str | None) -> str | None:
     return match.group(1) if match else None
 
 
+def _fallback_hypothesis_label(status_text: str | None) -> str | None:
+    if not status_text:
+        return None
+    match = re.search(r"@\s*(\d{6})\b", status_text)
+    return match.group(1) if match else None
+
+
 def _compact_step_label(label: str | None) -> str | None:
     if label is None:
         return None
@@ -1110,6 +1143,11 @@ def build_checkpoint_status_line(
     line.append(f" {_format_run_status_step(label)}", style=style)
     if record is not None and record.timestamp is not None:
         line.append(f" @ {record.timestamp}", style=style)
+    hypothesis_label = (
+        None if record is not None else _fallback_hypothesis_label(status_text)
+    )
+    if hypothesis_label is not None:
+        line.append(f" @ {hypothesis_label}", style=style)
     line.append(f" {symbol}", style=style)
     return line
 
@@ -1131,9 +1169,12 @@ def build_best_score_status(journal: Journal) -> Text | None:
         return None
     step = node.step if node.step is not None else "?"
     timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
+    hypothesis_id = hypothesis_id_for_node(node)
+    suffix = f" @ {hypothesis_id}" if hypothesis_id is not None else ""
     return Text(
         f"{_run_status_label('★', 'Best Score')} · "
-        f"{_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}",
+        f"{_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
+        f"{suffix}",
         style="green",
     )
 

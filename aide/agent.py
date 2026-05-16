@@ -24,12 +24,16 @@ from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
 from .research import (
+    filter_hypothesis_candidate_parents,
     format_manual_research_hints_for_prompt,
+    format_hypothesis_for_prompt,
     format_research_hints_for_prompt,
+    hypothesis_root_pool_exhausted,
     load_latest_manual_research_hints,
     load_latest_research_hints,
     record_manual_claimed_usage,
     record_manual_prompt_node,
+    select_hypothesis_for_node,
 )
 from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
@@ -75,7 +79,7 @@ review_func_spec = FunctionSpec(
             "research_hypotheses_llm_claimed_used": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Manual research hypothesis ids that the implementation intentionally used. Include only ids that were explicitly offered in the prompt. Use an empty list when no offered manual research hypothesis was used.",
+                "description": "Research hypothesis ids that the implementation intentionally used. Include only ids that were explicitly offered in the prompt. In hypothesis mode, return exactly the single assigned id if and only if the implementation verifies that hypothesis.",
             },
             "research_usage_note": {
                 "type": ["string", "null"],
@@ -156,6 +160,82 @@ def _record_plan_claimed_manual_research_usage(cfg: Config, node: Node) -> None:
         + "."
     )
     record_manual_claimed_usage(cfg, node)
+
+
+def _raw_claimed_research_ids(response: dict[str, Any]) -> list[str]:
+    claimed = response.get("research_hypotheses_llm_claimed_used", [])
+    if not isinstance(claimed, list):
+        return []
+    return [item for item in claimed if isinstance(item, str)]
+
+
+def _offered_research_claims(node: Node, raw_claimed: list[str]) -> list[str]:
+    offered = set(node.research_hypotheses_offered)
+    return [item for item in raw_claimed if item in offered]
+
+
+def _mark_hypothesis_protocol_failure(
+    node: Node,
+    *,
+    expected_id: str,
+    raw_claimed: list[str],
+) -> None:
+    claimed_text = ", ".join(raw_claimed) if raw_claimed else "none"
+    previous = str(node.analysis or "").strip()
+    failure = (
+        "Hypothesis verification failed: "
+        f"expected hypothesis id {expected_id}, got {claimed_text}."
+    )
+    node.analysis = f"{previous}\n\n{failure}".strip()
+    node.status = "failed"
+    node.is_buggy = True
+    node.metric = WorstMetricValue()
+    node.research_hypotheses_llm_claimed_used = []
+    node.research_usage_note = failure
+
+
+def _apply_research_claims_from_response(
+    cfg: Config,
+    node: Node,
+    response: dict[str, Any],
+) -> bool:
+    raw_claimed = _raw_claimed_research_ids(response)
+    node.research_hypotheses_llm_claimed_used = _offered_research_claims(
+        node,
+        raw_claimed,
+    )
+    usage_note = response.get("research_usage_note")
+    node.research_usage_note = (
+        usage_note.strip()
+        if isinstance(usage_note, str) and usage_note.strip()
+        else None
+    )
+
+    if node.research_mode == "hypothesis":
+        expected = (
+            node.research_hypotheses_offered[0]
+            if len(node.research_hypotheses_offered) == 1
+            else None
+        )
+        if expected is None or raw_claimed != [expected]:
+            _mark_hypothesis_protocol_failure(
+                node,
+                expected_id=expected or "<missing>",
+                raw_claimed=raw_claimed,
+            )
+            return False
+
+    record_manual_claimed_usage(cfg, node)
+    return True
+
+
+def _metadata_hypothesis_id(metadata: dict[str, Any] | None) -> str | None:
+    if not metadata or metadata.get("research_mode") != "hypothesis":
+        return None
+    offered = metadata.get("research_hypotheses_offered", [])
+    if len(offered) == 1 and isinstance(offered[0], str):
+        return offered[0]
+    return None
 
 
 def _metric_for_search(node: Node) -> float:
@@ -263,13 +343,38 @@ class Agent:
             "agent_mode": self.acfg.mode,
         }
 
+    def _is_hypothesis_mode(self) -> bool:
+        return (
+            self.cfg.research.enabled
+            and getattr(self.cfg.research, "mode", "llm") == "hypothesis"
+        )
+
+    def _should_open_hypothesis_root(self) -> bool:
+        if not self._is_hypothesis_mode():
+            return False
+        if hypothesis_root_pool_exhausted(self.cfg, journal=self.journal):
+            return False
+        if len(self.journal.draft_nodes) < self.acfg.search.num_drafts:
+            return True
+        every_steps = int(getattr(self.cfg.research, "every_steps", 0))
+        if every_steps <= 0:
+            return False
+        completed_steps = len(self.journal.nodes)
+        return completed_steps > 0 and completed_steps % every_steps == 0
+
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
         search_cfg = self.acfg.search
 
         # initial drafting
-        if len(self.journal.draft_nodes) < search_cfg.num_drafts:
+        if len(self.journal.draft_nodes) < search_cfg.num_drafts and (
+            not self._is_hypothesis_mode() or self._should_open_hypothesis_root()
+        ):
             logger.debug("[search policy] drafting new node (not enough drafts)")
+            return None
+
+        if self._should_open_hypothesis_root():
+            logger.debug("[search policy] drafting new hypothesis root")
             return None
 
         # debugging
@@ -300,6 +405,12 @@ class Agent:
                 or not n.is_oom_blocked_parent
             )
         ]
+        if self._is_hypothesis_mode():
+            good_nodes = filter_hypothesis_candidate_parents(
+                self.cfg,
+                journal=self.journal,
+                parent_nodes=good_nodes,
+            )
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return None
@@ -411,10 +522,16 @@ class Agent:
             ]
         }
 
-    def _add_research_hints(self, prompt: dict[str, Any]) -> dict[str, Any] | None:
+    def _add_research_hints(
+        self,
+        prompt: dict[str, Any],
+        *,
+        parent_node: Node | None = None,
+    ) -> dict[str, Any] | None:
         if not self.cfg.research.enabled:
             return None
-        if getattr(self.cfg.research, "mode", "llm") == "manual":
+        research_mode = getattr(self.cfg.research, "mode", "llm")
+        if research_mode == "manual":
             selection = load_latest_manual_research_hints(self.cfg)
             if selection is None:
                 return None
@@ -423,6 +540,23 @@ class Agent:
             )
             return {
                 "research_mode": "manual",
+                "research_hypotheses_offered": [
+                    hypothesis.id for hypothesis in selection.hypotheses
+                ],
+                "research_source_hash": selection.source_hash,
+            }
+        if research_mode == "hypothesis":
+            selection = select_hypothesis_for_node(
+                self.cfg,
+                journal=self.journal,
+                parent_node=parent_node,
+                completed_steps=len(self.journal.nodes),
+            )
+            prompt["Hypothesis under verification"] = format_hypothesis_for_prompt(
+                selection
+            )
+            return {
+                "research_mode": "hypothesis",
                 "research_hypotheses_offered": [
                     hypothesis.id for hypothesis in selection.hypotheses
                 ],
@@ -463,6 +597,7 @@ class Agent:
         plan: str,
         code: str,
         parent: Node | None = None,
+        research_metadata: dict[str, Any] | None = None,
     ) -> Node:
         try:
             preprocess_source = extract_preprocess_source(code)
@@ -470,7 +605,11 @@ class Agent:
                 preprocess_source,
                 target_col=self._autogluon_target_column(),
             )
-            wrapped_code = build_autogluon_wrapper(preprocess_source, self.cfg)
+            wrapped_code = build_autogluon_wrapper(
+                preprocess_source,
+                self.cfg,
+                research_hypothesis_id=_metadata_hypothesis_id(research_metadata),
+            )
         except ValueError as exc:
             wrapped_code = f"raise ValueError({str(exc)!r})\n"
         return self._new_node(plan=plan, code=wrapped_code, parent=parent)
@@ -552,7 +691,7 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=None)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._new_node(plan=plan, code=code),
@@ -586,10 +725,14 @@ class Agent:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=None)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
-            self._wrap_autogluon_preprocess_node(plan=plan, code=code),
+            self._wrap_autogluon_preprocess_node(
+                plan=plan,
+                code=code,
+                research_metadata=research_metadata,
+            ),
             research_metadata,
         )
 
@@ -625,7 +768,7 @@ class Agent:
         }
         prompt["Instructions"] |= self._prompt_impl_guideline
 
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._new_node(
@@ -660,13 +803,14 @@ class Agent:
         }
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
         self._add_autogluon_context(prompt)
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._wrap_autogluon_preprocess_node(
                 plan=plan,
                 code=code,
                 parent=parent_node,
+                research_metadata=research_metadata,
             ),
             research_metadata,
         )
@@ -699,7 +843,7 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._new_node(plan=plan, code=code, parent=parent_node),
@@ -734,13 +878,14 @@ class Agent:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
-        research_metadata = self._add_research_hints(prompt)
+        research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._wrap_autogluon_preprocess_node(
                 plan=plan,
                 code=code,
                 parent=parent_node,
+                research_metadata=research_metadata,
             ),
             research_metadata,
         )
@@ -848,7 +993,14 @@ class Agent:
                     metric,
                     maximize=not bool(marker_response.get("lower_is_better")),
                 )
-            _record_plan_claimed_manual_research_usage(self.cfg, node)
+            if node.research_mode == "manual":
+                _record_plan_claimed_manual_research_usage(self.cfg, node)
+            elif not _apply_research_claims_from_response(
+                self.cfg,
+                node,
+                marker_response,
+            ):
+                return
             return
 
         prompt = {
@@ -863,15 +1015,30 @@ class Agent:
             "Implementation": wrap_code(node.code),
             "Execution output": wrap_code(node.term_out, lang=""),
         }
-        if node.research_mode == "manual" and node.research_hypotheses_offered:
-            prompt["Manual research hypotheses offered"] = {
-                "ids": node.research_hypotheses_offered,
-                "instruction": (
+        if node.research_mode in {"manual", "hypothesis"} and (
+            node.research_hypotheses_offered
+        ):
+            prompt_title = (
+                "Hypothesis verification required"
+                if node.research_mode == "hypothesis"
+                else "Manual research hypotheses offered"
+            )
+            instruction = (
+                "Report exactly this id in "
+                "research_hypotheses_llm_claimed_used. If the implementation "
+                "did not implement this assigned hypothesis, leave the list "
+                "empty so the node can be marked failed."
+                if node.research_mode == "hypothesis"
+                else (
                     "Report only offered ids in "
                     "research_hypotheses_llm_claimed_used. Use an empty list if "
                     "the implementation did not intentionally use any offered "
                     "manual research hypothesis."
-                ),
+                )
+            )
+            prompt[prompt_title] = {
+                "ids": node.research_hypotheses_offered,
+                "instruction": instruction,
             }
 
         response = query(
@@ -905,21 +1072,8 @@ class Agent:
             parsed_response,
             summary=node.analysis,
         )
-        claimed = parsed_response.get("research_hypotheses_llm_claimed_used", [])
-        if isinstance(claimed, list):
-            offered = set(node.research_hypotheses_offered)
-            node.research_hypotheses_llm_claimed_used = [
-                item for item in claimed if isinstance(item, str) and item in offered
-            ]
-        else:
-            node.research_hypotheses_llm_claimed_used = []
-        usage_note = parsed_response.get("research_usage_note")
-        node.research_usage_note = (
-            usage_note.strip()
-            if isinstance(usage_note, str) and usage_note.strip()
-            else None
-        )
-        record_manual_claimed_usage(self.cfg, node)
+        if not _apply_research_claims_from_response(self.cfg, node, parsed_response):
+            return
         node.is_buggy = (
             node.exc_type is not None
             or metric is None

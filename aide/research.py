@@ -73,6 +73,7 @@ PROMPT_SCORE_DECIMALS = 5
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
 MANUAL_HYPOTHESIS_AGENT_MODES = {"legacy", "autogluon"}
+MANUAL_USAGE_RESEARCH_MODES = {"manual", "hypothesis"}
 
 
 @dataclass(frozen=True)
@@ -414,6 +415,249 @@ def select_manual_hypotheses(
     )
 
 
+def _compatible_manual_hypotheses(
+    cfg: Config,
+    library: ManualHypothesisLibrary,
+) -> list[ManualHypothesis]:
+    agent_mode = _manual_agent_mode_key(cfg)
+    return [
+        hypothesis
+        for hypothesis in library.hypotheses
+        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
+    ]
+
+
+def hypothesis_id_for_node(node: Node) -> str | None:
+    if getattr(node, "research_mode", None) != "hypothesis":
+        return None
+    offered = getattr(node, "research_hypotheses_offered", []) or []
+    if len(offered) != 1 or not isinstance(offered[0], str):
+        return None
+    return offered[0]
+
+
+def _hypothesis_attempt_counts(journal: Journal) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for node in journal.nodes:
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None:
+            continue
+        counts[hypothesis_id] = counts.get(hypothesis_id, 0) + 1
+    return counts
+
+
+def _root_hypothesis_ids(journal: Journal) -> set[str]:
+    ids: set[str] = set()
+    for node in journal.nodes:
+        if node.parent is not None:
+            continue
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is not None:
+            ids.add(hypothesis_id)
+    return ids
+
+
+def _ancestor_hypothesis_ids(parent_node: Node) -> set[str]:
+    ids: set[str] = set()
+    node: Node | None = parent_node
+    while node is not None:
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is not None:
+            ids.add(hypothesis_id)
+        node = node.parent
+    return ids
+
+
+def _direct_child_hypothesis_ids(parent_node: Node, journal: Journal) -> set[str]:
+    journal_nodes = set(journal.nodes)
+    ids: set[str] = set()
+    for child in parent_node.children:
+        if child not in journal_nodes:
+            continue
+        hypothesis_id = hypothesis_id_for_node(child)
+        if hypothesis_id is not None:
+            ids.add(hypothesis_id)
+    return ids
+
+
+def hypothesis_root_pool_exhausted(
+    cfg: Config,
+    *,
+    journal: Journal,
+    repo_root: Path = REPO_ROOT,
+) -> bool:
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    compatible = _compatible_manual_hypotheses(cfg, library)
+    if not compatible:
+        return True
+    compatible_ids = {hypothesis.id for hypothesis in compatible}
+    used_root_ids = _root_hypothesis_ids(journal)
+    return compatible_ids.issubset(used_root_ids)
+
+
+def _hypothesis_candidates_for_node_from_library(
+    cfg: Config,
+    *,
+    journal: Journal,
+    parent_node: Node | None,
+    library: ManualHypothesisLibrary,
+) -> list[ManualHypothesis]:
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    compatible = _compatible_manual_hypotheses(cfg, library)
+
+    if parent_node is not None and parent_node.is_buggy:
+        inherited_id = hypothesis_id_for_node(parent_node)
+        if inherited_id is None:
+            return []
+        inherited = by_id.get(inherited_id)
+        return [inherited] if inherited is not None else []
+
+    if parent_node is None:
+        compatible_ids = {hypothesis.id for hypothesis in compatible}
+        if not compatible_ids or compatible_ids.issubset(_root_hypothesis_ids(journal)):
+            return []
+        blocked_ids = _root_hypothesis_ids(journal)
+    else:
+        blocked_ids = _ancestor_hypothesis_ids(parent_node)
+        blocked_ids |= _direct_child_hypothesis_ids(parent_node, journal)
+
+    return [
+        hypothesis
+        for hypothesis in compatible
+        if hypothesis.id not in blocked_ids
+    ]
+
+
+def hypothesis_candidates_for_node(
+    cfg: Config,
+    *,
+    journal: Journal,
+    parent_node: Node | None,
+    repo_root: Path = REPO_ROOT,
+) -> list[ManualHypothesis]:
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    return _hypothesis_candidates_for_node_from_library(
+        cfg,
+        journal=journal,
+        parent_node=parent_node,
+        library=library,
+    )
+
+
+def hypothesis_has_candidates_for_node(
+    cfg: Config,
+    journal: Journal,
+    parent_node: Node | None,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> bool:
+    return bool(
+        hypothesis_candidates_for_node(
+            cfg,
+            journal=journal,
+            parent_node=parent_node,
+            repo_root=repo_root,
+        )
+    )
+
+
+def filter_hypothesis_candidate_parents(
+    cfg: Config,
+    *,
+    journal: Journal,
+    parent_nodes: list[Node],
+    repo_root: Path = REPO_ROOT,
+) -> list[Node]:
+    if not parent_nodes:
+        return []
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    return [
+        node
+        for node in parent_nodes
+        if _hypothesis_candidates_for_node_from_library(
+            cfg,
+            journal=journal,
+            parent_node=node,
+            library=library,
+        )
+    ]
+
+
+def _hypothesis_sort_key(
+    *,
+    hypothesis: ManualHypothesis,
+    attempts: dict[str, int],
+    seed_text: str,
+) -> tuple[int, float, str]:
+    tie_break = random.Random(f"{seed_text}:{hypothesis.id}").random()
+    return attempts.get(hypothesis.id, 0), tie_break, hypothesis.id
+
+
+def select_hypothesis_for_node(
+    cfg: Config,
+    *,
+    journal: Journal,
+    parent_node: Node | None,
+    completed_steps: int,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection:
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    candidates = _hypothesis_candidates_for_node_from_library(
+        cfg,
+        journal=journal,
+        parent_node=parent_node,
+        library=library,
+    )
+    if not candidates:
+        agent_mode = _manual_agent_mode_key(cfg)
+        stage = (
+            "root"
+            if parent_node is None
+            else "debug"
+            if parent_node.is_buggy
+            else "child"
+        )
+        raise ValueError(
+            "No compatible hypothesis candidates available for "
+            f"{stage} selection in agent mode {agent_mode}."
+        )
+
+    attempts = _hypothesis_attempt_counts(journal)
+    seed_text = (
+        f"{cfg.research.manual_seed}:{cfg.exp_name}:"
+        f"{completed_steps}:{parent_node.id if parent_node is not None else 'root'}"
+    )
+    selected = sorted(
+        candidates,
+        key=lambda hypothesis: _hypothesis_sort_key(
+            hypothesis=hypothesis,
+            attempts=attempts,
+            seed_text=seed_text,
+        ),
+    )[0]
+    created_at = dt.datetime.now().isoformat(timespec="seconds")
+    _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
+    _append_manual_offer(
+        cfg=cfg,
+        completed_steps=completed_steps,
+        offered_ids=[selected.id],
+        source_hash=library.source_hash,
+        created_at=created_at,
+    )
+    _record_manual_offer_usage(
+        cfg=cfg,
+        offered_ids=[selected.id],
+        completed_steps=completed_steps,
+        created_at=created_at,
+    )
+    return ManualHypothesisSelection(
+        completed_steps=completed_steps,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[selected],
+    )
+
+
 def _latest_manual_offer(cfg: Config) -> dict[str, Any] | None:
     path = _manual_run_dir(cfg) / "offers.jsonl"
     if not path.exists():
@@ -479,7 +723,7 @@ def load_latest_manual_research_hints(
 
 
 def record_manual_prompt_node(cfg: Config, node: Node) -> None:
-    if getattr(node, "research_mode", None) != "manual":
+    if getattr(node, "research_mode", None) not in MANUAL_USAGE_RESEARCH_MODES:
         return
     offered_ids = getattr(node, "research_hypotheses_offered", []) or []
     if not offered_ids:
@@ -501,7 +745,7 @@ def record_manual_prompt_node(cfg: Config, node: Node) -> None:
 
 
 def record_manual_claimed_usage(cfg: Config, node: Node) -> None:
-    if getattr(node, "research_mode", None) != "manual":
+    if getattr(node, "research_mode", None) not in MANUAL_USAGE_RESEARCH_MODES:
         return
     claimed_ids = getattr(node, "research_hypotheses_llm_claimed_used", []) or []
     if not claimed_ids:
@@ -564,6 +808,50 @@ def format_manual_research_hints_for_prompt(
             lines.append(
                 "   Sources: " + _compact_prompt_text(", ".join(hypothesis.sources), 360)
             )
+    return "\n".join(lines)
+
+
+def format_hypothesis_for_prompt(
+    selection: ManualHypothesisSelection,
+) -> str:
+    if len(selection.hypotheses) != 1:
+        raise ValueError("Hypothesis mode requires exactly one selected hypothesis.")
+    hypothesis = selection.hypotheses[0]
+    lines = [
+        "Hypothesis verification contract.",
+        f"Hypothesis ID: {hypothesis.id}",
+        (
+            "Implement this exact hypothesis. Do not choose another hypothesis, "
+            "do not combine it with unrelated ideas, and do not ignore it."
+        ),
+        (
+            "Your solution sketch must explicitly mention this hypothesis ID. "
+            "The result/review JSON must report "
+            f'research_hypotheses_llm_claimed_used as ["{hypothesis.id}"].'
+        ),
+        "",
+        f"Title: {hypothesis.title}",
+        f"Summary: {_compact_prompt_text(hypothesis.summary, 420)}",
+    ]
+    rationale = _compact_prompt_text(hypothesis.rationale, 520)
+    if rationale:
+        lines.append(f"Rationale: {rationale}")
+    implementation_hint = _compact_prompt_text(
+        hypothesis.implementation_hint,
+        700,
+    )
+    if implementation_hint:
+        lines.append(f"Implementation: {implementation_hint}")
+    expected_effect = _compact_prompt_text(hypothesis.expected_effect, 320)
+    if expected_effect:
+        lines.append(f"Expected effect: {expected_effect}")
+    risk = _compact_prompt_text(hypothesis.risk, 320)
+    if risk:
+        lines.append(f"Risk: {risk}")
+    if hypothesis.sources:
+        lines.append(
+            "Sources: " + _compact_prompt_text(", ".join(hypothesis.sources), 420)
+        )
     return "\n".join(lines)
 
 
@@ -1269,7 +1557,8 @@ class ResearchAdvisor:
         if completed_steps <= 0 or completed_steps % self.cfg.research.every_steps != 0:
             return False
 
-        if getattr(self.cfg.research, "mode", "llm") == "manual":
+        research_mode = getattr(self.cfg.research, "mode", "llm")
+        if research_mode == "manual":
             if _manual_offer_exists(self.cfg, completed_steps):
                 return False
             select_manual_hypotheses(
@@ -1278,6 +1567,8 @@ class ResearchAdvisor:
                 repo_root=self.repo_root,
             )
             return True
+        if research_mode == "hypothesis":
+            return False
 
         checkpoint_dir = checkpoint_dir_for(self.cfg, completed_steps)
         if _checkpoint_status(checkpoint_dir) is not None:
@@ -1314,12 +1605,26 @@ class ResearchAdvisor:
 
     def status_text(self) -> str:
         self._threads = [thread for thread in self._threads if thread.is_alive()]
-        if getattr(self.cfg.research, "mode", "llm") == "manual":
+        research_mode = getattr(self.cfg.research, "mode", "llm")
+        if research_mode == "manual":
             latest_offer = _latest_manual_offer(self.cfg)
             if latest_offer is None:
                 return "[dim]Research: ○ manual"
             step = int(latest_offer.get("checkpoint_step", 0))
             return f"[green]Research: ✓ manual {step:06d}"
+        if research_mode == "hypothesis":
+            latest_offer = _latest_manual_offer(self.cfg)
+            if latest_offer is None:
+                return "[dim]Research: ○ hypothesis"
+            step = int(latest_offer.get("checkpoint_step", 0))
+            offered = latest_offer.get("offered")
+            if (
+                isinstance(offered, list)
+                and len(offered) == 1
+                and isinstance(offered[0], str)
+            ):
+                return f"[green]Research: ✓ {step:06d} @ {offered[0]}"
+            return f"[green]Research: ✓ {step:06d}"
 
         latest_checkpoint = _latest_checkpoint_with_status(self.cfg.log_dir)
         latest_name = (

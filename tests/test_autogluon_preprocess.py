@@ -154,6 +154,19 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert code.rstrip().endswith("main()")
 
 
+def test_build_autogluon_wrapper_can_emit_hypothesis_claim(tmp_path):
+    cfg = _cfg(tmp_path)
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df):\n    return df\n",
+        cfg,
+        research_hypothesis_id="000123",
+    )
+
+    assert '"research_hypotheses_llm_claimed_used": ["000123"]' in code
+    assert '"research_usage_note": "Verified assigned hypothesis 000123."' in code
+
+
 def test_generated_quiet_model_output_supports_redirect_queue_streams(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)

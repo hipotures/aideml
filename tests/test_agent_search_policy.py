@@ -275,6 +275,95 @@ def test_search_policy_zero_exploration_keeps_greedy_selection(tmp_path):
     assert selected is saturated_best
 
 
+def test_hypothesis_mode_opens_new_root_on_every_steps_boundary(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.every_steps = 3
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    journal = Journal()
+    for score in [0.90, 0.91, 0.92]:
+        journal.append(_good_node(score))
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: False,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is None
+
+
+def test_hypothesis_mode_does_not_open_root_when_root_pool_is_exhausted(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.every_steps = 3
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    best = _good_node(0.92)
+    for node in [_good_node(0.90), _good_node(0.91), best]:
+        journal.append(node)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is best
+
+
+def test_hypothesis_mode_filters_parents_without_child_candidates(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.every_steps = 0
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    exhausted_parent = _good_node(0.95)
+    available_parent = _good_node(0.94)
+    journal.append(exhausted_parent)
+    journal.append(available_parent)
+
+    def fake_filter(_cfg, *, journal, parent_nodes, **_kwargs):
+        return [node for node in parent_nodes if node is available_parent]
+
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        fake_filter,
+    )
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is available_parent
+
+
 def test_search_policy_exploration_respects_minimization_metrics(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
