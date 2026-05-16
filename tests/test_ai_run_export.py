@@ -127,17 +127,15 @@ def test_export_copies_raw_data_files_when_data_dir_is_provided(tmp_path):
         "test.csv",
         "sample_submission.csv",
     ]
-    assert all(path.parent.name == "raw_data" for path in result.data_paths)
-    assert (result.export_dir / "raw_data" / "train.csv").read_text() == (
-        "id,target\n1,0\n"
-    )
+    assert all(path.parent == result.export_dir for path in result.data_paths)
+    assert (result.export_dir / "train.csv").read_text() == "id,target\n1,0\n"
     meta = json.loads(result.meta_path.read_text())
     assert [record["role"] for record in meta["raw_data_files"]] == [
         "train",
         "test",
         "sample_submission",
     ]
-    assert meta["raw_data_files"][0]["path"] == "raw_data/train.csv"
+    assert meta["raw_data_files"][0]["path"] == "train.csv"
     assert meta["raw_data_files"][0]["bytes"] > 0
     assert len(meta["raw_data_files"][0]["sha256"]) == 64
 
@@ -648,19 +646,19 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     prompt_path = bundle_dir / "prompt-legacy-playground-series-s6e5.md"
     assert (bundle_dir / "run_export.meta.json").exists()
     assert (bundle_dir / "run_export.nodes.jsonl").exists()
-    assert (bundle_dir / "raw_data" / "train.csv.gz").exists()
-    assert (bundle_dir / "raw_data" / "test.csv.gz").exists()
-    assert (bundle_dir / "raw_data" / "sample_submission.csv.gz").exists()
+    assert (bundle_dir / "train.csv.gz").exists()
+    assert (bundle_dir / "test.csv.gz").exists()
+    assert (bundle_dir / "sample_submission.csv.gz").exists()
     assert prompt_path.exists()
     prompt_text = prompt_path.read_text()
     assert "AIDE is an automated ML coding and search system" in prompt_text
-    assert "raw_data/train.csv` or `raw_data/train.csv.gz" in prompt_text
+    assert "`train.csv` or `train.csv.gz" in prompt_text
     assert "AutoGluon" not in prompt_text
     assert "Always include exactly 7 hypotheses." in prompt_text
     assert "Convert those patterns into 7 reusable" in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
-    assert "raw_data/train.csv.gz" in result.stdout
+    assert "train.csv.gz" in result.stdout
     assert "Please execute the prompt from prompt-legacy-playground-series-s6e5.md" in (
         result.stdout
     )

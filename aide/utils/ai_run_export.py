@@ -70,13 +70,11 @@ def _copy_raw_data_files(
     data_dir = data_dir.resolve()
     if not data_dir.exists():
         raise FileNotFoundError(f"Raw data directory does not exist: {data_dir}")
-    raw_data_dir = export_dir / "raw_data"
-    raw_data_dir.mkdir(parents=True, exist_ok=True)
     _report_progress(progress_callback, "Copying raw data files", 0, len(RAW_DATA_STEMS))
     copied_paths: list[Path] = []
     for index, stem in enumerate(RAW_DATA_STEMS, start=1):
         source_path = _find_raw_data_file(data_dir, stem)
-        target_path = raw_data_dir / source_path.name
+        target_path = export_dir / source_path.name
         shutil.copy2(source_path, target_path)
         copied_paths.append(target_path)
         _report_progress(

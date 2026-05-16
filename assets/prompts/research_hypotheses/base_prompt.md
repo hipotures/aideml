@@ -40,13 +40,12 @@ Expected attached export files:
   depth, status, failure flag, validation warning, local CV score, public score
   if submitted, metric direction, artifact/submission hashes, duplicate hints,
   runtime, and error type.
-- `raw_data/train.csv` or `raw_data/train.csv.gz`: raw training data for the
-  task. For supervised tasks it contains the target column `{{TARGET_NAME}}`.
-- `raw_data/test.csv` or `raw_data/test.csv.gz`: raw test/inference data with
-  the same feature columns that are available at prediction time, without the
-  target column.
-- `raw_data/sample_submission.csv` or `raw_data/sample_submission.csv.gz`:
-  expected submission format and prediction column names.
+- `train.csv` or `train.csv.gz`: raw training data for the task. For
+  supervised tasks it contains the target column `{{TARGET_NAME}}`.
+- `test.csv` or `test.csv.gz`: raw test/inference data with the same feature
+  columns that are available at prediction time, without the target column.
+- `sample_submission.csv` or `sample_submission.csv.gz`: expected submission
+  format and prediction column names.
 
 How to read the export:
 - Treat `parent_id`, `children_ids`, `depth`, and `step` as a search tree, not
