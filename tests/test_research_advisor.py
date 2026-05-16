@@ -1358,6 +1358,35 @@ def test_agent_exposes_active_hypothesis_log_hint_during_generation(
     assert "Try: Add current-lap rival aggregate features." in hint
 
 
+def test_hypothesis_log_hint_normalizes_literal_json_newlines(tmp_path):
+    selection = research.ManualHypothesisSelection(
+        completed_steps=10,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000515",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Template distance",
+                summary="First sentence.\\nSecond sentence.",
+                rationale="Strategy templates.",
+                implementation_hint="Use prior stops only.\\nAdd template distance.",
+                expected_effect="Better planned-stop timing.",
+                risk="Avoid fold leakage.",
+                sources=[],
+                path=tmp_path / "hypothesis-000515.json",
+            )
+        ],
+    )
+
+    hint = research.format_hypothesis_for_log_panel(selection)
+
+    assert "\\n" not in hint
+    assert "Summary: First sentence. Second sentence." in hint
+    assert "Try: Use prior stops only. Add template distance." in hint
+
+
 def test_hypothesis_root_prompt_omits_global_memory_and_branch_context(
     tmp_path,
     monkeypatch,

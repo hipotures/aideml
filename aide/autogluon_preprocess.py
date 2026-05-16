@@ -102,6 +102,13 @@ def validate_preprocess_source(source: str, *, target_col: str | None = None) ->
     func = funcs[0]
     if not func.args.args or func.args.args[0].arg != "df":
         raise ValueError("`preprocess` must accept `df` as its first argument.")
+    if (
+        len(func.args.args) != 1
+        or func.args.vararg is not None
+        or func.args.kwarg is not None
+        or func.args.kwonlyargs
+    ):
+        raise ValueError("`preprocess` must accept exactly one argument: `df`.")
 
     reasons: list[str] = []
     lowered = source.lower()

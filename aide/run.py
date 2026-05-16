@@ -1435,7 +1435,13 @@ def _clip_log_line(line: str, *, max_width: int) -> str:
 
 
 def _format_missing_log_hint_line(line: str, *, max_width: int) -> Text:
-    clean = ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+    clean = (
+        ANSI_ESCAPE_RE.sub("", line)
+        .replace("\\n", " ")
+        .replace("\\r", " ")
+        .replace("\\t", " ")
+        .replace("\t", "    ")
+    )
     if ": " in clean:
         key, value = clean.split(": ", 1)
         text = Text()
@@ -1454,7 +1460,13 @@ def _format_missing_log_hint_line(line: str, *, max_width: int) -> Text:
 def _wrap_missing_log_hint_lines(lines: list[str], *, max_width: int) -> list[str]:
     wrapped: list[str] = []
     for line in lines:
-        clean = ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+        clean = (
+            ANSI_ESCAPE_RE.sub("", line)
+            .replace("\\n", " ")
+            .replace("\\r", " ")
+            .replace("\\t", " ")
+            .replace("\t", "    ")
+        )
         if max_width <= 1 or len(clean) <= max_width:
             wrapped.append(clean)
             continue

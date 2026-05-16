@@ -885,7 +885,13 @@ def count_scored_working_nodes(journal: Journal) -> int:
 
 
 def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
-    text = " ".join(str(value or "").split())
+    text = (
+        str(value or "")
+        .replace("\\n", " ")
+        .replace("\\r", " ")
+        .replace("\\t", " ")
+    )
+    text = " ".join(text.split())
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 1].rstrip() + "…"

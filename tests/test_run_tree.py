@@ -1414,6 +1414,26 @@ def test_run_log_summary_wraps_active_hypothesis_to_available_height(tmp_path):
     assert "warm-up" in output
 
 
+def test_run_log_summary_wraps_literal_json_newlines_as_spaces(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+
+    output = _render_text(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=4,
+            max_width=80,
+            missing_log_hint=(
+                "Hypothesis 000515\n"
+                "Try: Use prior stops only.\\nAdd template distance."
+            ),
+        )
+    )
+
+    assert "\\n" not in output
+    assert "Try: Use prior stops only. Add template distance." in output
+
+
 def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_path):
     artifact_dir = tmp_path / "artifact"
     artifact_dir.mkdir()

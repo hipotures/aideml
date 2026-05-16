@@ -99,6 +99,15 @@ def test_validate_preprocess_source_rejects_row_id_reference():
         )
 
 
+def test_validate_preprocess_source_rejects_parent_composition_signature():
+    with pytest.raises(ValueError, match="exactly one argument"):
+        validate_preprocess_source(
+            "def preprocess(df, _base_preprocess=globals().get('preprocess')):\n"
+            "    return _base_preprocess(df) if _base_preprocess else df\n",
+            target_col="PitNextLap",
+        )
+
+
 def test_sanitize_preprocess_prompt_text_removes_unavailable_columns():
     text = (
         "Goal: predict `PitNextLap`.\n"
@@ -442,6 +451,8 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "`id`" not in prompt_text
     assert "__is_train__" not in prompt_text
     assert "__aide_row_id__" not in prompt_text
+    assert "must replace the previous preprocess function" in prompt_text
+    assert "Do not call `globals().get(\"preprocess\")`" in prompt_text
     assert "reducing code size, memory use, or runtime" in prompt_text
     assert "TabularPredictor" in node.code
     assert "TyreLife_x2" in node.code
