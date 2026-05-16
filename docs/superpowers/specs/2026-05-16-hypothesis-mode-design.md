@@ -55,6 +55,35 @@ Hypothesis uniqueness rules:
 The selector should prefer under-tested compatible hypotheses, but must preserve
 these uniqueness constraints.
 
+Root selection uses a separate exhausted-pool guard:
+
+```text
+if root_pool_exhausted:
+    root_candidates = []
+else:
+    root_candidates = all_candidates - hypothesis_ids_used_by_root_nodes
+```
+
+After attempting root selection:
+
+```text
+if root_candidates is empty:
+    root_pool_exhausted = true
+    do not create a new root
+else:
+    select one root hypothesis
+```
+
+`root_pool_exhausted` applies only to root creation. It must not remove
+hypotheses from child selection, because after all root hypotheses are used the
+run should continue expanding existing branches. On resume, this state can be
+recomputed from the journal:
+
+```text
+root_pool_exhausted =
+    unique_root_hypothesis_count >= compatible_enabled_hypothesis_count
+```
+
 ## Metadata And Statistics
 
 Each hypothesis-mode node records:
