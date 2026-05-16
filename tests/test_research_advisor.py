@@ -1480,6 +1480,33 @@ def test_hypothesis_child_prompt_uses_branch_context_not_global_memory(
     assert "Hypothesis ID: 000303" in captured["prompt"]["Hypothesis under verification"]
 
 
+def test_non_hypothesis_draft_prompt_keeps_global_memory(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "llm"
+    cfg.agent.data_preview = False
+    previous = _node(
+        0.95,
+        code="print('previous')",
+        plan="Previous global design",
+    )
+    journal = Journal()
+    journal.append(previous)
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    assert "Memory" in captured["prompt"]
+    assert "Previous global design" in captured["prompt"]["Memory"]
+    assert "Branch context" not in captured["prompt"]
+
+
 def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
