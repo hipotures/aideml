@@ -69,6 +69,17 @@ imagecodecs
 hmmlearn
 bayespy==0.5.1
 sklearn-pandas
+polars
+ydf
+protobuf>=6.31.1,<7
+tabpfn
+pytabkit
+tabm
+pytorch-tabular
+flaml
+skrub
+featuretools
+lazypredict
 tensorpack
 sentencepiece
 librosa

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from scripts.render_research_prompt import (
     MODE_TEMPLATE_BY_MODE,
+    default_allowed_packages_path,
     default_mode_template_path,
     default_output_path,
     default_template_path,
@@ -63,6 +64,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=positive_int,
         default=10,
         help="Number of hypotheses the rendered prompt should request.",
+    )
+    parser.add_argument(
+        "--allowed-packages",
+        type=Path,
+        help=(
+            "JSON file with allowed package lists for rendered prompts. Defaults "
+            "to assets/prompts/research_hypotheses/allowed_packages.json."
+        ),
     )
     parser.add_argument(
         "--data-dir",
@@ -135,6 +144,7 @@ def main(argv: list[str] | None = None) -> int:
                 values_path=args.prompt_values,
                 template_path=args.prompt_template,
                 mode_template_path=args.prompt_mode_template,
+                allowed_packages_path=args.allowed_packages,
                 hypothesis_count=args.hypothesis_count,
                 export_dir=result.export_dir,
             )
@@ -218,6 +228,7 @@ def _write_prompt_to_export_dir(
     values_path: Path | None,
     template_path: Path | None,
     mode_template_path: Path | None,
+    allowed_packages_path: Path | None,
     hypothesis_count: int,
     export_dir: Path,
 ) -> Path:
@@ -229,6 +240,7 @@ def _write_prompt_to_export_dir(
         values_path=resolved_values_path,
         template_path=template_path or default_template_path(mode),
         mode_template_path=mode_template_path or default_mode_template_path(mode),
+        allowed_packages_path=allowed_packages_path or default_allowed_packages_path(),
         value_overrides={"HYPOTHESIS_COUNT": hypothesis_count},
         out_path=export_dir / prompt_name,
     )

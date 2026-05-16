@@ -703,6 +703,7 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
     )
     assert "--prompt-mode" in result.stdout
     assert "--hypothesis-count" in result.stdout
+    assert "--allowed-packages" in result.stdout
     assert "--data-dir" in result.stdout
     assert "--skip-data-files" in result.stdout
     assert "--skip-near-duplicate-check" in result.stdout

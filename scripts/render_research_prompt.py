@@ -12,6 +12,7 @@ PLACEHOLDER_RE = re.compile(r"\{\{([A-Z0-9_]+)\}\}")
 MODE_SPECIFIC_PLACEHOLDER = "{{MODE_SPECIFIC_INSTRUCTIONS}}"
 
 BASE_TEMPLATE_PATH = Path("assets/prompts/research_hypotheses/base_prompt.md")
+ALLOWED_PACKAGES_PATH = Path("assets/prompts/research_hypotheses/allowed_packages.json")
 MODE_TEMPLATE_BY_MODE = {
     "autogluon": Path("assets/prompts/research_hypotheses/modes/autogluon.md"),
     "legacy": Path("assets/prompts/research_hypotheses/modes/full_python.md"),
@@ -49,6 +50,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--mode-template",
         type=Path,
         help="Mode-specific prompt block path. Defaults to the block for the selected mode.",
+    )
+    parser.add_argument(
+        "--allowed-packages",
+        type=Path,
+        help=(
+            "JSON file with allowed package lists for prompt modes. Defaults to "
+            "assets/prompts/research_hypotheses/allowed_packages.json."
+        ),
     )
     parser.add_argument(
         "--out",
@@ -91,6 +100,34 @@ def load_values(path: Path) -> dict[str, str]:
     return {str(key): _stringify_value(value) for key, value in values.items()}
 
 
+def load_allowed_package_values(path: Path, mode: str) -> dict[str, str]:
+    try:
+        raw = json.loads(path.read_text())
+    except FileNotFoundError as exc:
+        raise ValueError(f"allowed packages file does not exist: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"allowed packages file is not valid JSON: {path}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"allowed packages file must contain a JSON object: {path}")
+
+    mode_config = raw.get(mode)
+    if mode_config is None:
+        return {}
+    if not isinstance(mode_config, dict):
+        raise ValueError(f"allowed packages entry for mode {mode} must be an object")
+    packages = mode_config.get("allowed_packages")
+    if not isinstance(packages, list) or not all(
+        isinstance(package, str) and package.strip() for package in packages
+    ):
+        raise ValueError(
+            f"allowed packages entry for mode {mode} must contain "
+            "allowed_packages as a non-empty string array"
+        )
+    return {
+        "ALLOWED_PACKAGES": ", ".join(f"`{package.strip()}`" for package in packages)
+    }
+
+
 def render_prompt(template_text: str, values: dict[str, str]) -> str:
     required = sorted(set(PLACEHOLDER_RE.findall(template_text)))
     missing = [key for key in required if key not in values or values[key] == ""]
@@ -122,6 +159,10 @@ def default_mode_template_path(mode: str) -> Path:
     return repo_root() / MODE_TEMPLATE_BY_MODE[mode]
 
 
+def default_allowed_packages_path() -> Path:
+    return repo_root() / ALLOWED_PACKAGES_PATH
+
+
 def default_output_path(mode: str, values: dict[str, str]) -> Path:
     name = values.get("COMPETITION_OR_PROJECT") or values.get("TASK_NAME") or "task"
     slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", name).strip("-") or "task"
@@ -134,10 +175,17 @@ def write_prompt(
     values_path: Path,
     template_path: Path,
     mode_template_path: Path | None = None,
+    allowed_packages_path: Path | None = None,
     value_overrides: dict[str, Any] | None = None,
     out_path: Path | None = None,
 ) -> Path:
     values = load_values(values_path)
+    values.update(
+        load_allowed_package_values(
+            allowed_packages_path or default_allowed_packages_path(),
+            mode,
+        )
+    )
     if value_overrides:
         values.update(
             {str(key): _stringify_value(value) for key, value in value_overrides.items()}
@@ -169,12 +217,14 @@ def main(argv: list[str] | None = None) -> int:
     values_path = args.values or default_values_path(args.task)
     template_path = args.template or default_template_path(args.mode)
     mode_template_path = args.mode_template or default_mode_template_path(args.mode)
+    allowed_packages_path = args.allowed_packages or default_allowed_packages_path()
     try:
         output_path = write_prompt(
             mode=args.mode,
             values_path=values_path,
             template_path=template_path,
             mode_template_path=mode_template_path,
+            allowed_packages_path=allowed_packages_path,
             value_overrides={"HYPOTHESIS_COUNT": args.hypothesis_count},
             out_path=args.out,
         )

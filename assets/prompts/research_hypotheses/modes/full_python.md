@@ -4,6 +4,13 @@ Allowed implementation scope:
   preprocessing, out-of-fold encodings, model blending, calibration, and longer
   experimental pipelines when justified.
 
+Allowed third-party packages for first experiments:
+- {{ALLOWED_PACKAGES}}
+- Treat this as the allowed third-party package set for first-pass hypotheses.
+- Do not propose installing new dependencies as part of an experiment.
+- Do not make a hypothesis depend on a package outside this set unless the
+  `implementation_hint` includes a fallback using packages from this list.
+
 Good hypotheses for this scope:
 - concrete feature, modeling, validation, calibration, or ensembling changes
 - fold-safe target/statistical encodings when the leakage handling is explicit

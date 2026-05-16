@@ -7,6 +7,7 @@ from scripts.render_research_prompt import (
     MODE_TEMPLATE_BY_MODE,
     compose_template,
     default_values_path,
+    load_allowed_package_values,
     default_output_path,
     load_values,
     render_prompt,
@@ -34,6 +35,24 @@ def test_load_values_accepts_nested_placeholders_object(tmp_path: Path):
     path.write_text(json.dumps({"placeholders": {"A": "x", "B": ["y"]}}))
 
     assert load_values(path) == {"A": "x", "B": "[\n  \"y\"\n]"}
+
+
+def test_load_allowed_package_values_formats_mode_packages(tmp_path: Path):
+    path = tmp_path / "allowed_packages.json"
+    path.write_text(
+        json.dumps(
+            {
+                "legacy": {
+                    "allowed_packages": ["numpy", "lightgbm"],
+                }
+            }
+        )
+    )
+
+    assert load_allowed_package_values(path, "legacy") == {
+        "ALLOWED_PACKAGES": "`numpy`, `lightgbm`"
+    }
+    assert load_allowed_package_values(path, "autogluon") == {}
 
 
 def test_default_output_path_uses_mode_and_competition_slug():
@@ -141,3 +160,10 @@ def test_playground_templates_render_without_placeholder_documentation(
         assert "AutoGluon" not in rendered
         assert "legacy/manual" not in rendered
         assert "Legacy/manual" not in rendered
+        assert "Allowed third-party packages for first experiments" in rendered
+        assert "`lightgbm`" in rendered
+        assert "`catboost`" in rendered
+        assert "`optuna`" in rendered
+        assert "Do not propose installing new dependencies" in rendered
+    else:
+        assert "Allowed third-party packages for first experiments" not in rendered

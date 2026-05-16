@@ -1,0 +1,31 @@
+{
+  "legacy": {
+    "allowed_packages": [
+      "numpy",
+      "pandas",
+      "scipy",
+      "scikit-learn",
+      "lightgbm",
+      "xgboost",
+      "catboost",
+      "statsmodels",
+      "imbalanced-learn",
+      "optuna",
+      "sklearn-pandas",
+      "hmmlearn",
+      "polars",
+      "ydf",
+      "tabpfn",
+      "pytabkit",
+      "tabm",
+      "pytorch-tabular",
+      "flaml",
+      "skrub",
+      "featuretools",
+      "lazypredict",
+      "numba",
+      "torch",
+      "joblib"
+    ]
+  }
+}
