@@ -1433,6 +1433,23 @@ def _clip_log_line(line: str, *, max_width: int) -> str:
     return clean[: max_width - 1].rstrip() + "…"
 
 
+def _format_missing_log_hint_line(line: str, *, max_width: int) -> Text:
+    clipped = _clip_log_line(line, max_width=max_width)
+    if ": " in clipped:
+        key, value = clipped.split(": ", 1)
+        text = Text()
+        text.append(f"{key}: ", style="bold cyan")
+        text.append(value, style="dim")
+        return text
+    if clipped.startswith("Hypothesis "):
+        key, value = clipped.split(" ", 1)
+        text = Text()
+        text.append(f"{key} ", style="bold cyan")
+        text.append(value, style="dim")
+        return text
+    return Text(clipped, style="dim")
+
+
 def build_run_log_summary(
     active_artifact_dir: Path | None,
     *,
@@ -1448,7 +1465,7 @@ def build_run_log_summary(
                 hint_lines = hint_lines[:max_lines]
             return Group(
                 *(
-                    Text(_clip_log_line(line, max_width=max_width), style="dim")
+                    _format_missing_log_hint_line(line, max_width=max_width)
                     for line in hint_lines
                 )
             )

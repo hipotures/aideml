@@ -1342,6 +1342,24 @@ def test_run_log_summary_shows_active_hypothesis_when_process_log_is_missing(
     assert "Try: Add current-lap rival aggregate features." in output
     assert "waiting for process log" not in output
 
+    styled_output = _render_ansi(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=3,
+            max_width=48,
+            missing_log_hint=(
+                "Hypothesis 000122\n"
+                "Title: Rival-relative pit-wave features\n"
+                "Try: Add current-lap rival aggregate features."
+            ),
+        )
+    )
+    assert "\x1b[1;36mHypothesis \x1b[0m\x1b[2m000122\x1b[0m" in styled_output
+    assert (
+        "\x1b[1;36mTitle: \x1b[0m"
+        "\x1b[2mRival-relative pit-wave features\x1b[0m"
+    ) in styled_output
+
 
 def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_path):
     artifact_dir = tmp_path / "artifact"
