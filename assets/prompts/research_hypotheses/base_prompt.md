@@ -33,12 +33,20 @@ Task context:
 Expected attached export files:
 - `run_export.meta.json`: run-level metadata such as total node count,
   scored-node count, best local-CV summary, best public-score summary if
-  available, and notes about export semantics.
+  available, raw data file manifest if included, and notes about export
+  semantics.
 - `run_export.nodes.jsonl`: one JSON object per AIDE solution node, ordered by
   step. Each node may include its code, plan, analysis, parent/child links,
   depth, status, failure flag, validation warning, local CV score, public score
   if submitted, metric direction, artifact/submission hashes, duplicate hints,
   runtime, and error type.
+- `raw_data/train.csv` or `raw_data/train.csv.gz`: raw training data for the
+  task. For supervised tasks it contains the target column `{{TARGET_NAME}}`.
+- `raw_data/test.csv` or `raw_data/test.csv.gz`: raw test/inference data with
+  the same feature columns that are available at prediction time, without the
+  target column.
+- `raw_data/sample_submission.csv` or `raw_data/sample_submission.csv.gz`:
+  expected submission format and prediction column names.
 
 How to read the export:
 - Treat `parent_id`, `children_ids`, `depth`, and `step` as a search tree, not
@@ -81,9 +89,12 @@ Allowed in final output:
 Your job:
 1. Read the attached artifacts first.
 2. Extract recurring feature, modeling, preprocessing, and validation patterns that fit the allowed implementation scope.
-3. Identify which ideas appear promising, weak, overfit-prone, duplicated, underexplored, or unstable.
-4. Convert those patterns into {{HYPOTHESIS_COUNT}} reusable development hypotheses.
-5. Each hypothesis must be self-contained: an AIDE coding agent should understand and test it without needing access to node ids, step ids, score tables, or previous run internals.
+3. Use the raw data files, when attached, to verify schema, target availability,
+   missingness, train/test differences, feature distributions, and leakage
+   risks relevant to the hypotheses.
+4. Identify which ideas appear promising, weak, overfit-prone, duplicated, underexplored, or unstable.
+5. Convert those patterns into {{HYPOTHESIS_COUNT}} reusable development hypotheses.
+6. Each hypothesis must be self-contained: an AIDE coding agent should understand and test it without needing access to node ids, step ids, score tables, or previous run internals.
 
 Return only valid JSON, no markdown, no comments, no prose outside JSON.
 Do not include Python code in the output.
@@ -160,4 +171,4 @@ Before finalizing JSON, perform this private self-check:
 - Ensure every hypothesis has `sources`.
 - Ensure the result parses as JSON.
 
-Now analyze the attached run exports and return the JSON.
+Now analyze the attached run exports and raw data files, then return the JSON.

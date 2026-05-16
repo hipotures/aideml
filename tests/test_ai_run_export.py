@@ -51,6 +51,18 @@ def _write_run(tmp_path: Path) -> Path:
     return log_dir
 
 
+def _write_data_dir(tmp_path: Path) -> Path:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "train.csv").write_text("id,target\n1,0\n", encoding="utf-8")
+    (data_dir / "test.csv").write_text("id\n2\n", encoding="utf-8")
+    (data_dir / "sample_submission.csv").write_text(
+        "id,target\n2,0\n",
+        encoding="utf-8",
+    )
+    return data_dir
+
+
 def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
@@ -98,6 +110,36 @@ def test_export_reports_progress_callback(tmp_path):
     assert ("Annotating exact duplicates", 1, 1) in events
     assert ("Writing export", 0, None) in events
     assert ("Writing export", 1, 1) in events
+
+
+def test_export_copies_raw_data_files_when_data_dir_is_provided(tmp_path):
+    log_dir = _write_run(tmp_path)
+    data_dir = _write_data_dir(tmp_path)
+
+    result = export_run_for_ai(
+        log_dir,
+        output_dir=tmp_path / "exports",
+        data_dir=data_dir,
+    )
+
+    assert [path.name for path in result.data_paths] == [
+        "train.csv",
+        "test.csv",
+        "sample_submission.csv",
+    ]
+    assert all(path.parent.name == "raw_data" for path in result.data_paths)
+    assert (result.export_dir / "raw_data" / "train.csv").read_text() == (
+        "id,target\n1,0\n"
+    )
+    meta = json.loads(result.meta_path.read_text())
+    assert [record["role"] for record in meta["raw_data_files"]] == [
+        "train",
+        "test",
+        "sample_submission",
+    ]
+    assert meta["raw_data_files"][0]["path"] == "raw_data/train.csv"
+    assert meta["raw_data_files"][0]["bytes"] > 0
+    assert len(meta["raw_data_files"][0]["sha256"]) == 64
 
 
 def test_export_handles_invalid_metric_value(tmp_path):
@@ -606,14 +648,19 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     prompt_path = bundle_dir / "prompt-legacy-playground-series-s6e5.md"
     assert (bundle_dir / "run_export.meta.json").exists()
     assert (bundle_dir / "run_export.nodes.jsonl").exists()
+    assert (bundle_dir / "raw_data" / "train.csv.gz").exists()
+    assert (bundle_dir / "raw_data" / "test.csv.gz").exists()
+    assert (bundle_dir / "raw_data" / "sample_submission.csv.gz").exists()
     assert prompt_path.exists()
     prompt_text = prompt_path.read_text()
     assert "AIDE is an automated ML coding and search system" in prompt_text
+    assert "raw_data/train.csv` or `raw_data/train.csv.gz" in prompt_text
     assert "AutoGluon" not in prompt_text
     assert "Always include exactly 7 hypotheses." in prompt_text
     assert "Convert those patterns into 7 reusable" in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
+    assert "raw_data/train.csv.gz" in result.stdout
     assert "Please execute the prompt from prompt-legacy-playground-series-s6e5.md" in (
         result.stdout
     )
@@ -658,6 +705,8 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
     )
     assert "--prompt-mode" in result.stdout
     assert "--hypothesis-count" in result.stdout
+    assert "--data-dir" in result.stdout
+    assert "--skip-data-files" in result.stdout
     assert "--skip-near-duplicate-check" in result.stdout
     assert "--no-near-duplicates" not in result.stdout
     assert result.stderr == ""

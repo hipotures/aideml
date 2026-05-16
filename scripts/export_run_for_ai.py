@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -13,6 +14,7 @@ from scripts.render_research_prompt import (
     default_values_path,
     load_values,
     positive_int,
+    repo_root,
     write_prompt,
 )
 
@@ -63,6 +65,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Number of hypotheses the rendered prompt should request.",
     )
     parser.add_argument(
+        "--data-dir",
+        type=Path,
+        help=(
+            "Directory containing raw train/test/sample_submission files. "
+            "When --prompt-mode is used, defaults to the run config data_dir, "
+            "then aide/example_tasks/<task>."
+        ),
+    )
+    parser.add_argument(
+        "--skip-data-files",
+        action="store_true",
+        help="Do not include raw train/test/sample_submission files in the bundle.",
+    )
+    parser.add_argument(
         "--near-submission-rmse-threshold",
         type=float,
         default=1e-6,
@@ -98,9 +114,11 @@ def main(argv: list[str] | None = None) -> int:
 
     progress_callback = _progress_callback() if sys.stderr.isatty() else None
     try:
+        data_dir = _resolve_data_dir_for_export(args)
         result = export_run_for_ai(
             args.log_dir,
             output_dir=args.output_dir,
+            data_dir=data_dir,
             near_duplicates=not args.skip_near_duplicate_check,
             near_submission_rmse_threshold=args.near_submission_rmse_threshold,
             prediction_similarity_sample_size=args.prediction_similarity_sample_size,
@@ -123,8 +141,74 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         print(f"Export failed: {exc}", file=sys.stderr)
         return 1
-    _print_result(result.export_dir, result.meta_path, result.nodes_path, prompt_path)
+    _print_result(
+        result.export_dir,
+        result.meta_path,
+        result.nodes_path,
+        result.data_paths,
+        prompt_path,
+    )
     return 0
+
+
+def _resolve_data_dir_for_export(args: argparse.Namespace) -> Path | None:
+    should_include_data = args.data_dir is not None or args.prompt_mode is not None
+    if args.skip_data_files or not should_include_data:
+        return None
+    if args.data_dir is not None:
+        return args.data_dir
+
+    config_data_dir = _read_data_dir_from_log_config(args.log_dir)
+    if config_data_dir is not None and config_data_dir.exists():
+        return config_data_dir
+
+    task_data_dir = repo_root() / "aide" / "example_tasks" / args.task
+    if task_data_dir.exists():
+        return task_data_dir
+
+    raise FileNotFoundError(
+        "Could not resolve raw data directory. Pass --data-dir or use "
+        "--skip-data-files."
+    )
+
+
+def _read_data_dir_from_log_config(log_dir: Path) -> Path | None:
+    config_path = log_dir / "config.yaml"
+    if not config_path.exists():
+        return None
+    lines = config_path.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith("data_dir:"):
+            continue
+        value = line.split(":", 1)[1].strip()
+        if value in {"", "null", "None", "~"}:
+            return None
+        if value.startswith("!!python/object/apply:pathlib."):
+            parts = []
+            for next_line in lines[index + 1 :]:
+                if next_line.startswith("- "):
+                    parts.append(_clean_yaml_scalar(next_line[2:].strip()))
+                    continue
+                if next_line and not next_line.startswith(" "):
+                    break
+            if not parts:
+                return None
+            if parts[0] == "/":
+                return Path("/", *parts[1:])
+            return Path(*parts)
+        return Path(_clean_yaml_scalar(value))
+    return None
+
+
+def _clean_yaml_scalar(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        try:
+            parsed = ast.literal_eval(value)
+        except (SyntaxError, ValueError):
+            return value[1:-1]
+        if isinstance(parsed, str):
+            return parsed
+    return value
 
 
 def _write_prompt_to_export_dir(
@@ -154,11 +238,16 @@ def _print_result(
     export_dir: Path,
     meta_path: Path,
     nodes_path: Path,
+    data_paths: tuple[Path, ...],
     prompt_path: Path | None,
 ) -> None:
     print(f"Export directory: {export_dir}")
     print(f"Metadata: {meta_path}")
     print(f"Nodes: {nodes_path}")
+    if data_paths:
+        print("Raw data files:")
+        for data_path in data_paths:
+            print(f"- {data_path}")
     if prompt_path is None:
         return
     print(f"Prompt: {prompt_path}")
@@ -167,6 +256,8 @@ def _print_result(
     print(f"- {prompt_path}")
     print(f"- {meta_path}")
     print(f"- {nodes_path}")
+    for data_path in data_paths:
+        print(f"- {data_path}")
     print("")
     print(
         "Then ask: "

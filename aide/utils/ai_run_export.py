@@ -3,9 +3,10 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from collections.abc import Callable
 from typing import Any
 
 from aide.journal import Journal, Node
@@ -20,9 +21,12 @@ class ExportResult:
     export_dir: Path
     meta_path: Path
     nodes_path: Path
+    data_paths: tuple[Path, ...] = ()
 
 
 ProgressCallback = Callable[[str, int, int | None], None]
+RAW_DATA_STEMS = ("train", "test", "sample_submission")
+RAW_DATA_SUFFIXES = (".csv.gz", ".csv")
 
 
 def _report_progress(
@@ -46,6 +50,57 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _find_raw_data_file(data_dir: Path, stem: str) -> Path:
+    for suffix in RAW_DATA_SUFFIXES:
+        candidate = data_dir / f"{stem}{suffix}"
+        if candidate.exists():
+            return candidate
+    expected = " or ".join(f"{stem}{suffix}" for suffix in RAW_DATA_SUFFIXES)
+    raise FileNotFoundError(f"Missing raw data file in {data_dir}: expected {expected}")
+
+
+def _copy_raw_data_files(
+    data_dir: Path,
+    export_dir: Path,
+    *,
+    progress_callback: ProgressCallback | None = None,
+) -> list[Path]:
+    data_dir = data_dir.resolve()
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Raw data directory does not exist: {data_dir}")
+    raw_data_dir = export_dir / "raw_data"
+    raw_data_dir.mkdir(parents=True, exist_ok=True)
+    _report_progress(progress_callback, "Copying raw data files", 0, len(RAW_DATA_STEMS))
+    copied_paths: list[Path] = []
+    for index, stem in enumerate(RAW_DATA_STEMS, start=1):
+        source_path = _find_raw_data_file(data_dir, stem)
+        target_path = raw_data_dir / source_path.name
+        shutil.copy2(source_path, target_path)
+        copied_paths.append(target_path)
+        _report_progress(
+            progress_callback,
+            "Copying raw data files",
+            index,
+            len(RAW_DATA_STEMS),
+        )
+    return copied_paths
+
+
+def _raw_data_records(export_dir: Path, data_paths: list[Path]) -> list[dict[str, Any]]:
+    records = []
+    for path in data_paths:
+        role = path.name.removesuffix(".csv.gz").removesuffix(".csv")
+        records.append(
+            {
+                "role": role,
+                "path": path.relative_to(export_dir).as_posix(),
+                "bytes": path.stat().st_size,
+                "sha256": _sha256_file(path),
+            }
+        )
+    return records
 
 
 def _load_registry(log_dir: Path) -> list[dict[str, Any]]:
@@ -324,6 +379,7 @@ def _meta_record(
     log_dir: Path,
     journal: Journal,
     node_records: list[dict[str, Any]],
+    raw_data_files: list[dict[str, Any]],
 ) -> dict[str, Any]:
     scored = [node for node in journal.nodes if _metric_value(node) is not None]
     best = max(scored, key=_node_score_rank, default=None)
@@ -362,6 +418,7 @@ def _meta_record(
             "submission_sha256": best_public["submission_sha256"],
         },
         "config": {},
+        "raw_data_files": raw_data_files,
         "notes_for_ai": (
             "This is a complete AIDE tree export. Nodes are ordered by step and "
             "connected by parent_id/children_ids. Duplicate hints are advisory; "
@@ -374,6 +431,7 @@ def export_run_for_ai(
     log_dir: Path,
     *,
     output_dir: Path = Path("exports"),
+    data_dir: Path | None = None,
     near_duplicates: bool = True,
     near_submission_rmse_threshold: float = 1e-6,
     prediction_similarity_sample_size: int = 200,
@@ -391,6 +449,13 @@ def export_run_for_ai(
     export_dir.mkdir(parents=True, exist_ok=False)
     meta_path = export_dir / "run_export.meta.json"
     nodes_path = export_dir / "run_export.nodes.jsonl"
+    data_paths: list[Path] = []
+    if data_dir is not None:
+        data_paths = _copy_raw_data_files(
+            Path(data_dir),
+            export_dir,
+            progress_callback=progress_callback,
+        )
 
     registry_entries = _load_registry(log_dir)
     sorted_nodes = sorted(journal.nodes, key=lambda n: n.step)
@@ -426,9 +491,18 @@ def export_run_for_ai(
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
     meta_path.write_text(
-        json.dumps(_meta_record(log_dir, journal, nodes), indent=2, sort_keys=True)
+        json.dumps(
+            _meta_record(log_dir, journal, nodes, _raw_data_records(export_dir, data_paths)),
+            indent=2,
+            sort_keys=True,
+        )
         + "\n",
         encoding="utf-8",
     )
     _report_progress(progress_callback, "Writing export", 1, 1)
-    return ExportResult(export_dir=export_dir, meta_path=meta_path, nodes_path=nodes_path)
+    return ExportResult(
+        export_dir=export_dir,
+        meta_path=meta_path,
+        nodes_path=nodes_path,
+        data_paths=tuple(data_paths),
+    )
