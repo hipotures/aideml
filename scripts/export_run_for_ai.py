@@ -158,7 +158,11 @@ def _print_result(
     print(f"- {meta_path}")
     print(f"- {nodes_path}")
     print("")
-    print(f"Then ask: wykonaj prompt z pliku {prompt_path.name}")
+    print(
+        "Then ask: "
+        f"Please execute the prompt from {prompt_path.name} using the attached "
+        "export files, and return the response in English."
+    )
 
 
 def _progress_callback() -> Callable[[str, int, int | None], None]:

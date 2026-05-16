@@ -113,6 +113,8 @@ def test_playground_templates_render_without_placeholder_documentation(
     assert "ideas into one hypothesis" in rendered
     assert "clear ablation plan" in rendered
     assert "tiny threshold tweaks" in rendered
+    assert "Write all output fields in English." in rendered
+    assert "Write all hypothesis titles" in rendered
     if mode == "legacy":
         assert "AutoGluon" not in rendered
         assert "legacy/manual" not in rendered

@@ -610,9 +610,10 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     assert "AutoGluon" not in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
-    assert "wykonaj prompt z pliku prompt-legacy-playground-series-s6e5.md" in (
+    assert "Please execute the prompt from prompt-legacy-playground-series-s6e5.md" in (
         result.stdout
     )
+    assert "return the response in English" in result.stdout
 
 
 def test_export_run_for_ai_cli_keeps_legacy_near_duplicate_flag(tmp_path):

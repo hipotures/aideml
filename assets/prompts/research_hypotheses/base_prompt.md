@@ -87,6 +87,7 @@ Your job:
 
 Return only valid JSON, no markdown, no comments, no prose outside JSON.
 Do not include Python code in the output.
+Write all output fields in English.
 
 JSON format:
 
@@ -119,6 +120,8 @@ Field rules:
 - Do not add any fields beyond the required schema.
 - Do not truncate strings. Return complete valid JSON.
 - Do not write code. Describe the hypothesis and implementation idea in text.
+- Write all hypothesis titles, summaries, rationales, implementation hints,
+  expected effects, and risks in English.
 
 Quality rules:
 - Prefer concrete, testable ideas over generic Kaggle advice.
