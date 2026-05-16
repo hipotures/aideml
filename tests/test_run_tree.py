@@ -10,9 +10,11 @@ from aide.run import (
     _sparkline,
     active_run_log_path,
     build_path_summary,
+    build_model_summary,
     build_resource_summary,
     build_run_log_summary,
     build_run_data,
+    model_settings_for_run,
     ResourceSnapshot,
     active_tree_item_id,
     best_tree_item_id,
@@ -31,6 +33,7 @@ from aide.run import (
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.autogluon_preprocess import BASELINE_PLAN_PREFIX
 from aide.utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
+from aide.utils.config import _load_cfg, prep_cfg
 from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
 
@@ -1245,6 +1248,27 @@ def test_run_data_shows_resolved_model_settings(tmp_path):
     assert "synthesis" in output and "gpt-5.5" in output and "low" in output
     assert output.index("Synthesis") < output.index("Models")
     assert output.index("Models") < output.index("Base path")
+
+
+def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "model-settings-test"
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.model = "unused-research-model"
+    cfg = prep_cfg(cfg)
+
+    output = _render_text(build_model_summary(model_settings_for_run(cfg)))
+
+    assert "code" in output
+    assert "feedback" in output
+    assert "report" in output
+    assert "research" not in output
+    assert "unused-research-model" not in output
 
 
 def test_run_data_hides_resources_when_code_is_not_executing(tmp_path):

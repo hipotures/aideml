@@ -1501,7 +1501,7 @@ def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
         ("feedback", cfg.agent.feedback.model, cfg.agent.feedback.reasoning_effort),
         ("report", cfg.report.model, cfg.report.reasoning_effort),
     ]
-    if cfg.research.enabled:
+    if cfg.research.enabled and getattr(cfg.research, "mode", "llm") != "hypothesis":
         settings.append(("research", cfg.research.model, cfg.research.reasoning_effort))
     if cfg.synthesis.enabled:
         settings.append(
