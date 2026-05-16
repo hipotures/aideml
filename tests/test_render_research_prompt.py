@@ -71,6 +71,24 @@ def test_write_prompt_renders_to_explicit_output_path(tmp_path: Path):
     assert output_path.read_text() == "Use demo with ROC AUC."
 
 
+def test_write_prompt_applies_value_overrides(tmp_path: Path):
+    template_path = tmp_path / "template.md"
+    values_path = tmp_path / "values.json"
+    output_path = tmp_path / "rendered.md"
+    template_path.write_text("Return exactly {{HYPOTHESIS_COUNT}} hypotheses.")
+    values_path.write_text(json.dumps({"HYPOTHESIS_COUNT": "10"}))
+
+    write_prompt(
+        mode="legacy",
+        values_path=values_path,
+        template_path=template_path,
+        value_overrides={"HYPOTHESIS_COUNT": 7},
+        out_path=output_path,
+    )
+
+    assert output_path.read_text() == "Return exactly 7 hypotheses."
+
+
 def test_compose_template_inserts_mode_block():
     composed = compose_template(
         "Common\n{{MODE_SPECIFIC_INSTRUCTIONS}}\nEnd",
@@ -104,6 +122,10 @@ def test_playground_templates_render_without_placeholder_documentation(
     assert "Required placeholders:" not in rendered
     assert "short task name or slug" not in rendered
     assert "This prompt is ONLY for" not in rendered
+    assert "Always include exactly 10 hypotheses." in rendered
+    assert "Convert those patterns into 10 reusable" in rendered
+    assert "downloadable file" in rendered
+    assert "Otherwise return the JSON directly" in rendered
     assert "under 1 hour" in rendered
     assert "200 GB RAM" in rendered
     assert "RTX 4090" in rendered

@@ -82,12 +82,14 @@ Your job:
 1. Read the attached artifacts first.
 2. Extract recurring feature, modeling, preprocessing, and validation patterns that fit the allowed implementation scope.
 3. Identify which ideas appear promising, weak, overfit-prone, duplicated, underexplored, or unstable.
-4. Convert those patterns into 10 reusable development hypotheses.
+4. Convert those patterns into {{HYPOTHESIS_COUNT}} reusable development hypotheses.
 5. Each hypothesis must be self-contained: an AIDE coding agent should understand and test it without needing access to node ids, step ids, score tables, or previous run internals.
 
 Return only valid JSON, no markdown, no comments, no prose outside JSON.
 Do not include Python code in the output.
 Write all output fields in English.
+If your interface supports file outputs, provide the final JSON as a
+downloadable file. Otherwise return the JSON directly in the message.
 
 JSON format:
 
@@ -106,7 +108,7 @@ JSON format:
 }
 
 Field rules:
-- Always include exactly 10 hypotheses.
+- Always include exactly {{HYPOTHESIS_COUNT}} hypotheses.
 - Each hypothesis object must contain exactly these fields: `title`, `summary`, `rationale`, `implementation_hint`, `expected_effect`, `risk`, `sources`.
 - The `summary` field is required. It must not be a duplicate of the title.
 - The `sources` field is required and must always be an array.

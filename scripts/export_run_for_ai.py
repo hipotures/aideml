@@ -12,6 +12,7 @@ from scripts.render_research_prompt import (
     default_template_path,
     default_values_path,
     load_values,
+    positive_int,
     write_prompt,
 )
 
@@ -54,6 +55,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--prompt-mode-template",
         type=Path,
         help="Mode-specific prompt block path.",
+    )
+    parser.add_argument(
+        "--hypothesis-count",
+        type=positive_int,
+        default=10,
+        help="Number of hypotheses the rendered prompt should request.",
     )
     parser.add_argument(
         "--near-submission-rmse-threshold",
@@ -110,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
                 values_path=args.prompt_values,
                 template_path=args.prompt_template,
                 mode_template_path=args.prompt_mode_template,
+                hypothesis_count=args.hypothesis_count,
                 export_dir=result.export_dir,
             )
     except Exception as exc:
@@ -126,6 +134,7 @@ def _write_prompt_to_export_dir(
     values_path: Path | None,
     template_path: Path | None,
     mode_template_path: Path | None,
+    hypothesis_count: int,
     export_dir: Path,
 ) -> Path:
     resolved_values_path = values_path or default_values_path(task)
@@ -136,6 +145,7 @@ def _write_prompt_to_export_dir(
         values_path=resolved_values_path,
         template_path=template_path or default_template_path(mode),
         mode_template_path=mode_template_path or default_mode_template_path(mode),
+        value_overrides={"HYPOTHESIS_COUNT": hypothesis_count},
         out_path=export_dir / prompt_name,
     )
 

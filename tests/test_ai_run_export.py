@@ -589,6 +589,8 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
             "legacy",
             "--task",
             "playground-series-s6e5",
+            "--hypothesis-count",
+            "7",
         ],
         cwd=Path(__file__).resolve().parents[1],
         text=True,
@@ -608,6 +610,8 @@ def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
     prompt_text = prompt_path.read_text()
     assert "AIDE is an automated ML coding and search system" in prompt_text
     assert "AutoGluon" not in prompt_text
+    assert "Always include exactly 7 hypotheses." in prompt_text
+    assert "Convert those patterns into 7 reusable" in prompt_text
     assert "Attach these files to GPT:" in result.stdout
     assert str(prompt_path) in result.stdout
     assert "Please execute the prompt from prompt-legacy-playground-series-s6e5.md" in (
@@ -653,6 +657,7 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
         result.stdout
     )
     assert "--prompt-mode" in result.stdout
+    assert "--hypothesis-count" in result.stdout
     assert "--skip-near-duplicate-check" in result.stdout
     assert "--no-near-duplicates" not in result.stdout
     assert result.stderr == ""

@@ -58,7 +58,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "/tmp/prompt-<mode>-<COMPETITION_OR_PROJECT>.md."
         ),
     )
+    parser.add_argument(
+        "--hypothesis-count",
+        type=positive_int,
+        default=10,
+        help="Number of hypotheses the rendered prompt should request.",
+    )
     return parser.parse_args(argv)
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
 
 
 def load_values(path: Path) -> dict[str, str]:
@@ -121,9 +134,14 @@ def write_prompt(
     values_path: Path,
     template_path: Path,
     mode_template_path: Path | None = None,
+    value_overrides: dict[str, Any] | None = None,
     out_path: Path | None = None,
 ) -> Path:
     values = load_values(values_path)
+    if value_overrides:
+        values.update(
+            {str(key): _stringify_value(value) for key, value in value_overrides.items()}
+        )
     base_text = template_path.read_text()
     mode_text = (
         mode_template_path or default_mode_template_path(mode)
@@ -157,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             values_path=values_path,
             template_path=template_path,
             mode_template_path=mode_template_path,
+            value_overrides={"HYPOTHESIS_COUNT": args.hypothesis_count},
             out_path=args.out,
         )
     except Exception as exc:
