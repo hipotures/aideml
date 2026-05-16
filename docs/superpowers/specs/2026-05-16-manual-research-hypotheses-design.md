@@ -45,7 +45,6 @@ Manual hypotheses live once in the repository:
 research_hypotheses/
   playground-series-s6e5/
     source.md
-    index.json
     hypotheses/
       hypothesis-000001.md
       hypothesis-000002.md
@@ -61,26 +60,28 @@ The source file currently contains 9 sections with source headings numbered
 `## 2.` through `## 10.`. The library should renumber them locally from
 `000001` through `000009`.
 
-`index.json` stores the stable metadata used by runtime and later analysis:
+Runtime must not rely on a hand-maintained list of hypothesis ids. The source
+of truth is the `hypotheses/hypothesis-*.md` directory. At run startup, manual
+mode indexes all matching files in sorted filename order, derives the id from
+the filename, and builds the sampling pool from that runtime index. If a new
+file such as `hypothesis-000010.md` is added before a later run, that later run
+must pick it up automatically.
 
-```json
-{
-  "task_slug": "playground-series-s6e5",
-  "hypotheses": [
-    {
-      "id": "000001",
-      "title": "Replace single random holdout selection with race/year-aware repeated validation",
-      "summary": "Use race/year-aware repeated validation to reduce CV/public mismatch.",
-      "path": "hypotheses/hypothesis-000001.md",
-      "source_heading": "## 2. Replace single random holdout selection with race/year-aware repeated validation"
-    }
-  ]
-}
+Each hypothesis file should be self-describing:
+
+```markdown
+# Replace single random holdout selection with race/year-aware repeated validation
+
+Summary: Use race/year-aware repeated validation to reduce CV/public mismatch.
+
+Source heading: ## 2. Replace single random holdout selection with race/year-aware repeated validation
+
+...
 ```
 
-`title` comes from the hypothesis heading. `summary` is a short runtime and
-reporting summary. It can be derived manually from the hypothesis text for the
-initial library; no LLM is required.
+`title` comes from the first markdown heading in the file. `summary` is a short
+runtime and reporting summary stored inside the same file. It can be derived
+manually from the hypothesis text for the initial library; no LLM is required.
 
 ## Library Location
 
@@ -188,13 +189,15 @@ logs/<run>/research_hypotheses/
 {
   "source_dir": "/home/xai/DEV/aideml/research_hypotheses/playground-series-s6e5",
   "source_hash": "...",
-  "hypothesis_ids": ["000001", "000002", "000003"]
+  "indexed_hypothesis_count": 9,
+  "indexed_at": "..."
 }
 ```
 
-The hash covers `index.json` and all referenced hypothesis markdown files. It
-lets later analysis detect whether a run used the current library or an older
-version.
+The hash covers all indexed `hypothesis-*.md` files and their relative paths.
+It lets later analysis detect whether a run used the current library or an
+older version. `source_ref.json` must not be the source of the sampling pool;
+it is only an audit record written after startup indexing.
 
 `selections.jsonl` is append-only:
 
@@ -276,10 +279,12 @@ experiment linkage.
 Manual mode should fail early with clear errors for:
 
 - missing library directory;
-- missing or invalid `index.json`;
+- missing `hypotheses/` directory;
+- no `hypothesis-*.md` files;
+- duplicate or invalid hypothesis ids derived from filenames;
 - `manual_sample_size <= 0`;
 - `manual_sample_size` larger than the available hypothesis count;
-- missing hypothesis markdown files referenced by `index.json`.
+- missing title or summary metadata in a hypothesis file.
 
 If `research.enabled=false`, none of this behavior runs.
 
@@ -288,7 +293,9 @@ If `research.enabled=false`, none of this behavior runs.
 Focused tests should cover:
 
 - task slug derivation from `data_dir`;
-- loading the manual library without filesystem search;
+- startup indexing from sorted `hypothesis-*.md` files without filesystem search;
+- adding `hypothesis-000010.md` changes the next run's sampling pool without
+  editing any central id list;
 - missing-library error message;
 - deterministic under-selected sampling;
 - prompt rendering includes only sampled hypotheses;
