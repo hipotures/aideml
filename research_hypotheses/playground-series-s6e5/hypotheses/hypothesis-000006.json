@@ -1,7 +1,13 @@
 {
   "enabled": true,
-  "agent_modes": ["legacy", "autogluon"],
-  "title": "Rework final-stop-window entry as a reduced monotonic timing signal",
-  "summary": "Keep the strategic idea that pit probability rises when a fresh compound first becomes finish-capable, but implement it with a minimal low-alias feature set.",
-  "body": "Evidence from artifacts:\n- Step 473, node a8e027fb..., CV 0.951081, unsubmitted, used a final-stop window entry idea.\n- Step 140, node 7966b089..., CV 0.951076, public 0.94885, worsened public relative to parent step 126 public 0.94925.\n- Step 141, node 19ecdb9d..., CV 0.951069, public 0.94906, partially recovered but remained below step 65.\n- This family is strategically plausible but has public-overfit risk.\n\nWhy this might improve ROC AUC:\nThe feature concept may be useful, but previous versions likely added too many aliases and brittle threshold interactions. A reduced monotonic representation may preserve the signal with less overfit.\n\nConcrete implementation plan:\n- Applies to AutoGluon first; later both.\n- Start from step 65.\n- Add only FreshSoftEntryMargin, FreshMediumEntryMargin, FreshHardEntryMargin, AnyFreshEntryNow, and EntryCount.\n- Avoid softest-opening aliases, many boolean thresholds, and high-order interactions.\n\nLeakage and validation risks:\n- No future laps or target use if computed from current lap and remaining-lap estimates.\n- High CV-only overfit risk because previous public-scored variants hurt public.\n- Require grouped CV before submitting.\n\nExpected score impact:\n- Impact: small to medium.\n- Confidence: low to medium.\n- Speculative.\n\nFast experiment design:\n- Minimal change: add only EntryCount and AnyFreshEntryNow to step 65.\n- Confirm if grouped CV improves and random CV does not rise disproportionately.\n- Reject if it reproduces step 140 behavior: tiny CV gain with instability.\n\nPrompt snippet for AIDE coding agent:\nAdd a minimal final-stop-window-entry block to the step-65 feature set: only per-compound entry margins, AnyFreshEntryNow, and EntryCount; avoid softest-opening aliases and high-order interactions."
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Reduced final-stop-window entry as a monotonic timing signal",
+  "summary": "Test whether pit probability rises when a fresh compound first becomes able to reach the finish, but implement the idea with a minimal low-alias feature set.",
+  "rationale": "Pit probability should plausibly rise when a fresh compound first becomes able to reach the finish, but broad versions of this idea can add too many aliases and brittle threshold interactions. A reduced monotonic representation may preserve the strategic signal with less overfit.",
+  "implementation_hint": "Add a minimal final-stop-window-entry block to the step-65 feature set: per-compound entry margins such as FreshSoftEntryMargin, FreshMediumEntryMargin, and FreshHardEntryMargin, plus AnyFreshEntryNow and EntryCount. Avoid softest-opening aliases, many boolean thresholds, and high-order interactions. First test only EntryCount and AnyFreshEntryNow.",
+  "expected_effect": "Small to medium potential improvement if it improves ranking near final-stop windows. Confidence is low to medium because this feature family has high CV-only overfit risk.",
+  "risk": "High risk of CV-only overfit. A tiny CV gain without grouped-CV confirmation should be treated as suspicious. Grouped validation is required before submission."
 }

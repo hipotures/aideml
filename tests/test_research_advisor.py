@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -78,7 +79,11 @@ def _write_manual_hypothesis(
     *,
     title: str = "Grouped validation",
     summary: str = "Use grouped validation to reduce public/CV mismatch.",
-    body: str = "Full research body with evidence and implementation notes.",
+    rationale: str = "Race/year grouping should reduce public/CV mismatch.",
+    implementation_hint: str = "Build Race_Year groups and compare grouped CV.",
+    expected_effect: str = "Better validation stability.",
+    risk: str = "Grouped CV may be pessimistic.",
+    sources: list[str] | None = None,
     enabled: bool = True,
     agent_modes: list[str] | None = None,
 ) -> Path:
@@ -99,7 +104,11 @@ def _write_manual_hypothesis(
                 ),
                 "title": title,
                 "summary": summary,
-                "body": body,
+                "rationale": rationale,
+                "implementation_hint": implementation_hint,
+                "expected_effect": expected_effect,
+                "risk": risk,
+                **({"sources": sources} if sources is not None else {}),
             }
         ),
         encoding="utf-8",
@@ -171,8 +180,64 @@ def test_manual_hypothesis_library_indexes_json_files_from_task_slug(tmp_path):
     )
     assert library.hypotheses[0].enabled is True
     assert library.hypotheses[0].agent_modes == ["legacy", "autogluon"]
-    assert library.hypotheses[0].body
+    assert library.hypotheses[0].rationale
+    assert library.hypotheses[0].implementation_hint
+    assert library.hypotheses[0].expected_effect
+    assert library.hypotheses[0].risk
+    assert library.hypotheses[0].sources == []
     assert library.source_hash.startswith("sha256:")
+
+
+def test_manual_hypothesis_library_loads_optional_sources(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        sources=[
+            "https://example.com/research-a",
+            "https://example.com/research-b",
+        ],
+    )
+
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+
+    assert library.hypotheses[0].sources == [
+        "https://example.com/research-a",
+        "https://example.com/research-b",
+    ]
+
+
+def test_playground_manual_hypotheses_do_not_reference_run_specific_ids():
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = "aide/example_tasks/playground-series-s6e5"
+    cfg.goal = "Predict next-lap pit stop probability"
+    cfg = prep_cfg(cfg)
+
+    library = research.load_manual_hypothesis_library(cfg)
+    forbidden_patterns = [
+        r"\bstep\s+\d+\b",
+        r"\bnode\s+[0-9a-f]{8,}\b",
+        r"\b[0-9a-f]{32}\b",
+        r"\bCV\s+0\.\d+",
+        r"\bpublic\s+0\.\d+",
+    ]
+
+    for hypothesis in library.hypotheses:
+        text = "\n".join(
+            [
+                hypothesis.title,
+                hypothesis.summary,
+                hypothesis.rationale,
+                hypothesis.implementation_hint,
+                hypothesis.expected_effect,
+                hypothesis.risk,
+            ]
+        )
+        for pattern in forbidden_patterns:
+            assert not re.search(pattern, text, re.IGNORECASE), (
+                f"{hypothesis.id} contains run-specific reference matching {pattern}"
+            )
 
 
 def test_manual_hypothesis_library_rejects_missing_hypotheses_dir(tmp_path):
@@ -221,7 +286,7 @@ def test_select_manual_hypotheses_prefers_under_offered_and_records_usage(tmp_pa
             f"{idx:06d}",
             title=f"Hypothesis {idx}",
             summary=f"Summary {idx}",
-            body=f"Body {idx}",
+            implementation_hint=f"Implementation {idx}",
         )
     usage_dir = Path(cfg.log_dir) / "research_hypotheses"
     usage_dir.mkdir(parents=True)
@@ -268,7 +333,13 @@ def test_format_manual_research_hints_for_prompt_includes_usage_instruction(tmp_
         "000001",
         title="Grouped validation",
         summary="Use grouped validation to reduce public/CV mismatch.",
-        body="Build Race_Year groups and compare grouped CV against the current holdout.",
+        rationale="Random holdout can mix race context across splits.",
+        implementation_hint=(
+            "Build Race_Year groups and compare grouped CV against the current holdout."
+        ),
+        expected_effect="More reliable model selection.",
+        risk="Grouped CV can be noisy on small groups.",
+        sources=["https://example.com/grouped-validation"],
     )
 
     selection = research.select_manual_hypotheses(
@@ -282,7 +353,11 @@ def test_format_manual_research_hints_for_prompt_includes_usage_instruction(tmp_
     assert "If your solution intentionally uses any of them" in rendered
     assert "000001. Grouped validation" in rendered
     assert "Use grouped validation to reduce public/CV mismatch." in rendered
+    assert "Why: Random holdout can mix race context" in rendered
     assert "Build Race_Year groups" in rendered
+    assert "Expected effect: More reliable model selection." in rendered
+    assert "Risk: Grouped CV can be noisy" in rendered
+    assert "Sources: https://example.com/grouped-validation" in rendered
 
 
 def test_select_manual_hypotheses_skips_disabled_hypotheses(tmp_path):
@@ -959,7 +1034,11 @@ def test_agent_includes_latest_manual_research_hints_in_draft_prompt(
                 agent_modes=["legacy", "autogluon"],
                 title="Grouped validation",
                 summary="Use grouped validation.",
-                body="Build Race_Year groups.",
+                rationale="Random holdout can mix race context.",
+                implementation_hint="Build Race_Year groups.",
+                expected_effect="More reliable validation.",
+                risk="Grouped CV may be pessimistic.",
+                sources=[],
                 path=tmp_path / "hypothesis-000001.json",
             )
         ],

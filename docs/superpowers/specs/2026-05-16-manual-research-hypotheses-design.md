@@ -67,7 +67,11 @@ it comes only from the filename.
   "agent_modes": ["legacy", "autogluon"],
   "title": "Replace single random holdout selection with race/year-aware repeated validation",
   "summary": "Use race/year-aware repeated validation to reduce CV/public mismatch.",
-  "body": "Full hypothesis text, including evidence, rationale, implementation notes, risks, expected impact, and any prompt snippet."
+  "rationale": "Why this hypothesis can improve the result, grounded in evidence.",
+  "implementation_hint": "Concrete experiment or implementation plan.",
+  "expected_effect": "Expected metric, validation, stability, or ranking effect.",
+  "risk": "Main risks such as leakage, overfit, cost, or compatibility limits.",
+  "sources": ["https://example.com/optional-source"]
 }
 ```
 
@@ -75,10 +79,11 @@ it comes only from the filename.
 files stay in the library for audit/history but are not offered to the agent.
 `agent_modes` controls compatibility with the current coding agent mode. Values
 are short external keys: `legacy` for the full-script agent and `autogluon` for
-the AutoGluon preprocess agent. A hypothesis can list both modes. `title` and
-`summary` are explicit fields for status, analysis, and concise prompt
-rendering. `body` contains the full hypothesis text. Runtime should validate
-these fields but should not parse headings out of free-form text.
+the AutoGluon preprocess agent. A hypothesis can list both modes. `title`,
+`summary`, `rationale`, `implementation_hint`, `expected_effect`, and `risk`
+are required structured fields. `sources` is optional; if present it must be a
+list of non-empty strings. Runtime should validate these fields but should not
+parse headings out of free-form text.
 
 ## Library Location
 
@@ -167,8 +172,12 @@ surface as current external research hints:
 - summary text;
 - numbered hypothesis items;
 - title;
-- relevant excerpt from `body`;
-- risk/expected effect when available.
+- summary;
+- rationale;
+- implementation hint;
+- expected effect;
+- risk;
+- sources when available.
 
 Only the offered hypotheses are rendered. The full library is never placed in
 the agent prompt.
@@ -309,9 +318,11 @@ Manual mode should fail early with clear errors for:
 - invalid hypothesis JSON;
 - missing or non-boolean `enabled` in a hypothesis file;
 - missing, empty, or invalid `agent_modes` in a hypothesis file;
+- invalid optional `sources` in a hypothesis file;
 - `manual_sample_size <= 0`;
 - `manual_sample_size` larger than the compatible enabled hypothesis count;
-- missing `title`, `summary`, or `body` in a hypothesis file.
+- missing `title`, `summary`, `rationale`, `implementation_hint`,
+  `expected_effect`, or `risk` in a hypothesis file.
 
 If `research.enabled=false`, none of this behavior runs.
 

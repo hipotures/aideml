@@ -5,13 +5,56 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from scripts.render_research_prompt import (
+    MODE_TEMPLATE_BY_MODE,
+    default_mode_template_path,
+    default_output_path,
+    default_template_path,
+    default_values_path,
+    load_values,
+    write_prompt,
+)
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Export a complete AIDE run tree for external AI review.",
+        description="Export a complete AIDE run tree and optional AI review prompt.",
     )
     parser.add_argument("log_dir", type=Path)
-    parser.add_argument("--output-dir", type=Path, default=Path("exports"))
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("/tmp/aideml-ai-review"),
+        help="Directory where a timestamped review bundle subdirectory is created.",
+    )
+    parser.add_argument(
+        "--prompt-mode",
+        choices=sorted(MODE_TEMPLATE_BY_MODE),
+        help="Also render a research prompt into the export bundle.",
+    )
+    parser.add_argument(
+        "--task",
+        default="playground-series-s6e5",
+        help=(
+            "Task slug used to find research_hypotheses/<task>/prompt_values.json "
+            "when --prompt-values is not provided."
+        ),
+    )
+    parser.add_argument(
+        "--prompt-values",
+        type=Path,
+        help="JSON file with prompt placeholder values.",
+    )
+    parser.add_argument(
+        "--prompt-template",
+        type=Path,
+        help="Base prompt template path.",
+    )
+    parser.add_argument(
+        "--prompt-mode-template",
+        type=Path,
+        help="Mode-specific prompt block path.",
+    )
     parser.add_argument(
         "--near-submission-rmse-threshold",
         type=float,
@@ -59,13 +102,63 @@ def main(argv: list[str] | None = None) -> int:
             ),
             progress_callback=progress_callback,
         )
+        prompt_path = None
+        if args.prompt_mode is not None:
+            prompt_path = _write_prompt_to_export_dir(
+                mode=args.prompt_mode,
+                task=args.task,
+                values_path=args.prompt_values,
+                template_path=args.prompt_template,
+                mode_template_path=args.prompt_mode_template,
+                export_dir=result.export_dir,
+            )
     except Exception as exc:
         print(f"Export failed: {exc}", file=sys.stderr)
         return 1
-    print(f"Export directory: {result.export_dir}")
-    print(f"Metadata: {result.meta_path}")
-    print(f"Nodes: {result.nodes_path}")
+    _print_result(result.export_dir, result.meta_path, result.nodes_path, prompt_path)
     return 0
+
+
+def _write_prompt_to_export_dir(
+    *,
+    mode: str,
+    task: str,
+    values_path: Path | None,
+    template_path: Path | None,
+    mode_template_path: Path | None,
+    export_dir: Path,
+) -> Path:
+    resolved_values_path = values_path or default_values_path(task)
+    values = load_values(resolved_values_path)
+    prompt_name = default_output_path(mode, values).name
+    return write_prompt(
+        mode=mode,
+        values_path=resolved_values_path,
+        template_path=template_path or default_template_path(mode),
+        mode_template_path=mode_template_path or default_mode_template_path(mode),
+        out_path=export_dir / prompt_name,
+    )
+
+
+def _print_result(
+    export_dir: Path,
+    meta_path: Path,
+    nodes_path: Path,
+    prompt_path: Path | None,
+) -> None:
+    print(f"Export directory: {export_dir}")
+    print(f"Metadata: {meta_path}")
+    print(f"Nodes: {nodes_path}")
+    if prompt_path is None:
+        return
+    print(f"Prompt: {prompt_path}")
+    print("")
+    print("Attach these files to GPT:")
+    print(f"- {prompt_path}")
+    print(f"- {meta_path}")
+    print(f"- {nodes_path}")
+    print("")
+    print(f"Then ask: wykonaj prompt z pliku {prompt_path.name}")
 
 
 def _progress_callback() -> Callable[[str, int, int | None], None]:

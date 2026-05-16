@@ -26,7 +26,7 @@ assert [h.id for h in library.hypotheses] == ["000001", "000002"]
 assert library.hypotheses[0].title == "Grouped validation"
 ```
 
-Also assert missing `hypotheses/`, invalid JSON, duplicate/invalid ids, and missing `title`/`summary`/`body` raise `ValueError` with concrete messages.
+Also assert missing `hypotheses/`, invalid JSON, duplicate/invalid ids, and missing structured fields raise `ValueError` with concrete messages.
 
 - [ ] **Step 2: Run failing tests**
 
@@ -65,7 +65,7 @@ Run: `uv run pytest tests/test_research_advisor.py -k "manual_sampling or manual
 
 - [ ] **Step 3: Implement sampling and formatting**
 
-Add `select_manual_hypotheses()`, per-run `source_ref.json`, `offers.jsonl`, and `usage.json` helpers. Filter by `enabled` and current `agent.mode` compatibility before sampling. Use deterministic tie-breaking with `manual_seed`, `cfg.exp_name`, and checkpoint step. Render only offered hypotheses with id, title, summary, and compact `body` excerpt.
+Add `select_manual_hypotheses()`, per-run `source_ref.json`, `offers.jsonl`, and `usage.json` helpers. Filter by `enabled` and current `agent.mode` compatibility before sampling. Use deterministic tie-breaking with `manual_seed`, `cfg.exp_name`, and checkpoint step. Render only offered hypotheses with id, title, summary, rationale, implementation hint, expected effect, risk, and sources when available.
 
 - [ ] **Step 4: Run tests**
 
@@ -147,7 +147,7 @@ Run: `uv run pytest tests/test_model_reasoning_config.py tests/test_resume_run.p
 
 - [ ] **Step 1: Create JSON files**
 
-Split `aide_hypotheses_playground_s6e5.json` into `hypothesis-000001.json` through `hypothesis-000010.json`. Preserve the full text for each section in `body`; write concise `title` and `summary` fields; add `enabled` and `agent_modes` to every hypothesis, and set `hypothesis-000001.json` disabled.
+Split `aide_hypotheses_playground_s6e5.json` into `hypothesis-000001.json` through `hypothesis-000010.json`. Preserve structured research fields (`title`, `summary`, `rationale`, `implementation_hint`, `expected_effect`, `risk`, and optional `sources`); add `enabled` and `agent_modes` to every hypothesis, and set `hypothesis-000001.json` disabled.
 
 - [ ] **Step 2: Validate with loader test**
 

@@ -573,6 +573,48 @@ def test_export_run_for_ai_cli_writes_export(tmp_path):
     assert (export_dirs[0] / "run_export.nodes.jsonl").exists()
 
 
+def test_export_run_for_ai_cli_writes_prompt_bundle(tmp_path):
+    log_dir = _write_run(tmp_path)
+    output_dir = tmp_path / "bundles"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/export_run_for_ai.py",
+            str(log_dir),
+            "--output-dir",
+            str(output_dir),
+            "--skip-near-duplicate-check",
+            "--prompt-mode",
+            "legacy",
+            "--task",
+            "playground-series-s6e5",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    export_dirs = list(output_dir.iterdir())
+    assert len(export_dirs) == 1
+    bundle_dir = export_dirs[0]
+    prompt_path = bundle_dir / "prompt-legacy-playground-series-s6e5.md"
+    assert (bundle_dir / "run_export.meta.json").exists()
+    assert (bundle_dir / "run_export.nodes.jsonl").exists()
+    assert prompt_path.exists()
+    prompt_text = prompt_path.read_text()
+    assert "AIDE is an automated ML coding and search system" in prompt_text
+    assert "AutoGluon" not in prompt_text
+    assert "Attach these files to GPT:" in result.stdout
+    assert str(prompt_path) in result.stdout
+    assert "wykonaj prompt z pliku prompt-legacy-playground-series-s6e5.md" in (
+        result.stdout
+    )
+
+
 def test_export_run_for_ai_cli_keeps_legacy_near_duplicate_flag(tmp_path):
     log_dir = _write_run(tmp_path)
     output_dir = tmp_path / "exports"
@@ -606,7 +648,10 @@ def test_export_run_for_ai_cli_help_uses_stdout_only():
     )
 
     assert result.returncode == 0, result.stderr
-    assert "Export a complete AIDE run tree for external AI review." in result.stdout
+    assert "Export a complete AIDE run tree and optional AI review prompt." in (
+        result.stdout
+    )
+    assert "--prompt-mode" in result.stdout
     assert "--skip-near-duplicate-check" in result.stdout
     assert "--no-near-duplicates" not in result.stdout
     assert result.stderr == ""

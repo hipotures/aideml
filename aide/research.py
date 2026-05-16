@@ -82,7 +82,11 @@ class ManualHypothesis:
     agent_modes: list[str]
     title: str
     summary: str
-    body: str
+    rationale: str
+    implementation_hint: str
+    expected_effect: str
+    risk: str
+    sources: list[str]
     path: Path
 
 
@@ -174,9 +178,23 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
         missing.append("agent_modes")
     missing.extend(
         field
-        for field in ("title", "summary", "body")
+        for field in (
+            "title",
+            "summary",
+            "rationale",
+            "implementation_hint",
+            "expected_effect",
+            "risk",
+        )
         if not isinstance(payload.get(field), str) or not payload.get(field).strip()
     )
+    raw_sources = payload.get("sources", [])
+    if raw_sources is None:
+        raw_sources = []
+    if not isinstance(raw_sources, list) or not all(
+        isinstance(source, str) and source.strip() for source in raw_sources
+    ):
+        missing.append("sources")
     if missing:
         raise ValueError(
             f"Manual research hypothesis {path} missing required field(s): "
@@ -189,7 +207,11 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
         agent_modes=list(raw_agent_modes),
         title=payload["title"].strip(),
         summary=payload["summary"].strip(),
-        body=payload["body"].strip(),
+        rationale=payload["rationale"].strip(),
+        implementation_hint=payload["implementation_hint"].strip(),
+        expected_effect=payload["expected_effect"].strip(),
+        risk=payload["risk"].strip(),
+        sources=[source.strip() for source in raw_sources],
         path=path,
     )
 
@@ -524,9 +546,24 @@ def format_manual_research_hints_for_prompt(
     for hypothesis in selection.hypotheses:
         lines.append(f"{hypothesis.id}. {hypothesis.title}")
         lines.append(f"   Summary: {_compact_prompt_text(hypothesis.summary, 320)}")
-        body = _compact_prompt_text(hypothesis.body, 700)
-        if body:
-            lines.append(f"   Body: {body}")
+        rationale = _compact_prompt_text(hypothesis.rationale, 360)
+        if rationale:
+            lines.append(f"   Why: {rationale}")
+        implementation_hint = _compact_prompt_text(
+            hypothesis.implementation_hint, 520
+        )
+        if implementation_hint:
+            lines.append(f"   Implementation: {implementation_hint}")
+        expected_effect = _compact_prompt_text(hypothesis.expected_effect, 260)
+        if expected_effect:
+            lines.append(f"   Expected effect: {expected_effect}")
+        risk = _compact_prompt_text(hypothesis.risk, 260)
+        if risk:
+            lines.append(f"   Risk: {risk}")
+        if hypothesis.sources:
+            lines.append(
+                "   Sources: " + _compact_prompt_text(", ".join(hypothesis.sources), 360)
+            )
     return "\n".join(lines)
 
 
