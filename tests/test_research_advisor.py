@@ -80,6 +80,7 @@ def _write_manual_hypothesis(
     summary: str = "Use grouped validation to reduce public/CV mismatch.",
     body: str = "Full research body with evidence and implementation notes.",
     enabled: bool = True,
+    agent_modes: list[str] | None = None,
 ) -> Path:
     path = (
         root
@@ -93,6 +94,9 @@ def _write_manual_hypothesis(
         json.dumps(
             {
                 "enabled": enabled,
+                "agent_modes": (
+                    agent_modes if agent_modes is not None else ["legacy", "autogluon"]
+                ),
                 "title": title,
                 "summary": summary,
                 "body": body,
@@ -166,6 +170,7 @@ def test_manual_hypothesis_library_indexes_json_files_from_task_slug(tmp_path):
         "Prune alias-heavy features from the option-richness block."
     )
     assert library.hypotheses[0].enabled is True
+    assert library.hypotheses[0].agent_modes == ["legacy", "autogluon"]
     assert library.hypotheses[0].body
     assert library.source_hash.startswith("sha256:")
 
@@ -310,6 +315,42 @@ def test_select_manual_hypotheses_skips_disabled_hypotheses(tmp_path):
     )
     assert source_ref["indexed_hypothesis_count"] == 2
     assert source_ref["enabled_hypothesis_count"] == 1
+    assert source_ref["compatible_hypothesis_count"] == 1
+
+
+def test_select_manual_hypotheses_filters_by_agent_mode(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    cfg.research.manual_sample_size = 1
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Legacy-only hypothesis",
+        agent_modes=["legacy"],
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        title="AutoGluon-compatible hypothesis",
+        agent_modes=["autogluon"],
+    )
+
+    selection = research.select_manual_hypotheses(
+        cfg,
+        completed_steps=10,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    source_ref = json.loads(
+        (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
+    )
+    assert source_ref["agent_mode"] == "autogluon"
+    assert source_ref["indexed_hypothesis_count"] == 2
+    assert source_ref["enabled_hypothesis_count"] == 2
+    assert source_ref["compatible_hypothesis_count"] == 1
 
 
 def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):
@@ -915,6 +956,7 @@ def test_agent_includes_latest_manual_research_hints_in_draft_prompt(
             research.ManualHypothesis(
                 id="000001",
                 enabled=True,
+                agent_modes=["legacy", "autogluon"],
                 title="Grouped validation",
                 summary="Use grouped validation.",
                 body="Build Race_Year groups.",

@@ -64,6 +64,7 @@ it comes only from the filename.
 ```json
 {
   "enabled": true,
+  "agent_modes": ["legacy", "autogluon"],
   "title": "Replace single random holdout selection with race/year-aware repeated validation",
   "summary": "Use race/year-aware repeated validation to reduce CV/public mismatch.",
   "body": "Full hypothesis text, including evidence, rationale, implementation notes, risks, expected impact, and any prompt snippet."
@@ -72,9 +73,12 @@ it comes only from the filename.
 
 `enabled` controls whether a hypothesis participates in sampling; disabled
 files stay in the library for audit/history but are not offered to the agent.
-`title` and `summary` are explicit fields for status, analysis, and concise
-prompt rendering. `body` contains the full hypothesis text. Runtime should
-validate these fields but should not parse headings out of free-form text.
+`agent_modes` controls compatibility with the current coding agent mode. Values
+are short external keys: `legacy` for the full-script agent and `autogluon` for
+the AutoGluon preprocess agent. A hypothesis can list both modes. `title` and
+`summary` are explicit fields for status, analysis, and concise prompt
+rendering. `body` contains the full hypothesis text. Runtime should validate
+these fields but should not parse headings out of free-form text.
 
 ## Library Location
 
@@ -138,7 +142,10 @@ different library, but it is not part of this design.
 
 Manual mode samples `research.manual_sample_size` hypotheses at each research
 checkpoint. The default is 3. Only hypotheses with `enabled: true` are eligible
-for sampling.
+for sampling, and they must also include the current agent compatibility key in
+`agent_modes`. For example, `agent.mode=autogluon` is normalized internally to
+`autogluon_preprocess`, but manual hypothesis filtering uses the external key
+`autogluon`.
 
 Sampling should prefer under-offered hypotheses within the current run:
 
@@ -198,6 +205,8 @@ logs/<run>/research_hypotheses/
   "source_hash": "...",
   "indexed_hypothesis_count": 9,
   "enabled_hypothesis_count": 8,
+  "agent_mode": "autogluon",
+  "compatible_hypothesis_count": 6,
   "indexed_at": "..."
 }
 ```
@@ -299,8 +308,9 @@ Manual mode should fail early with clear errors for:
 - duplicate or invalid hypothesis ids derived from filenames;
 - invalid hypothesis JSON;
 - missing or non-boolean `enabled` in a hypothesis file;
+- missing, empty, or invalid `agent_modes` in a hypothesis file;
 - `manual_sample_size <= 0`;
-- `manual_sample_size` larger than the enabled hypothesis count;
+- `manual_sample_size` larger than the compatible enabled hypothesis count;
 - missing `title`, `summary`, or `body` in a hypothesis file.
 
 If `research.enabled=false`, none of this behavior runs.
@@ -314,6 +324,7 @@ Focused tests should cover:
 - adding `hypothesis-000010.json` changes the next run's sampling pool without
   editing any central id list;
 - disabled hypotheses are indexed but not offered;
+- hypotheses incompatible with the current `agent.mode` are indexed but not offered;
 - missing-library error message;
 - deterministic under-offered sampling;
 - prompt rendering includes only offered hypotheses;

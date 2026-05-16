@@ -72,12 +72,14 @@ Runner = Callable[..., subprocess.CompletedProcess[str]]
 PROMPT_SCORE_DECIMALS = 5
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
+MANUAL_HYPOTHESIS_AGENT_MODES = {"legacy", "autogluon"}
 
 
 @dataclass(frozen=True)
 class ManualHypothesis:
     id: str
     enabled: bool
+    agent_modes: list[str]
     title: str
     summary: str
     body: str
@@ -124,6 +126,13 @@ def _manual_library_dir(cfg: Config, *, repo_root: Path = REPO_ROOT) -> Path:
     return Path(repo_root) / "research_hypotheses" / _manual_task_slug(cfg)
 
 
+def _manual_agent_mode_key(cfg: Config) -> str:
+    mode = getattr(cfg.agent, "mode", "legacy")
+    if mode in {"autogluon", "autogluon_preprocess"}:
+        return "autogluon"
+    return "legacy"
+
+
 def _manual_source_hash(source_dir: Path, files: list[Path]) -> str:
     digest = hashlib.sha256()
     for path in files:
@@ -153,6 +162,16 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
     missing = []
     if "enabled" not in payload or not isinstance(payload.get("enabled"), bool):
         missing.append("enabled")
+    raw_agent_modes = payload.get("agent_modes")
+    if (
+        not isinstance(raw_agent_modes, list)
+        or not raw_agent_modes
+        or not all(
+            isinstance(mode, str) and mode in MANUAL_HYPOTHESIS_AGENT_MODES
+            for mode in raw_agent_modes
+        )
+    ):
+        missing.append("agent_modes")
     missing.extend(
         field
         for field in ("title", "summary", "body")
@@ -167,6 +186,7 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
     return ManualHypothesis(
         id=hypothesis_id,
         enabled=payload["enabled"],
+        agent_modes=list(raw_agent_modes),
         title=payload["title"].strip(),
         summary=payload["summary"].strip(),
         body=payload["body"].strip(),
@@ -236,6 +256,12 @@ def _write_manual_source_ref(
     created_at: str,
 ) -> None:
     enabled_count = sum(1 for hypothesis in library.hypotheses if hypothesis.enabled)
+    agent_mode = _manual_agent_mode_key(cfg)
+    compatible_count = sum(
+        1
+        for hypothesis in library.hypotheses
+        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
+    )
     _write_json(
         _manual_run_dir(cfg) / "source_ref.json",
         {
@@ -243,6 +269,8 @@ def _write_manual_source_ref(
             "source_hash": library.source_hash,
             "indexed_hypothesis_count": len(library.hypotheses),
             "enabled_hypothesis_count": enabled_count,
+            "agent_mode": agent_mode,
+            "compatible_hypothesis_count": compatible_count,
             "indexed_at": created_at,
             "filename_pattern": "hypotheses/hypothesis-*.json",
         },
@@ -313,22 +341,26 @@ def select_manual_hypotheses(
     repo_root: Path = REPO_ROOT,
 ) -> ManualHypothesisSelection:
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
-    enabled_hypotheses = [
-        hypothesis for hypothesis in library.hypotheses if hypothesis.enabled
+    agent_mode = _manual_agent_mode_key(cfg)
+    compatible_hypotheses = [
+        hypothesis
+        for hypothesis in library.hypotheses
+        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
     ]
     sample_size = int(cfg.research.manual_sample_size)
     if sample_size <= 0:
         raise ValueError("research.manual_sample_size must be greater than 0.")
-    if sample_size > len(enabled_hypotheses):
+    if sample_size > len(compatible_hypotheses):
         raise ValueError(
-            "research.manual_sample_size cannot exceed enabled manual hypotheses "
-            f"({sample_size} requested, {len(enabled_hypotheses)} enabled)."
+            "research.manual_sample_size cannot exceed compatible manual hypotheses "
+            f"for agent mode {agent_mode} "
+            f"({sample_size} requested, {len(compatible_hypotheses)} compatible)."
         )
 
     usage = _load_manual_usage(cfg)
     seed_text = f"{cfg.research.manual_seed}:{cfg.exp_name}:{completed_steps}"
     ordered = sorted(
-        enabled_hypotheses,
+        compatible_hypotheses,
         key=lambda hypothesis: _manual_offer_sort_key(
             hypothesis=hypothesis,
             usage=usage,
