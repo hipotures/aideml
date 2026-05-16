@@ -1385,6 +1385,35 @@ def test_run_log_summary_shows_active_hypothesis_when_process_log_is_missing(
     ) in styled_output
 
 
+def test_run_log_summary_wraps_active_hypothesis_to_available_height(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+
+    output = _render_text(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=5,
+            max_width=40,
+            missing_log_hint=(
+                "Hypothesis 000327\n"
+                "Summary: Official F1 strategy breakdowns frame "
+                "undercut/overcut as an economic trade: current tyre fade, "
+                "fresh-tyre warm-up, clean air, striking range, and pit-loss "
+                "delta.\n"
+                "Try: Create features for pit_now_edge versus "
+                "stay_out_one_more_lap."
+            ),
+        )
+    )
+
+    lines = output.splitlines()
+    assert len(lines) == 5
+    assert "…" not in output
+    assert "current tyre fade" in output
+    assert "fresh-tyre" in output
+    assert "warm-up" in output
+
+
 def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_path):
     artifact_dir = tmp_path / "artifact"
     artifact_dir.mkdir()

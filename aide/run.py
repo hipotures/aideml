@@ -11,6 +11,7 @@ import sys
 import termios
 import threading
 import time
+import textwrap
 import tty
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -1434,20 +1435,38 @@ def _clip_log_line(line: str, *, max_width: int) -> str:
 
 
 def _format_missing_log_hint_line(line: str, *, max_width: int) -> Text:
-    clipped = _clip_log_line(line, max_width=max_width)
-    if ": " in clipped:
-        key, value = clipped.split(": ", 1)
+    clean = ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+    if ": " in clean:
+        key, value = clean.split(": ", 1)
         text = Text()
         text.append(f"{key}: ", style="bold cyan")
         text.append(value, style="dim")
         return text
-    if clipped.startswith("Hypothesis "):
-        key, value = clipped.split(" ", 1)
+    if clean.startswith("Hypothesis "):
+        key, value = clean.split(" ", 1)
         text = Text()
         text.append(f"{key} ", style="bold cyan")
         text.append(value, style="dim")
         return text
-    return Text(clipped, style="dim")
+    return Text(clean, style="dim")
+
+
+def _wrap_missing_log_hint_lines(lines: list[str], *, max_width: int) -> list[str]:
+    wrapped: list[str] = []
+    for line in lines:
+        clean = ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+        if max_width <= 1 or len(clean) <= max_width:
+            wrapped.append(clean)
+            continue
+        segments = textwrap.wrap(
+            clean,
+            width=max_width,
+            break_long_words=False,
+            break_on_hyphens=False,
+            replace_whitespace=False,
+        )
+        wrapped.extend(segments or [""])
+    return wrapped
 
 
 def build_run_log_summary(
@@ -1460,7 +1479,10 @@ def build_run_log_summary(
     log_path = active_run_log_path(active_artifact_dir)
     if log_path is None:
         if missing_log_hint:
-            hint_lines = missing_log_hint.splitlines()
+            hint_lines = _wrap_missing_log_hint_lines(
+                missing_log_hint.splitlines(),
+                max_width=max_width,
+            )
             if len(hint_lines) > max_lines:
                 hint_lines = hint_lines[:max_lines]
             return Group(
