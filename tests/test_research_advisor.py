@@ -610,6 +610,90 @@ def test_select_hypothesis_for_child_excludes_ancestors_and_siblings(tmp_path):
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000004"]
 
 
+def test_select_hypothesis_for_child_prefers_root_score_ranking(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.hypothesis_child_order = "root_score"
+    for idx in range(1, 6):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+
+    journal = Journal()
+    root = _node(0.91, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+
+    root_rank_2 = _node(0.92, code="print('h2')", plan="h2")
+    root_rank_2.research_mode = "hypothesis"
+    root_rank_2.research_hypotheses_offered = ["000002"]
+    root_rank_1 = _node(0.94, code="print('h3')", plan="h3")
+    root_rank_1.research_mode = "hypothesis"
+    root_rank_1.research_hypotheses_offered = ["000003"]
+    root_rank_3 = _node(0.90, code="print('h4')", plan="h4")
+    root_rank_3.research_mode = "hypothesis"
+    root_rank_3.research_hypotheses_offered = ["000004"]
+
+    journal.append(root)
+    journal.append(root_rank_2)
+    journal.append(root_rank_1)
+    journal.append(root_rank_3)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=4,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000003"]
+
+
+def test_select_hypothesis_for_child_keeps_untested_hypotheses_available(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.hypothesis_child_order = "root_score"
+    for idx in range(1, 5):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+
+    journal = Journal()
+    root = _node(0.91, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+
+    scored_root = _node(0.92, code="print('h2')", plan="h2")
+    scored_root.research_mode = "hypothesis"
+    scored_root.research_hypotheses_offered = ["000002"]
+    used_child = _node(0.90, code="print('child')", plan="child")
+    used_child.parent = root
+    root.children.add(used_child)
+    used_child.research_mode = "hypothesis"
+    used_child.research_hypotheses_offered = ["000002"]
+
+    journal.append(root)
+    journal.append(scored_root)
+    journal.append(used_child)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=3,
+        repo_root=tmp_path,
+    )
+
+    assert selection.hypotheses[0].id in {"000003", "000004"}
+
+
 def test_select_hypothesis_for_debug_inherits_buggy_parent_hypothesis(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

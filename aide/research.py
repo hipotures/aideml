@@ -630,6 +630,42 @@ def _hypothesis_sort_key(
     return attempts.get(hypothesis.id, 0), tie_break, hypothesis.id
 
 
+def _metric_for_hypothesis_ranking(node: Node) -> float:
+    assert node.metric is not None and node.metric.value is not None
+    value = float(node.metric.value)
+    return -value if node.metric.maximize is False else value
+
+
+def _root_hypothesis_score_ranks(journal: Journal) -> dict[str, tuple[float, str]]:
+    ranks: dict[str, tuple[float, str]] = {}
+    for node in journal.nodes:
+        if node.parent is not None or node.is_buggy:
+            continue
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None or node.metric is None or node.metric.value is None:
+            continue
+        score = _metric_for_hypothesis_ranking(node)
+        previous = ranks.get(hypothesis_id)
+        if previous is None or score > previous[0]:
+            ranks[hypothesis_id] = (score, node.id)
+    return ranks
+
+
+def _hypothesis_child_root_score_sort_key(
+    *,
+    hypothesis: ManualHypothesis,
+    root_scores: dict[str, tuple[float, str]],
+    attempts: dict[str, int],
+    seed_text: str,
+) -> tuple[int, float, int, float, str]:
+    root_score = root_scores.get(hypothesis.id)
+    tie_break = random.Random(f"{seed_text}:{hypothesis.id}").random()
+    if root_score is not None:
+        score, root_node_id = root_score
+        return (0, -score, attempts.get(hypothesis.id, 0), tie_break, root_node_id)
+    return (1, 0.0, attempts.get(hypothesis.id, 0), tie_break, hypothesis.id)
+
+
 def select_hypothesis_for_node(
     cfg: Config,
     *,
@@ -664,14 +700,31 @@ def select_hypothesis_for_node(
         f"{cfg.research.manual_seed}:{cfg.exp_name}:"
         f"{completed_steps}:{parent_node.id if parent_node is not None else 'root'}"
     )
-    selected = sorted(
-        candidates,
-        key=lambda hypothesis: _hypothesis_sort_key(
-            hypothesis=hypothesis,
-            attempts=attempts,
-            seed_text=seed_text,
-        ),
-    )[0]
+    if (
+        parent_node is not None
+        and not parent_node.is_buggy
+        and getattr(cfg.agent.search, "hypothesis_child_order", "root_score")
+        == "root_score"
+    ):
+        root_scores = _root_hypothesis_score_ranks(journal)
+        selected = sorted(
+            candidates,
+            key=lambda hypothesis: _hypothesis_child_root_score_sort_key(
+                hypothesis=hypothesis,
+                root_scores=root_scores,
+                attempts=attempts,
+                seed_text=seed_text,
+            ),
+        )[0]
+    else:
+        selected = sorted(
+            candidates,
+            key=lambda hypothesis: _hypothesis_sort_key(
+                hypothesis=hypothesis,
+                attempts=attempts,
+                seed_text=seed_text,
+            ),
+        )[0]
     created_at = dt.datetime.now().isoformat(timespec="seconds")
     _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
     _append_manual_offer(
