@@ -807,7 +807,7 @@ def test_run_data_shows_research_status_when_enabled(tmp_path):
         )
     )
 
-    assert "◇ Research   · 010 ▶" in output
+    assert "◆ Research   010 ▶" in output
     assert "Agent workspace directory" in output
 
 
@@ -840,7 +840,7 @@ def test_run_data_shows_synthesis_status_when_enabled(tmp_path):
         )
     )
 
-    assert "◆ Synthesis  · 015 ✓" in output
+    assert "◆ Synthesis  015 ✓" in output
     assert "Agent workspace directory" in output
 
 
@@ -889,10 +889,10 @@ def test_run_data_shows_checkpoint_and_best_score_statuses_with_times(tmp_path):
         )
     )
 
-    assert "◇ Research   · 098 @ 02:08:34 ✓" in output
-    assert "◆ Synthesis  · 098 @ 02:09:15 ✓" in output
-    assert "★ Best Score · 001 @ 02:11:25 0.95108" in output
-    assert output.index("◇ Research") < output.index("◆ Synthesis")
+    assert "◆ Research   098 @ 02:08:34 ✓" in output
+    assert "◆ Synthesis  098 @ 02:09:15 ✓" in output
+    assert "★ Best Score 001 @ 02:11:25 0.95108" in output
+    assert output.index("◆ Research") < output.index("◆ Synthesis")
     assert output.index("◆ Synthesis") < output.index("★ Best Score")
     assert output.index("★ Best Score") < output.index("Models")
 
@@ -931,8 +931,8 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
         )
     )
 
-    assert "◇ Research   · 030 @ 000122 ✓" in output
-    assert "★ Best Score · 000 @ 19:13:00 0.95115 · 000122" in output
+    assert "◆ Research   030 @ 000122 ✓" in output
+    assert "★ Best Score 000 @ 19:13:00 0.95115 · 000122" in output
 
 
 def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
@@ -955,7 +955,7 @@ def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
     output = _render_text(build_hypothesis_phase_status(cfg, journal))
     ansi = _render_ansi(build_hypothesis_phase_status(cfg, journal))
 
-    assert "◇ Phase      · exploration 2/3 · exploitation 1/7" in output
+    assert "⬢ Phase       exploration 2/3 · exploitation 1/7" in output
     assert "\x1b[32mexploration 2/3" in ansi
     assert "exploitation 1/7" in ansi
 
@@ -978,7 +978,7 @@ def test_hypothesis_phase_status_ignores_lower_resume_limit(tmp_path):
 
     output = _render_text(build_hypothesis_phase_status(cfg, journal))
 
-    assert "◇ Phase      · exploration 3/3 · exploitation 1/7" in output
+    assert "⬢ Phase       exploration 3/3 · exploitation 1/7" in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():

@@ -10,7 +10,7 @@ where labels, metrics, paths, statuses, and errors all compete for attention.
 | --- | --- | --- |
 | Panel title | `Run data`, `Logs` | bold white, handled by the panel title |
 | Static section label | `Models`, `Base path`, `Resources` | bold cyan |
-| Static row label | `Research`, `Phase`, `Best Score`, model names | bold cyan |
+| Static row label | `Progress`, `Research`, `Phase`, `Best Score`, model names | bold cyan |
 | Separator | `·`, spacing punctuation | dim |
 | Neutral dynamic value | paths, model ids, reasoning effort | yellow |
 | Operator notice | graceful `Ctrl+C` wait message | yellow |
@@ -30,14 +30,28 @@ Run-data status lines should keep their row label stable and color only the
 dynamic value segment:
 
 ```text
-◇ Research   · 149 @ 000847 ✓
-◇ Phase      · exploration 33/50 · exploitation 116/1450
-★ Best Score · 145 @ 19:59:14 0.95193 · 000011
+◆ Research   149 @ 000847 ✓
+⬢ Phase       exploration 33/50 · exploitation 116/1450
+★ Best Score 145 @ 19:59:14 0.95193 · 000011
 ```
 
 `Research`, `Phase`, and `Best Score` are labels, so they use the static row
-label color. The separator is dim. The status, phase counter, or metric segment
-uses the semantic dynamic color.
+label color. Label-to-value separation is done with fixed spacing, not a dot
+separator. The dot separator is reserved for separating parts inside a dynamic
+value, such as phase counters or score metadata. Separators are dim. The status,
+phase counter, or metric segment uses the semantic dynamic color.
+
+## Global Progress
+
+The main progress bar keeps the same semantic split:
+
+```text
+Progress: [bar] 151/1500 0:00:54
+```
+
+`Progress:` is a static row label, so it uses bold cyan. The bar and numeric
+progress are dynamic progress values handled by Rich's progress columns. Do not
+leave the label white; it should match other row labels.
 
 ## Hypothesis Phase Counters
 

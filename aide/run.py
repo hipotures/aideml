@@ -1015,6 +1015,10 @@ STATUS_SYMBOLS = {
 }
 RUN_STATUS_LABEL_WIDTH = len("★ Best Score")
 RUN_STATUS_STEP_WIDTH = 3
+TUI_RESEARCH_ICON = "◆"
+TUI_PHASE_ICON = "⬢"
+TUI_SYNTHESIS_ICON = "◆"
+TUI_BEST_SCORE_ICON = "★"
 TUI_ROW_LABEL_STYLE = "bold cyan"
 TUI_SEPARATOR_STYLE = "dim"
 TUI_NEUTRAL_VALUE_STYLE = "yellow"
@@ -1154,7 +1158,6 @@ def _run_status_label(icon: str, title: str) -> str:
 def _run_status_line_prefix(icon: str, title: str) -> Text:
     line = Text()
     line.append(_run_status_label(icon, title), style=TUI_ROW_LABEL_STYLE)
-    line.append(" ·", style=TUI_SEPARATOR_STYLE)
     return line
 
 
@@ -1214,7 +1217,7 @@ def build_best_score_status(journal: Journal) -> Text | None:
     timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
     hypothesis_id = hypothesis_id_for_node(node)
     suffix = f" · {hypothesis_id}" if hypothesis_id is not None else ""
-    line = _run_status_line_prefix("★", "Best Score")
+    line = _run_status_line_prefix(TUI_BEST_SCORE_ICON, "Best Score")
     line.append(
         f" {_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
         f"{suffix}",
@@ -1270,8 +1273,8 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
         TUI_INACTIVE_VALUE_STYLE if exploration_active else TUI_METRIC_VALUE_STYLE
     )
 
-    line = _run_status_line_prefix("◇", "Phase")
-    line.append(" ")
+    line = _run_status_line_prefix(TUI_PHASE_ICON, "Phase")
+    line.append("  ")
     line.append(
         f"exploration {root_count}/{exploration_budget}",
         style=exploration_style,
@@ -1685,13 +1688,13 @@ def build_run_data(
     lines = [progress, status]
     research_line = build_checkpoint_status_line(
         title="Research",
-        icon="◇",
+        icon=TUI_RESEARCH_ICON,
         status_text=research_status,
         record=_latest_checkpoint_status(log_dir=log_dir, kind="research"),
     )
     synthesis_line = build_checkpoint_status_line(
         title="Synthesis",
-        icon="◆",
+        icon=TUI_SYNTHESIS_ICON,
         status_text=synthesis_status,
         record=_latest_checkpoint_status(log_dir=log_dir, kind="synthesis"),
     )
@@ -2245,7 +2248,7 @@ def run(argv: list[str] | None = None):
 
     global_step = len(journal)
     prog = Progress(
-        TextColumn("[progress.description]{task.description}"),
+        TextColumn(f"[{TUI_ROW_LABEL_STYLE}]" + "{task.description}"),
         BarColumn(bar_width=20),
         MofNCompleteColumn(),
         TimeElapsedColumn(),
