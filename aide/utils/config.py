@@ -105,6 +105,7 @@ class AutoGluonConfig:
     profiles: dict = field(default_factory=dict)
     presets: str = "medium_quality"
     time_limit: int = 600
+    preprocess_timeout: int = 180
     validation_fraction: float = 0.2
     seed: int = 42
     eval_metric: str = "auto"

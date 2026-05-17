@@ -477,6 +477,34 @@ def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp
     )
 
 
+def test_select_hypothesis_avoids_previously_offered_interrupted_candidate(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    for idx in range(1, 3):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    usage_dir = Path(cfg.log_dir) / "research_hypotheses"
+    usage_dir.mkdir(parents=True)
+    (usage_dir / "usage.json").write_text(
+        json.dumps({"000001": {"offered_count": 1}}),
+        encoding="utf-8",
+    )
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=Journal(),
+        parent_node=None,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+
+
 def test_select_hypothesis_for_child_excludes_ancestors_and_siblings(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

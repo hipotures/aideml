@@ -163,6 +163,7 @@ class Interpreter:
                 log_dir = Path(artifact_dir)
                 log_dir.mkdir(parents=True, exist_ok=True)
                 log_path = log_dir / "process_stdout.log"
+                log_path.touch(exist_ok=True)
             except OSError as exc:
                 logger.debug(f"Failed to initialize process output log: {exc}")
 

@@ -270,3 +270,15 @@ def test_child_process_streams_output_to_artifact_log(tmp_path, monkeypatch):
     log_path = artifact_dir / "process_stdout.log"
     assert log_path.exists()
     assert "legacy progress" in log_path.read_text(encoding="utf-8")
+
+
+def test_child_process_creates_artifact_log_before_first_output(tmp_path, monkeypatch):
+    artifact_dir = tmp_path / "artifact"
+    monkeypatch.setenv("AIDE_NODE_ARTIFACT_DIR", str(artifact_dir))
+    interpreter = Interpreter(tmp_path, timeout=10)
+
+    result = interpreter.run("x = 1")
+    interpreter.cleanup_session()
+
+    assert result.exc_type is None
+    assert (artifact_dir / "process_stdout.log").exists()

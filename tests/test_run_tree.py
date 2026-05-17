@@ -925,6 +925,28 @@ def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
     assert "bug·000205" in output
 
 
+def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95104), "000122")
+    timeout = _hypothesis_node(_bug_node(parent=root), "000447")
+    timeout.exc_type = "PreprocessTimeoutError"
+    journal.append(root)
+    journal.append(timeout)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "timeout·000447" in output
+    assert "bug·000447" not in output
+
+
 def test_tree_view_shows_hypothesis_protocol_failures_with_id():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
@@ -1434,6 +1456,29 @@ def test_run_log_summary_wraps_literal_json_newlines_as_spaces(tmp_path):
     assert "Try: Use prior stops only. Add template distance." in output
 
 
+def test_run_log_summary_does_not_style_continuation_colon_as_key(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+
+    styled_output = _render_ansi(
+        build_run_log_summary(
+            artifact_dir,
+            max_lines=6,
+            max_width=96,
+            missing_log_hint=(
+                "Hypothesis 000447\n"
+                "Try: Within each sorted sequence, add trailing features for "
+                "`LapTime (s)`, `LapTime_Delta`, `Cumulative_Degradation`, "
+                "`Position_Change`: last value, EWMA, slope, acceleration."
+            ),
+        )
+    )
+
+    assert "\x1b[1;36mTry: \x1b[0m" in styled_output
+    assert "\x1b[1;36m`LapTime" not in styled_output
+    assert "\x1b[1;36m`Position_Change`: \x1b[0m" not in styled_output
+
+
 def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_path):
     artifact_dir = tmp_path / "artifact"
     artifact_dir.mkdir()
@@ -1458,6 +1503,35 @@ def test_stage_status_message_names_review_stage():
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
     assert (
         stage_status_message("generating", 65) == "[green]Generating code... (1m 05s)"
+    )
+
+
+def test_stage_status_message_names_autogluon_preprocess_before_fit_log(tmp_path):
+    assert (
+        stage_status_message(
+            "executing",
+            19,
+            agent_mode="autogluon_preprocess",
+            active_artifact_dir=tmp_path,
+        )
+        == "[magenta]Preprocessing features... (19s)"
+    )
+
+
+def test_stage_status_message_names_autogluon_training_after_fit_log(tmp_path):
+    (tmp_path / "autogluon_stdout.log").write_text(
+        "AIDE AutoGluon: starting fit\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        stage_status_message(
+            "executing",
+            74,
+            agent_mode="autogluon_preprocess",
+            active_artifact_dir=tmp_path,
+        )
+        == "[magenta]Training AutoGluon... (1m 14s)"
     )
 
 

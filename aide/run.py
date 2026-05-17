@@ -31,7 +31,7 @@ from .telegram_notifications import (
     append_node_with_best_score_notification,
     send_telegram_test_message,
 )
-from .autogluon_preprocess import BASELINE_PLAN_PREFIX
+from .autogluon_preprocess import AGENT_MODE, BASELINE_PLAN_PREFIX
 from .utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
 from .utils.seed_artifact import (
     SeedArtifactSource,
@@ -237,6 +237,15 @@ def _node_hypothesis_suffix(node: Node) -> str:
     return f"·{hypothesis_id}" if hypothesis_id is not None else ""
 
 
+def _is_preprocess_timeout_node(node: Node) -> bool:
+    if node.exc_type == "PreprocessTimeoutError":
+        return True
+    raw_term_out = getattr(node, "_term_out", None)
+    term_out = "".join(raw_term_out) if isinstance(raw_term_out, list) else ""
+    text = f"{node.analysis or ''}\n{term_out}"
+    return "AIDE AutoGluon preprocess exceeded the dedicated timeout" in text
+
+
 def _show_hypothesis_failure_in_tree(node: Node) -> bool:
     return node.status == "failed" and hypothesis_id_for_node(node) is not None
 
@@ -380,6 +389,8 @@ def journal_to_rich_tree(
             node.is_buggy or node.metric is None or node.metric.value is None
         ):
             s = f"[bold blue]◆[/bold blue] [red]bug{suffix}[/red]"
+        elif _is_preprocess_timeout_node(node):
+            s = f"[red]● timeout{suffix}"
         elif node.is_buggy or node.metric is None or node.metric.value is None:
             s = f"[red]● bug{suffix}"
         else:
@@ -464,6 +475,8 @@ def _tree_node_label(
         label.append("◆", style="bold blue")
         label.append(f" bug{suffix}", style="red")
         return label
+    if _is_preprocess_timeout_node(node):
+        return Text(f"● timeout{suffix}", style="red")
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text(f"● bug{suffix}", style="red")
 
@@ -1395,6 +1408,16 @@ def build_resource_summary(
 
 RUN_LOG_FILE_NAMES = ("process_stdout.log", "autogluon_stdout.log", "autogluon.log")
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+MISSING_LOG_HINT_KEYS = (
+    "Title",
+    "Summary",
+    "Try",
+    "Rationale",
+    "Implementation",
+    "Expected effect",
+    "Risk",
+    "Sources",
+)
 
 
 def active_run_log_path(active_artifact_dir: Path | None) -> Path | None:
@@ -1442,12 +1465,13 @@ def _format_missing_log_hint_line(line: str, *, max_width: int) -> Text:
         .replace("\\t", " ")
         .replace("\t", "    ")
     )
-    if ": " in clean:
-        key, value = clean.split(": ", 1)
-        text = Text()
-        text.append(f"{key}: ", style="bold cyan")
-        text.append(value, style="dim")
-        return text
+    for key in MISSING_LOG_HINT_KEYS:
+        prefix = f"{key}: "
+        if clean.startswith(prefix):
+            text = Text()
+            text.append(prefix, style="bold cyan")
+            text.append(clean[len(prefix) :], style="dim")
+            return text
     if clean.startswith("Hypothesis "):
         key, value = clean.split(" ", 1)
         text = Text()
@@ -1894,11 +1918,26 @@ def _format_elapsed(seconds: float | None) -> str:
     return f" ({seconds}s)"
 
 
-def stage_status_message(active_stage: str | None, elapsed: float | None = None) -> str:
+def stage_status_message(
+    active_stage: str | None,
+    elapsed: float | None = None,
+    *,
+    agent_mode: str | None = None,
+    active_artifact_dir: Path | None = None,
+) -> str:
     elapsed_text = _format_elapsed(elapsed)
     if active_stage == "generating":
         return f"[green]Generating code...{elapsed_text}"
     if active_stage == "executing":
+        if agent_mode == AGENT_MODE:
+            autogluon_log = (
+                active_artifact_dir / "autogluon_stdout.log"
+                if active_artifact_dir is not None
+                else None
+            )
+            if autogluon_log is not None and autogluon_log.exists():
+                return f"[magenta]Training AutoGluon...{elapsed_text}"
+            return f"[magenta]Preprocessing features...{elapsed_text}"
         return f"[magenta]Executing code...{elapsed_text}"
     if active_stage == "reviewing":
         return f"[cyan]Reviewing result...{elapsed_text}"
@@ -2303,13 +2342,19 @@ def run(argv: list[str] | None = None):
             if agent.active_stage_started_at is not None
             else None
         )
-        status.update(
-            status_override or stage_status_message(agent.active_stage, elapsed)
-        )
         active_artifact_dir = (
             _node_artifact_dir(cfg, agent.active_node)
             if agent.active_node is not None
             else pending_artifact_dir
+        )
+        status.update(
+            status_override
+            or stage_status_message(
+                agent.active_stage,
+                elapsed,
+                agent_mode=cfg.agent.mode,
+                active_artifact_dir=active_artifact_dir,
+            )
         )
 
         tree_panel = Panel(

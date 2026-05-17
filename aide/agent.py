@@ -527,6 +527,8 @@ class Agent:
                 "Do not change row count or reorder rows.",
                 "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
                 "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
+                f"preprocess(df) has a dedicated timeout of {int(getattr(self.cfg.agent.autogluon, 'preprocess_timeout', 180))} seconds before AutoGluon training starts.",
+                "Avoid expensive Python callbacks over rows, groups, or rolling windows, especially `groupby.apply`, `rolling.apply`, and `np.polyfit` on full train+test data. Prefer bounded vectorized `groupby().transform`, `shift`, `rolling().mean/std/min/max`, and simple arithmetic features.",
             ]
         }
 

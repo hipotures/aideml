@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pytest
@@ -142,13 +143,18 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "def preprocess(df):" in code
     assert "AIDE_RESULT_JSON:" in code
     assert "'time_limit': 600" in code
+    assert "'preprocess_timeout': 180" in code
     assert "train_features = train_df.drop(columns=[target_col, id_col]" in code
     assert "_make_combined_frame(train_features, test_features)" in code
     assert "df[HELPER_ROW_ID]" not in code
     assert "FORBIDDEN_ROW_ID in after.columns" in code
     assert "verbosity=2" in code
     assert "import sys" in code
+    assert "import signal" in code
     assert 'os.environ.get("AIDE_NODE_ARTIFACT_DIR"' in code
+    assert "def _preprocess_timeout" in code
+    assert "AIDE AutoGluon preprocess exceeded the dedicated timeout" in code
+    assert "with _preprocess_timeout" in code
     assert "def _save_submission" in code
     assert 'artifact_submission_path = artifact_dir / "submission.csv"' in code
     assert "shutil.copy2(submission_path, artifact_submission_path)" in code
@@ -158,9 +164,23 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "logger.handlers = [log_handler]" in code
     assert "logger.propagate = False" in code
     assert '"autogluon"' in code
+    assert 'print("AIDE AutoGluon: starting preprocess", flush=True)' in code
+    assert "AIDE AutoGluon: finished preprocess rows=" in code
     assert 'print("AIDE AutoGluon: starting fit", flush=True)' in code
     assert 'if __name__ == "__main__"' not in code
     assert code.rstrip().endswith("main()")
+
+
+def test_generated_preprocess_timeout_raises_clear_error(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.preprocess_timeout = 1
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    with pytest.raises(TimeoutError, match="preprocess exceeded the dedicated timeout"):
+        with namespace["_preprocess_timeout"](1):
+            time.sleep(2)
 
 
 def test_build_autogluon_wrapper_can_emit_hypothesis_claim(tmp_path):
@@ -454,6 +474,9 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "must replace the previous preprocess function" in prompt_text
     assert "Do not call `globals().get(\"preprocess\")`" in prompt_text
     assert "reducing code size, memory use, or runtime" in prompt_text
+    assert "dedicated timeout of 180 seconds" in prompt_text
+    assert "Avoid expensive Python callbacks" in prompt_text
+    assert "rolling.apply" in prompt_text
     assert "TabularPredictor" in node.code
     assert "TyreLife_x2" in node.code
 

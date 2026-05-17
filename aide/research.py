@@ -436,13 +436,23 @@ def hypothesis_id_for_node(node: Node) -> str | None:
     return offered[0]
 
 
-def _hypothesis_attempt_counts(journal: Journal) -> dict[str, int]:
+def _hypothesis_attempt_counts(cfg: Config, journal: Journal) -> dict[str, int]:
     counts: dict[str, int] = {}
+    usage = _load_manual_usage(cfg)
+    for hypothesis_id, entry in usage.items():
+        if not isinstance(hypothesis_id, str) or not isinstance(entry, dict):
+            continue
+        try:
+            offered_count = int(entry.get("offered_count", 0))
+        except (TypeError, ValueError):
+            continue
+        if offered_count > 0:
+            counts[hypothesis_id] = offered_count
     for node in journal.nodes:
         hypothesis_id = hypothesis_id_for_node(node)
         if hypothesis_id is None:
             continue
-        counts[hypothesis_id] = counts.get(hypothesis_id, 0) + 1
+        counts[hypothesis_id] = max(counts.get(hypothesis_id, 0), 1)
     return counts
 
 
@@ -622,7 +632,7 @@ def select_hypothesis_for_node(
             f"{stage} selection in agent mode {agent_mode}."
         )
 
-    attempts = _hypothesis_attempt_counts(journal)
+    attempts = _hypothesis_attempt_counts(cfg, journal)
     seed_text = (
         f"{cfg.research.manual_seed}:{cfg.exp_name}:"
         f"{completed_steps}:{parent_node.id if parent_node is not None else 'root'}"

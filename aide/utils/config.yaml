@@ -103,6 +103,8 @@ agent:
   autogluon:
     # Named profiles for the fixed AutoGluon runner.
     profile: full_boost
+    # Dedicated timeout for generated preprocess(df), separate from AutoGluon fit time_limit.
+    preprocess_timeout: 180
     profiles:
       fast_boost:
         included_model_types: [XGB, GBM]

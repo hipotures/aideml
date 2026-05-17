@@ -165,6 +165,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     settings = {
         "presets": ag.presets,
         "time_limit": int(ag.time_limit),
+        "preprocess_timeout": int(getattr(ag, "preprocess_timeout", 180)),
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
         "eval_metric": ag.eval_metric,
@@ -191,6 +192,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     if settings["included_model_types"] is not None:
         settings["included_model_types"] = list(settings["included_model_types"])
     settings["time_limit"] = int(settings["time_limit"])
+    settings["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
     settings["validation_fraction"] = float(settings["validation_fraction"])
     settings["seed"] = int(settings["seed"])
     if "use_gpu" in settings and settings["use_gpu"] is not None:
@@ -257,6 +259,7 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     eval_metric = settings.get("eval_metric")
     if eval_metric and eval_metric != "auto":
         visible["eval_metric"] = eval_metric
+    visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
     return visible
 
 
@@ -291,6 +294,7 @@ import warnings
 import contextlib
 import logging
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -415,6 +419,35 @@ def _make_submission(
 
 
 @contextlib.contextmanager
+def _preprocess_timeout(seconds: int):
+    if seconds <= 0 or not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
+    class PreprocessTimeoutError(TimeoutError):
+        pass
+
+    def _raise_preprocess_timeout(_signum, _frame):
+        raise PreprocessTimeoutError(
+            "AIDE AutoGluon preprocess exceeded the dedicated timeout of "
+            f"{{seconds}} seconds. This timeout is separate from AutoGluon "
+            "training time_limit. Analyze preprocess(df) and remove or replace "
+            "time-consuming operations such as Python callbacks over groups or "
+            "rolling windows, polynomial fitting, row-wise loops, or repeated "
+            "full-frame copies."
+        )
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    try:
+        signal.signal(signal.SIGALRM, _raise_preprocess_timeout)
+        signal.setitimer(signal.ITIMER_REAL, float(seconds))
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0.0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+@contextlib.contextmanager
 def _quiet_model_output(working_dir: Path):
     artifact_dir = _artifact_dir(working_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -505,7 +538,13 @@ def main() -> None:
     train_features = train_df.drop(columns=[target_col, id_col], errors="ignore")
     test_features = test_df.drop(columns=[id_col], errors="ignore")
     combined = _make_combined_frame(train_features, test_features)
-    preprocessed = preprocess(combined.copy())
+    print("AIDE AutoGluon: starting preprocess", flush=True)
+    with _preprocess_timeout(int(AIDE_AG_CONFIG.get("preprocess_timeout", 180))):
+        preprocessed = preprocess(combined.copy())
+    print(
+        f"AIDE AutoGluon: finished preprocess rows={{len(preprocessed)}} cols={{len(preprocessed.columns)}}",
+        flush=True,
+    )
     preprocessed = _validate_preprocessed_frame(
         combined,
         preprocessed,

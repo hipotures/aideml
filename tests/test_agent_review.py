@@ -335,6 +335,46 @@ def test_parse_exec_result_marks_hypothesis_node_failed_when_claim_missing(
     assert "expected hypothesis id 000123" in node.analysis
 
 
+def test_parse_exec_result_keeps_hypothesis_preprocess_timeout_as_bug(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('timeout')", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000123"]
+    exec_result = ExecutionResult(
+        term_out=[
+            "PreprocessTimeoutError: AIDE AutoGluon preprocess exceeded the dedicated timeout\n"
+        ],
+        exec_time=180.0,
+        exc_type="PreprocessTimeoutError",
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": True,
+            "summary": "Preprocess exceeded the dedicated timeout and must be simplified.",
+            "metric": None,
+            "lower_is_better": False,
+            "validity_warning": None,
+            "research_hypotheses_llm_claimed_used": ["000123"],
+            "research_usage_note": "Implemented 000123 but preprocessing timed out.",
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.status is None
+    assert node.is_terminal_failure is False
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert node.research_hypotheses_llm_claimed_used == ["000123"]
+    assert "must be simplified" in node.analysis
+
+
 def test_parse_exec_result_accepts_exact_hypothesis_claim(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     cfg.research.mode = "hypothesis"
