@@ -16,6 +16,7 @@ from aide.run import (
     build_run_data,
     model_settings_for_run,
     ResourceSnapshot,
+    ArrowKeyReader,
     active_tree_item_id,
     best_tree_item_id,
     build_tree_view,
@@ -25,6 +26,7 @@ from aide.run import (
     last_error_lines,
     move_tree_focus,
     _mark_node_execution_crash,
+    recover_tree_focus_by_index,
     render_tree_view,
     run_with_live_refresh,
     stage_status_message,
@@ -414,6 +416,34 @@ def test_tree_focus_moves_by_siblings_parent_and_child():
     assert move_tree_focus(view, "header", "right") == root.id
     assert move_tree_focus(view, root.id, "right") == child.id
     assert move_tree_focus(view, child.id, "right") == child.id
+
+
+def test_tree_focus_recovers_by_previous_index_when_focused_item_disappears():
+    journal = Journal()
+    root = _good_node(0.90)
+    old_child = _good_node(0.91, parent=root)
+    journal.append(root)
+    journal.append(old_child)
+    old_view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+    )
+    previous_index = old_view.index_by_id["active"]
+
+    new_child = _good_node(0.92, parent=root)
+    journal.append(new_child)
+    new_view = build_tree_view(journal)
+
+    assert recover_tree_focus_by_index(
+        new_view,
+        fallback_index=previous_index,
+    ) == new_child.id
+
+
+def test_keyboard_reader_maps_f_to_follow_toggle():
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"f"] == "follow"
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"F"] == "follow"
 
 
 def test_tree_viewport_keeps_focus_visible_without_empty_bottom():

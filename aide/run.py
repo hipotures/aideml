@@ -757,6 +757,17 @@ def active_tree_item_id(view: TreeView) -> str | None:
     return "active" if "active" in view.index_by_id else None
 
 
+def recover_tree_focus_by_index(
+    view: TreeView,
+    *,
+    fallback_index: int,
+) -> str:
+    if not view.items:
+        return "header"
+    index = min(max(0, fallback_index), len(view.items) - 1)
+    return view.items[index].item_id
+
+
 def render_tree_view(
     view: TreeView,
     *,
@@ -791,6 +802,8 @@ class ArrowKeyReader:
         b"A": "active",
         b"b": "best",
         b"B": "best",
+        b"f": "follow",
+        b"F": "follow",
     }
 
     def __init__(self):
@@ -2162,7 +2175,9 @@ def run(argv: list[str] | None = None):
     )
     resource_active = False
     focused_tree_item_id = "header"
+    focused_tree_item_index = 0
     tree_scroll_top = 0
+    tree_follow_mode = "off"
     key_reader: ArrowKeyReader | None = None
     pending_artifact_dir: Path | None = None
 
@@ -2268,13 +2283,40 @@ def run(argv: list[str] | None = None):
         return max(0, content_width - fixed_width_before_spark - right_margin)
 
     def drain_tree_navigation(view: TreeView) -> None:
-        nonlocal focused_tree_item_id, tree_scroll_top
+        nonlocal focused_tree_item_id, focused_tree_item_index, tree_scroll_top
+        nonlocal tree_follow_mode
+        if tree_follow_mode == "active":
+            active_id = active_tree_item_id(view)
+            if active_id is not None:
+                focused_tree_item_id = active_id
+                tree_scroll_top = center_tree_viewport(
+                    total_lines=len(view.items),
+                    viewport_height=tree_viewport_height(),
+                    focus_index=view.index_by_id[active_id],
+                )
         if focused_tree_item_id not in view.index_by_id:
-            focused_tree_item_id = "header"
+            focused_tree_item_id = recover_tree_focus_by_index(
+                view,
+                fallback_index=focused_tree_item_index,
+            )
         while key_reader is not None:
             key = key_reader.read_key()
             if key is None:
                 break
+            if key == "follow":
+                tree_follow_mode = (
+                    "active" if tree_follow_mode == "off" else "off"
+                )
+                if tree_follow_mode == "active":
+                    target_id = active_tree_item_id(view)
+                    if target_id is not None:
+                        focused_tree_item_id = target_id
+                        tree_scroll_top = center_tree_viewport(
+                            total_lines=len(view.items),
+                            viewport_height=tree_viewport_height(),
+                            focus_index=view.index_by_id[target_id],
+                        )
+                continue
             if key == "best":
                 target_id = best_tree_item_id(
                     view,
@@ -2312,6 +2354,7 @@ def run(argv: list[str] | None = None):
             focus_index=focus_index,
             current_scroll=tree_scroll_top,
         )
+        focused_tree_item_index = view.index_by_id.get(focused_tree_item_id, 0)
 
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
@@ -2363,7 +2406,10 @@ def run(argv: list[str] | None = None):
         tree_panel = Panel(
             Padding(tree, (0, 1, 0, 1)),
             title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
-            subtitle="↑/↓ move  ← parent  → child  b best  a active  Ctrl+C stop",
+            subtitle=(
+                "↑/↓ move  ← parent  → child  b best  a active  "
+                f"f follow:{tree_follow_mode}  Ctrl+C stop"
+            ),
         )
         data_panel = Panel(
             Padding(
