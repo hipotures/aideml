@@ -359,7 +359,13 @@ def _validate_preprocessed_frame(
     if not isinstance(after, pd.DataFrame):
         raise TypeError("preprocess(df) must return a pandas DataFrame")
     if len(after) != len(before):
-        raise ValueError(f"preprocess changed row count: {{len(after)}} != {{len(before)}}")
+        raise ValueError(
+            f"preprocess changed row count: {{len(after)}} != {{len(before)}}. "
+            "AutoGluon preprocess(df) must preserve one output row per input row. "
+            "If row removal was intentional, such as outlier filtering, rewrite it "
+            "without dropping rows: add an outlier flag, clipped/winsorized value, "
+            "imputed clean value, anomaly score, or distance-from-normal feature instead."
+        )
     if target_col in after.columns:
         raise ValueError(f"preprocess created forbidden target column: {{target_col}}")
     if FORBIDDEN_SPLIT_MARKER in after.columns:

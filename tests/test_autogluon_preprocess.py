@@ -175,6 +175,28 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert code.rstrip().endswith("main()")
 
 
+def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
+    cfg = _cfg(tmp_path)
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df.iloc[:-1]\n", cfg)
+
+    assert "preprocess changed row count" in code
+    assert "outlier flag" in code
+    assert "clipped/winsorized value" in code
+
+
+def test_autogluon_preprocess_prompt_mentions_row_preserving_outlier_fix(tmp_path):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    contract = agent._prompt_autogluon_preprocess_guideline[
+        "AutoGluon preprocess mode contract"
+    ]
+
+    assert any("outlier filtering" in item for item in contract)
+    assert any("clipped/winsorized value" in item for item in contract)
+
+
 def test_generated_preprocess_timeout_raises_clear_error(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.preprocess_timeout = 1

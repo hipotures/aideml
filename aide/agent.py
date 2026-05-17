@@ -550,6 +550,7 @@ class Agent:
                 "Do not add defensive cleanup for hidden wrapper columns or columns that are not present in preprocess(df).",
                 "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
                 "Do not change row count or reorder rows.",
+                "If your intended algorithm would remove rows, such as outlier filtering, do not drop them. Preserve all rows and instead add features such as an outlier flag, clipped/winsorized value, imputed clean value, anomaly score, or distance-from-normal feature.",
                 "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
                 "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
                 f"preprocess(df) has a dedicated timeout of {int(getattr(self.cfg.agent.autogluon, 'preprocess_timeout', 180))} seconds before AutoGluon training starts.",
