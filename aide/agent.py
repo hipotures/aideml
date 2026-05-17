@@ -196,6 +196,24 @@ def _mark_hypothesis_protocol_failure(
     node.research_usage_note = failure
 
 
+def _record_hypothesis_claim_missing_after_bug(
+    node: Node,
+    *,
+    expected_id: str,
+    raw_claimed: list[str],
+) -> None:
+    claimed_text = ", ".join(raw_claimed) if raw_claimed else "none"
+    note = (
+        "Hypothesis claim missing after technical execution failure: "
+        f"expected hypothesis id {expected_id}, got {claimed_text}. "
+        "Keeping this node as a debuggable bug instead of terminal failed."
+    )
+    previous = str(node.analysis or "").strip()
+    node.analysis = f"{previous}\n\n{note}".strip()
+    node.status = None
+    node.research_usage_note = note
+
+
 def _apply_research_claims_from_response(
     cfg: Config,
     node: Node,
@@ -220,6 +238,13 @@ def _apply_research_claims_from_response(
             else None
         )
         if expected is None or raw_claimed != [expected]:
+            if node.is_buggy:
+                _record_hypothesis_claim_missing_after_bug(
+                    node,
+                    expected_id=expected or "<missing>",
+                    raw_claimed=raw_claimed,
+                )
+                return True
             _mark_hypothesis_protocol_failure(
                 node,
                 expected_id=expected or "<missing>",
@@ -1127,8 +1152,6 @@ class Agent:
             parsed_response,
             summary=node.analysis,
         )
-        if not _apply_research_claims_from_response(self.cfg, node, parsed_response):
-            return
         node.is_buggy = (
             node.exc_type is not None
             or metric is None
@@ -1141,3 +1164,5 @@ class Agent:
             node.metric = MetricValue(
                 metric, maximize=not bool(parsed_response["lower_is_better"])
             )
+        if not _apply_research_claims_from_response(self.cfg, node, parsed_response):
+            return

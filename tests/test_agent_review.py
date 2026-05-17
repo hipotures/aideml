@@ -335,6 +335,44 @@ def test_parse_exec_result_marks_hypothesis_node_failed_when_claim_missing(
     assert "expected hypothesis id 000123" in node.analysis
 
 
+def test_parse_exec_result_keeps_hypothesis_technical_failure_debuggable_when_claim_missing(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="raise ValueError('bad')", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000123"]
+    exec_result = ExecutionResult(
+        term_out=["ValueError: bad\n"],
+        exec_time=1.0,
+        exc_type="ValueError",
+    )
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: {
+            "is_bug": True,
+            "summary": "Technical preprocessing failure before metric.",
+            "metric": None,
+            "lower_is_better": False,
+            "validity_warning": None,
+            "research_hypotheses_llm_claimed_used": [],
+            "research_usage_note": None,
+        },
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.status is None
+    assert node.is_terminal_failure is False
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert node.research_hypotheses_llm_claimed_used == []
+    assert "Keeping this node as a debuggable bug" in node.analysis
+
+
 def test_parse_exec_result_keeps_hypothesis_preprocess_timeout_as_bug(
     tmp_path,
     monkeypatch,
