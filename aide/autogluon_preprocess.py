@@ -315,6 +315,17 @@ FORBIDDEN_ROW_ID = {FORBIDDEN_ROW_ID!r}
 {preprocess_source.strip()}
 
 
+def _force_autogluon_cpu_resources() -> None:
+    if AIDE_AG_CONFIG.get("use_gpu") is not False:
+        return
+    try:
+        from autogluon.common.utils.resource_utils import ResourceManager
+    except Exception:
+        return
+    ResourceManager.get_gpu_count = staticmethod(lambda: 0)
+    ResourceManager.get_gpu_count_torch = staticmethod(lambda cuda_only=False: 0)
+
+
 def _read_csv(data_dir: Path, stem: str) -> pd.DataFrame:
     gz_path = data_dir / f"{{stem}}.csv.gz"
     csv_path = data_dir / f"{{stem}}.csv"
@@ -522,6 +533,8 @@ def _quiet_model_output(working_dir: Path):
 
 
 def main() -> None:
+    _force_autogluon_cpu_resources()
+
     input_dir = Path("./input")
     working_dir = Path("./working")
     working_dir.mkdir(parents=True, exist_ok=True)

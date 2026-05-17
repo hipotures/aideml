@@ -163,6 +163,10 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "logging.StreamHandler(stderr_writer)" in code
     assert "logger.handlers = [log_handler]" in code
     assert "logger.propagate = False" in code
+    assert "def _force_autogluon_cpu_resources" in code
+    assert "ResourceManager.get_gpu_count = staticmethod(lambda: 0)" in code
+    assert "ResourceManager.get_gpu_count_torch = staticmethod(lambda cuda_only=False: 0)" in code
+    assert "_force_autogluon_cpu_resources()" in code
     assert '"autogluon"' in code
     assert 'print("AIDE AutoGluon: starting preprocess", flush=True)' in code
     assert "AIDE AutoGluon: finished preprocess rows=" in code
