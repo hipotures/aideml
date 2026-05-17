@@ -380,48 +380,54 @@ class Agent:
     def _should_open_hypothesis_root(self) -> bool:
         if not self._is_hypothesis_mode():
             return False
-        if hypothesis_root_pool_exhausted(self.cfg, journal=self.journal):
-            return False
-        if len(self.journal.draft_nodes) < self.acfg.search.num_drafts:
-            return True
-        every_steps = int(getattr(self.cfg.research, "every_steps", 0))
-        if every_steps <= 0:
-            return False
-        completed_steps = len(self.journal.nodes)
-        return completed_steps > 0 and completed_steps % every_steps == 0
+        return not hypothesis_root_pool_exhausted(self.cfg, journal=self.journal)
+
+    def _select_debuggable_node(self) -> Node | None:
+        search_cfg = self.acfg.search
+        if search_cfg.debug_prob <= 0:
+            return None
+        if random.random() >= search_cfg.debug_prob:
+            return None
+
+        debuggable_nodes = [
+            n
+            for n in self.journal.buggy_nodes
+            if (
+                n.is_leaf
+                and n.debug_depth < search_cfg.max_debug_depth
+                and not n.is_submission_contract_error
+                and not n.is_terminal_failure
+            )
+        ]
+        if debuggable_nodes:
+            logger.debug("[search policy] debugging")
+            return random.choice(debuggable_nodes)
+        logger.debug("[search policy] not debugging by chance")
+        return None
 
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
         search_cfg = self.acfg.search
 
-        # initial drafting
-        if len(self.journal.draft_nodes) < search_cfg.num_drafts and (
-            not self._is_hypothesis_mode() or self._should_open_hypothesis_root()
-        ):
-            logger.debug("[search policy] drafting new node (not enough drafts)")
-            return None
-
-        if self._should_open_hypothesis_root():
+        if self._is_hypothesis_mode() and self._should_open_hypothesis_root():
+            if len(self.journal.draft_nodes) < search_cfg.num_drafts:
+                logger.debug("[search policy] drafting new hypothesis root")
+                return None
+            debug_node = self._select_debuggable_node()
+            if debug_node is not None:
+                return debug_node
             logger.debug("[search policy] drafting new hypothesis root")
             return None
 
+        # initial drafting
+        if len(self.journal.draft_nodes) < search_cfg.num_drafts:
+            logger.debug("[search policy] drafting new node (not enough drafts)")
+            return None
+
         # debugging
-        if random.random() < search_cfg.debug_prob:
-            # nodes that are buggy + leaf nodes + debug depth < max debug depth
-            debuggable_nodes = [
-                n
-                for n in self.journal.buggy_nodes
-                if (
-                    n.is_leaf
-                    and n.debug_depth < search_cfg.max_debug_depth
-                    and not n.is_submission_contract_error
-                    and not n.is_terminal_failure
-                )
-            ]
-            if debuggable_nodes:
-                logger.debug("[search policy] debugging")
-                return random.choice(debuggable_nodes)
-            logger.debug("[search policy] not debugging by chance")
+        debug_node = self._select_debuggable_node()
+        if debug_node is not None:
+            return debug_node
 
         # back to drafting if no nodes to improve
         good_nodes = [

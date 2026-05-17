@@ -45,6 +45,7 @@ research:
   reasoning_effort: low
   manual_sample_size: 3
   manual_seed: 42
+  hypothesis_root_limit: 100
 
 # optional external Codex solution synthesis
 synthesis:

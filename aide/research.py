@@ -467,6 +467,30 @@ def _root_hypothesis_ids(journal: Journal) -> set[str]:
     return ids
 
 
+def _configured_hypothesis_root_limit(cfg: Config) -> int:
+    try:
+        return int(getattr(cfg.research, "hypothesis_root_limit", 100))
+    except (TypeError, ValueError):
+        return 100
+
+
+def _hypothesis_root_pool_complete(
+    cfg: Config,
+    *,
+    journal: Journal,
+    compatible: list[ManualHypothesis],
+) -> bool:
+    if not compatible:
+        return True
+    compatible_ids = {hypothesis.id for hypothesis in compatible}
+    used_root_ids = _root_hypothesis_ids(journal)
+    used_compatible_root_count = len(compatible_ids & used_root_ids)
+    root_limit = _configured_hypothesis_root_limit(cfg)
+    if root_limit > 0 and used_compatible_root_count >= root_limit:
+        return True
+    return compatible_ids.issubset(used_root_ids)
+
+
 def _ancestor_hypothesis_ids(parent_node: Node) -> set[str]:
     ids: set[str] = set()
     node: Node | None = parent_node
@@ -498,11 +522,11 @@ def hypothesis_root_pool_exhausted(
 ) -> bool:
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
     compatible = _compatible_manual_hypotheses(cfg, library)
-    if not compatible:
-        return True
-    compatible_ids = {hypothesis.id for hypothesis in compatible}
-    used_root_ids = _root_hypothesis_ids(journal)
-    return compatible_ids.issubset(used_root_ids)
+    return _hypothesis_root_pool_complete(
+        cfg,
+        journal=journal,
+        compatible=compatible,
+    )
 
 
 def _hypothesis_candidates_for_node_from_library(
@@ -523,8 +547,11 @@ def _hypothesis_candidates_for_node_from_library(
         return [inherited] if inherited is not None else []
 
     if parent_node is None:
-        compatible_ids = {hypothesis.id for hypothesis in compatible}
-        if not compatible_ids or compatible_ids.issubset(_root_hypothesis_ids(journal)):
+        if _hypothesis_root_pool_complete(
+            cfg,
+            journal=journal,
+            compatible=compatible,
+        ):
             return []
         blocked_ids = _root_hypothesis_ids(journal)
     else:

@@ -275,18 +275,17 @@ def test_search_policy_zero_exploration_keeps_greedy_selection(tmp_path):
     assert selected is saturated_best
 
 
-def test_hypothesis_mode_opens_new_root_on_every_steps_boundary(
+def test_hypothesis_mode_opens_new_roots_until_root_pool_is_complete(
     tmp_path,
     monkeypatch,
 ):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = True
     cfg.research.mode = "hypothesis"
-    cfg.research.every_steps = 3
     cfg.agent.search.num_drafts = 0
     cfg.agent.search.debug_prob = 0.0
     journal = Journal()
-    for score in [0.90, 0.91, 0.92]:
+    for score in [0.90, 0.91]:
         journal.append(_good_node(score))
     monkeypatch.setattr(
         "aide.agent.hypothesis_root_pool_exhausted",
@@ -297,6 +296,29 @@ def test_hypothesis_mode_opens_new_root_on_every_steps_boundary(
     selected = agent.search_policy()
 
     assert selected is None
+
+
+def test_hypothesis_mode_debugs_before_opening_next_root_when_root_sweep_is_active(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 1.0
+    journal = Journal()
+    bug = _bug_node()
+    journal.append(bug)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: False,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is bug
 
 
 def test_hypothesis_mode_does_not_open_root_when_root_pool_is_exhausted(

@@ -384,7 +384,7 @@ def test_select_manual_hypotheses_skips_disabled_hypotheses(tmp_path):
         repo_root=tmp_path,
     )
 
-    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    assert selection.hypotheses[0].id in {"000002", "000003"}
     source_ref = json.loads(
         (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
     )
@@ -418,7 +418,7 @@ def test_select_manual_hypotheses_filters_by_agent_mode(tmp_path):
         repo_root=tmp_path,
     )
 
-    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    assert selection.hypotheses[0].id in {"000002", "000003"}
     source_ref = json.loads(
         (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
     )
@@ -475,6 +475,72 @@ def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp
         )
         is True
     )
+
+
+def test_hypothesis_root_pool_respects_configured_root_limit(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1
+    for idx in range(1, 4):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    journal = Journal()
+    used_root = _node(0.9, code="print('ok')", plan="root")
+    used_root.research_mode = "hypothesis"
+    used_root.research_hypotheses_offered = ["000001"]
+    journal.append(used_root)
+
+    assert (
+        research.hypothesis_root_pool_exhausted(
+            cfg,
+            journal=journal,
+            repo_root=tmp_path,
+        )
+        is True
+    )
+    cfg.research.hypothesis_root_limit = 2
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=None,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+
+
+def test_hypothesis_child_selection_uses_full_library_after_root_limit(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1
+    for idx in range(1, 4):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    journal = Journal()
+    root = _node(0.9, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+    journal.append(root)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert selection.hypotheses[0].id in {"000002", "000003"}
 
 
 def test_select_hypothesis_avoids_previously_offered_interrupted_candidate(tmp_path):

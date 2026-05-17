@@ -14,6 +14,7 @@ from aide.run import (
     build_resource_summary,
     build_run_log_summary,
     build_run_data,
+    build_hypothesis_phase_status,
     model_settings_for_run,
     ResourceSnapshot,
     ArrowKeyReader,
@@ -932,6 +933,52 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
 
     assert "◇ Research   · 030 @ 000122 ✓" in output
     assert "★ Best Score · 000 @ 19:13:00 0.95115 · 000122" in output
+
+
+def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 3
+    cfg.agent.steps = 10
+    cfg = prep_cfg(cfg)
+    journal = Journal()
+    for hypothesis_id in ["000001", "000002"]:
+        journal.append(_hypothesis_node(_good_node(0.95), hypothesis_id))
+    child = _hypothesis_node(_good_node(0.951, parent=journal.nodes[0]), "000003")
+    journal.append(child)
+
+    output = _render_text(build_hypothesis_phase_status(cfg, journal))
+    ansi = _render_ansi(build_hypothesis_phase_status(cfg, journal))
+
+    assert "◇ Phase      · exploration 2/3 · exploitation 1/7" in output
+    assert "\x1b[32mexploration 2/3" in ansi
+    assert "exploitation 1/7" in ansi
+
+
+def test_hypothesis_phase_status_ignores_lower_resume_limit(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1
+    cfg.agent.steps = 10
+    cfg = prep_cfg(cfg)
+    journal = Journal()
+    for hypothesis_id in ["000001", "000002", "000003"]:
+        journal.append(_hypothesis_node(_good_node(0.95), hypothesis_id))
+    journal.append(_hypothesis_node(_good_node(0.951, parent=journal.nodes[0]), "000004"))
+
+    output = _render_text(build_hypothesis_phase_status(cfg, journal))
+
+    assert "◇ Phase      · exploration 3/3 · exploitation 1/7" in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():

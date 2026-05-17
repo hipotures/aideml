@@ -153,6 +153,7 @@ class ResearchConfig:
     reasoning_effort: str | None = "low"
     manual_sample_size: int = 3
     manual_seed: int = 42
+    hypothesis_root_limit: int = 100
 
 
 @dataclass

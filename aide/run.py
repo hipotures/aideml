@@ -1209,6 +1209,63 @@ def build_best_score_status(journal: Journal) -> Text | None:
     )
 
 
+def _count_hypothesis_root_nodes(journal: Journal) -> int:
+    return sum(
+        1
+        for node in journal.nodes
+        if node.parent is None and hypothesis_id_for_node(node) is not None
+    )
+
+
+def _positive_int(value: object, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
+    if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
+        return None
+
+    total_budget = _positive_int(getattr(cfg.agent, "steps", 0), 0)
+    if total_budget <= 0:
+        return None
+
+    root_count = _count_hypothesis_root_nodes(journal)
+    configured_root_limit = _positive_int(
+        getattr(cfg.research, "hypothesis_root_limit", 100),
+        100,
+    )
+    exploration_budget = min(
+        max(configured_root_limit, root_count),
+        total_budget,
+    )
+    exploitation_budget = max(total_budget - exploration_budget, 0)
+    completed_count = min(len(journal.nodes), total_budget)
+    exploitation_count = max(completed_count - root_count, 0)
+    if exploitation_budget > 0:
+        exploitation_count = min(exploitation_count, exploitation_budget)
+
+    exploration_active = root_count < exploration_budget
+    exploration_style = "green" if exploration_active else "dim"
+    exploitation_style = "dim" if exploration_active else "green"
+
+    line = Text()
+    line.append(f"{_run_status_label('◇', 'Phase')} · ", style="dim")
+    line.append(
+        f"exploration {root_count}/{exploration_budget}",
+        style=exploration_style,
+    )
+    line.append(" · ", style="dim")
+    line.append(
+        f"exploitation {exploitation_count}/{exploitation_budget}",
+        style=exploitation_style,
+    )
+    return line
+
+
 def _format_percent(value: float) -> str:
     if value == 0 or value >= 10:
         return f"{value:.0f}%"
@@ -1599,6 +1656,7 @@ def build_run_data(
     resource_graph_width: int = 24,
     model_settings: list[ModelSetting] | None = None,
     active_artifact_dir: Path | None = None,
+    cfg: Config | None = None,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -1620,12 +1678,19 @@ def build_run_data(
     if research_line is not None:
         lines.append("")
         lines.append(research_line)
-    if synthesis_line is not None:
+    phase_line = (
+        build_hypothesis_phase_status(cfg, journal) if cfg is not None else None
+    )
+    if phase_line is not None:
         if research_line is None:
+            lines.append("")
+        lines.append(phase_line)
+    if synthesis_line is not None:
+        if research_line is None and phase_line is None:
             lines.append("")
         lines.append(synthesis_line)
     if best_score_status is not None:
-        if research_line is None and synthesis_line is None:
+        if research_line is None and phase_line is None and synthesis_line is None:
             lines.append("")
         lines.append(best_score_status)
     model_summary = build_model_summary(model_settings)
@@ -2432,6 +2497,7 @@ def run(argv: list[str] | None = None):
                     resource_graph_width=resource_graph_width(),
                     model_settings=model_settings_for_run(cfg),
                     active_artifact_dir=active_artifact_dir,
+                    cfg=cfg,
                 ),
                 (0, 1, 0, 1),
             ),
