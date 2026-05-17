@@ -13,6 +13,7 @@ where labels, metrics, paths, statuses, and errors all compete for attention.
 | Static row label | `Research`, `Phase`, `Best Score`, model names | bold cyan |
 | Separator | `·`, spacing punctuation | dim |
 | Neutral dynamic value | paths, model ids, reasoning effort | yellow |
+| Operator notice | graceful `Ctrl+C` wait message | yellow |
 | Metric dynamic value | best score step, timestamp, score, hypothesis id | green |
 | Running dynamic status | active checkpoint step, running symbol | cyan |
 | Failed dynamic status | failed checkpoint step, failure symbol | red |
@@ -56,10 +57,26 @@ If a resumed run lowers `research.hypothesis_root_limit` below the number of
 already tested roots, the TUI uses the already tested root count as the effective
 exploration budget. That avoids misleading displays like `150/100`.
 
+## Operator Notices
+
+Operator notices are user-action messages that need attention but are not
+failures. The main example is the first `Ctrl+C` during code execution:
+
+```text
+Ctrl+C received. Waiting for current code to finish. The node will be reviewed
+and saved, then the run will stop. Press Ctrl+C again to stop now.
+```
+
+Use yellow for the full notice. Yellow is reserved here for warning-like
+operational state and neutral values such as paths or model identifiers; it
+should not be used for metric labels or success states.
+
 ## What Not To Do
 
 - Do not color an entire row green just because its status is successful.
 - Do not use yellow for labels and values in the same row.
+- Do not treat operator notices as errors; reserve red for actual failure
+  states and error headings.
 - Do not make `Phase` a special visual style; it is a normal static row label.
 - Do not recolor error bodies red; the red heading is enough and the body should
   stay readable.

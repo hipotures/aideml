@@ -1020,6 +1020,7 @@ TUI_SEPARATOR_STYLE = "dim"
 TUI_NEUTRAL_VALUE_STYLE = "yellow"
 TUI_METRIC_VALUE_STYLE = "green"
 TUI_INACTIVE_VALUE_STYLE = "dim"
+TUI_OPERATOR_NOTICE_STYLE = "yellow"
 
 
 def _parse_status_time(value: object) -> str | None:
@@ -2272,7 +2273,8 @@ def run(argv: list[str] | None = None):
         if execution_interrupt_count == 1:
             stop_after_current_node = True
             status_override = (
-                "[yellow]Ctrl+C received. Waiting for current code to finish. "
+                f"[{TUI_OPERATOR_NOTICE_STYLE}]Ctrl+C received. "
+                "Waiting for current code to finish. "
                 "The node will be reviewed and saved, then the run will stop. "
                 "Press Ctrl+C again to stop now."
             )
