@@ -271,6 +271,52 @@ def _metric_for_search(node: Node) -> float:
     return -value if node.metric.maximize is False else value
 
 
+def _node_improves_parent(child: Node, parent: Node) -> bool:
+    if child.metric is None or child.metric.value is None:
+        return False
+    if parent.metric is None or parent.metric.value is None:
+        return False
+    child_value = float(child.metric.value)
+    parent_value = float(parent.metric.value)
+    if child.metric.maximize is False:
+        return child_value < parent_value
+    return child_value > parent_value
+
+
+def _is_scored_non_improving_child(child: Node, parent: Node) -> bool:
+    if child.is_buggy or child.is_terminal_failure:
+        return False
+    if child.metric is None or child.metric.value is None:
+        return False
+    return not _node_improves_parent(child, parent)
+
+
+def _has_improving_child(node: Node) -> bool:
+    return any(_node_improves_parent(child, node) for child in node.children)
+
+
+def _non_improving_child_count(node: Node) -> int:
+    return sum(
+        1
+        for child in node.children
+        if _is_scored_non_improving_child(child, node)
+    )
+
+
+def _is_hypothesis_parent_saturated(node: Node, *, limit: int) -> bool:
+    if limit <= 0:
+        return False
+    if _has_improving_child(node):
+        return False
+    return _non_improving_child_count(node) >= limit
+
+
+def _is_hypothesis_branch_candidate(node: Node) -> bool:
+    if node.parent is None:
+        return True
+    return _node_improves_parent(node, node.parent)
+
+
 def _normalized_metric_scores(nodes: list[Node]) -> dict[Node, float]:
     metric_values = {node: _metric_for_search(node) for node in nodes}
     low = min(metric_values.values())
@@ -445,6 +491,22 @@ class Agent:
                 journal=self.journal,
                 parent_nodes=good_nodes,
             )
+            good_nodes = [
+                node for node in good_nodes if _is_hypothesis_branch_candidate(node)
+            ]
+            limit = int(
+                getattr(
+                    search_cfg,
+                    "hypothesis_max_non_improving_children_per_parent",
+                    3,
+                )
+            )
+            if limit > 0:
+                good_nodes = [
+                    node
+                    for node in good_nodes
+                    if not _is_hypothesis_parent_saturated(node, limit=limit)
+                ]
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return None

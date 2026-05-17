@@ -212,6 +212,127 @@ def test_search_policy_ignores_terminal_failure_children_for_exploration(tmp_pat
     assert selected is active_best
 
 
+def test_hypothesis_search_skips_parent_after_non_improving_child_limit(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 2
+
+    journal = Journal()
+    saturated = _good_node(0.9510)
+    fallback = _good_node(0.9500)
+    worse_a = _good_node(0.9501, parent=saturated)
+    worse_b = _good_node(0.9502, parent=saturated)
+    for node, hypothesis_id in [
+        (saturated, "000001"),
+        (fallback, "000002"),
+        (worse_a, "000003"),
+        (worse_b, "000004"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is fallback
+
+
+def test_hypothesis_search_keeps_parent_with_improving_child_available(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 2
+
+    journal = Journal()
+    parent = _good_node(0.9510)
+    fallback = _good_node(0.9500)
+    worse = _good_node(0.9501, parent=parent)
+    better = _good_node(0.9512, parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (fallback, "000002"),
+        (worse, "000003"),
+        (better, "000004"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is better
+
+
+def test_hypothesis_non_improving_limit_ignores_bug_children(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 1
+
+    journal = Journal()
+    parent = _good_node(0.9510)
+    fallback = _good_node(0.9500)
+    bug = _bug_node(parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (fallback, "000002"),
+        (bug, "000003"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is parent
+
+
 def test_search_policy_keeps_oom_saturated_parent_active_by_default(
     tmp_path,
 ):
