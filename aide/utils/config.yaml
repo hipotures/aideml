@@ -100,6 +100,8 @@ agent:
     num_drafts: 5
     exploration_weight: 0.05
     disable_oom_saturated_parents: false
+    hypothesis_child_order: root_score
+    hypothesis_max_non_improving_children_per_parent: 3
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.
