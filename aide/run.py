@@ -1015,6 +1015,11 @@ STATUS_SYMBOLS = {
 }
 RUN_STATUS_LABEL_WIDTH = len("★ Best Score")
 RUN_STATUS_STEP_WIDTH = 3
+TUI_ROW_LABEL_STYLE = "bold cyan"
+TUI_SEPARATOR_STYLE = "dim"
+TUI_NEUTRAL_VALUE_STYLE = "yellow"
+TUI_METRIC_VALUE_STYLE = "green"
+TUI_INACTIVE_VALUE_STYLE = "dim"
 
 
 def _parse_status_time(value: object) -> str | None:
@@ -1145,6 +1150,13 @@ def _run_status_label(icon: str, title: str) -> str:
     return f"{icon} {title}".ljust(RUN_STATUS_LABEL_WIDTH)
 
 
+def _run_status_line_prefix(icon: str, title: str) -> Text:
+    line = Text()
+    line.append(_run_status_label(icon, title), style=TUI_ROW_LABEL_STYLE)
+    line.append(" ·", style=TUI_SEPARATOR_STYLE)
+    return line
+
+
 def build_checkpoint_status_line(
     *,
     title: str,
@@ -1165,7 +1177,7 @@ def build_checkpoint_status_line(
     )
     style = _status_style(record.status if record is not None else None, status_text)
 
-    line = Text(f"{_run_status_label(icon, title)} ·", style=style)
+    line = _run_status_line_prefix(icon, title)
     if label is None:
         line.append(f" {symbol}", style=style)
         return line
@@ -1201,12 +1213,13 @@ def build_best_score_status(journal: Journal) -> Text | None:
     timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
     hypothesis_id = hypothesis_id_for_node(node)
     suffix = f" · {hypothesis_id}" if hypothesis_id is not None else ""
-    return Text(
-        f"{_run_status_label('★', 'Best Score')} · "
-        f"{_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
+    line = _run_status_line_prefix("★", "Best Score")
+    line.append(
+        f" {_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
         f"{suffix}",
-        style="green",
+        style=TUI_METRIC_VALUE_STYLE,
     )
+    return line
 
 
 def _count_hypothesis_root_nodes(journal: Journal) -> int:
@@ -1249,16 +1262,20 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
         exploitation_count = min(exploitation_count, exploitation_budget)
 
     exploration_active = root_count < exploration_budget
-    exploration_style = "green" if exploration_active else "dim"
-    exploitation_style = "dim" if exploration_active else "green"
+    exploration_style = (
+        TUI_METRIC_VALUE_STYLE if exploration_active else TUI_INACTIVE_VALUE_STYLE
+    )
+    exploitation_style = (
+        TUI_INACTIVE_VALUE_STYLE if exploration_active else TUI_METRIC_VALUE_STYLE
+    )
 
-    line = Text()
-    line.append(f"{_run_status_label('◇', 'Phase')} · ", style="dim")
+    line = _run_status_line_prefix("◇", "Phase")
+    line.append(" ")
     line.append(
         f"exploration {root_count}/{exploration_budget}",
         style=exploration_style,
     )
-    line.append(" · ", style="dim")
+    line.append(" · ", style=TUI_SEPARATOR_STYLE)
     line.append(
         f"exploitation {exploitation_count}/{exploitation_budget}",
         style=exploitation_style,
@@ -1620,9 +1637,12 @@ ModelSetting = tuple[str, str, str | None]
 def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | None:
     if not model_settings:
         return None
-    lines: list[Text] = [Text("Models", style="bold #c8c4ff")]
+    lines: list[Text] = [Text("Models", style=TUI_ROW_LABEL_STYLE)]
     for label, model, effort in model_settings:
-        lines.append(Text(f"▶ {label:<9} {model} - {effort or '-'}", style="yellow"))
+        line = Text()
+        line.append(f"▶ {label:<9} ", style=TUI_ROW_LABEL_STYLE)
+        line.append(f"{model} - {effort or '-'}", style=TUI_NEUTRAL_VALUE_STYLE)
+        lines.append(line)
     return Group(*lines)
 
 

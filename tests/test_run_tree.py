@@ -907,7 +907,7 @@ def test_run_data_shows_checkpoint_and_best_score_statuses_with_times(tmp_path):
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
         )
     )
-    assert "\x1b[32m★ Best Score" in ansi
+    assert "\x1b[1;36m★ Best Score" in ansi
     assert "\x1b[1;33m★ Best Score" not in ansi
 
 
