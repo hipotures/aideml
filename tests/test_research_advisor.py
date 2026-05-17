@@ -694,6 +694,43 @@ def test_select_hypothesis_for_child_keeps_untested_hypotheses_available(tmp_pat
     assert selection.hypotheses[0].id in {"000003", "000004"}
 
 
+def test_child_ranking_uses_new_root_scores_after_root_limit_extension(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.hypothesis_child_order = "root_score"
+    for idx in range(1, 5):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+
+    journal = Journal()
+    parent = _node(0.91, code="print('parent')", plan="parent")
+    parent.research_mode = "hypothesis"
+    parent.research_hypotheses_offered = ["000001"]
+    old_root = _node(0.92, code="print('old')", plan="old root")
+    old_root.research_mode = "hypothesis"
+    old_root.research_hypotheses_offered = ["000002"]
+    new_root = _node(0.95, code="print('new')", plan="new root")
+    new_root.research_mode = "hypothesis"
+    new_root.research_hypotheses_offered = ["000003"]
+    journal.append(parent)
+    journal.append(old_root)
+    journal.append(new_root)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=parent,
+        completed_steps=3,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000003"]
+
+
 def test_select_hypothesis_for_debug_inherits_buggy_parent_hypothesis(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
