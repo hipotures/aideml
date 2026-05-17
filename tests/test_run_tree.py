@@ -987,7 +987,7 @@ def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
     output = _render_text(build_hypothesis_phase_status(cfg, journal))
     ansi = _render_ansi(build_hypothesis_phase_status(cfg, journal))
 
-    assert "⬢ Phase       exploration 2/3 · exploitation 1/7" in output
+    assert "■ Phase       exploration 2/3 · exploitation 1/7" in output
     assert "\x1b[32mexploration 2/3" in ansi
     assert "exploitation 1/7" in ansi
 
@@ -1010,7 +1010,7 @@ def test_hypothesis_phase_status_ignores_lower_resume_limit(tmp_path):
 
     output = _render_text(build_hypothesis_phase_status(cfg, journal))
 
-    assert "⬢ Phase       exploration 3/3 · exploitation 1/7" in output
+    assert "■ Phase       exploration 3/3 · exploitation 1/7" in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
