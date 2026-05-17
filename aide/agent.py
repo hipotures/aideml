@@ -872,6 +872,12 @@ class Agent:
                 "Don't suggest to do EDA.",
             ],
         }
+        if parent_node.exc_type == "TimeoutError":
+            prompt["Instructions"]["Timeout fix guideline"] = [
+                f"The previous implementation exceeded the execution timeout of {humanize.naturaldelta(self.cfg.exec.timeout)}.",
+                "Treat this as a runtime efficiency failure. Preserve the intended approach where possible, but simplify or limit the expensive parts so the script completes within the timeout.",
+                "Do not assume a specific failing operation unless it is visible in the execution output.",
+            ]
         prompt["Instructions"] |= self._prompt_impl_guideline
 
         if self.acfg.data_preview:

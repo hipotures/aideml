@@ -925,6 +925,28 @@ def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
     assert "bug·000205" in output
 
 
+def test_tree_view_shows_timeout_label_with_hypothesis_id():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95104), "000122")
+    timeout = _hypothesis_node(_bug_node(parent=root), "000447")
+    timeout.exc_type = "TimeoutError"
+    journal.append(root)
+    journal.append(timeout)
+
+    view = build_tree_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "timeout·000447" in output
+    assert "bug·000447" not in output
+
+
 def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")

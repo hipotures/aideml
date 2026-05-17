@@ -1670,6 +1670,30 @@ def test_agent_includes_latest_research_hints_in_debug_prompt(tmp_path):
     assert "Fix tire-age leakage" in captured["prompt"]["External research hints"]
 
 
+def test_agent_legacy_debug_prompt_calls_out_timeout_as_efficiency_failure(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    cfg.exec.timeout = 1800
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    parent = _node(None, code="while True: pass", plan="slow")
+    parent.exc_type = "TimeoutError"
+    parent._term_out = ["TimeoutError: Execution exceeded the time limit of 30 minutes"]
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._debug(parent)
+
+    timeout_guideline = captured["prompt"]["Instructions"]["Timeout fix guideline"]
+    assert any("exceeded the execution timeout" in line for line in timeout_guideline)
+    assert any("runtime efficiency failure" in line for line in timeout_guideline)
+    assert any("Do not assume a specific failing operation" in line for line in timeout_guideline)
+
+
 def test_agent_includes_serialized_research_hints_in_improve_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
