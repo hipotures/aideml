@@ -15,6 +15,7 @@ from aide.run import (
     build_run_log_summary,
     build_run_data,
     build_hypothesis_phase_status,
+    build_operator_notice_summary,
     model_settings_for_run,
     ResourceSnapshot,
     ArrowKeyReader,
@@ -933,6 +934,37 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
 
     assert "◆ Research   030 @ 000122 ✓" in output
     assert "★ Best Score 000 @ 19:13:00 0.95115 · 000122" in output
+
+
+def test_run_data_shows_operator_notice_before_last_error(tmp_path):
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 30/1500",
+            status="Training AutoGluon...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            operator_notice=(
+                "Ctrl+C received. Waiting for current code to finish. "
+                "The node will be reviewed and saved."
+            ),
+        )
+    )
+
+    assert "Training AutoGluon..." in output
+    assert "Operator Notice" in output
+    assert "Ctrl+C received. Waiting for current code to finish." in output
+    assert output.index("Operator Notice") < output.index("Last Error")
+
+
+def test_operator_notice_summary_uses_notice_color():
+    ansi = _render_ansi(
+        build_operator_notice_summary("Ctrl+C received. Waiting for current code.")
+    )
+
+    assert "\x1b[33mCtrl+C received" in ansi
 
 
 def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):

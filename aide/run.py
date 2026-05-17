@@ -1650,6 +1650,15 @@ def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | No
     return Group(*lines)
 
 
+def build_operator_notice_summary(notice: str | None) -> Group | None:
+    if notice is None or not notice.strip():
+        return None
+    return Group(
+        Text("Operator Notice", style=TUI_ROW_LABEL_STYLE),
+        Text(notice.strip(), style=TUI_OPERATOR_NOTICE_STYLE),
+    )
+
+
 def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
     settings: list[ModelSetting] = [
         ("code", cfg.agent.code.model, cfg.agent.code.reasoning_effort),
@@ -1681,6 +1690,7 @@ def build_run_data(
     model_settings: list[ModelSetting] | None = None,
     active_artifact_dir: Path | None = None,
     cfg: Config | None = None,
+    operator_notice: str | None = None,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -1730,6 +1740,9 @@ def build_run_data(
             ),
         ]
     )
+    operator_notice_summary = build_operator_notice_summary(operator_notice)
+    if operator_notice_summary is not None:
+        lines.extend([Rule(style="dim"), operator_notice_summary])
     lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
     if resource_active:
         lines.extend(
@@ -2256,6 +2269,7 @@ def run(argv: list[str] | None = None):
     status = Status("[green]Generating code...")
     prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
     status_override: str | None = None
+    operator_notice: str | None = None
     stop_after_current_node = False
     execution_interrupt_count = 0
     resource_history = ResourceHistory(
@@ -2271,13 +2285,13 @@ def run(argv: list[str] | None = None):
     pending_artifact_dir: Path | None = None
 
     def request_execution_interrupt() -> KeyboardInterruptAction:
-        nonlocal execution_interrupt_count, status_override, stop_after_current_node
+        nonlocal execution_interrupt_count, operator_notice, status_override
+        nonlocal stop_after_current_node
         execution_interrupt_count += 1
         if execution_interrupt_count == 1:
             stop_after_current_node = True
-            status_override = (
-                f"[{TUI_OPERATOR_NOTICE_STYLE}]Ctrl+C received. "
-                "Waiting for current code to finish. "
+            operator_notice = (
+                "Ctrl+C received. Waiting for current code to finish. "
                 "The node will be reviewed and saved, then the run will stop. "
                 "Press Ctrl+C again to stop now."
             )
@@ -2523,6 +2537,7 @@ def run(argv: list[str] | None = None):
                     model_settings=model_settings_for_run(cfg),
                     active_artifact_dir=active_artifact_dir,
                     cfg=cfg,
+                    operator_notice=operator_notice,
                 ),
                 (0, 1, 0, 1),
             ),

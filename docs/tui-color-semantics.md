@@ -74,7 +74,9 @@ exploration budget. That avoids misleading displays like `150/100`.
 ## Operator Notices
 
 Operator notices are user-action messages that need attention but are not
-failures. The main example is the first `Ctrl+C` during code execution:
+failures. Render them as a separate `Run data` section instead of replacing the
+current stage status below the progress bar. The main example is the first
+`Ctrl+C` during code execution:
 
 ```text
 Ctrl+C received. Waiting for current code to finish. The node will be reviewed
