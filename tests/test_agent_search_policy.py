@@ -419,7 +419,7 @@ def test_hypothesis_mode_opens_new_roots_until_root_pool_is_complete(
     assert selected is None
 
 
-def test_hypothesis_mode_debugs_before_opening_next_root_when_root_sweep_is_active(
+def test_hypothesis_mode_defers_debug_until_root_sweep_is_complete(
     tmp_path,
     monkeypatch,
 ):
@@ -439,7 +439,7 @@ def test_hypothesis_mode_debugs_before_opening_next_root_when_root_sweep_is_acti
 
     selected = agent.search_policy()
 
-    assert selected is bug
+    assert selected is None
 
 
 def test_hypothesis_mode_does_not_open_root_when_root_pool_is_exhausted(

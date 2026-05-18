@@ -459,9 +459,6 @@ class Agent:
             if len(self.journal.draft_nodes) < search_cfg.num_drafts:
                 logger.debug("[search policy] drafting new hypothesis root")
                 return None
-            debug_node = self._select_debuggable_node()
-            if debug_node is not None:
-                return debug_node
             logger.debug("[search policy] drafting new hypothesis root")
             return None
 
