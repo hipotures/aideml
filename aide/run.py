@@ -786,8 +786,8 @@ def _metric_sort_key(node: Node) -> float:
 
 
 def _score_text(node: Node) -> str:
-    assert node.metric is not None
-    assert node.metric.value is not None
+    if node.metric is None or node.metric.value is None:
+        return "n/a"
     return f"{node.metric.value:.5f}"
 
 
