@@ -1154,7 +1154,7 @@ STATUS_SYMBOLS = {
 RUN_STATUS_LABEL_WIDTH = len("★ Best Score")
 RUN_STATUS_STEP_WIDTH = 3
 TUI_RESEARCH_ICON = "◆"
-TUI_PHASE_ICON = "◇"
+TUI_PHASE_ICON = "⬢"
 TUI_SYNTHESIS_ICON = "◆"
 TUI_BEST_SCORE_ICON = "★"
 TUI_ROW_LABEL_STYLE = "bold cyan"
@@ -1422,7 +1422,7 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
     )
 
     line = _run_status_line_prefix(TUI_PHASE_ICON, "Phase")
-    line.append("  ")
+    line.append(" ")
     line.append(
         f"exploration {root_count}/{exploration_budget}",
         style=exploration_style,
