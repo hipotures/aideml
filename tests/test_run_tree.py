@@ -31,6 +31,7 @@ from aide.run import (
     last_error_lines,
     move_tree_focus,
     _mark_node_execution_crash,
+    next_left_panel_view,
     recover_tree_focus_by_index,
     render_tree_view,
     run_with_live_refresh,
@@ -534,6 +535,19 @@ def test_tree_focus_recovers_by_previous_index_when_focused_item_disappears():
 def test_keyboard_reader_maps_f_to_follow_toggle():
     assert ArrowKeyReader.CHAR_KEY_MAP[b"f"] == "follow"
     assert ArrowKeyReader.CHAR_KEY_MAP[b"F"] == "follow"
+
+
+def test_keyboard_reader_maps_v_to_view_toggle():
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"v"] == "view"
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"V"] == "view"
+
+
+def test_next_left_panel_view_cycles_in_declared_order():
+    assert next_left_panel_view("tree") == "root"
+    assert next_left_panel_view("root") == "all"
+    assert next_left_panel_view("all") == "branch"
+    assert next_left_panel_view("branch") == "tree"
+    assert next_left_panel_view("unknown") == "tree"
 
 
 def test_tree_viewport_keeps_focus_visible_without_empty_bottom():

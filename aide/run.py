@@ -940,6 +940,8 @@ class ArrowKeyReader:
         b"B": "best",
         b"f": "follow",
         b"F": "follow",
+        b"v": "view",
+        b"V": "view",
     }
 
     def __init__(self):
@@ -1161,6 +1163,16 @@ TUI_NEUTRAL_VALUE_STYLE = "yellow"
 TUI_METRIC_VALUE_STYLE = "green"
 TUI_INACTIVE_VALUE_STYLE = "dim"
 TUI_OPERATOR_NOTICE_STYLE = "yellow"
+
+LeftPanelView = Literal["tree", "root", "all", "branch"]
+LEFT_PANEL_VIEW_ORDER: tuple[LeftPanelView, ...] = ("tree", "root", "all", "branch")
+
+
+def next_left_panel_view(current: str) -> LeftPanelView:
+    if current not in LEFT_PANEL_VIEW_ORDER:
+        return "tree"
+    index = LEFT_PANEL_VIEW_ORDER.index(cast(LeftPanelView, current))
+    return LEFT_PANEL_VIEW_ORDER[(index + 1) % len(LEFT_PANEL_VIEW_ORDER)]
 
 
 def _parse_status_time(value: object) -> str | None:
@@ -2417,6 +2429,10 @@ def run(argv: list[str] | None = None):
     focused_tree_item_index = 0
     tree_scroll_top = 0
     tree_follow_mode = "off"
+    left_panel_view: LeftPanelView = "tree"
+    focused_table_item_id = "header"
+    focused_table_item_index = 0
+    table_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
     pending_artifact_dir: Path | None = None
 
@@ -2522,9 +2538,42 @@ def run(argv: list[str] | None = None):
         right_margin = 2
         return max(0, content_width - fixed_width_before_spark - right_margin)
 
-    def drain_tree_navigation(view: TreeView) -> None:
+    def drain_left_panel_navigation(view: TreeView) -> None:
         nonlocal focused_tree_item_id, focused_tree_item_index, tree_scroll_top
-        nonlocal tree_follow_mode
+        nonlocal focused_table_item_id, focused_table_item_index, table_scroll_top
+        nonlocal tree_follow_mode, left_panel_view
+        if left_panel_view != "tree":
+            if focused_table_item_id not in view.index_by_id:
+                focused_table_item_id = recover_tree_focus_by_index(
+                    view,
+                    fallback_index=focused_table_item_index,
+                )
+            while key_reader is not None:
+                key = key_reader.read_key()
+                if key is None:
+                    break
+                if key == "view":
+                    left_panel_view = next_left_panel_view(left_panel_view)
+                    focused_table_item_id = "header"
+                    focused_table_item_index = 0
+                    table_scroll_top = 0
+                    return
+                if key in {"up", "down"}:
+                    focused_table_item_id = move_tree_focus(
+                        view,
+                        focused_table_item_id,
+                        key,
+                    )
+            focus_index = view.index_by_id.get(focused_table_item_id, 0)
+            table_scroll_top = clamp_tree_viewport(
+                total_lines=len(view.items),
+                viewport_height=tree_viewport_height(),
+                focus_index=focus_index,
+                current_scroll=table_scroll_top,
+            )
+            focused_table_item_index = view.index_by_id.get(focused_table_item_id, 0)
+            return
+
         if tree_follow_mode == "active":
             active_id = active_tree_item_id(view)
             if active_id is not None:
@@ -2543,6 +2592,12 @@ def run(argv: list[str] | None = None):
             key = key_reader.read_key()
             if key is None:
                 break
+            if key == "view":
+                left_panel_view = next_left_panel_view(left_panel_view)
+                focused_table_item_id = "header"
+                focused_table_item_index = 0
+                table_scroll_top = 0
+                return
             if key == "follow":
                 tree_follow_mode = (
                     "active" if tree_follow_mode == "off" else "off"
@@ -2611,15 +2666,32 @@ def run(argv: list[str] | None = None):
             synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
         )
 
+    def current_left_panel_view(*, blink_on: bool) -> TreeView:
+        if left_panel_view == "tree":
+            return current_tree_view(blink_on=blink_on)
+        if left_panel_view == "root":
+            return build_root_hypotheses_view(journal)
+        if left_panel_view == "all":
+            return build_all_hypotheses_view(journal)
+        return build_best_branch_view(journal)
+
     def generate_live():
-        nonlocal focused_tree_item_id, tree_scroll_top
         blink_on = int(time.monotonic() * 2) % 2 == 0
-        tree_view = current_tree_view(blink_on=blink_on)
-        drain_tree_navigation(tree_view)
-        tree = render_tree_view(
-            tree_view,
-            focused_item_id=focused_tree_item_id,
-            scroll_top=tree_scroll_top,
+        rendered_panel_view = left_panel_view
+        left_view = current_left_panel_view(blink_on=blink_on)
+        drain_left_panel_navigation(left_view)
+        if left_panel_view != rendered_panel_view:
+            left_view = current_left_panel_view(blink_on=blink_on)
+        if left_panel_view == "tree":
+            focused_item_id = focused_tree_item_id
+            scroll_top = tree_scroll_top
+        else:
+            focused_item_id = focused_table_item_id
+            scroll_top = table_scroll_top
+        left_panel_content = render_tree_view(
+            left_view,
+            focused_item_id=focused_item_id,
+            scroll_top=scroll_top,
             viewport_height=tree_viewport_height(),
         )
         prog.update(prog.task_ids[0], completed=global_step)
@@ -2644,11 +2716,11 @@ def run(argv: list[str] | None = None):
         )
 
         tree_panel = Panel(
-            Padding(tree, (0, 1, 0, 1)),
+            Padding(left_panel_content, (0, 1, 0, 1)),
             title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
-                f"f follow:{tree_follow_mode}  Ctrl+C stop"
+                f"f follow:{tree_follow_mode}  v view:{left_panel_view}  Ctrl+C stop"
             ),
         )
         data_panel = Panel(
@@ -2781,8 +2853,8 @@ def run(argv: list[str] | None = None):
                                 live,
                                 generate_live,
                                 maybe_generate_synthesis,
-                                tick=lambda: drain_tree_navigation(
-                                    current_tree_view(blink_on=True)
+                                tick=lambda: drain_left_panel_navigation(
+                                    current_left_panel_view(blink_on=True)
                                 ),
                             )
                             if synthesized is None:
@@ -2847,8 +2919,8 @@ def run(argv: list[str] | None = None):
                                 live,
                                 generate_live,
                                 generate_current_node,
-                                tick=lambda: drain_tree_navigation(
-                                    current_tree_view(blink_on=True)
+                                tick=lambda: drain_left_panel_navigation(
+                                    current_left_panel_view(blink_on=True)
                                 ),
                             )
                         else:
@@ -2895,8 +2967,8 @@ def run(argv: list[str] | None = None):
                                             live,
                                             generate_live,
                                             lambda: exec_callback(*args, **kwargs),
-                                            tick=lambda: drain_tree_navigation(
-                                                current_tree_view(blink_on=True)
+                                            tick=lambda: drain_left_panel_navigation(
+                                                current_left_panel_view(blink_on=True)
                                             ),
                                             on_keyboard_interrupt=request_execution_interrupt,
                                         ),
@@ -2990,8 +3062,8 @@ def run(argv: list[str] | None = None):
                                 live,
                                 generate_live,
                                 review_current_node,
-                                tick=lambda: drain_tree_navigation(
-                                    current_tree_view(blink_on=True)
+                                tick=lambda: drain_left_panel_navigation(
+                                    current_left_panel_view(blink_on=True)
                                 ),
                             )
                             debug_log(
