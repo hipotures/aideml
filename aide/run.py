@@ -768,6 +768,142 @@ def recover_tree_focus_by_index(
     return view.items[index].item_id
 
 
+def _is_scored_hypothesis_node(node: Node) -> bool:
+    return (
+        not node.is_buggy
+        and not node.is_terminal_failure
+        and node.metric is not None
+        and node.metric.value is not None
+        and hypothesis_id_for_node(node) is not None
+    )
+
+
+def _metric_sort_key(node: Node) -> float:
+    assert node.metric is not None
+    assert node.metric.value is not None
+    value = float(node.metric.value)
+    return value if node.metric.maximize is not False else -value
+
+
+def _score_text(node: Node) -> str:
+    assert node.metric is not None
+    assert node.metric.value is not None
+    return f"{node.metric.value:.5f}"
+
+
+def _plain_line_view(title: str, lines: list[Text]) -> TreeView:
+    items = [TreeViewItem("header", None, Text(title, style="bold blue"), focus_start=0)]
+    children_by_id: dict[str, list[str]] = {"header": []}
+    parent_by_id: dict[str, str | None] = {"header": None}
+    for index, line in enumerate(lines):
+        item_id = f"row:{index}"
+        items.append(TreeViewItem(item_id, "header", line, focus_start=0))
+        children_by_id["header"].append(item_id)
+        children_by_id[item_id] = []
+        parent_by_id[item_id] = "header"
+    return TreeView(
+        items=items,
+        index_by_id={item.item_id: index for index, item in enumerate(items)},
+        parent_by_id=parent_by_id,
+        children_by_id=children_by_id,
+    )
+
+
+def build_root_hypotheses_view(journal: Journal) -> TreeView:
+    roots = [
+        node
+        for node in journal.nodes
+        if node.parent is None
+        and not _is_base_root(node)
+        and _is_scored_hypothesis_node(node)
+    ]
+    roots.sort(key=_metric_sort_key, reverse=True)
+    lines = [Text("score     hypothesis", style=TUI_ROW_LABEL_STYLE)]
+    for node in roots:
+        hypothesis_id = hypothesis_id_for_node(node) or "n/a"
+        line = Text()
+        line.append(f"{_score_text(node):<9}", style=TUI_METRIC_VALUE_STYLE)
+        line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
+        lines.append(line)
+    if not roots:
+        lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
+    return _plain_line_view("Root hypotheses", lines)
+
+
+def build_all_hypotheses_view(journal: Journal) -> TreeView:
+    rows: dict[str, dict[str, object]] = {}
+    for node in journal.nodes:
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None or not _is_scored_hypothesis_node(node):
+            continue
+        row = rows.setdefault(
+            hypothesis_id,
+            {
+                "hypothesis_id": hypothesis_id,
+                "best_node": node,
+                "uses_total": 0,
+                "root_uses": 0,
+                "branch_uses": 0,
+            },
+        )
+        row["uses_total"] = int(row["uses_total"]) + 1
+        if node.parent is None:
+            row["root_uses"] = int(row["root_uses"]) + 1
+        else:
+            row["branch_uses"] = int(row["branch_uses"]) + 1
+        best_node = row["best_node"]
+        assert isinstance(best_node, Node)
+        if _metric_sort_key(node) > _metric_sort_key(best_node):
+            row["best_node"] = node
+
+    sorted_rows = sorted(
+        rows.values(),
+        key=lambda row: _metric_sort_key(cast(Node, row["best_node"])),
+        reverse=True,
+    )
+    lines = [Text("best      hypothesis  uses", style=TUI_ROW_LABEL_STYLE)]
+    for row in sorted_rows:
+        best_node = cast(Node, row["best_node"])
+        line = Text()
+        line.append(f"{_score_text(best_node):<10}", style=TUI_METRIC_VALUE_STYLE)
+        line.append(f"{row['hypothesis_id']:<12}", style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(
+            f"{row['uses_total']} (root {row['root_uses']}, branch {row['branch_uses']})",
+            style=TUI_INACTIVE_VALUE_STYLE,
+        )
+        lines.append(line)
+    if not sorted_rows:
+        lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
+    return _plain_line_view("All hypotheses", lines)
+
+
+def build_best_branch_view(journal: Journal) -> TreeView:
+    best_node = _best_scored_node(journal)
+    if best_node is None:
+        return _plain_line_view(
+            "Best branch",
+            [Text("n/a", style=TUI_INACTIVE_VALUE_STYLE)],
+        )
+
+    path: list[Node] = []
+    node: Node | None = best_node
+    while node is not None:
+        path.append(node)
+        node = node.parent
+    path.reverse()
+
+    line = Text()
+    for index, path_node in enumerate(path):
+        if index:
+            line.append(" -> ", style=TUI_SEPARATOR_STYLE)
+        line.append(
+            hypothesis_id_for_node(path_node) or "n/a",
+            style=TUI_NEUTRAL_VALUE_STYLE,
+        )
+        line.append(f" {_score_text(path_node)}", style=TUI_METRIC_VALUE_STYLE)
+    return _plain_line_view("Best branch", [line])
+
+
 def render_tree_view(
     view: TreeView,
     *,

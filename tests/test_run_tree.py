@@ -9,6 +9,8 @@ from aide.journal import Journal, Node
 from aide.run import (
     _sparkline,
     active_run_log_path,
+    build_all_hypotheses_view,
+    build_best_branch_view,
     build_path_summary,
     build_model_summary,
     build_resource_summary,
@@ -16,6 +18,7 @@ from aide.run import (
     build_run_data,
     build_hypothesis_phase_status,
     build_operator_notice_summary,
+    build_root_hypotheses_view,
     model_settings_for_run,
     ResourceSnapshot,
     ArrowKeyReader,
@@ -392,6 +395,91 @@ def test_tree_view_starts_with_focusable_header_and_node_rows():
     assert [item.item_id for item in view.items[1:]] == [root.id, child.id]
     assert view.children_by_id["header"] == [root.id]
     assert view.children_by_id[root.id] == [child.id]
+
+
+def test_root_hypotheses_view_sorts_scored_roots_by_score():
+    journal = Journal()
+    baseline = Node(code="base", plan=f"{BASELINE_PLAN_PREFIX}: raw")
+    baseline.metric = MetricValue(0.99, maximize=True)
+    baseline.is_buggy = False
+    journal.append(baseline)
+    weak = _hypothesis_node(_good_node(0.95000), "000111")
+    strong = _hypothesis_node(_good_node(0.95200), "000222")
+    child = _hypothesis_node(_good_node(0.95300, parent=weak), "000333")
+    journal.append(weak)
+    journal.append(strong)
+    journal.append(child)
+
+    view = build_root_hypotheses_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "Root hypotheses" in output
+    assert "0.95200" in output
+    assert "000222" in output
+    assert output.index("000222") < output.index("000111")
+    assert "000333" not in output
+    assert "0.99000" not in output
+
+
+def test_all_hypotheses_view_aggregates_successful_usage_by_hypothesis():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95100), "000111")
+    child = _hypothesis_node(_good_node(0.95200, parent=root), "000222")
+    repeated = _hypothesis_node(_good_node(0.95300, parent=child), "000111")
+    bug = _hypothesis_node(_bug_node(parent=root), "000333")
+    journal.append(root)
+    journal.append(child)
+    journal.append(repeated)
+    journal.append(bug)
+
+    view = build_all_hypotheses_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "All hypotheses" in output
+    assert output.index("000111") < output.index("000222")
+    assert "0.95300" in output
+    assert "2 (root 1, branch 1)" in output
+    assert "000333" not in output
+
+
+def test_best_branch_view_renders_top_path_root_to_leaf():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95100), "000111")
+    child = _hypothesis_node(_good_node(0.95200, parent=root), "000222")
+    top = _hypothesis_node(_good_node(0.95300, parent=child), "000333")
+    other = _hypothesis_node(_good_node(0.95000), "000444")
+    journal.append(root)
+    journal.append(child)
+    journal.append(top)
+    journal.append(other)
+
+    view = build_best_branch_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "Best branch" in output
+    assert "000111 0.95100 -> 000222 0.95200 -> 000333 0.95300" in output
+    assert "000444" not in output
 
 
 def test_tree_focus_moves_by_siblings_parent_and_child():
