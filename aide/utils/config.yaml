@@ -98,11 +98,11 @@ agent:
     max_debug_depth: 3
     debug_prob: 0.5
     num_drafts: 5
-    exploration_weight: 0.05
+    exploration_weight: 0.0
     best_score_min_children_before_exploration: 3
     disable_oom_saturated_parents: false
     hypothesis_child_order: root_score
-    hypothesis_max_non_improving_children_per_parent: 3
+    hypothesis_max_non_improving_children_per_parent: 10
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.

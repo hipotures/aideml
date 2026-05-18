@@ -95,11 +95,11 @@ class SearchConfig:
     max_debug_depth: int
     debug_prob: float
     num_drafts: int
-    exploration_weight: float = 0.05
+    exploration_weight: float = 0.0
     best_score_min_children_before_exploration: int = 3
     disable_oom_saturated_parents: bool = False
     hypothesis_child_order: str = "root_score"
-    hypothesis_max_non_improving_children_per_parent: int = 3
+    hypothesis_max_non_improving_children_per_parent: int = 10
 
 
 @dataclass
