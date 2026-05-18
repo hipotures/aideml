@@ -58,6 +58,7 @@ class Node(DataClassJsonMixin):
     exc_type: str | None = field(default=None, kw_only=True)
     exc_info: dict | None = field(default=None, kw_only=True)
     exc_stack: list[tuple] | None = field(default=None, kw_only=True)
+    run_stats: dict | None = field(default=None, kw_only=True)
 
     # ---- evaluation ----
     # post-execution result analysis (findings/feedback)

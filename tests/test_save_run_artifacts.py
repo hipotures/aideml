@@ -61,6 +61,46 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
 
 
+def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    working_dir = workspace_dir / "working"
+    working_dir.mkdir(parents=True)
+    (working_dir / "submission.csv").write_text("id,PitNextLap\n1,0.7\n")
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(
+        code="print('current node')",
+        plan="current node plan",
+        ctime=1777750547.0057797,
+    )
+    node.metric = MetricValue(0.9473, maximize=True)
+    node.is_buggy = False
+    node._term_out = ["CV ROC AUC: 0.9473\n"]
+    node.exec_time = 1.0
+    node.exc_type = None
+    node.analysis = "ran successfully"
+    node.run_stats = {
+        "feature_count": 42,
+        "preprocess_time": 1.2,
+        "training_time": 3.4,
+        "total_exec_time": 5.0,
+        "models": [{"model": "WeightedEnsemble_L2", "score_val": 0.95}],
+    }
+    journal.append(node)
+
+    save_run(cfg, journal, current_node=node)
+
+    manifest = json.loads(
+        (log_dir / "artifacts" / "20260502T213547" / "aide_result.json").read_text()
+    )
+
+    expected = dict(node.run_stats)
+    expected["total_exec_time"] = 1.0
+    assert manifest["run_stats"] == expected
+
+
 def test_save_run_does_not_archive_submission_when_missing(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"

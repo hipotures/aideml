@@ -75,6 +75,14 @@ def metric_payload(node: Node) -> dict[str, Any]:
     }
 
 
+def run_stats_payload(node: Node) -> dict[str, Any] | None:
+    if not isinstance(node.run_stats, dict):
+        return None
+    payload = dict(node.run_stats)
+    payload["total_exec_time"] = node.exec_time
+    return payload
+
+
 def node_status(node: Node) -> str:
     if node.status == "failed":
         return "failed"
@@ -168,6 +176,7 @@ def build_node_artifact_manifest(
             "exc_info": node.exc_info,
             "exc_stack": node.exc_stack,
         },
+        "run_stats": run_stats_payload(node),
         "submission_validation": node.submission_validation,
         "autogluon": autogluon,
         "source": {
@@ -224,6 +233,8 @@ def _node_from_manifest(manifest: dict[str, Any], artifact_dir: Path) -> Node:
     node.exc_type = execution.get("exc_type")
     node.exc_info = execution.get("exc_info")
     node.exc_stack = execution.get("exc_stack")
+    run_stats = manifest.get("run_stats")
+    node.run_stats = run_stats if isinstance(run_stats, dict) else None
     node.submission_validation = node_payload.get("submission_validation") or manifest.get(
         "submission_validation"
     )

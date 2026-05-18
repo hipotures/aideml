@@ -660,6 +660,37 @@ def test_parse_result_marker_short_circuits_feedback_review(tmp_path, monkeypatc
     assert node.analysis == "ag ok"
 
 
+def test_parse_result_marker_preserves_run_stats(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    exec_result = ExecutionResult(
+        term_out=[
+            'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ag ok", '
+            '"metric": 0.91, "lower_is_better": false, '
+            '"run_stats": {"feature_count": 42, "preprocess_time": 1.2, '
+            '"training_time": 3.4, "models": [{"model": "XGBoost", '
+            '"score_val": 0.91}]}}\n'
+        ],
+        exec_time=5.0,
+        exc_type=None,
+    )
+
+    monkeypatch.setattr(
+        "aide.agent.query",
+        lambda **_kwargs: pytest.fail("feedback LLM should not be called"),
+    )
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.run_stats == {
+        "feature_count": 42,
+        "preprocess_time": 1.2,
+        "training_time": 3.4,
+        "models": [{"model": "XGBoost", "score_val": 0.91}],
+    }
+
+
 def test_parse_result_marker_uses_latest_valid_marker():
     parsed = parse_result_marker(
         'AIDE_RESULT_JSON: {"metric": 0.1}\n'

@@ -1127,6 +1127,8 @@ class Agent:
                 marker_response,
                 summary=node.analysis,
             )
+            run_stats = marker_response.get("run_stats")
+            node.run_stats = run_stats if isinstance(run_stats, dict) else None
             node.is_buggy = (
                 node.exc_type is not None
                 or metric is None
