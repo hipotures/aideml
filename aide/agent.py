@@ -284,6 +284,22 @@ def _node_improves_parent(child: Node, parent: Node) -> bool:
     return child_value > parent_value
 
 
+def _nearest_scored_ancestor(node: Node) -> Node | None:
+    parent = node.parent
+    while parent is not None:
+        if parent.metric is not None and parent.metric.value is not None:
+            return parent
+        parent = parent.parent
+    return None
+
+
+def _node_improves_nearest_scored_ancestor(node: Node) -> bool:
+    ancestor = _nearest_scored_ancestor(node)
+    if ancestor is None:
+        return False
+    return _node_improves_parent(node, ancestor)
+
+
 def _is_scored_non_improving_child(child: Node, parent: Node) -> bool:
     if child.is_buggy or child.is_terminal_failure:
         return False
@@ -315,7 +331,11 @@ def _is_hypothesis_parent_saturated(node: Node, *, limit: int) -> bool:
 def _is_hypothesis_branch_candidate(node: Node) -> bool:
     if node.parent is None:
         return True
-    return _node_improves_parent(node, node.parent)
+    if _node_improves_parent(node, node.parent):
+        return True
+    if node.parent.metric is None or node.parent.metric.value is None:
+        return _node_improves_nearest_scored_ancestor(node)
+    return False
 
 
 def _normalized_metric_scores(nodes: list[Node]) -> dict[Node, float]:
@@ -381,7 +401,9 @@ def _branch_candidate_rejection_reason(node: Node) -> str:
     if node.metric is None or node.metric.value is None:
         return "metric_missing"
     if node.parent.metric is None or node.parent.metric.value is None:
-        return "parent_metric_missing"
+        if _nearest_scored_ancestor(node) is None:
+            return "parent_metric_missing"
+        return "does_not_improve_nearest_scored_ancestor"
     if not _node_improves_parent(node, node.parent):
         return "does_not_improve_parent"
     return "accepted"

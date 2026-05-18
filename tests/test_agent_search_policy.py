@@ -478,7 +478,7 @@ def test_hypothesis_mode_does_not_open_root_when_root_pool_is_exhausted(
     assert selected is best
 
 
-def test_hypothesis_search_trace_explains_why_best_node_was_not_selected(
+def test_hypothesis_search_trace_marks_top_debug_fix_as_selected(
     tmp_path,
     monkeypatch,
 ):
@@ -508,14 +508,46 @@ def test_hypothesis_search_trace_explains_why_best_node_was_not_selected(
 
     selected = agent.search_policy()
 
-    assert selected is fallback
+    assert selected is best
     trace = agent.last_search_decision
     assert trace is not None
-    assert trace["selected"]["node_id"] == fallback.id
+    assert trace["selected"]["node_id"] == best.id
     assert trace["best_node"]["node_id"] == best.id
-    assert trace["best_node"]["selected"] is False
-    assert trace["best_node"]["rejected_at"] == "branch_candidate"
-    assert trace["best_node"]["reason"] == "parent_metric_missing"
+    assert trace["best_node"]["selected"] is True
+
+
+def test_hypothesis_search_can_select_top_debug_fix_after_bug_parent(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+
+    journal = Journal()
+    ancestor = _hypothesis_node(_good_node(0.95209), "000746")
+    fallback = _hypothesis_node(_good_node(0.95193), "000011")
+    bug = _hypothesis_node(_bug_node(parent=ancestor), "000002")
+    best = _hypothesis_node(_good_node(0.95239, parent=bug), "000002")
+    for node in [ancestor, fallback, bug, best]:
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is best
 
 
 def test_search_policy_appends_decision_jsonl(tmp_path):
