@@ -31,6 +31,7 @@ from .research import (
     format_manual_research_hints_for_prompt,
     format_research_hints_for_prompt,
     hypothesis_root_pool_exhausted,
+    hypothesis_id_for_node,
     load_latest_manual_research_hints,
     load_latest_research_hints,
     record_manual_claimed_usage,
@@ -339,6 +340,53 @@ def _search_exploration_score(
     return normalized_metric + exploration_weight * exploration
 
 
+def _metric_value(node: Node | None) -> float | None:
+    if node is None or node.metric is None:
+        return None
+    value = node.metric.value
+    return float(value) if value is not None else None
+
+
+def _search_node_payload(node: Node | None) -> dict[str, Any] | None:
+    if node is None:
+        return None
+    parent = node.parent
+    return {
+        "node_id": node.id,
+        "step": node.step,
+        "hypothesis_id": hypothesis_id_for_node(node),
+        "metric": _metric_value(node),
+        "is_buggy": node.is_buggy,
+        "status": node.status,
+        "parent_id": parent.id if parent is not None else None,
+        "parent_step": parent.step if parent is not None else None,
+        "parent_metric": _metric_value(parent),
+        "parent_is_buggy": parent.is_buggy if parent is not None else None,
+        "child_count": sum(1 for child in node.children if not child.is_terminal_failure),
+    }
+
+
+def _best_scored_search_node(journal: Journal) -> Node | None:
+    candidates = [
+        node
+        for node in journal.good_nodes
+        if node.metric is not None and node.metric.value is not None
+    ]
+    return max(candidates, key=lambda node: node.metric, default=None)
+
+
+def _branch_candidate_rejection_reason(node: Node) -> str:
+    if node.parent is None:
+        return "accepted_root"
+    if node.metric is None or node.metric.value is None:
+        return "metric_missing"
+    if node.parent.metric is None or node.parent.metric.value is None:
+        return "parent_metric_missing"
+    if not _node_improves_parent(node, node.parent):
+        return "does_not_improve_parent"
+    return "accepted"
+
+
 class Agent:
     def __init__(
         self,
@@ -359,6 +407,17 @@ class Agent:
         self.active_stage_started_at: float | None = None
         self._pending_node_ctime: float | None = None
         self._pending_llm_log_dir: Path | None = None
+        self.last_search_decision: dict[str, Any] | None = None
+
+    def _record_search_decision(self, trace: dict[str, Any]) -> None:
+        self.last_search_decision = trace
+        try:
+            path = Path(self.cfg.log_dir) / "search_decisions.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(trace, sort_keys=True, default=str) + "\n")
+        except Exception as exc:  # noqa: BLE001 - diagnostics must not stop the run
+            logger.debug("Failed to write search decision trace: %s", exc)
 
     def set_active_stage(self, stage: str | None) -> None:
         self.active_stage = stage
@@ -454,43 +513,103 @@ class Agent:
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
         search_cfg = self.acfg.search
+        trace: dict[str, Any] = {
+            "timestamp": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+            "step": len(self.journal.nodes),
+            "mode": "hypothesis" if self._is_hypothesis_mode() else "standard",
+            "agent_mode": self.acfg.mode,
+            "counts": {},
+            "rejections": {},
+            "top_candidates": [],
+            "best_node": None,
+            "selected": None,
+            "reason": None,
+        }
+
+        def finish(selected: Node | None, reason: str) -> Node | None:
+            trace["selected"] = _search_node_payload(selected)
+            trace["reason"] = reason
+            best_node = _best_scored_search_node(self.journal)
+            best_payload = _search_node_payload(best_node)
+            if best_payload is not None:
+                best_payload["selected"] = (
+                    selected is not None
+                    and best_node is not None
+                    and selected.id == best_node.id
+                )
+                if not best_payload["selected"]:
+                    rejection = trace["rejections"].get(best_node.id) if best_node else None
+                    if rejection is not None:
+                        best_payload["rejected_at"] = rejection["stage"]
+                        best_payload["reason"] = rejection["reason"]
+                    elif selected is not None:
+                        best_payload["rejected_at"] = "policy_score"
+                        best_payload["reason"] = reason
+            trace["best_node"] = best_payload
+            self._record_search_decision(trace)
+            return selected
 
         if self._is_hypothesis_mode() and self._should_open_hypothesis_root():
             if len(self.journal.draft_nodes) < search_cfg.num_drafts:
                 logger.debug("[search policy] drafting new hypothesis root")
-                return None
+                return finish(None, "open_hypothesis_root_before_num_drafts")
             logger.debug("[search policy] drafting new hypothesis root")
-            return None
+            return finish(None, "open_hypothesis_root")
 
         # initial drafting
         if len(self.journal.draft_nodes) < search_cfg.num_drafts:
             logger.debug("[search policy] drafting new node (not enough drafts)")
-            return None
+            return finish(None, "not_enough_drafts")
 
         # debugging
         debug_node = self._select_debuggable_node()
         if debug_node is not None:
-            return debug_node
+            return finish(debug_node, "debugging")
 
         # back to drafting if no nodes to improve
+        all_good_nodes = list(self.journal.good_nodes)
         good_nodes = [
             n
-            for n in self.journal.good_nodes
+            for n in all_good_nodes
             if not n.is_in_submission_contract_error_branch
             and (
                 not search_cfg.disable_oom_saturated_parents
                 or not n.is_oom_blocked_parent
             )
         ]
+        trace["counts"]["good_nodes"] = len(all_good_nodes)
+        trace["counts"]["after_base_filters"] = len(good_nodes)
+        for node in all_good_nodes:
+            if node not in good_nodes:
+                trace["rejections"][node.id] = {
+                    "stage": "base_filters",
+                    "reason": "submission_contract_or_oom_branch",
+                }
         if self._is_hypothesis_mode():
+            before_child_candidates = list(good_nodes)
             good_nodes = filter_hypothesis_candidate_parents(
                 self.cfg,
                 journal=self.journal,
                 parent_nodes=good_nodes,
             )
+            trace["counts"]["after_hypothesis_child_candidates"] = len(good_nodes)
+            for node in before_child_candidates:
+                if node not in good_nodes:
+                    trace["rejections"][node.id] = {
+                        "stage": "hypothesis_child_candidates",
+                        "reason": "no_unused_child_hypothesis_available",
+                    }
+            before_branch_candidates = list(good_nodes)
             good_nodes = [
                 node for node in good_nodes if _is_hypothesis_branch_candidate(node)
             ]
+            trace["counts"]["after_branch_candidate"] = len(good_nodes)
+            for node in before_branch_candidates:
+                if node not in good_nodes:
+                    trace["rejections"][node.id] = {
+                        "stage": "branch_candidate",
+                        "reason": _branch_candidate_rejection_reason(node),
+                    }
             limit = int(
                 getattr(
                     search_cfg,
@@ -499,33 +618,64 @@ class Agent:
                 )
             )
             if limit > 0:
+                before_saturation = list(good_nodes)
                 good_nodes = [
                     node
                     for node in good_nodes
                     if not _is_hypothesis_parent_saturated(node, limit=limit)
                 ]
+                trace["counts"]["after_saturation"] = len(good_nodes)
+                for node in before_saturation:
+                    if node not in good_nodes:
+                        trace["rejections"][node.id] = {
+                            "stage": "saturation",
+                            "reason": (
+                                f"no_improving_child_and_at_least_{limit}_"
+                                "non_improving_children"
+                            ),
+                        }
         if not good_nodes:
             logger.debug("[search policy] drafting new node (no good nodes)")
-            return None
+            return finish(None, "no_good_nodes_after_filters")
 
         exploration_weight = float(getattr(search_cfg, "exploration_weight", 0.0))
         if exploration_weight <= 0:
             greedy_node = max(good_nodes, key=lambda n: n.metric)
+            ranked = sorted(good_nodes, key=lambda n: n.metric, reverse=True)
+            trace["top_candidates"] = [
+                {
+                    **(_search_node_payload(node) or {}),
+                    "rank": index + 1,
+                    "policy_score": _metric_value(node),
+                }
+                for index, node in enumerate(ranked[:8])
+            ]
             logger.debug("[search policy] greedy node selected")
-            return greedy_node
+            return finish(greedy_node, "highest_metric_after_filters")
 
         normalized_scores = _normalized_metric_scores(good_nodes)
-        selected_node = max(
-            good_nodes,
-            key=lambda node: _search_exploration_score(
+        policy_scores = {
+            node: _search_exploration_score(
                 node,
                 normalized_metric=normalized_scores[node],
                 total_good_nodes=len(good_nodes),
                 exploration_weight=exploration_weight,
-            ),
-        )
+            )
+            for node in good_nodes
+        }
+        selected_node = max(good_nodes, key=lambda node: policy_scores[node])
+        ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
+        trace["top_candidates"] = [
+            {
+                **(_search_node_payload(node) or {}),
+                "rank": index + 1,
+                "normalized_metric": normalized_scores[node],
+                "policy_score": policy_scores[node],
+            }
+            for index, node in enumerate(ranked[:8])
+        ]
         logger.debug("[search policy] exploration node selected")
-        return selected_node
+        return finish(selected_node, "highest_policy_score_after_filters")
 
     @property
     def _prompt_environment(self):

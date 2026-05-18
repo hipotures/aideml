@@ -39,6 +39,12 @@ def _bug_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _hypothesis_node(node: Node, hypothesis_id: str) -> Node:
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = [hypothesis_id]
+    return node
+
+
 def _submission_bug_node(parent: Node | None = None) -> Node:
     node = _bug_node(parent=parent)
     node.exc_type = "SubmissionValidationError"
@@ -470,6 +476,64 @@ def test_hypothesis_mode_does_not_open_root_when_root_pool_is_exhausted(
     selected = agent.search_policy()
 
     assert selected is best
+
+
+def test_hypothesis_search_trace_explains_why_best_node_was_not_selected(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+
+    journal = Journal()
+    fallback = _hypothesis_node(_good_node(0.95193), "000011")
+    bug = _hypothesis_node(_bug_node(parent=fallback), "000002")
+    best = _hypothesis_node(_good_node(0.95239, parent=bug), "000002")
+    for node in [fallback, bug, best]:
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is fallback
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["selected"]["node_id"] == fallback.id
+    assert trace["best_node"]["node_id"] == best.id
+    assert trace["best_node"]["selected"] is False
+    assert trace["best_node"]["rejected_at"] == "branch_candidate"
+    assert trace["best_node"]["reason"] == "parent_metric_missing"
+
+
+def test_search_policy_appends_decision_jsonl(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    journal = Journal()
+    selected = _good_node(0.92)
+    journal.append(selected)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent.search_policy() is selected
+
+    decision_log = Path(cfg.log_dir) / "search_decisions.jsonl"
+    assert decision_log.exists()
+    records = decision_log.read_text(encoding="utf-8").splitlines()
+    assert len(records) == 1
+    assert selected.id in records[0]
 
 
 def test_hypothesis_mode_filters_parents_without_child_candidates(

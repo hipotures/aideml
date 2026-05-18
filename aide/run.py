@@ -15,7 +15,7 @@ import textwrap
 import tty
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Literal, cast
+from typing import Any, Callable, Literal, cast
 
 from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
@@ -910,6 +910,118 @@ def build_best_branch_view(journal: Journal) -> TreeView:
     return _plain_line_view("Best branch", [line])
 
 
+def _decision_metric_text(payload: dict[str, Any] | None) -> str:
+    if not payload:
+        return "n/a"
+    value = payload.get("metric")
+    if not isinstance(value, (float, int)) or isinstance(value, bool):
+        return "n/a"
+    return f"{float(value):.5f}"
+
+
+def _decision_node_label(payload: dict[str, Any] | None) -> str:
+    if not payload:
+        return "n/a"
+    hypothesis_id = payload.get("hypothesis_id") or "n/a"
+    return f"{_decision_metric_text(payload)}*{hypothesis_id}"
+
+
+def _append_decision_payload_line(
+    lines: list[Text],
+    label: str,
+    payload: dict[str, Any] | None,
+) -> None:
+    line = Text(f"{label:<16}", style=TUI_ROW_LABEL_STYLE)
+    line.append(_decision_node_label(payload), style=TUI_METRIC_VALUE_STYLE)
+    if payload:
+        step = payload.get("step")
+        if step is not None:
+            line.append(f" step={step}", style=TUI_INACTIVE_VALUE_STYLE)
+        child_count = payload.get("child_count")
+        if child_count is not None:
+            line.append(f" children={child_count}", style=TUI_INACTIVE_VALUE_STYLE)
+    lines.append(line)
+
+
+def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
+    if not decision:
+        return Group(
+            Text("SEARCH DECISION", style="bold blue"),
+            Text("No search decision recorded yet.", style=TUI_INACTIVE_VALUE_STYLE),
+        )
+
+    lines: list[Text] = [
+        Text(
+            (
+                f"SEARCH DECISION step={decision.get('step', 'n/a')} "
+                f"mode={decision.get('mode', 'n/a')}"
+            ),
+            style="bold blue",
+        )
+    ]
+    reason = decision.get("reason")
+    if reason:
+        line = Text("policy reason  ", style=TUI_ROW_LABEL_STYLE)
+        line.append(str(reason), style=TUI_NEUTRAL_VALUE_STYLE)
+        lines.append(line)
+
+    _append_decision_payload_line(
+        lines,
+        "SELECTED",
+        cast(dict[str, Any] | None, decision.get("selected")),
+    )
+    best = cast(dict[str, Any] | None, decision.get("best_node"))
+    _append_decision_payload_line(lines, "BEST SCORE NODE", best)
+    if best and not best.get("selected"):
+        rejected_at = best.get("rejected_at", "unknown")
+        rejection_reason = best.get("reason", "unknown")
+        line = Text("not selected:   ", style=TUI_ROW_LABEL_STYLE)
+        line.append(
+            f"{rejected_at} / {rejection_reason}",
+            style=TUI_OPERATOR_NOTICE_STYLE,
+        )
+        lines.append(line)
+        parent_metric = best.get("parent_metric")
+        parent_text = "n/a" if parent_metric is None else f"{float(parent_metric):.5f}"
+        line = Text("parent          ", style=TUI_ROW_LABEL_STYLE)
+        line.append(f"metric={parent_text}", style=TUI_INACTIVE_VALUE_STYLE)
+        if best.get("parent_is_buggy") is not None:
+            line.append(
+                f" buggy={best.get('parent_is_buggy')}",
+                style=TUI_INACTIVE_VALUE_STYLE,
+            )
+        lines.append(line)
+
+    counts = cast(dict[str, Any], decision.get("counts") or {})
+    if counts:
+        lines.append(Text(""))
+        lines.append(Text("FILTER COUNTS", style="bold blue"))
+        for key, value in counts.items():
+            line = Text(f"{key:<32}", style=TUI_ROW_LABEL_STYLE)
+            line.append(str(value), style=TUI_NEUTRAL_VALUE_STYLE)
+            lines.append(line)
+
+    candidates = cast(list[dict[str, Any]], decision.get("top_candidates") or [])
+    if candidates:
+        lines.append(Text(""))
+        lines.append(Text("TOP CANDIDATES", style="bold blue"))
+        for candidate in candidates[:8]:
+            line = Text(
+                f"{candidate.get('rank', '?')}. ",
+                style=TUI_ROW_LABEL_STYLE,
+            )
+            line.append(_decision_node_label(candidate), style=TUI_METRIC_VALUE_STYLE)
+            policy_score = candidate.get("policy_score")
+            if isinstance(policy_score, (float, int)) and not isinstance(
+                policy_score,
+                bool,
+            ):
+                line.append(f" policy={float(policy_score):.5f}", style=TUI_INACTIVE_VALUE_STYLE)
+            lines.append(line)
+
+    return Group(*lines)
+
+
 def render_tree_view(
     view: TreeView,
     *,
@@ -944,6 +1056,8 @@ class ArrowKeyReader:
         b"A": "active",
         b"b": "best",
         b"B": "best",
+        b"d": "debug",
+        b"D": "debug",
         b"f": "follow",
         b"F": "follow",
         b"v": "view",
@@ -2435,6 +2549,7 @@ def run(argv: list[str] | None = None):
     focused_tree_item_index = 0
     tree_scroll_top = 0
     tree_follow_mode = "off"
+    search_debug_visible = False
     left_panel_view: LeftPanelView = "tree"
     focused_table_item_id = "header"
     focused_table_item_index = 0
@@ -2547,7 +2662,7 @@ def run(argv: list[str] | None = None):
     def drain_left_panel_navigation(view: TreeView) -> None:
         nonlocal focused_tree_item_id, focused_tree_item_index, tree_scroll_top
         nonlocal focused_table_item_id, focused_table_item_index, table_scroll_top
-        nonlocal tree_follow_mode, left_panel_view
+        nonlocal tree_follow_mode, left_panel_view, search_debug_visible
         if left_panel_view != "tree":
             if focused_table_item_id not in view.index_by_id:
                 focused_table_item_id = recover_tree_focus_by_index(
@@ -2563,6 +2678,9 @@ def run(argv: list[str] | None = None):
                     focused_table_item_id = "header"
                     focused_table_item_index = 0
                     table_scroll_top = 0
+                    return
+                if key == "debug":
+                    search_debug_visible = not search_debug_visible
                     return
                 if key in {"up", "down"}:
                     focused_table_item_id = move_tree_focus(
@@ -2603,6 +2721,9 @@ def run(argv: list[str] | None = None):
                 focused_table_item_id = "header"
                 focused_table_item_index = 0
                 table_scroll_top = 0
+                return
+            if key == "debug":
+                search_debug_visible = not search_debug_visible
                 return
             if key == "follow":
                 tree_follow_mode = (
@@ -2726,7 +2847,8 @@ def run(argv: list[str] | None = None):
             title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
-                f"f follow:{tree_follow_mode}  v view:{left_panel_view}  Ctrl+C stop"
+                f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
+                f"d debug:{'on' if search_debug_visible else 'off'}  Ctrl+C stop"
             ),
         )
         data_panel = Panel(
@@ -2775,15 +2897,29 @@ def run(argv: list[str] | None = None):
             title="[b]Logs",
         )
 
-        layout = Layout()
+        body_layout = Layout()
         data_layout = Layout(name="data", ratio=2)
         data_layout.split_column(
             Layout(data_panel, name="run_data", ratio=2),
             Layout(log_panel, name="logs", ratio=1),
         )
-        layout.split_row(
+        body_layout.split_row(
             Layout(tree_panel, name="tree", ratio=3),
             data_layout,
+        )
+        if not search_debug_visible:
+            return body_layout
+
+        debug_panel = Panel(
+            Padding(build_search_decision_debug_view(agent.last_search_decision), (0, 1)),
+            title="[b]Search decision debug",
+            subtitle=f"{Path(cfg.log_dir) / 'search_decisions.jsonl'}",
+            border_style="yellow",
+        )
+        layout = Layout()
+        layout.split_column(
+            Layout(debug_panel, name="search_debug", size=15),
+            Layout(body_layout, name="main"),
         )
         return layout
 

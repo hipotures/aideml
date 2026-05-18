@@ -16,6 +16,7 @@ from aide.run import (
     build_resource_summary,
     build_run_log_summary,
     build_run_data,
+    build_search_decision_debug_view,
     build_hypothesis_phase_status,
     build_operator_notice_summary,
     build_root_hypotheses_view,
@@ -48,6 +49,53 @@ from aide.utils.metric import MetricValue
 
 def test_resource_sparkline_uses_latest_samples_without_rebinning_history():
     assert _sparkline([100.0, 0.0, 0.0, 0.0], width=3, ceiling=100.0) == "▁▁▁"
+
+
+def test_search_decision_debug_view_explains_best_node_rejection():
+    view = build_search_decision_debug_view(
+        {
+            "step": 143,
+            "mode": "hypothesis",
+            "reason": "highest_policy_score_after_filters",
+            "counts": {
+                "good_nodes": 91,
+                "after_hypothesis_child_candidates": 64,
+                "after_branch_candidate": 52,
+            },
+            "selected": {
+                "hypothesis_id": "000011",
+                "metric": 0.95193,
+                "step": 11,
+                "child_count": 7,
+            },
+            "best_node": {
+                "hypothesis_id": "000002",
+                "metric": 0.95239,
+                "step": 142,
+                "selected": False,
+                "rejected_at": "branch_candidate",
+                "reason": "parent_metric_missing",
+                "parent_metric": None,
+                "parent_is_buggy": True,
+            },
+            "top_candidates": [
+                {
+                    "rank": 1,
+                    "hypothesis_id": "000011",
+                    "metric": 0.95193,
+                    "policy_score": 0.873,
+                    "step": 11,
+                }
+            ],
+        }
+    )
+
+    output = _render_text(view)
+
+    assert "SEARCH DECISION step=143 mode=hypothesis" in output
+    assert "SELECTED        0.95193*000011" in output
+    assert "BEST SCORE NODE 0.95239*000002" in output
+    assert "not selected:   branch_candidate / parent_metric_missing" in output
 
 
 def _good_node(
