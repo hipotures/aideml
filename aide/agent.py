@@ -272,16 +272,22 @@ def _metric_for_search(node: Node) -> float:
     return -value if node.metric.maximize is False else value
 
 
-def _node_improves_parent(child: Node, parent: Node) -> bool:
+def _node_improves_parent(
+    child: Node,
+    parent: Node,
+    *,
+    epsilon: float = 0.0,
+) -> bool:
     if child.metric is None or child.metric.value is None:
         return False
     if parent.metric is None or parent.metric.value is None:
         return False
     child_value = float(child.metric.value)
     parent_value = float(parent.metric.value)
+    epsilon = max(0.0, float(epsilon))
     if child.metric.maximize is False:
-        return child_value < parent_value
-    return child_value > parent_value
+        return child_value < parent_value - epsilon
+    return child_value > parent_value + epsilon
 
 
 def _nearest_scored_ancestor(node: Node) -> Node | None:
@@ -293,48 +299,65 @@ def _nearest_scored_ancestor(node: Node) -> Node | None:
     return None
 
 
-def _node_improves_nearest_scored_ancestor(node: Node) -> bool:
+def _node_improves_nearest_scored_ancestor(
+    node: Node,
+    *,
+    epsilon: float = 0.0,
+) -> bool:
     ancestor = _nearest_scored_ancestor(node)
     if ancestor is None:
         return False
-    return _node_improves_parent(node, ancestor)
+    return _node_improves_parent(node, ancestor, epsilon=epsilon)
 
 
-def _is_scored_non_improving_child(child: Node, parent: Node) -> bool:
+def _is_scored_non_improving_child(
+    child: Node,
+    parent: Node,
+    *,
+    epsilon: float = 0.0,
+) -> bool:
     if child.is_buggy or child.is_terminal_failure:
         return False
     if child.metric is None or child.metric.value is None:
         return False
-    return not _node_improves_parent(child, parent)
+    return not _node_improves_parent(child, parent, epsilon=epsilon)
 
 
-def _has_improving_child(node: Node) -> bool:
-    return any(_node_improves_parent(child, node) for child in node.children)
-
-
-def _non_improving_child_count(node: Node) -> int:
-    return sum(
-        1
+def _has_improving_child(node: Node, *, epsilon: float = 0.0) -> bool:
+    return any(
+        _node_improves_parent(child, node, epsilon=epsilon)
         for child in node.children
-        if _is_scored_non_improving_child(child, node)
     )
 
 
-def _is_hypothesis_parent_saturated(node: Node, *, limit: int) -> bool:
+def _non_improving_child_count(node: Node, *, epsilon: float = 0.0) -> int:
+    return sum(
+        1
+        for child in node.children
+        if _is_scored_non_improving_child(child, node, epsilon=epsilon)
+    )
+
+
+def _is_hypothesis_parent_saturated(
+    node: Node,
+    *,
+    limit: int,
+    epsilon: float = 0.0,
+) -> bool:
     if limit <= 0:
         return False
-    if _has_improving_child(node):
+    if _has_improving_child(node, epsilon=epsilon):
         return False
-    return _non_improving_child_count(node) >= limit
+    return _non_improving_child_count(node, epsilon=epsilon) >= limit
 
 
-def _is_hypothesis_branch_candidate(node: Node) -> bool:
+def _is_hypothesis_branch_candidate(node: Node, *, epsilon: float = 0.0) -> bool:
     if node.parent is None:
         return True
-    if _node_improves_parent(node, node.parent):
+    if _node_improves_parent(node, node.parent, epsilon=epsilon):
         return True
     if node.parent.metric is None or node.parent.metric.value is None:
-        return _node_improves_nearest_scored_ancestor(node)
+        return _node_improves_nearest_scored_ancestor(node, epsilon=epsilon)
     return False
 
 
@@ -464,7 +487,11 @@ def _best_scored_search_node(journal: Journal) -> Node | None:
     return max(candidates, key=lambda node: node.metric, default=None)
 
 
-def _branch_candidate_rejection_reason(node: Node) -> str:
+def _branch_candidate_rejection_reason(
+    node: Node,
+    *,
+    epsilon: float = 0.0,
+) -> str:
     if node.parent is None:
         return "accepted_root"
     if node.metric is None or node.metric.value is None:
@@ -473,7 +500,9 @@ def _branch_candidate_rejection_reason(node: Node) -> str:
         if _nearest_scored_ancestor(node) is None:
             return "parent_metric_missing"
         return "does_not_improve_nearest_scored_ancestor"
-    if not _node_improves_parent(node, node.parent):
+    if not _node_improves_parent(node, node.parent, epsilon=epsilon):
+        if _metric_for_search(node) > _metric_for_search(node.parent):
+            return "does_not_clear_min_improvement_epsilon"
         return "does_not_improve_parent"
     return "accepted"
 
@@ -677,6 +706,9 @@ class Agent:
                     "reason": "submission_contract_or_oom_branch",
                 }
         if self._is_hypothesis_mode():
+            improvement_epsilon = float(
+                getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
+            )
             before_child_candidates = list(good_nodes)
             good_nodes = filter_hypothesis_candidate_parents(
                 self.cfg,
@@ -692,14 +724,22 @@ class Agent:
                     }
             before_branch_candidates = list(good_nodes)
             good_nodes = [
-                node for node in good_nodes if _is_hypothesis_branch_candidate(node)
+                node
+                for node in good_nodes
+                if _is_hypothesis_branch_candidate(
+                    node,
+                    epsilon=improvement_epsilon,
+                )
             ]
             trace["counts"]["after_branch_candidate"] = len(good_nodes)
             for node in before_branch_candidates:
                 if node not in good_nodes:
                     trace["rejections"][node.id] = {
                         "stage": "branch_candidate",
-                        "reason": _branch_candidate_rejection_reason(node),
+                        "reason": _branch_candidate_rejection_reason(
+                            node,
+                            epsilon=improvement_epsilon,
+                        ),
                     }
             limit = int(
                 getattr(
@@ -713,7 +753,11 @@ class Agent:
                 good_nodes = [
                     node
                     for node in good_nodes
-                    if not _is_hypothesis_parent_saturated(node, limit=limit)
+                    if not _is_hypothesis_parent_saturated(
+                        node,
+                        limit=limit,
+                        epsilon=improvement_epsilon,
+                    )
                 ]
                 trace["counts"]["after_saturation"] = len(good_nodes)
                 for node in before_saturation:

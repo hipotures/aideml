@@ -302,6 +302,89 @@ def test_hypothesis_search_keeps_parent_with_improving_child_available(
     assert selected is better
 
 
+def test_hypothesis_search_requires_epsilon_improvement_for_child_candidate(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.0001
+
+    journal = Journal()
+    parent = _good_node(0.95100)
+    tiny_gain = _good_node(0.95105, parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (tiny_gain, "000002"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is parent
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["rejections"][tiny_gain.id]["stage"] == "branch_candidate"
+
+
+def test_hypothesis_saturation_treats_tiny_gain_as_non_improving(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 1
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.0001
+
+    journal = Journal()
+    parent = _good_node(0.95100)
+    fallback = _good_node(0.95090)
+    tiny_gain = _good_node(0.95105, parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (fallback, "000002"),
+        (tiny_gain, "000003"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is fallback
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["rejections"][parent.id]["stage"] == "saturation"
+
+
 def test_hypothesis_non_improving_limit_ignores_bug_children(
     tmp_path,
     monkeypatch,
