@@ -761,13 +761,13 @@ class Agent:
             )
             for node in good_nodes
         }
-        best_node = _best_scored_search_node(self.journal)
+        best_policy_node = max(good_nodes, key=lambda node: node.metric)
         min_best_children = int(
             getattr(search_cfg, "best_score_min_children_before_exploration", 0)
         )
         selection_override: dict[str, Any] | None = None
-        if best_node in policy_scores and min_best_children > 0:
-            best_child_count = _search_child_count(best_node)
+        if min_best_children > 0:
+            best_child_count = _search_child_count(best_policy_node)
             if best_child_count < min_best_children:
                 selection_override = {
                     "reason": "best_score_min_children_before_exploration",
@@ -775,8 +775,8 @@ class Agent:
                     "min_children": min_best_children,
                 }
         selected_node = (
-            best_node
-            if selection_override is not None and best_node is not None
+            best_policy_node
+            if selection_override is not None
             else max(good_nodes, key=lambda node: policy_scores[node])
         )
         ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
@@ -787,48 +787,43 @@ class Agent:
             total_good_nodes=len(good_nodes),
             exploration_weight=exploration_weight,
         )
-        best_policy_payload = (
-            _search_policy_payload(
-                best_node,
-                normalized_metric=normalized_scores[best_node],
-                policy_score=policy_scores[best_node],
+        best_policy_payload = _search_policy_payload(
+            best_policy_node,
+            normalized_metric=normalized_scores[best_policy_node],
+            policy_score=policy_scores[best_policy_node],
+            total_good_nodes=len(good_nodes),
+            exploration_weight=exploration_weight,
+        )
+        trace["policy_diagnostics"] = {
+            "candidate_count": len(good_nodes),
+            "exploration_weight": exploration_weight,
+            "metric_min": metric_low,
+            "metric_max": metric_high,
+            "metric_span": metric_span,
+            "selected": selected_policy_payload,
+            "best": best_policy_payload,
+            "selected_minus_best_policy_score": (
+                policy_scores[selected_node] - policy_scores[best_policy_node]
+            ),
+            "selected_minus_best_metric": (
+                _metric_value(selected_node) - _metric_value(best_policy_node)
+                if (
+                    _metric_value(selected_node) is not None
+                    and _metric_value(best_policy_node) is not None
+                )
+                else None
+            ),
+            "fresh_child_metric_threshold": _fresh_child_metric_threshold(
+                best_node=best_policy_node,
+                best_policy_score=policy_scores[best_policy_node],
+                metric_low=metric_low,
+                metric_span=metric_span,
                 total_good_nodes=len(good_nodes),
                 exploration_weight=exploration_weight,
-            )
-            if best_node in policy_scores
-            else None
-        )
-        if best_policy_payload is not None:
-            trace["policy_diagnostics"] = {
-                "candidate_count": len(good_nodes),
-                "exploration_weight": exploration_weight,
-                "metric_min": metric_low,
-                "metric_max": metric_high,
-                "metric_span": metric_span,
-                "selected": selected_policy_payload,
-                "best": best_policy_payload,
-                "selected_minus_best_policy_score": (
-                    policy_scores[selected_node] - policy_scores[best_node]
-                ),
-                "selected_minus_best_metric": (
-                    _metric_value(selected_node) - _metric_value(best_node)
-                    if (
-                        _metric_value(selected_node) is not None
-                        and _metric_value(best_node) is not None
-                    )
-                    else None
-                ),
-                "fresh_child_metric_threshold": _fresh_child_metric_threshold(
-                    best_node=best_node,
-                    best_policy_score=policy_scores[best_node],
-                    metric_low=metric_low,
-                    metric_span=metric_span,
-                    total_good_nodes=len(good_nodes),
-                    exploration_weight=exploration_weight,
-                ),
-            }
-            if selection_override is not None:
-                trace["policy_diagnostics"]["selection_override"] = selection_override
+            ),
+        }
+        if selection_override is not None:
+            trace["policy_diagnostics"]["selection_override"] = selection_override
         trace["top_candidates"] = [
             {
                 **(_search_node_payload(node) or {}),

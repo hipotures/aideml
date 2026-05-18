@@ -980,7 +980,7 @@ def _append_policy_debug_lines(
     )
     lines.append(line)
 
-    for label, key in [("selected", "selected"), ("best", "best")]:
+    for label, key in [("selected", "selected"), ("best filtered", "best")]:
         payload = cast(dict[str, Any] | None, diagnostics.get(key))
         if not payload:
             continue

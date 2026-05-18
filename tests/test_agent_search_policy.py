@@ -683,3 +683,56 @@ def test_search_policy_exploits_best_score_until_min_child_count(tmp_path):
     assert diagnostics["selection_override"]["min_children"] == 3
     assert diagnostics["selected"]["node_id"] == best.id
     assert diagnostics["fresh_child_metric_threshold"]["metric"] < fresh_lower.metric.value
+
+
+def test_search_policy_exploits_best_remaining_score_after_top_saturates(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.05
+    cfg.agent.search.best_score_min_children_before_exploration = 3
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 3
+
+    journal = Journal()
+    lower_parent = _hypothesis_node(_good_node(0.95237), "000011")
+    next_best = _hypothesis_node(_good_node(0.95249, parent=lower_parent), "000703")
+    saturated_top = _hypothesis_node(_good_node(0.95264, parent=next_best), "000459")
+    stale_children = [
+        _hypothesis_node(_good_node(0.95237, parent=saturated_top), "000749"),
+        _hypothesis_node(_good_node(0.95257, parent=saturated_top), "000052"),
+        _hypothesis_node(_good_node(0.95219, parent=saturated_top), "000234"),
+    ]
+    fresh_lower = _hypothesis_node(_good_node(0.95093), "000634")
+    for node in [
+        lower_parent,
+        next_best,
+        saturated_top,
+        *stale_children,
+        fresh_lower,
+    ]:
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent.search_policy() is next_best
+
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["best_node"]["node_id"] == saturated_top.id
+    assert trace["best_node"]["rejected_at"] == "saturation"
+    diagnostics = trace["policy_diagnostics"]
+    assert diagnostics["best"]["node_id"] == next_best.id
+    assert diagnostics["selection_override"]["best_child_count"] == 1
