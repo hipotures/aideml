@@ -23,6 +23,7 @@ from aide.run import (
     model_settings_for_run,
     ResourceSnapshot,
     ArrowKeyReader,
+    _overlay_top,
     active_tree_item_id,
     best_tree_item_id,
     build_tree_view,
@@ -96,6 +97,12 @@ def test_search_decision_debug_view_explains_best_node_rejection():
     assert "SELECTED        0.95193*000011" in output
     assert "BEST SCORE NODE 0.95239*000002" in output
     assert "not selected:   branch_candidate / parent_metric_missing" in output
+
+
+def test_overlay_top_centers_with_console_edge_margin():
+    assert _overlay_top(console_height=40, overlay_height=10, edge_margin=3) == 15
+    assert _overlay_top(console_height=20, overlay_height=10, edge_margin=3) == 5
+    assert _overlay_top(console_height=12, overlay_height=10, edge_margin=3) == 3
 
 
 def _good_node(

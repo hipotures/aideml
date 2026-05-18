@@ -1034,13 +1034,15 @@ class _Overlay:
         overlay,
         *,
         overlay_width: int,
-        top: int = 1,
+        top: int | None = None,
+        edge_margin: int = 3,
         dim: bool = True,
     ) -> None:
         self.background = background
         self.overlay = overlay
         self.overlay_width = overlay_width
         self.top = top
+        self.edge_margin = edge_margin
         self.dim = dim
 
     def _slice_line(self, line, start: int, end: int):
@@ -1098,8 +1100,17 @@ class _Overlay:
         ]
 
         left = max((width - overlay_width) // 2, 0)
+        top = (
+            self.top
+            if self.top is not None
+            else _overlay_top(
+                console_height=height,
+                overlay_height=len(overlay_lines),
+                edge_margin=self.edge_margin,
+            )
+        )
         for index, overlay_line in enumerate(overlay_lines):
-            target_row = self.top + index
+            target_row = top + index
             if target_row < 0 or target_row >= height:
                 continue
             bg_line = bg_lines[target_row]
@@ -1111,6 +1122,22 @@ class _Overlay:
             yield from line
             if not last:
                 yield Segment.line()
+
+
+def _overlay_top(
+    *,
+    console_height: int,
+    overlay_height: int,
+    edge_margin: int = 3,
+) -> int:
+    if console_height <= 0:
+        return 0
+    edge_margin = max(0, edge_margin)
+    centered = max(0, (console_height - overlay_height) // 2)
+    lowest_top = max(0, console_height - overlay_height - edge_margin)
+    if lowest_top < edge_margin:
+        return min(edge_margin, max(0, console_height - 1))
+    return min(max(centered, edge_margin), lowest_top)
 
 
 def render_tree_view(
@@ -3013,7 +3040,7 @@ def run(argv: list[str] | None = None):
             layout,
             debug_panel,
             overlay_width=overlay_width,
-            top=1,
+            edge_margin=3,
             dim=True,
         )
 
