@@ -404,8 +404,16 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     baseline.metric = MetricValue(0.99, maximize=True)
     baseline.is_buggy = False
     journal.append(baseline)
-    weak = _hypothesis_node(_good_node(0.95000), "000111")
-    strong = _hypothesis_node(_good_node(0.95200), "000222")
+    weak = _hypothesis_node(
+        _good_node(0.95000, ctime=dt.datetime(2026, 5, 18, 3, 12).timestamp()),
+        "000111",
+    )
+    weak.step = 7
+    strong = _hypothesis_node(
+        _good_node(0.95200, ctime=dt.datetime(2026, 5, 18, 5, 59).timestamp()),
+        "000222",
+    )
+    strong.step = 145
     child = _hypothesis_node(_good_node(0.95300, parent=weak), "000333")
     journal.append(weak)
     journal.append(strong)
@@ -422,8 +430,9 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     )
 
     assert "Root hypotheses" in output
-    assert "0.95200" in output
-    assert "000222" in output
+    assert "#    score    hypothesis  time" in output
+    assert "002  0.95200  000222      05-18 05:59" in output
+    assert "001  0.95000  000111      05-18 03:12" in output
     assert output.index("000222") < output.index("000111")
     assert "000333" not in output
     assert "0.99000" not in output

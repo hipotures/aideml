@@ -818,12 +818,17 @@ def build_root_hypotheses_view(journal: Journal) -> TreeView:
         and _is_scored_hypothesis_node(node)
     ]
     roots.sort(key=_metric_sort_key, reverse=True)
-    lines = [Text("score     hypothesis", style=TUI_ROW_LABEL_STYLE)]
+    lines = [Text("#    score    hypothesis  time", style=TUI_ROW_LABEL_STYLE)]
     for node in roots:
         hypothesis_id = hypothesis_id_for_node(node) or "n/a"
+        step = node.step if node.step is not None else "?"
+        step_text = f"{step:03d}" if isinstance(step, int) else str(step).rjust(3)
+        time_text = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
         line = Text()
+        line.append(f"{step_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
         line.append(f"{_score_text(node):<9}", style=TUI_METRIC_VALUE_STYLE)
-        line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(f"{hypothesis_id:<12}", style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(time_text, style=TUI_INACTIVE_VALUE_STYLE)
         lines.append(line)
     if not roots:
         lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
