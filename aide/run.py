@@ -41,6 +41,7 @@ from .utils.seed_artifact import (
 )
 from omegaconf import OmegaConf
 from rich.console import Group
+from rich._loop import loop_last
 from rich.layout import Layout
 from rich.live import Live
 from rich.padding import Padding
@@ -53,6 +54,8 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 from rich.rule import Rule
+from rich.segment import Segment
+from rich.style import Style
 from rich.text import Text
 from rich.status import Status
 from rich.tree import Tree
@@ -1020,6 +1023,94 @@ def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
             lines.append(line)
 
     return Group(*lines)
+
+
+class _Overlay:
+    """Render a centered overlay panel over an existing Rich renderable."""
+
+    def __init__(
+        self,
+        background,
+        overlay,
+        *,
+        overlay_width: int,
+        top: int = 1,
+        dim: bool = True,
+    ) -> None:
+        self.background = background
+        self.overlay = overlay
+        self.overlay_width = overlay_width
+        self.top = top
+        self.dim = dim
+
+    def _slice_line(self, line, start: int, end: int):
+        if start >= end:
+            return []
+        result = []
+        pos = 0
+        for segment in line:
+            seg_len = segment.cell_length
+            if seg_len == 0:
+                if result:
+                    result.append(segment)
+                continue
+            seg_end = pos + seg_len
+            if seg_end <= start:
+                pos = seg_end
+                continue
+            if pos >= end:
+                break
+            cut_start = max(start - pos, 0)
+            cut_end = min(end - pos, seg_len)
+            if cut_start == 0 and cut_end == seg_len:
+                result.append(segment)
+            else:
+                _, right = segment.split_cells(cut_start)
+                mid, _ = right.split_cells(cut_end - cut_start)
+                result.append(mid)
+            pos = seg_end
+        return result
+
+    def __rich_console__(self, console, options):
+        width, height = options.size
+        bg_lines = console.render_lines(self.background, options, pad=True)
+        bg_lines = Segment.set_shape(bg_lines, width, height)
+        if self.dim:
+            bg_lines = [
+                list(
+                    Segment.apply_style(
+                        line,
+                        Style(dim=True),
+                        post_style=Style(color="#5a5a5a"),
+                    )
+                )
+                for line in bg_lines
+            ]
+
+        overlay_width = min(max(1, self.overlay_width), width)
+        overlay_lines = console.render_lines(
+            self.overlay,
+            options.update(width=overlay_width),
+            pad=True,
+        )
+        overlay_lines = [
+            Segment.adjust_line_length(line, overlay_width) for line in overlay_lines
+        ]
+
+        left = max((width - overlay_width) // 2, 0)
+        for index, overlay_line in enumerate(overlay_lines):
+            target_row = self.top + index
+            if target_row < 0 or target_row >= height:
+                continue
+            bg_line = bg_lines[target_row]
+            left_segment = self._slice_line(bg_line, 0, left)
+            right_segment = self._slice_line(bg_line, left + overlay_width, width)
+            bg_lines[target_row] = left_segment + overlay_line + right_segment
+
+        for last, line in loop_last(bg_lines):
+            yield from line
+            if not last:
+                yield Segment.line()
 
 
 def render_tree_view(
@@ -2897,31 +2988,34 @@ def run(argv: list[str] | None = None):
             title="[b]Logs",
         )
 
-        body_layout = Layout()
+        layout = Layout()
         data_layout = Layout(name="data", ratio=2)
         data_layout.split_column(
             Layout(data_panel, name="run_data", ratio=2),
             Layout(log_panel, name="logs", ratio=1),
         )
-        body_layout.split_row(
+        layout.split_row(
             Layout(tree_panel, name="tree", ratio=3),
             data_layout,
         )
         if not search_debug_visible:
-            return body_layout
+            return layout
 
+        terminal_size = shutil.get_terminal_size((120, 40))
+        overlay_width = min(max(80, terminal_size.columns - 8), terminal_size.columns)
         debug_panel = Panel(
             Padding(build_search_decision_debug_view(agent.last_search_decision), (0, 1)),
             title="[b]Search decision debug",
             subtitle=f"{Path(cfg.log_dir) / 'search_decisions.jsonl'}",
             border_style="yellow",
         )
-        layout = Layout()
-        layout.split_column(
-            Layout(debug_panel, name="search_debug", size=15),
-            Layout(body_layout, name="main"),
+        return _Overlay(
+            layout,
+            debug_panel,
+            overlay_width=overlay_width,
+            top=1,
+            dim=True,
         )
-        return layout
 
     interrupted = False
     interrupt_message = ""
