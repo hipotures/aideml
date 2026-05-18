@@ -52,6 +52,20 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.gpu is False
 
 
+def test_full_boost_gpu_ensemble_profile_is_available():
+    cfg = _load_cfg(use_cli_args=False)
+
+    gpu_profile = cfg.agent.autogluon.profiles.full_boost_gpu
+    ensemble_profile = cfg.agent.autogluon.profiles.full_boost_gpu_ens
+
+    assert ensemble_profile.included_model_types == gpu_profile.included_model_types
+    assert ensemble_profile.presets == gpu_profile.presets
+    assert ensemble_profile.time_limit == gpu_profile.time_limit
+    assert ensemble_profile.use_gpu is True
+    assert ensemble_profile.fit_args.fit_weighted_ensemble is True
+    assert gpu_profile.fit_args.fit_weighted_ensemble is False
+
+
 def test_prep_cfg_resolves_cli_model_suffix(tmp_path):
     cfg = _base_cfg(tmp_path)
     cfg.agent.code.model = "gpt-5.5:high"
