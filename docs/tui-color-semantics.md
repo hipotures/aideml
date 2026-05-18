@@ -31,7 +31,7 @@ dynamic value segment:
 
 ```text
 ◆ Research   149 @ 000847 ✓
-■ Phase       exploration 33/50 · exploitation 116/1450
+◇ Phase       exploration 33/50 · exploitation 116/1450
 ★ Best Score 145 @ 19:59:14 0.95193 · 000011
 ```
 
