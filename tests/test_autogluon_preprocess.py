@@ -175,6 +175,20 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert code.rstrip().endswith("main()")
 
 
+def test_build_autogluon_wrapper_emits_run_stats_collection(tmp_path):
+    cfg = _cfg(tmp_path)
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    assert "import time" in code
+    assert "preprocess_started_at = time.time()" in code
+    assert "preprocess_time = time.time() - preprocess_started_at" in code
+    assert "feature_count = int(len(preprocessed.columns))" in code
+    assert "training_started_at = time.time()" in code
+    assert "training_time = time.time() - training_started_at" in code
+    assert "leaderboard = predictor.leaderboard(silent=True)" in code
+    assert '"run_stats": run_stats' in code
+
+
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
     cfg = _cfg(tmp_path)
 

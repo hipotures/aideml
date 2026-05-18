@@ -296,6 +296,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -388,6 +389,55 @@ def _infer_metric(target: pd.Series) -> tuple[str, str | None]:
     if target.nunique(dropna=True) == 2:
         return "roc_auc", "binary"
     return "accuracy", None
+
+
+def _json_safe_scalar(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    if isinstance(value, (np.bool_,)):
+        return bool(value)
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
+def _leaderboard_records(predictor: TabularPredictor) -> list[dict]:
+    keep_columns = [
+        "model",
+        "score_val",
+        "score_test",
+        "eval_metric",
+        "fit_time",
+        "fit_time_marginal",
+        "pred_time_val",
+        "pred_time_val_marginal",
+        "stack_level",
+        "can_infer",
+        "fit_order",
+    ]
+    try:
+        leaderboard = predictor.leaderboard(silent=True)
+    except Exception as exc:
+        return [{{"error": f"leaderboard unavailable: {{exc}}"}}]
+    records = []
+    for row in leaderboard.to_dict(orient="records"):
+        records.append(
+            {{
+                column: _json_safe_scalar(row.get(column))
+                for column in keep_columns
+                if column in row
+            }}
+        )
+    return records
 
 
 def _artifact_dir(working_dir: Path) -> Path:
@@ -558,10 +608,13 @@ def main() -> None:
     test_features = test_df.drop(columns=[id_col], errors="ignore")
     combined = _make_combined_frame(train_features, test_features)
     print("AIDE AutoGluon: starting preprocess", flush=True)
+    preprocess_started_at = time.time()
     with _preprocess_timeout(int(AIDE_AG_CONFIG.get("preprocess_timeout", 180))):
         preprocessed = preprocess(combined.copy())
+    preprocess_time = time.time() - preprocess_started_at
+    feature_count = int(len(preprocessed.columns))
     print(
-        f"AIDE AutoGluon: finished preprocess rows={{len(preprocessed)}} cols={{len(preprocessed.columns)}}",
+        f"AIDE AutoGluon: finished preprocess rows={{len(preprocessed)}} cols={{feature_count}}",
         flush=True,
     )
     preprocessed = _validate_preprocessed_frame(
@@ -607,6 +660,7 @@ def main() -> None:
     if AIDE_AG_CONFIG.get("hyperparameters"):
         fit_kwargs["hyperparameters"] = AIDE_AG_CONFIG["hyperparameters"]
     fit_kwargs.update(AIDE_AG_CONFIG.get("fit_args", {{}}))
+    training_started_at = time.time()
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting fit", flush=True)
         predictor = TabularPredictor(
@@ -618,6 +672,8 @@ def main() -> None:
         )
         predictor.fit(**fit_kwargs)
         print("AIDE AutoGluon: finished fit", flush=True)
+    training_time = time.time() - training_started_at
+    model_records = _leaderboard_records(predictor)
 
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting validation and prediction", flush=True)
@@ -656,6 +712,12 @@ def main() -> None:
         print(f"AIDE AutoGluon: artifact submission saved to {{artifact_submission_path}}", flush=True)
 
     summary = "AutoGluon preprocess wrapper completed."
+    run_stats = {{
+        "feature_count": feature_count,
+        "preprocess_time": float(preprocess_time),
+        "training_time": float(training_time),
+        "models": model_records,
+    }}
     print(f"Validation {{eval_metric}}: {{metric_value:.6f}}")
     print("Submission saved successfully.")
     print(RESULT_MARKER + " " + json.dumps({{
@@ -663,6 +725,7 @@ def main() -> None:
         "summary": summary,
         "metric": metric_value,
         "lower_is_better": lower_is_better,
+        "run_stats": run_stats,
         {research_marker_fields}
     }}, sort_keys=True))
 
