@@ -121,7 +121,9 @@ def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
         (log_dir / "artifacts" / "20260502T213547" / "aide_result.json").read_text()
     )
 
-    assert manifest["run_stats"] == node.run_stats
+    expected = dict(node.run_stats)
+    expected["total_exec_time"] = 1.0
+    assert manifest["run_stats"] == expected
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -157,10 +159,21 @@ Do not parse `run_stats` from the LLM review response path. Legacy/manual code m
 
 - [ ] **Step 5: Write `run_stats` into manifests**
 
-In `aide/utils/artifact_manifest.py`, inside `build_node_artifact_manifest(...)`, add a top-level key near `"execution"`:
+In `aide/utils/artifact_manifest.py`, add this helper near `metric_payload(...)`:
 
 ```python
-        "run_stats": node.run_stats,
+def run_stats_payload(node: Node) -> dict[str, Any] | None:
+    if not isinstance(node.run_stats, dict):
+        return None
+    payload = dict(node.run_stats)
+    payload["total_exec_time"] = node.exec_time
+    return payload
+```
+
+Then inside `build_node_artifact_manifest(...)`, add a top-level key near `"execution"`:
+
+```python
+        "run_stats": run_stats_payload(node),
 ```
 
 In `_node_from_manifest(...)`, after execution fields are restored, add:
@@ -357,7 +370,7 @@ Then add it to the JSON payload:
         "run_stats": run_stats,
 ```
 
-Do not add `total_exec_time` inside the wrapper; the interpreter only knows total execution time outside the generated code. Task 1 manifest persistence can later copy `node.exec_time` if needed, but the minimum accepted payload is wrapper-local stats plus models.
+Do not add `total_exec_time` inside the wrapper; the interpreter only knows total execution time outside the generated code. Task 1 manifest persistence adds `total_exec_time` to `aide_result.json` from `node.exec_time`.
 
 - [ ] **Step 7: Run Task 2 tests**
 
@@ -971,7 +984,7 @@ Spec coverage:
 - All hypotheses table: Task 3.
 - Best branch path view: Task 3.
 - No active placeholder in tables: Task 3 by building from completed `journal.nodes` only.
-- New AutoGluon stats persisted but not displayed: Tasks 1 and 2.
+- New AutoGluon stats persisted but not displayed, including manifest-level `total_exec_time`: Tasks 1 and 2.
 - No live log/model-dir scanning: Tasks 3 and 4 use only `journal`; Tasks 1 and 2 write data at execution time.
 
 Placeholder scan:
