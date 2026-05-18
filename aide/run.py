@@ -1368,7 +1368,7 @@ def build_best_score_status(journal: Journal) -> Text | None:
     if node is None:
         return None
     step = node.step if node.step is not None else "?"
-    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%H:%M:%S")
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
     hypothesis_id = hypothesis_id_for_node(node)
     suffix = f" · {hypothesis_id}" if hypothesis_id is not None else ""
     line = _run_status_line_prefix(TUI_BEST_SCORE_ICON, "Best Score")

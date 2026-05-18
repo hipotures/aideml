@@ -1051,7 +1051,7 @@ def test_run_data_shows_checkpoint_and_best_score_statuses_with_times(tmp_path):
 
     assert "◆ Research   098 @ 02:08:34 ✓" in output
     assert "◆ Synthesis  098 @ 02:09:15 ✓" in output
-    assert "★ Best Score 001 @ 02:11:25 0.95108" in output
+    assert "★ Best Score 001 @ 05-08 02:11 0.95108" in output
     assert output.index("◆ Research") < output.index("◆ Synthesis")
     assert output.index("◆ Synthesis") < output.index("★ Best Score")
     assert output.index("★ Best Score") < output.index("Models")
@@ -1092,7 +1092,7 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
     )
 
     assert "◆ Research   030 @ 000122 ✓" in output
-    assert "★ Best Score 000 @ 19:13:00 0.95115 · 000122" in output
+    assert "★ Best Score 000 @ 05-08 19:13 0.95115 · 000122" in output
 
 
 def test_run_data_shows_operator_notice_before_last_error(tmp_path):
