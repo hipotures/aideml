@@ -103,7 +103,7 @@ agent:
     disable_oom_saturated_parents: false
     hypothesis_child_order: root_score
     hypothesis_max_non_improving_children_per_parent: 10
-    hypothesis_min_improvement_epsilon: 0.0001
+    hypothesis_min_improvement_epsilon: 0.00002
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.
