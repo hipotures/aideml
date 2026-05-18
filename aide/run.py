@@ -328,6 +328,7 @@ def journal_to_rich_tree(
     *,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
+    active_hypothesis_id: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -361,7 +362,10 @@ def journal_to_rich_tree(
         if active_stage is None:
             return
         indicator = "[*]" if blink_on else "[ ]"
-        tree.add(Text(indicator, style=active_placeholder_style()))
+        placeholder = Text(indicator, style=active_placeholder_style())
+        if active_hypothesis_id:
+            placeholder.append(f"·{active_hypothesis_id}", style=active_placeholder_style())
+        tree.add(placeholder)
 
     def node_order_key(node: Node):
         return (
@@ -509,6 +513,7 @@ def _tree_node_label(
 def _tree_active_placeholder_line(
     *,
     active_stage: str | None,
+    active_hypothesis_id: str | None = None,
     blink_on: bool,
 ) -> Text:
     indicator = "[*]" if blink_on else "[ ]"
@@ -519,7 +524,10 @@ def _tree_active_placeholder_line(
         style = "bold yellow"
     elif active_stage == "reviewing":
         style = "bold blue"
-    return Text(indicator, style=style)
+    line = Text(indicator, style=style)
+    if active_hypothesis_id:
+        line.append(f"·{active_hypothesis_id}", style=style)
+    return line
 
 
 def synthesis_injected_node_ids(log_dir: Path | str) -> set[str]:
@@ -544,6 +552,7 @@ def build_tree_view(
     *,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
+    active_hypothesis_id: str | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -593,6 +602,7 @@ def build_tree_view(
         line.append_text(
             _tree_active_placeholder_line(
                 active_stage=active_stage,
+                active_hypothesis_id=active_hypothesis_id,
                 blink_on=blink_on,
             )
         )
@@ -2998,6 +3008,7 @@ def run(argv: list[str] | None = None):
             journal,
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
+            active_hypothesis_id=agent.active_research_hypothesis_id,
             blink_on=blink_on,
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches

@@ -1560,6 +1560,7 @@ def test_agent_exposes_active_hypothesis_log_hint_during_generation(
 
     def fake_plan_and_code(_prompt):
         captured_hint["value"] = agent.active_research_hypothesis_log_hint
+        captured_hint["hypothesis_id"] = agent.active_research_hypothesis_id
         return "I will verify hypothesis 000122.", "print('ok')"
 
     agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
@@ -1571,6 +1572,7 @@ def test_agent_exposes_active_hypothesis_log_hint_during_generation(
     assert "Title: Rival-relative pit-wave features" in hint
     assert "Summary: Use current-lap peer pit context." in hint
     assert "Try: Add current-lap rival aggregate features." in hint
+    assert captured_hint["hypothesis_id"] == "000122"
 
 
 def test_hypothesis_log_hint_normalizes_literal_json_newlines(tmp_path):

@@ -238,6 +238,24 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
     assert "executing" not in output
 
 
+def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
+    journal = Journal()
+    parent = _hypothesis_node(_good_node(0.945), "000111")
+    journal.append(parent)
+
+    tree = journal_to_rich_tree(
+        journal,
+        active_parent_node=parent,
+        active_stage="generating",
+        active_hypothesis_id="000348",
+        blink_on=True,
+    )
+
+    output = _render_text(tree)
+
+    assert "[*]·000348" in output
+
+
 def test_journal_tree_colors_active_placeholder_by_stage():
     expected_ansi = {
         "generating": "\x1b[1;37m[*]",
@@ -850,6 +868,30 @@ def test_tree_view_renders_active_placeholder_as_tree_child():
 
     assert "├── * 0.91000" in output
     assert "└── [*]" in output
+
+
+def test_tree_view_renders_active_hypothesis_id_on_placeholder():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.90), "000111")
+    journal.append(root)
+
+    view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+        active_hypothesis_id="000348",
+        blink_on=True,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "└── [*]·000348" in output
 
 
 def test_tree_view_marks_baseline_bullseye_when_not_best():

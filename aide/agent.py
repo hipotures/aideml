@@ -523,6 +523,7 @@ class Agent:
         self.active_parent_node: Node | None = None
         self.active_node: Node | None = None
         self.active_stage: str | None = None
+        self.active_research_hypothesis_id: str | None = None
         self.active_research_hypothesis_log_hint: str | None = None
         self.active_stage_started_at: float | None = None
         self._pending_node_ctime: float | None = None
@@ -1008,6 +1009,9 @@ class Agent:
                 parent_node=parent_node,
                 completed_steps=len(self.journal.nodes),
             )
+            self.active_research_hypothesis_id = (
+                selection.hypotheses[0].id if selection.hypotheses else None
+            )
             self.active_research_hypothesis_log_hint = (
                 format_hypothesis_for_log_panel(selection)
             )
@@ -1410,6 +1414,7 @@ class Agent:
         llm_log_dir: Path | None = None,
     ) -> Node:
         self.set_active_stage("generating")
+        self.active_research_hypothesis_id = None
         self.active_research_hypothesis_log_hint = None
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
         previous_ctime = self._pending_node_ctime
@@ -1450,6 +1455,7 @@ class Agent:
     def clear_active_step(self) -> None:
         self.active_parent_node = None
         self.active_node = None
+        self.active_research_hypothesis_id = None
         self.active_research_hypothesis_log_hint = None
         self.set_active_stage(None)
 
