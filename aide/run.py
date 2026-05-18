@@ -891,6 +891,7 @@ def build_best_branch_view(journal: Journal) -> TreeView:
         path.append(node)
         node = node.parent
     path.reverse()
+    path = [path_node for path_node in path if _is_scored_hypothesis_node(path_node)]
 
     line = Text()
     for index, path_node in enumerate(path):

@@ -483,7 +483,7 @@ def test_best_branch_view_renders_top_path_root_to_leaf():
     assert "000444" not in output
 
 
-def test_best_branch_view_handles_unscored_ancestors_without_crashing():
+def test_best_branch_view_skips_unscored_ancestors():
     journal = Journal()
     root = _hypothesis_node(Node(code="pending", plan="pending"), "000111")
     root.metric = MetricValue(None, maximize=True)
@@ -503,7 +503,32 @@ def test_best_branch_view_handles_unscored_ancestors_without_crashing():
     )
 
     assert "Best branch" in output
-    assert "000111 n/a -> 000222 0.95300" in output
+    assert "000111" not in output
+    assert "n/a" not in output
+    assert "000222 0.95300" in output
+
+
+def test_best_branch_view_skips_failed_retry_with_same_hypothesis_id():
+    journal = Journal()
+    failed_retry = _hypothesis_node(_bug_node(), "000002")
+    top = _hypothesis_node(_good_node(0.95300, parent=failed_retry), "000002")
+    journal.append(failed_retry)
+    journal.append(top)
+
+    view = build_best_branch_view(journal)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "Best branch" in output
+    assert "n/a" not in output
+    assert "000002 0.95300" in output
+    assert output.count("000002") == 1
 
 
 def test_tree_focus_moves_by_siblings_parent_and_child():
