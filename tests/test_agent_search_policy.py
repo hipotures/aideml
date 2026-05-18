@@ -623,3 +623,32 @@ def test_search_policy_exploration_respects_minimization_metrics(tmp_path):
     selected = agent.search_policy()
 
     assert selected is underexpanded
+
+
+def test_search_policy_trace_explains_exploration_threshold(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.05
+    journal = Journal()
+    best = _good_node(0.95264)
+    selected = _good_node(0.95263)
+    low = _good_node(0.94939)
+    child = _good_node(0.95200, parent=best)
+    for node in [best, selected, low, child]:
+        journal.append(node)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent.search_policy() is selected
+
+    trace = agent.last_search_decision
+    assert trace is not None
+    diagnostics = trace["policy_diagnostics"]
+    assert diagnostics["candidate_count"] == 4
+    assert diagnostics["exploration_weight"] == 0.05
+    assert diagnostics["best"]["node_id"] == best.id
+    assert diagnostics["selected"]["node_id"] == selected.id
+    assert diagnostics["selected_minus_best_policy_score"] > 0
+    assert diagnostics["selected_minus_best_metric"] < 0
+    assert diagnostics["fresh_child_metric_threshold"]["child_count"] == 0
+    assert diagnostics["fresh_child_metric_threshold"]["direction"] == ">="
+    assert diagnostics["fresh_child_metric_threshold"]["metric"] < best.metric.value

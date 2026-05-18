@@ -946,6 +946,86 @@ def _append_decision_payload_line(
     lines.append(line)
 
 
+def _decision_number(value: Any, digits: int = 5) -> str:
+    if not isinstance(value, (float, int)) or isinstance(value, bool):
+        return "n/a"
+    return f"{float(value):.{digits}f}"
+
+
+def _append_policy_debug_lines(
+    lines: list[Text],
+    diagnostics: dict[str, Any],
+) -> None:
+    lines.append(Text(""))
+    lines.append(Text("POLICY SCORE", style="bold blue"))
+
+    candidate_count = diagnostics.get("candidate_count", "n/a")
+    exploration_weight = _decision_number(diagnostics.get("exploration_weight"), 3)
+    line = Text("policy config   ", style=TUI_ROW_LABEL_STYLE)
+    line.append(f"candidates={candidate_count}", style=TUI_INACTIVE_VALUE_STYLE)
+    line.append(f" exploration_weight={exploration_weight}", style=TUI_INACTIVE_VALUE_STYLE)
+    lines.append(line)
+
+    line = Text("metric range    ", style=TUI_ROW_LABEL_STYLE)
+    line.append(
+        (
+            f"{_decision_number(diagnostics.get('metric_min'))}.."
+            f"{_decision_number(diagnostics.get('metric_max'))}"
+        ),
+        style=TUI_INACTIVE_VALUE_STYLE,
+    )
+    line.append(
+        f" span={_decision_number(diagnostics.get('metric_span'))}",
+        style=TUI_INACTIVE_VALUE_STYLE,
+    )
+    lines.append(line)
+
+    for label, key in [("selected", "selected"), ("best", "best")]:
+        payload = cast(dict[str, Any] | None, diagnostics.get(key))
+        if not payload:
+            continue
+        line = Text(f"{label:<16}", style=TUI_ROW_LABEL_STYLE)
+        line.append(
+            f"policy={_decision_number(payload.get('policy_score'))}",
+            style=TUI_NEUTRAL_VALUE_STYLE,
+        )
+        line.append(
+            f" norm={_decision_number(payload.get('normalized_metric'))}",
+            style=TUI_INACTIVE_VALUE_STYLE,
+        )
+        line.append(
+            f" bonus={_decision_number(payload.get('exploration_bonus'))}",
+            style=TUI_INACTIVE_VALUE_STYLE,
+        )
+        lines.append(line)
+
+    line = Text("selected-best   ", style=TUI_ROW_LABEL_STYLE)
+    line.append(
+        f"policy={_decision_number(diagnostics.get('selected_minus_best_policy_score'))}",
+        style=TUI_NEUTRAL_VALUE_STYLE,
+    )
+    line.append(
+        f" metric={_decision_number(diagnostics.get('selected_minus_best_metric'))}",
+        style=TUI_INACTIVE_VALUE_STYLE,
+    )
+    lines.append(line)
+
+    threshold = cast(
+        dict[str, Any] | None,
+        diagnostics.get("fresh_child_metric_threshold"),
+    )
+    if threshold:
+        child_count = threshold.get("child_count", 0)
+        direction = threshold.get("direction", ">=")
+        metric = _decision_number(threshold.get("metric"))
+        line = Text("threshold       ", style=TUI_ROW_LABEL_STYLE)
+        line.append(
+            f"children={child_count} beats best if score {direction} {metric}",
+            style=TUI_OPERATOR_NOTICE_STYLE,
+        )
+        lines.append(line)
+
+
 def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
     if not decision:
         return Group(
@@ -994,6 +1074,10 @@ def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
                 style=TUI_INACTIVE_VALUE_STYLE,
             )
         lines.append(line)
+
+    diagnostics = cast(dict[str, Any] | None, decision.get("policy_diagnostics"))
+    if diagnostics:
+        _append_policy_debug_lines(lines, diagnostics)
 
     counts = cast(dict[str, Any], decision.get("counts") or {})
     if counts:

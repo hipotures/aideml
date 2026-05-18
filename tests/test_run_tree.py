@@ -88,6 +88,30 @@ def test_search_decision_debug_view_explains_best_node_rejection():
                     "step": 11,
                 }
             ],
+            "policy_diagnostics": {
+                "candidate_count": 64,
+                "exploration_weight": 0.05,
+                "metric_min": 0.94939,
+                "metric_max": 0.95239,
+                "metric_span": 0.003,
+                "selected_minus_best_policy_score": 0.018,
+                "selected_minus_best_metric": -0.00046,
+                "selected": {
+                    "policy_score": 1.106,
+                    "normalized_metric": 0.847,
+                    "exploration_bonus": 0.259,
+                },
+                "best": {
+                    "policy_score": 1.088,
+                    "normalized_metric": 1.0,
+                    "exploration_bonus": 0.088,
+                },
+                "fresh_child_metric_threshold": {
+                    "child_count": 0,
+                    "direction": ">=",
+                    "metric": 0.95182,
+                },
+            },
         }
     )
 
@@ -97,6 +121,8 @@ def test_search_decision_debug_view_explains_best_node_rejection():
     assert "SELECTED        0.95193*000011" in output
     assert "BEST SCORE NODE 0.95239*000002" in output
     assert "not selected:   branch_candidate / parent_metric_missing" in output
+    assert "POLICY SCORE" in output
+    assert "children=0 beats best if score >= 0.95182" in output
 
 
 def test_overlay_top_centers_with_console_edge_margin():

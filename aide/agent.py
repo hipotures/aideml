@@ -338,14 +338,23 @@ def _is_hypothesis_branch_candidate(node: Node) -> bool:
     return False
 
 
-def _normalized_metric_scores(nodes: list[Node]) -> dict[Node, float]:
+def _metric_score_range(nodes: list[Node]) -> tuple[dict[Node, float], float, float, float]:
     metric_values = {node: _metric_for_search(node) for node in nodes}
     low = min(metric_values.values())
     high = max(metric_values.values())
     span = high - low
-    if span <= 0:
-        return {node: 1.0 for node in nodes}
-    return {node: (value - low) / span for node, value in metric_values.items()}
+    return metric_values, low, high, span
+
+
+def _search_exploration_bonus(
+    *,
+    child_count: int,
+    total_good_nodes: int,
+    exploration_weight: float,
+) -> float:
+    return exploration_weight * math.sqrt(
+        math.log(total_good_nodes + 1) / (child_count + 1)
+    )
 
 
 def _search_exploration_score(
@@ -356,8 +365,11 @@ def _search_exploration_score(
     exploration_weight: float,
 ) -> float:
     child_count = sum(1 for child in node.children if not child.is_terminal_failure)
-    exploration = math.sqrt(math.log(total_good_nodes + 1) / (child_count + 1))
-    return normalized_metric + exploration_weight * exploration
+    return normalized_metric + _search_exploration_bonus(
+        child_count=child_count,
+        total_good_nodes=total_good_nodes,
+        exploration_weight=exploration_weight,
+    )
 
 
 def _metric_value(node: Node | None) -> float | None:
@@ -383,6 +395,59 @@ def _search_node_payload(node: Node | None) -> dict[str, Any] | None:
         "parent_metric": _metric_value(parent),
         "parent_is_buggy": parent.is_buggy if parent is not None else None,
         "child_count": sum(1 for child in node.children if not child.is_terminal_failure),
+    }
+
+
+def _search_policy_payload(
+    node: Node,
+    *,
+    normalized_metric: float,
+    policy_score: float,
+    total_good_nodes: int,
+    exploration_weight: float,
+) -> dict[str, Any]:
+    payload = _search_node_payload(node) or {}
+    child_count = int(payload.get("child_count") or 0)
+    payload.update(
+        {
+            "normalized_metric": normalized_metric,
+            "exploration_bonus": _search_exploration_bonus(
+                child_count=child_count,
+                total_good_nodes=total_good_nodes,
+                exploration_weight=exploration_weight,
+            ),
+            "policy_score": policy_score,
+        }
+    )
+    return payload
+
+
+def _fresh_child_metric_threshold(
+    *,
+    best_node: Node,
+    best_policy_score: float,
+    metric_low: float,
+    metric_span: float,
+    total_good_nodes: int,
+    exploration_weight: float,
+) -> dict[str, Any] | None:
+    if metric_span <= 0:
+        return None
+    fresh_child_count = 0
+    fresh_bonus = _search_exploration_bonus(
+        child_count=fresh_child_count,
+        total_good_nodes=total_good_nodes,
+        exploration_weight=exploration_weight,
+    )
+    required_normalized_metric = best_policy_score - fresh_bonus
+    required_search_metric = metric_low + required_normalized_metric * metric_span
+    maximize = best_node.metric is None or best_node.metric.maximize is not False
+    required_metric = required_search_metric if maximize else -required_search_metric
+    return {
+        "child_count": fresh_child_count,
+        "direction": ">=" if maximize else "<=",
+        "metric": required_metric,
+        "normalized_metric": required_normalized_metric,
     }
 
 
@@ -675,7 +740,14 @@ class Agent:
             logger.debug("[search policy] greedy node selected")
             return finish(greedy_node, "highest_metric_after_filters")
 
-        normalized_scores = _normalized_metric_scores(good_nodes)
+        metric_values, metric_low, metric_high, metric_span = _metric_score_range(good_nodes)
+        if metric_span <= 0:
+            normalized_scores = {node: 1.0 for node in good_nodes}
+        else:
+            normalized_scores = {
+                node: (value - metric_low) / metric_span
+                for node, value in metric_values.items()
+            }
         policy_scores = {
             node: _search_exploration_score(
                 node,
@@ -687,6 +759,54 @@ class Agent:
         }
         selected_node = max(good_nodes, key=lambda node: policy_scores[node])
         ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
+        best_node = _best_scored_search_node(self.journal)
+        selected_policy_payload = _search_policy_payload(
+            selected_node,
+            normalized_metric=normalized_scores[selected_node],
+            policy_score=policy_scores[selected_node],
+            total_good_nodes=len(good_nodes),
+            exploration_weight=exploration_weight,
+        )
+        best_policy_payload = (
+            _search_policy_payload(
+                best_node,
+                normalized_metric=normalized_scores[best_node],
+                policy_score=policy_scores[best_node],
+                total_good_nodes=len(good_nodes),
+                exploration_weight=exploration_weight,
+            )
+            if best_node in policy_scores
+            else None
+        )
+        if best_policy_payload is not None:
+            trace["policy_diagnostics"] = {
+                "candidate_count": len(good_nodes),
+                "exploration_weight": exploration_weight,
+                "metric_min": metric_low,
+                "metric_max": metric_high,
+                "metric_span": metric_span,
+                "selected": selected_policy_payload,
+                "best": best_policy_payload,
+                "selected_minus_best_policy_score": (
+                    policy_scores[selected_node] - policy_scores[best_node]
+                ),
+                "selected_minus_best_metric": (
+                    _metric_value(selected_node) - _metric_value(best_node)
+                    if (
+                        _metric_value(selected_node) is not None
+                        and _metric_value(best_node) is not None
+                    )
+                    else None
+                ),
+                "fresh_child_metric_threshold": _fresh_child_metric_threshold(
+                    best_node=best_node,
+                    best_policy_score=policy_scores[best_node],
+                    metric_low=metric_low,
+                    metric_span=metric_span,
+                    total_good_nodes=len(good_nodes),
+                    exploration_weight=exploration_weight,
+                ),
+            }
         trace["top_candidates"] = [
             {
                 **(_search_node_payload(node) or {}),
