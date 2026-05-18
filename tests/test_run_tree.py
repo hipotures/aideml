@@ -111,6 +111,11 @@ def test_search_decision_debug_view_explains_best_node_rejection():
                     "direction": ">=",
                     "metric": 0.95182,
                 },
+                "selection_override": {
+                    "reason": "best_score_min_children_before_exploration",
+                    "best_child_count": 1,
+                    "min_children": 3,
+                },
             },
         }
     )
@@ -122,6 +127,7 @@ def test_search_decision_debug_view_explains_best_node_rejection():
     assert "BEST SCORE NODE 0.95239*000002" in output
     assert "not selected:   branch_candidate / parent_metric_missing" in output
     assert "POLICY SCORE" in output
+    assert "override        best children 1/3 before exploration" in output
     assert "children=0 beats best if score >= 0.95182" in output
 
 

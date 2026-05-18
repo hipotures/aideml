@@ -184,6 +184,7 @@ def test_search_policy_explores_underexpanded_good_node(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
     cfg.agent.search.exploration_weight = 0.05
+    cfg.agent.search.best_score_min_children_before_exploration = 0
     journal = Journal()
     saturated_best = _good_node(0.95110)
     underexpanded = _good_node(0.951095)
@@ -202,6 +203,7 @@ def test_search_policy_ignores_terminal_failure_children_for_exploration(tmp_pat
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
     cfg.agent.search.exploration_weight = 0.05
+    cfg.agent.search.best_score_min_children_before_exploration = 0
     journal = Journal()
     active_best = _good_node(0.95110)
     underexpanded = _good_node(0.951095)
@@ -629,6 +631,7 @@ def test_search_policy_trace_explains_exploration_threshold(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
     cfg.agent.search.exploration_weight = 0.05
+    cfg.agent.search.best_score_min_children_before_exploration = 0
     journal = Journal()
     best = _good_node(0.95264)
     selected = _good_node(0.95263)
@@ -652,3 +655,31 @@ def test_search_policy_trace_explains_exploration_threshold(tmp_path):
     assert diagnostics["fresh_child_metric_threshold"]["child_count"] == 0
     assert diagnostics["fresh_child_metric_threshold"]["direction"] == ">="
     assert diagnostics["fresh_child_metric_threshold"]["metric"] < best.metric.value
+
+
+def test_search_policy_exploits_best_score_until_min_child_count(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.05
+    cfg.agent.search.best_score_min_children_before_exploration = 3
+    journal = Journal()
+    best = _good_node(0.95264)
+    fresh_lower = _good_node(0.95125)
+    outlier = _good_node(0.49985)
+    best_child = _good_node(0.95237, parent=best)
+    for node in [best, fresh_lower, outlier, best_child]:
+        journal.append(node)
+    for index in range(96):
+        journal.append(_good_node(0.94939 + index * 0.00001))
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent.search_policy() is best
+
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["reason"] == "best_score_min_children_before_exploration"
+    diagnostics = trace["policy_diagnostics"]
+    assert diagnostics["selection_override"]["best_child_count"] == 1
+    assert diagnostics["selection_override"]["min_children"] == 3
+    assert diagnostics["selected"]["node_id"] == best.id
+    assert diagnostics["fresh_child_metric_threshold"]["metric"] < fresh_lower.metric.value

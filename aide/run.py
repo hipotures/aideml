@@ -999,6 +999,19 @@ def _append_policy_debug_lines(
         )
         lines.append(line)
 
+    override = cast(dict[str, Any] | None, diagnostics.get("selection_override"))
+    if override:
+        line = Text("override        ", style=TUI_ROW_LABEL_STYLE)
+        line.append(
+            (
+                "best children "
+                f"{override.get('best_child_count', '?')}/"
+                f"{override.get('min_children', '?')} before exploration"
+            ),
+            style=TUI_OPERATOR_NOTICE_STYLE,
+        )
+        lines.append(line)
+
     line = Text("selected-best   ", style=TUI_ROW_LABEL_STYLE)
     line.append(
         f"policy={_decision_number(diagnostics.get('selected_minus_best_policy_score'))}",

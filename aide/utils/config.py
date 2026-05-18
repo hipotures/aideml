@@ -96,6 +96,7 @@ class SearchConfig:
     debug_prob: float
     num_drafts: int
     exploration_weight: float = 0.05
+    best_score_min_children_before_exploration: int = 3
     disable_oom_saturated_parents: bool = False
     hypothesis_child_order: str = "root_score"
     hypothesis_max_non_improving_children_per_parent: int = 3

@@ -394,7 +394,7 @@ def _search_node_payload(node: Node | None) -> dict[str, Any] | None:
         "parent_step": parent.step if parent is not None else None,
         "parent_metric": _metric_value(parent),
         "parent_is_buggy": parent.is_buggy if parent is not None else None,
-        "child_count": sum(1 for child in node.children if not child.is_terminal_failure),
+        "child_count": _search_child_count(node),
     }
 
 
@@ -449,6 +449,10 @@ def _fresh_child_metric_threshold(
         "metric": required_metric,
         "normalized_metric": required_normalized_metric,
     }
+
+
+def _search_child_count(node: Node) -> int:
+    return sum(1 for child in node.children if not child.is_terminal_failure)
 
 
 def _best_scored_search_node(journal: Journal) -> Node | None:
@@ -757,9 +761,25 @@ class Agent:
             )
             for node in good_nodes
         }
-        selected_node = max(good_nodes, key=lambda node: policy_scores[node])
-        ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
         best_node = _best_scored_search_node(self.journal)
+        min_best_children = int(
+            getattr(search_cfg, "best_score_min_children_before_exploration", 0)
+        )
+        selection_override: dict[str, Any] | None = None
+        if best_node in policy_scores and min_best_children > 0:
+            best_child_count = _search_child_count(best_node)
+            if best_child_count < min_best_children:
+                selection_override = {
+                    "reason": "best_score_min_children_before_exploration",
+                    "best_child_count": best_child_count,
+                    "min_children": min_best_children,
+                }
+        selected_node = (
+            best_node
+            if selection_override is not None and best_node is not None
+            else max(good_nodes, key=lambda node: policy_scores[node])
+        )
+        ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
         selected_policy_payload = _search_policy_payload(
             selected_node,
             normalized_metric=normalized_scores[selected_node],
@@ -807,6 +827,8 @@ class Agent:
                     exploration_weight=exploration_weight,
                 ),
             }
+            if selection_override is not None:
+                trace["policy_diagnostics"]["selection_override"] = selection_override
         trace["top_candidates"] = [
             {
                 **(_search_node_payload(node) or {}),
@@ -817,6 +839,8 @@ class Agent:
             for index, node in enumerate(ranked[:8])
         ]
         logger.debug("[search policy] exploration node selected")
+        if selection_override is not None:
+            return finish(selected_node, selection_override["reason"])
         return finish(selected_node, "highest_policy_score_after_filters")
 
     @property
