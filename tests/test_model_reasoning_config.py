@@ -110,6 +110,38 @@ def test_cli_agent_gpu_override_is_loaded(tmp_path):
     assert cfg.agent.gpu is True
 
 
+def test_load_cfg_preserves_unquoted_forced_root_cli_id(tmp_path):
+    cfg = _load_cfg(
+        cli_args=[
+            f"data_dir={tmp_path}",
+            "goal=test",
+            f"log_dir={tmp_path / 'logs'}",
+            f"workspace_dir={tmp_path / 'workspaces'}",
+            "agent.search.forced_root=000405",
+        ]
+    )
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.search.forced_root == "000405"
+
+
+def test_load_cfg_accepts_short_forced_root_cli_alias(tmp_path):
+    cfg = _load_cfg(
+        cli_args=[
+            f"data_dir={tmp_path}",
+            "goal=test",
+            f"log_dir={tmp_path / 'logs'}",
+            f"workspace_dir={tmp_path / 'workspaces'}",
+            "forced_root=000405",
+        ]
+    )
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.search.forced_root == "000405"
+
+
 def test_agent_mode_autogluon_alias_resolves_to_preprocess_mode(tmp_path):
     cfg = _base_cfg(tmp_path)
     cfg.agent.mode = "autogluon"

@@ -291,6 +291,15 @@ def _is_in_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool:
     return hypothesis_id_for_node(root) == forced_root
 
 
+def _find_forced_hypothesis_root(journal: Journal, forced_root: str) -> Node | None:
+    for node in journal.nodes:
+        if node.parent is not None:
+            continue
+        if hypothesis_id_for_node(node) == forced_root:
+            return node
+    return None
+
+
 def _metric_for_search(node: Node) -> float:
     assert node.metric is not None and node.metric.value is not None
     value = float(node.metric.value)
@@ -1478,6 +1487,19 @@ class Agent:
         self._pending_llm_log_dir = llm_log_dir
 
         try:
+            if parent_node is None and self._is_hypothesis_mode():
+                forced_root = _configured_forced_hypothesis_root(self.acfg.search)
+                if forced_root is not None:
+                    parent_node = _find_forced_hypothesis_root(
+                        self.journal,
+                        forced_root,
+                    )
+                    if parent_node is None:
+                        raise ValueError(
+                            "Configured forced hypothesis root "
+                            f"{forced_root!r} was not found in the journal."
+                        )
+                    self.active_parent_node = parent_node
             if (
                 parent_node is None
                 and is_autogluon_preprocess_mode(self.cfg)

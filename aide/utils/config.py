@@ -224,6 +224,7 @@ def _load_cfg(
         raw_cli_args = list(sys.argv[1:] if cli_args is None else cli_args)
         _validate_cli_model_effort_conflicts(raw_cli_args)
         raw_cli_args = _normalize_model_effort_cli_overrides(raw_cli_args)
+        raw_cli_args = _normalize_forced_root_cli_overrides(raw_cli_args)
         cli_cfg = OmegaConf.from_dotlist(raw_cli_args)
         cfg = OmegaConf.merge(cfg, cli_cfg)
     return cfg
@@ -279,6 +280,25 @@ def _normalize_model_effort_cli_overrides(cli_args: Sequence[str]) -> list[str]:
         effort_key = model_key.removesuffix(".model") + ".reasoning_effort"
         if suffix_effort is None and effort_key not in values:
             normalized.append(f"{effort_key}=null")
+    return normalized
+
+
+def _normalize_forced_root_cli_overrides(cli_args: Sequence[str]) -> list[str]:
+    normalized: list[str] = []
+    for arg in cli_args:
+        item = _cli_value(arg)
+        if item is None:
+            normalized.append(arg)
+            continue
+        key, value = item
+        if key not in {"forced_root", "agent.search.forced_root"}:
+            normalized.append(arg)
+            continue
+        target_key = "agent.search.forced_root"
+        if _is_nullish(value):
+            normalized.append(f"{target_key}=null")
+            continue
+        normalized.append(f"{target_key}={json.dumps(value)}")
     return normalized
 
 

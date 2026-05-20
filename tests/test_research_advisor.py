@@ -1575,6 +1575,61 @@ def test_agent_exposes_active_hypothesis_log_hint_during_generation(
     assert captured_hint["hypothesis_id"] == "000122"
 
 
+def test_agent_generates_under_forced_root_when_search_returns_none(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    cfg.agent.search.forced_root = "000405"
+    root = _node(0.95232, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000405"]
+    journal = Journal()
+    journal.append(root)
+    captured = {}
+    selection = research.ManualHypothesisSelection(
+        completed_steps=1,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000941",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Use stronger tyre-age interactions",
+                summary="Add tyre-age interaction features.",
+                rationale="Pit timing depends on tyre degradation.",
+                implementation_hint="Cross tyre age with stint context.",
+                expected_effect="Better pit probability ranking.",
+                risk="May overfit rare strategy windows.",
+                sources=[],
+                path=tmp_path / "hypothesis-000941.json",
+            )
+        ],
+    )
+
+    def fake_select(*_args, **kwargs):
+        captured["parent_node"] = kwargs["parent_node"]
+        return selection
+
+    monkeypatch.setattr("aide.agent.select_hypothesis_for_node", fake_select)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(_prompt):
+        return "I will verify hypothesis 000941.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert captured["parent_node"] is root
+    assert node.parent is root
+    assert node.research_mode == "hypothesis"
+    assert node.research_hypotheses_offered == ["000941"]
+
+
 def test_hypothesis_log_hint_normalizes_literal_json_newlines(tmp_path):
     selection = research.ManualHypothesisSelection(
         completed_steps=10,
