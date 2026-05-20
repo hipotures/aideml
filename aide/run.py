@@ -65,6 +65,7 @@ from .utils.config import (
     _drop_deprecated_config_keys,
     _load_cfg,
     _normalize_agent_mode_aliases,
+    _normalize_forced_root_cli_overrides,
     _resolve_all_model_configs,
     _normalize_model_effort_cli_overrides,
     _validate_cli_model_effort_conflicts,
@@ -285,6 +286,7 @@ def load_resume_state(
 
     _validate_cli_model_effort_conflicts(cli_overrides)
     cli_overrides = _normalize_model_effort_cli_overrides(cli_overrides)
+    cli_overrides = _normalize_forced_root_cli_overrides(cli_overrides)
     cfg = OmegaConf.load(config_path)
     if (
         _cli_sets_key(cli_overrides, "agent.autogluon.profile")

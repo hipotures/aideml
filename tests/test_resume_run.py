@@ -142,6 +142,32 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert journal.nodes[0].metric.value == 0.9
 
 
+def test_load_resume_state_preserves_unquoted_forced_root_cli_id(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.search.forced_root=000405"],
+    )
+
+    assert cfg.agent.search.forced_root == "000405"
+
+
+def test_load_resume_state_accepts_short_forced_root_cli_alias(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["forced_root=000405"],
+    )
+
+    assert cfg.agent.search.forced_root == "000405"
+
+
 def test_resume_profile_override_clears_old_autogluon_model_list(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
