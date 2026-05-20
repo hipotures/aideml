@@ -266,6 +266,31 @@ def _metadata_hypothesis_id(metadata: dict[str, Any] | None) -> str | None:
     return None
 
 
+def _configured_forced_hypothesis_root(search_cfg: Any) -> str | None:
+    value = getattr(search_cfg, "forced_root", None)
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.isdigit() and len(text) < 6:
+        return text.zfill(6)
+    return text
+
+
+def _hypothesis_root_node(node: Node) -> Node:
+    while node.parent is not None:
+        node = node.parent
+    return node
+
+
+def _is_in_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool:
+    if forced_root is None:
+        return True
+    root = _hypothesis_root_node(node)
+    return hypothesis_id_for_node(root) == forced_root
+
+
 def _metric_for_search(node: Node) -> float:
     assert node.metric is not None and node.metric.value is not None
     value = float(node.metric.value)
@@ -606,9 +631,15 @@ class Agent:
     def _should_open_hypothesis_root(self) -> bool:
         if not self._is_hypothesis_mode():
             return False
+        if _configured_forced_hypothesis_root(self.acfg.search) is not None:
+            return False
         return not hypothesis_root_pool_exhausted(self.cfg, journal=self.journal)
 
-    def _select_debuggable_node(self) -> Node | None:
+    def _select_debuggable_node(
+        self,
+        *,
+        forced_hypothesis_root: str | None = None,
+    ) -> Node | None:
         search_cfg = self.acfg.search
         if search_cfg.debug_prob <= 0:
             return None
@@ -623,6 +654,7 @@ class Agent:
                 and n.debug_depth < search_cfg.max_debug_depth
                 and not n.is_submission_contract_error
                 and not n.is_terminal_failure
+                and _is_in_forced_hypothesis_root(n, forced_hypothesis_root)
             )
         ]
         if debuggable_nodes:
@@ -639,6 +671,7 @@ class Agent:
             "step": len(self.journal.nodes),
             "mode": "hypothesis" if self._is_hypothesis_mode() else "standard",
             "agent_mode": self.acfg.mode,
+            "forced_hypothesis_root": None,
             "counts": {},
             "rejections": {},
             "top_candidates": [],
@@ -646,6 +679,12 @@ class Agent:
             "selected": None,
             "reason": None,
         }
+        forced_hypothesis_root = (
+            _configured_forced_hypothesis_root(search_cfg)
+            if self._is_hypothesis_mode()
+            else None
+        )
+        trace["forced_hypothesis_root"] = forced_hypothesis_root
 
         def finish(selected: Node | None, reason: str) -> Node | None:
             trace["selected"] = _search_node_payload(selected)
@@ -683,7 +722,9 @@ class Agent:
             return finish(None, "not_enough_drafts")
 
         # debugging
-        debug_node = self._select_debuggable_node()
+        debug_node = self._select_debuggable_node(
+            forced_hypothesis_root=forced_hypothesis_root,
+        )
         if debug_node is not None:
             return finish(debug_node, "debugging")
 
@@ -707,6 +748,20 @@ class Agent:
                     "reason": "submission_contract_or_oom_branch",
                 }
         if self._is_hypothesis_mode():
+            if forced_hypothesis_root is not None:
+                before_forced_scope = list(good_nodes)
+                good_nodes = [
+                    node
+                    for node in good_nodes
+                    if _is_in_forced_hypothesis_root(node, forced_hypothesis_root)
+                ]
+                trace["counts"]["after_forced_root_scope"] = len(good_nodes)
+                for node in before_forced_scope:
+                    if node not in good_nodes:
+                        trace["rejections"][node.id] = {
+                            "stage": "forced_root_scope",
+                            "reason": f"outside_forced_root_{forced_hypothesis_root}",
+                        }
             improvement_epsilon = float(
                 getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
             )

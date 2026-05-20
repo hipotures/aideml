@@ -1070,6 +1070,11 @@ def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
         line = Text("policy reason  ", style=TUI_ROW_LABEL_STYLE)
         line.append(str(reason), style=TUI_NEUTRAL_VALUE_STYLE)
         lines.append(line)
+    forced_root = decision.get("forced_hypothesis_root")
+    if forced_root:
+        line = Text("forced_root    ", style=TUI_ROW_LABEL_STYLE)
+        line.append(str(forced_root), style=TUI_NEUTRAL_VALUE_STYLE)
+        lines.append(line)
 
     _append_decision_payload_line(
         lines,

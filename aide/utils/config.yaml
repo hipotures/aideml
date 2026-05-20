@@ -102,6 +102,9 @@ agent:
     best_score_min_children_before_exploration: 3
     disable_oom_saturated_parents: false
     hypothesis_child_order: root_score
+    # Hypothesis mode only: when set to a root hypothesis id, search only expands
+    # that root subtree while keeping global best-score reporting intact.
+    forced_root: null
     hypothesis_max_non_improving_children_per_parent: 10
     hypothesis_min_improvement_epsilon: 0.00002
 

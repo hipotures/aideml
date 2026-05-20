@@ -58,6 +58,7 @@ def test_search_decision_debug_view_explains_best_node_rejection():
             "step": 143,
             "mode": "hypothesis",
             "reason": "highest_policy_score_after_filters",
+            "forced_hypothesis_root": "000365",
             "counts": {
                 "good_nodes": 91,
                 "after_hypothesis_child_candidates": 64,
@@ -123,6 +124,7 @@ def test_search_decision_debug_view_explains_best_node_rejection():
     output = _render_text(view)
 
     assert "SEARCH DECISION step=143 mode=hypothesis" in output
+    assert "forced_root    000365" in output
     assert "SELECTED        0.95193*000011" in output
     assert "BEST SCORE NODE 0.95239*000002" in output
     assert "not selected:   branch_candidate / parent_metric_missing" in output
