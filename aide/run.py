@@ -287,7 +287,15 @@ def load_resume_state(
     _validate_cli_model_effort_conflicts(cli_overrides)
     cli_overrides = _normalize_model_effort_cli_overrides(cli_overrides)
     cli_overrides = _normalize_forced_root_cli_overrides(cli_overrides)
+    forced_root_overridden = _cli_sets_key(cli_overrides, "agent.search.forced_root")
     cfg = OmegaConf.load(config_path)
+    if (
+        not forced_root_overridden
+        and "agent" in cfg
+        and "search" in cfg.agent
+        and "forced_root" in cfg.agent.search
+    ):
+        cfg.agent.search.forced_root = None
     if (
         _cli_sets_key(cli_overrides, "agent.autogluon.profile")
         and not _cli_sets_key(cli_overrides, "agent.autogluon.included_model_types")
