@@ -1,6 +1,8 @@
 import copy
 import json
+import os
 from pathlib import Path
+import tempfile
 from typing import Type, TypeVar
 
 import dataclasses_json
@@ -26,8 +28,28 @@ def dumps_json(obj: dataclasses_json.DataClassJsonMixin):
 
 
 def dump_json(obj: dataclasses_json.DataClassJsonMixin, path: Path):
-    with open(path, "w") as f:
-        f.write(dumps_json(obj))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = dumps_json(obj)
+    tmp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            tmp_name = f.name
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, path)
+    finally:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name)
+            except FileNotFoundError:
+                pass
 
 
 G = TypeVar("G", bound=dataclasses_json.DataClassJsonMixin)

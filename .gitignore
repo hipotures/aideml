@@ -169,3 +169,8 @@ logs
 .gradio/
 .ruff_cache/
 .codex/
+
+# Local Node tooling
+node_modules/
+package.json
+package-lock.json
