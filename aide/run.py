@@ -1779,12 +1779,28 @@ def build_best_score_status(journal: Journal) -> Text | None:
     return line
 
 
-def _count_hypothesis_root_nodes(journal: Journal) -> int:
+def _count_hypothesis_root_nodes(
+    journal: Journal,
+    *,
+    include_generated: bool = True,
+) -> int:
     return sum(
         1
         for node in journal.nodes
-        if node.parent is None and hypothesis_id_for_node(node) is not None
+        if node.parent is None
+        and hypothesis_id_for_node(node) is not None
+        and (include_generated or node.status != "generated")
     )
+
+
+def _count_hypothesis_completed_nodes(
+    journal: Journal,
+    *,
+    include_generated: bool,
+) -> int:
+    if include_generated:
+        return len(journal.nodes)
+    return sum(1 for node in journal.nodes if node.status != "generated")
 
 
 def _positive_int(value: object, default: int) -> int:
@@ -1810,7 +1826,12 @@ def _source_ref_compatible_hypothesis_count(cfg: Config) -> int | None:
     return compatible_count if compatible_count >= 0 else None
 
 
-def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
+def build_hypothesis_phase_status(
+    cfg: Config,
+    journal: Journal,
+    *,
+    include_generated_roots: bool = True,
+) -> Text | None:
     if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
         return None
 
@@ -1818,7 +1839,11 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
     if total_budget <= 0:
         return None
 
-    root_count = _count_hypothesis_root_nodes(journal)
+    root_count = _count_hypothesis_root_nodes(
+        journal,
+        include_generated=include_generated_roots,
+    )
+    all_root_count = _count_hypothesis_root_nodes(journal)
     configured_root_limit = _positive_int(
         getattr(cfg.research, "hypothesis_root_limit", 100),
         100,
@@ -1830,11 +1855,17 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
         else configured_root_limit
     )
     exploration_budget = min(
-        max(root_limit, root_count),
+        max(root_limit, all_root_count),
         total_budget,
     )
     exploitation_budget = max(total_budget - exploration_budget, 0)
-    completed_count = min(len(journal.nodes), total_budget)
+    completed_count = min(
+        _count_hypothesis_completed_nodes(
+            journal,
+            include_generated=include_generated_roots,
+        ),
+        total_budget,
+    )
     exploitation_count = max(completed_count - root_count, 0)
     if exploitation_budget > 0:
         exploitation_count = min(exploitation_count, exploitation_budget)
@@ -2265,6 +2296,7 @@ def build_run_data(
     active_artifact_dir: Path | None = None,
     cfg: Config | None = None,
     operator_notice: str | None = None,
+    include_generated_hypothesis_roots: bool = True,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -2287,7 +2319,13 @@ def build_run_data(
         lines.append("")
         lines.append(research_line)
     phase_line = (
-        build_hypothesis_phase_status(cfg, journal) if cfg is not None else None
+        build_hypothesis_phase_status(
+            cfg,
+            journal,
+            include_generated_roots=include_generated_hypothesis_roots,
+        )
+        if cfg is not None
+        else None
     )
     if phase_line is not None:
         if research_line is None:
@@ -3186,6 +3224,7 @@ def run(argv: list[str] | None = None):
                     active_artifact_dir=active_artifact_dir,
                     cfg=cfg,
                     operator_notice=operator_notice,
+                    include_generated_hypothesis_roots=runtime_options.skip_execution,
                 ),
                 (0, 1, 0, 1),
             ),

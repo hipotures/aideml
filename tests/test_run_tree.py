@@ -1330,6 +1330,40 @@ def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
     assert "exploitation 1/7" in ansi
 
 
+def test_hypothesis_phase_status_counts_generated_roots_only_in_generation_mode(
+    tmp_path,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 3
+    cfg.agent.steps = 10
+    cfg = prep_cfg(cfg)
+    journal = Journal()
+    executed_root = _hypothesis_node(_good_node(0.95), "000001")
+    generated_root = _hypothesis_node(Node(code="print('later')", plan="later"), "000002")
+    mark_node_generated_only(generated_root)
+    child = _hypothesis_node(_good_node(0.951, parent=executed_root), "000003")
+    for node in [executed_root, generated_root, child]:
+        journal.append(node)
+
+    generation_output = _render_text(build_hypothesis_phase_status(cfg, journal))
+    execution_output = _render_text(
+        build_hypothesis_phase_status(
+            cfg,
+            journal,
+            include_generated_roots=False,
+        )
+    )
+
+    assert "⬢ Phase      exploration 2/3 · exploitation 1/7" in generation_output
+    assert "⬢ Phase      exploration 1/3 · exploitation 1/7" in execution_output
+
+
 def test_hypothesis_phase_status_ignores_lower_resume_limit(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
