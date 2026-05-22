@@ -65,6 +65,16 @@ def _file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
     }
 
 
+def _directory_file_entries(path: Path, *, base_dir: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [
+        entry
+        for child in sorted(path.glob("*.csv.gz"))
+        if (entry := _file_entry(child, base_dir=base_dir)) is not None
+    ]
+
+
 def resolve_process_timeout(timeout: int | None, autogluon_time_limit: int) -> int:
     if timeout is not None:
         return int(timeout)
@@ -95,6 +105,14 @@ def _copy_prediction_artifact_gz(source: Path, destination: Path) -> None:
         return
     with source.open("rb") as src, gzip.open(destination, "wb") as dst:
         shutil.copyfileobj(src, dst)
+
+
+def _copy_prediction_dir(source_dir: Path, destination_dir: Path) -> None:
+    if not source_dir.exists():
+        return
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    for source in source_dir.glob("*.csv.gz"):
+        shutil.copy2(source, destination_dir / source.name)
 
 
 def source_input_dir(*, logs_dir: Path, run: str) -> Path:
@@ -385,6 +403,10 @@ def run_profile_eval(
                 if generated_prediction.exists():
                     _copy_prediction_artifact_gz(generated_prediction, artifact_dir / gzip_name)
                     break
+        _copy_prediction_dir(
+            workspace_dir / "working" / "model_predictions",
+            artifact_dir / "model_predictions",
+        )
         generated_log = workspace_dir / "working" / "autogluon_stdout.log"
         if generated_log.exists() and not (artifact_dir / "autogluon_stdout.log").exists():
             shutil.copy2(generated_log, artifact_dir / "autogluon_stdout.log")
@@ -457,6 +479,10 @@ def run_profile_eval(
             ),
             "validation_predictions": _file_entry(
                 artifact_dir / "validation_predictions.csv.gz",
+                base_dir=artifact_dir,
+            ),
+            "model_predictions": _directory_file_entries(
+                artifact_dir / "model_predictions",
                 base_dir=artifact_dir,
             ),
             "error": _file_entry(artifact_dir / "error.txt", base_dir=artifact_dir),

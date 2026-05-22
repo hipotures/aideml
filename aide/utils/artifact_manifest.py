@@ -70,6 +70,16 @@ def prediction_file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | Non
     return file_entry(gz_path, base_dir=base_dir) or file_entry(path, base_dir=base_dir)
 
 
+def directory_file_entries(path: Path, *, base_dir: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [
+        entry
+        for child in sorted(path.glob("*.csv.gz"))
+        if (entry := file_entry(child, base_dir=base_dir)) is not None
+    ]
+
+
 def metric_payload(node: Node) -> dict[str, Any]:
     metric = node.metric
     if metric is None:
@@ -166,6 +176,10 @@ def build_node_artifact_manifest(
             "test_predictions": prediction_file_entry(test_predictions_path, base_dir=artifact_dir),
             "validation_predictions": prediction_file_entry(
                 validation_predictions_path,
+                base_dir=artifact_dir,
+            ),
+            "model_predictions": directory_file_entries(
+                artifact_dir / "model_predictions",
                 base_dir=artifact_dir,
             ),
             "error": error,

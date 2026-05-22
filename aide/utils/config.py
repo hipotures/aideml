@@ -38,6 +38,14 @@ def _copy_prediction_artifact_gz(source: Path, destination: Path) -> None:
         shutil.copyfileobj(src, dst)
 
 
+def _copy_prediction_dir(source_dir: Path, destination_dir: Path) -> None:
+    if not source_dir.exists():
+        return
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    for source in source_dir.glob("*.csv.gz"):
+        shutil.copy2(source, destination_dir / source.name)
+
+
 """ these dataclasses are just for type hinting, the actual config is in config.yaml """
 
 
@@ -510,6 +518,10 @@ def _save_node_artifacts(cfg: Config, node) -> None:
             if prediction_path.exists() and prediction_path.stat().st_mtime >= node.ctime:
                 _copy_prediction_artifact_gz(prediction_path, artifact_dir / gzip_name)
                 break
+    _copy_prediction_dir(
+        cfg.workspace_dir / "working" / "model_predictions",
+        artifact_dir / "model_predictions",
+    )
 
     error_text = _node_error_text(node)
     if error_text is not None:

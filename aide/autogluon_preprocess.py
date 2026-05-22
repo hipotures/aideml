@@ -335,8 +335,13 @@ def _read_csv(data_dir: Path, stem: str) -> pd.DataFrame:
     return pd.read_csv(csv_path)
 
 
-def _positive_probability(predictor: TabularPredictor, data: pd.DataFrame) -> pd.Series:
-    proba = predictor.predict_proba(data)
+def _positive_probability(
+    predictor: TabularPredictor,
+    data: pd.DataFrame,
+    *,
+    model: str | None = None,
+) -> pd.Series:
+    proba = predictor.predict_proba(data, model=model)
     return _positive_probability_from_proba(proba)
 
 
@@ -465,19 +470,27 @@ def _save_prediction_artifact(frame: pd.DataFrame, working_dir: Path, filename: 
     if not filename.endswith(".gz"):
         filename = f"{{filename}}.gz"
     working_path = working_dir / filename
+    working_path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(working_path, index=False, compression="gzip")
     artifact_dir = _artifact_dir(working_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     artifact_path = artifact_dir / filename
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
     if artifact_path.resolve() != working_path.resolve():
         shutil.copy2(working_path, artifact_path)
     return working_path
+
+
+def _safe_prediction_name(name: str) -> str:
+    safe = "".join(ch.lower() if ch.isalnum() else "_" for ch in str(name)).strip("_")
+    return safe or "model"
 
 
 def _save_autogluon_prediction_artifacts(
     predictor: TabularPredictor,
     *,
     train_target: pd.Series,
+    test_model: pd.DataFrame,
     test_ids: pd.Series,
     test_pred: pd.Series,
     working_dir: Path,
@@ -499,6 +512,57 @@ def _save_autogluon_prediction_artifacts(
     artifacts["test_predictions"] = str(test_path)
 
     try:
+        per_model = []
+        for model_name in predictor.model_names():
+            try:
+                model_oof_proba = predictor.predict_proba_oof(
+                    model=model_name,
+                    transformed=False,
+                    as_multiclass=True,
+                )
+                model_oof_pred = _positive_probability_from_proba(model_oof_proba)
+                if len(model_oof_pred) != len(train_target):
+                    raise ValueError(
+                        f"OOF row count {{len(model_oof_pred)}} != train rows {{len(train_target)}}"
+                    )
+                safe_model_name = _safe_prediction_name(model_name)
+                model_oof_frame = pd.DataFrame({{
+                    "row": np.arange(len(train_target)),
+                    "target": pd.Series(train_target).reset_index(drop=True),
+                    "prediction": model_oof_pred.reset_index(drop=True),
+                    "model": model_name,
+                }})
+                model_oof_path = _save_prediction_artifact(
+                    model_oof_frame,
+                    working_dir,
+                    f"model_predictions/{{safe_model_name}}-oof.csv",
+                )
+                model_test_pred = _positive_probability(predictor, test_model, model=model_name)
+                model_test_frame = pd.DataFrame({{
+                    id_col: pd.Series(test_ids).reset_index(drop=True),
+                    target_col: pd.Series(model_test_pred).reset_index(drop=True),
+                    "model": model_name,
+                }})
+                model_test_path = _save_prediction_artifact(
+                    model_test_frame,
+                    working_dir,
+                    f"model_predictions/{{safe_model_name}}-test.csv",
+                )
+                per_model.append({{
+                    "model": model_name,
+                    "oof_predictions": str(model_oof_path),
+                    "test_predictions": str(model_test_path),
+                    "rows": int(len(model_oof_frame)),
+                    "test_rows": int(len(model_test_frame)),
+                }})
+            except Exception as exc:
+                per_model.append({{
+                    "model": model_name,
+                    "error": f"{{type(exc).__name__}}: {{exc}}",
+                }})
+        artifacts["model_predictions"] = per_model
+        artifacts["model_predictions_ok"] = sum(1 for item in per_model if "error" not in item)
+
         oof_proba = predictor.predict_proba_oof(
             transformed=False,
             as_multiclass=True,
@@ -716,6 +780,7 @@ def main() -> None:
     eval_metric, problem_type = _infer_metric(train_model[target_col])
     fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}) or {{}})
     bagged_mode = int(fit_args.get("num_bag_folds") or 0) > 0 or bool(fit_args.get("auto_stack"))
+    defer_save_space = bool(bagged_mode and fit_args.pop("save_space", False))
     if bagged_mode:
         train_data = train_model
         valid_data = None
@@ -792,6 +857,7 @@ def main() -> None:
         prediction_artifacts = _save_autogluon_prediction_artifacts(
             predictor,
             train_target=y_train,
+            test_model=test_model,
             test_ids=test_df[id_col],
             test_pred=test_pred,
             working_dir=working_dir,
@@ -800,6 +866,12 @@ def main() -> None:
             valid_data=valid_data,
             valid_pred=valid_pred,
         )
+        if defer_save_space:
+            try:
+                predictor.save_space(remove_data=True, remove_fit_stack=True)
+                prediction_artifacts["save_space_after_artifacts"] = True
+            except Exception as exc:
+                prediction_artifacts["save_space_error"] = f"{{type(exc).__name__}}: {{exc}}"
     submission = _make_submission(
         sample_submission,
         id_col=id_col,
