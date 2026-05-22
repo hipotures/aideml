@@ -674,6 +674,29 @@ class Agent:
         logger.debug("[search policy] not debugging by chance")
         return None
 
+    def _select_buggy_hypothesis_root(
+        self,
+        *,
+        forced_hypothesis_root: str | None = None,
+    ) -> Node | None:
+        search_cfg = self.acfg.search
+        candidates = [
+            n
+            for n in self.journal.buggy_nodes
+            if (
+                n.parent is None
+                and hypothesis_id_for_node(n) is not None
+                and n.is_leaf
+                and n.debug_depth < search_cfg.max_debug_depth
+                and not n.is_submission_contract_error
+                and not n.is_terminal_failure
+                and _is_in_forced_hypothesis_root(n, forced_hypothesis_root)
+            )
+        ]
+        if not candidates:
+            return None
+        return min(candidates, key=lambda n: n.step)
+
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
         search_cfg = self.acfg.search
@@ -731,6 +754,14 @@ class Agent:
         if len(self.journal.draft_nodes) < search_cfg.num_drafts:
             logger.debug("[search policy] drafting new node (not enough drafts)")
             return finish(None, "not_enough_drafts")
+
+        if self._is_hypothesis_mode():
+            root_debug_node = self._select_buggy_hypothesis_root(
+                forced_hypothesis_root=forced_hypothesis_root,
+            )
+            if root_debug_node is not None:
+                logger.debug("[search policy] debugging buggy hypothesis root")
+                return finish(root_debug_node, "debugging_buggy_hypothesis_root")
 
         # debugging
         debug_node = self._select_debuggable_node(
