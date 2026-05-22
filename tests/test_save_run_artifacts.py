@@ -131,6 +131,32 @@ def test_save_run_handles_generated_only_current_node_without_metric(tmp_path):
     assert manifest["local_score"] is None
 
 
+def test_save_run_persists_journal_when_progress_callback_fails(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(code="print('must persist')", plan="persist")
+    mark_node_generated_only(node)
+    journal.append(node)
+
+    def failing_progress_callback(_message: str) -> None:
+        raise RuntimeError("ui render failed")
+
+    save_run(
+        cfg,
+        journal,
+        current_node=node,
+        progress_callback=failing_progress_callback,
+    )
+
+    assert (log_dir / "journal.json").exists()
+    saved = json.loads((log_dir / "journal.json").read_text())
+    assert saved["nodes"][0]["status"] == "generated"
+
+
 def test_save_run_does_not_archive_submission_when_missing(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"

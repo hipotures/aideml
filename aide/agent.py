@@ -1592,6 +1592,9 @@ class Agent:
         self._save_reviewed_hypothesis_root_code(node)
 
     def _save_reviewed_hypothesis_root_code(self, node: Node) -> None:
+        self.save_hypothesis_root_code_for_node(node)
+
+    def save_hypothesis_root_code_for_node(self, node: Node) -> None:
         if node.parent is not None or node.research_mode != "hypothesis":
             return
         hypothesis_id = hypothesis_id_for_node(node)

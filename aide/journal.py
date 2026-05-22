@@ -251,7 +251,9 @@ class Journal(DataClassJsonMixin):
                 return None
         else:
             nodes = self.nodes
-        nodes_with_metrics = [n for n in nodes if n.metric is not None]
+        nodes_with_metrics = [
+            n for n in nodes if n.metric is not None and n.metric.value is not None
+        ]
         if not nodes_with_metrics:
             return None
         return max(nodes_with_metrics, key=lambda n: n.metric)

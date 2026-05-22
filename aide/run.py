@@ -273,6 +273,22 @@ def mark_node_generated_only(node: Node) -> None:
     node.analysis = "Generated only; execution skipped by --skip-execution."
 
 
+def record_generated_only_node(
+    *,
+    agent: Agent,
+    journal: Journal,
+    node: Node,
+    experiment_id: str,
+) -> None:
+    mark_node_generated_only(node)
+    agent.save_hypothesis_root_code_for_node(node)
+    append_node_with_best_score_notification(
+        journal=journal,
+        node=node,
+        experiment_id=experiment_id,
+    )
+
+
 def next_generated_only_node(journal: Journal) -> Node | None:
     for node in journal.nodes:
         if node.status == "generated":
@@ -489,7 +505,9 @@ def _visible_best_node(
     visible_good_nodes = [
         node
         for node in journal.good_nodes
-        if not node.is_in_submission_contract_error_branch
+        if node.metric is not None
+        and node.metric.value is not None
+        and not node.is_in_submission_contract_error_branch
         and (
             not disable_oom_saturated_parents
             or not node.is_oom_blocked_parent
@@ -3392,13 +3410,13 @@ def run(argv: list[str] | None = None):
                         assert result_node is not None
 
                         if runtime_options.skip_execution and not node_already_in_journal:
-                            mark_node_generated_only(result_node)
                             debug_log(
                                 "before_append_generated_only_node",
                                 phase="journal",
                                 node=result_node,
                             )
-                            append_node_with_best_score_notification(
+                            record_generated_only_node(
+                                agent=agent,
                                 journal=journal,
                                 node=result_node,
                                 experiment_id=cfg.exp_name,

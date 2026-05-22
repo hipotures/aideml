@@ -14,6 +14,7 @@ from aide.run import (
     next_generated_only_node,
     parse_runtime_args,
     parse_resume_args,
+    record_generated_only_node,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
 from aide.utils.metric import MetricValue
@@ -130,6 +131,30 @@ def test_generated_only_nodes_are_pending_until_evaluated():
 
     pending.status = "ok"
     assert next_generated_only_node(journal) is None
+
+
+def test_record_generated_only_node_marks_saves_and_appends():
+    journal = Journal()
+    node = Node(code="print('generated')", plan="generated")
+
+    class AgentStub:
+        saved_node: Node | None = None
+
+        def save_hypothesis_root_code_for_node(self, node: Node) -> None:
+            self.saved_node = node
+
+    agent = AgentStub()
+
+    record_generated_only_node(
+        agent=agent,
+        journal=journal,
+        node=node,
+        experiment_id="test-run",
+    )
+
+    assert node.status == "generated"
+    assert journal.nodes == [node]
+    assert agent.saved_node is node
 
 
 def test_generated_only_nodes_are_not_scored_good_candidates():

@@ -4,8 +4,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
-
 import aide.research as research
 from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
@@ -1874,6 +1872,33 @@ def test_reviewed_llm_hypothesis_root_saves_single_file(tmp_path, monkeypatch):
         tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
     )
     assert (hypothesis_dir / "legacy-001.py").read_text() == "print('new root')\n"
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["active"]["legacy"] == "legacy-001.py"
+
+
+def test_generated_only_hypothesis_root_saves_single_file(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('generated root')\n", plan="root")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+
+    agent.save_hypothesis_root_code_for_node(node)
+
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    assert (hypothesis_dir / "legacy-001.py").read_text() == "print('generated root')\n"
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
     assert manifest["active"]["legacy"] == "legacy-001.py"
 

@@ -549,7 +549,10 @@ def save_run(
 ):
     def notify(message: str) -> None:
         if progress_callback is not None:
-            progress_callback(message)
+            try:
+                progress_callback(message)
+            except Exception:
+                logger.exception("Progress callback failed while saving run")
 
     notify("Preparing log directory")
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
