@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Discrete Survival Hazard Features",
   "summary": "PitNextLap is a next-event prediction after stint reset, matching a discrete-time hazard framing.",

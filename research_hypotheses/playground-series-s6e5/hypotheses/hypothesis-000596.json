@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-lap ranking auxiliary model grouped by race-lap",
   "summary": "Pit calls are relative decisions among cars exposed to the same lap and race state.",

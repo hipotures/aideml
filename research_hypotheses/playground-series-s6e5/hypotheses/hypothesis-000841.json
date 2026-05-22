@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a latent tyre-state sidecar instead of more hand-built degradation formulas",
   "summary": "Recent F1 research models tyre degradation as a latent state rather than a directly observed scalar.",

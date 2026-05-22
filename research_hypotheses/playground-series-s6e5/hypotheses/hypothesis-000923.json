@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "CatBoost Ordered CTR Ensemble",
   "summary": "Current best AutoGluon run uses LightGBM/XGBoost; CatBoost is purpose-built for categorical variables and ordered target statistics that reduce prediction shift/leakage.",

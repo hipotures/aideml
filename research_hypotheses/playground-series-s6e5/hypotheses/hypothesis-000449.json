@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Importance-Weighted CV And Shift-Aware Calibration",
   "summary": "Test appears shifted relative to train by year/driver mix.",

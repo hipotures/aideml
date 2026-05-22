@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-Conditional Bayesian Calibration on OOF Logits",
   "summary": "Prior research already pointed toward calibration/blending, but a specific non-parametric post-processor is still untested here.",

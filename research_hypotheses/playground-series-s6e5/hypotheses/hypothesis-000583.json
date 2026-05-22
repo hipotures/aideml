@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered categorical boosting as a separate expert model",
   "summary": "This dataset has very high-cardinality categorical structure (Driver, Race, Year×Race, Driver×Compound).",

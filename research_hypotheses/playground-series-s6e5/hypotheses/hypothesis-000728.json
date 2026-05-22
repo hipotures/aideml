@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Physics-Constrained Boosting Specialist",
   "summary": "Current best solutions already encode pit-window pressure, but the final learner is still free to fit non-physical reversals.",

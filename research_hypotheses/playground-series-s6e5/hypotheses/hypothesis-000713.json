@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap ranking specialist blended with beta-calibrated classifier logits",
   "summary": "Next-lap pit decisions are partly relative: on a given lap, only a few drivers are truly in-window.",

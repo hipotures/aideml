@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Competing-risk next-lap hazard: mandatory-rule stop vs performance/tactical stop",
   "summary": "FIA rules create a distinct stop motive in dry races: teams may stop because they still owe a second slick compound, separately from stops caused by degradation, undercut defense, or weather.",

@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-race-lap query ranking sidecar",
   "summary": "The decision is relative: on a given lap, only a few drivers are realistic pit candidates.",

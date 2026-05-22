@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cascaded auxiliary head for laps-to-next-stop",
   "summary": "Recent lap-level F1 work reports a cascaded multi-task setup where next-lap stop classification is complemented by a horizon-to-stop regression head.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-blocked plus chronological-gap OOF calibration stack",
   "summary": "This task has two leakage axes: same-race dependence and temporal drift across years/rules/tyre choices.",

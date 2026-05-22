@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Query-group ranker for within-sequence ordering, followed by OOF calibration",
   "summary": "ROC AUC rewards ranking, and learning-to-rank objectives explicitly optimize pair ordering within groups.",

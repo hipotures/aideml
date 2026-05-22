@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censored Laps-To-Pit Survival Model",
   "summary": "This target is naturally a discrete event process: each row is a state with a remaining time-to-next-stop, and many final stints are right-censored by the finish.",

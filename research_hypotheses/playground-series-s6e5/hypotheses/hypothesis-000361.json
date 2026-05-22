@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Learned next-compound transition priors with hierarchical smoothing",
   "summary": "The best code already checks whether fresh soft/medium/hard can finish, but teams do not choose those compounds uniformly.",

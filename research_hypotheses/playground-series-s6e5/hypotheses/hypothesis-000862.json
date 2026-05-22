@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-Safe Multi-Expert Blend With Purged Group-Time CV",
   "summary": "The strongest public guidance here is that calibration can change ROC AUC if isotonic introduces ties, while grouped and temporal splits are needed to avoid optimistic leakage.",

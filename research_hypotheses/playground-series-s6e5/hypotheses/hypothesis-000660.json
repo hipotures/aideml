@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-level rank and probability post-processing",
   "summary": "ROC AUC is rank-based, and pit-stop probability within a race lap is a constrained relative decision: only a few cars usually pit next lap.",

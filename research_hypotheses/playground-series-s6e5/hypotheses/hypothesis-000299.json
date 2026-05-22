@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Pure CatBoost categorical specialist with ordered CTRs",
   "summary": "Your current best solutions handcraft ordinal/frequency encodings for Driver, Race, Compound, and Race_Year.",

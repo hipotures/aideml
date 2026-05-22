@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a within-lap ranker over drivers in the same race-lap and blend it with the binary model",
   "summary": "Pit calls are relative decisions made against the field state, not just absolute thresholds.",

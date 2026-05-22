@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace raw sparse ID effects with hierarchical partial-pooling priors",
   "summary": "Driver, Race, Race_Year, and Driver_Compound are high-cardinality and partially shifted between train and test.",

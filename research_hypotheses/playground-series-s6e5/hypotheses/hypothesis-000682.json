@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-Specialist Ensemble With OOF Sigmoid Calibration",
   "summary": "The strongest public pattern here is heterogeneity: dry vs wet, green vs neutralized, early vs late race, and first-stop vs later-stop behavior differ meaningfully.",

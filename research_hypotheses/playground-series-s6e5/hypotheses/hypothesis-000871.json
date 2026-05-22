@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Leakage-safe prefix stats plus regime-aware rank-space ensemble",
   "summary": "Your best models still use mostly frequency encodings for high-cardinality categories.",

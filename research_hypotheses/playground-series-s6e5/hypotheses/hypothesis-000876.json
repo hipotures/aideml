@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a graded imminence ranking sidecar over future pit distance and blend by OOF ranks",
   "summary": "Learning-to-rank docs from XGBoost, LightGBM, and CatBoost support grouped pairwise/query objectives.",

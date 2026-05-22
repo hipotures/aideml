@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Same-Lap Set Model For Field Interaction",
   "summary": "A pit decision is not only a single-driver state; it depends on the unordered set of competitors sharing the lap, because traffic, cover-stops, and open-air pockets matter.",

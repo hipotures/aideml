@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add cohort strategy-template priors",
   "summary": "F1 pit timing is planned around one-stop/two-stop windows, compound cohorts, and traffic, not just individual tyre age.",

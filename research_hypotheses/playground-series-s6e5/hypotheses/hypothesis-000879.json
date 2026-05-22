@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace full-frame frequency/median encoders with ordered historical priors",
   "summary": "Current best code appears to compute value-count frequencies and group medians on the full dataframe, which can leak fold information and inflate local CV.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-lap ranking specialist for relative pit urgency",
   "summary": "At a given `Year/Race/LapNumber`, strategy is partly relative: some drivers are much closer to the pit window than others.",

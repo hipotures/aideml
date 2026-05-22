@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Hierarchical Strategic Priors Via Cross-Fitted Encodings",
   "summary": "Driver and race IDs are high-cardinality and likely carry persistent strategic tendencies that simple frequency encoding misses.",

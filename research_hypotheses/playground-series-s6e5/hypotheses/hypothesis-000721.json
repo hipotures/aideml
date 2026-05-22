@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace single-label training with a multi-horizon discrete-time stop ladder",
   "summary": "Recurrent-event literature and F1 dynamic-programming papers both frame pit timing as a sequential event process, not a one-off binary classification.",

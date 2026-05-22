@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace naive CV with grouped, stratified, time-aware splits plus embargoed encodings",
   "summary": "This dataset is repeated race sequences, so row-random CV can overstate AUC by leaking race-, stint-, and season-specific patterns.",

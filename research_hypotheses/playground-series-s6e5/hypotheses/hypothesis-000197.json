@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-safe OOF calibration and specialist blending with sigmoid, not isotonic",
   "summary": "You care about ROC AUC, so preserving ranking matters.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Distill a multi-task strategy teacher into tabular meta-features",
   "summary": "Adjacent F1 papers report value from predicting pit timing jointly with auxiliary targets such as laps-to-stop and compound choice.",

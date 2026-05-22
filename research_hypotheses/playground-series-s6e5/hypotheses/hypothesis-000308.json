@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-race-lap ranking expert",
   "summary": "At any given race-lap only a few drivers are realistic next-stop candidates, so ranking drivers against same-lap peers can capture pit waves better than pure independent classification.",

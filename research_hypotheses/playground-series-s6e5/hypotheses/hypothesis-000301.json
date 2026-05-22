@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered CatBoost specialist on raw strategy categories",
   "summary": "CatBoost’s ordered boosting and categorical transformations are designed to reduce prediction shift from target leakage, and its docs explicitly discourage manual one-hot preprocessing for rich categorical structure.",

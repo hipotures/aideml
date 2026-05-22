@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Entity-Embedding Identity Features",
   "summary": "`Driver`, `Race`, and their interactions are high-cardinality and sparse; entity embeddings are a proven Kaggle pattern for learning similarity structure that trees and target stats often miss.",

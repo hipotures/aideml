@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Group-CV rank-stacked model family blend",
   "summary": "Current solutions rely mainly on AutoGluon GBM/XGB under random holdout.",

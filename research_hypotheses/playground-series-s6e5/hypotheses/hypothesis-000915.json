@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stint-embargo CV with strictly OOF encodings and stacks",
   "summary": "Purged and embargoed CV exists precisely because overlapping sequential samples can leak signal across folds.",

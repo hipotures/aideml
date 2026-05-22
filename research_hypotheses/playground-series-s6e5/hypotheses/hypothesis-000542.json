@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Trust only ensembles that pass both group holdout and rolling-origin CV, then apply sigmoid-only calibration",
   "summary": "The latest F1 degradation work validates with rolling-origin CV, while sklearn notes GroupKFold prevents same-group leakage and that isotonic calibration can change AUC by creating ties whereas sigmoid preserves ranking.",

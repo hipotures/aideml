@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Leakage-safe regime stacking, not probability calibration",
   "summary": "Prior work already explored regime ideas conceptually; the next testable extension is a strict two-level stack where specialists cover dry/wet, mandatory-stop-debt, and endgame regimes.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a race-lap query-ranking specialist for pitting order within each field state",
   "summary": "Game-theoretic pit-stop work emphasizes that optimal timing depends on rivals, and CatBoost supports query/group ranking objectives directly.",

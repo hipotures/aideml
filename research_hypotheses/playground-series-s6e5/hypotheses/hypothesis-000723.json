@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Tighten CV with race-purging and use only monotonic calibration for final blending",
   "summary": "Your feature space already uses strong race/context interactions and will likely expand with race-lap aggregates, which raises leakage risk if folds mix adjacent laps from the same event.",

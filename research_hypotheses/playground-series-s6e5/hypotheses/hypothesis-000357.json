@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train-to-test density-ratio weighting with weighted calibration",
   "summary": "Your context already hints at shift: the train set has more drivers than test, and public/private splits may differ by year, race, and compound mix.",

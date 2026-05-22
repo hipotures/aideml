@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF hazard tables instead of fixed tyre-life heuristics",
   "summary": "This target is already a discrete next-lap event, so treat each row as a hazard state and learn empirical pit hazard curves rather than hard-coding expected life constants.",

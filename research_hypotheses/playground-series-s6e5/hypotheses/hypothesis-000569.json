@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use a narrow OOF stack: feature-heavy GBDT + ordered CatBoost + hazard model, then regime-wise monotone calibration",
   "summary": "Stacking helps when base learners have different biases, and ordered CatBoost is specifically designed to reduce prediction shift from categorical leakage.",

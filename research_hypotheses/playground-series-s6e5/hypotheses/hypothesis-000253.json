@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Shift-Aware Training Via Train-vs-Test Weighting And Prior-Shift Checks",
   "summary": "The test set has fewer drivers than train and includes testing/wet regimes, so ordinary CV may mis-rank candidates under covariate or label shift.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-expert ensemble with segment-wise calibration",
   "summary": "F1 pit timing is regime-dependent: slick vs wet, first stint vs later stints, and early vs late race behave differently.",

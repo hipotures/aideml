@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Build hierarchical out-of-fold strategy priors with empirical-Bayes shrinkage",
   "summary": "Weekend strategy is strongly race-specific: some events are naturally one-stop, others two-stop or high-undercut.",

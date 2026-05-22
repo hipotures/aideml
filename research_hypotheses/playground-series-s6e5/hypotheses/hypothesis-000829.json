@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Lap Ranking Specialist Blended With Pointwise Hazard",
   "summary": "ROC AUC rewards ordering, and pit decisions are inherently relative within a race-lap snapshot: who among the current field is most likely to stop next.",

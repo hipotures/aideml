@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Discrete-time hazard model with auxiliary remaining-laps target",
   "summary": "This target is naturally a one-step hazard: probability of pitting at lap t+1 given survival until lap t.",

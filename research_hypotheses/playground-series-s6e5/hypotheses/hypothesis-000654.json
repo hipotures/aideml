@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF empirical pit-window density",
   "summary": "Pit decisions have strong race/compound/stint timing priors.",

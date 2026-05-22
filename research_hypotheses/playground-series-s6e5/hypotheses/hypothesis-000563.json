@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Leader-Follower Strategy Style Priors",
   "summary": "Public motorsport strategy work describes pit decisions as adversarial, with leader-follower behavior and undercut avoidance materially affecting outcomes.",

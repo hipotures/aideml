@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Causal Sequence Sidecar, Not Bidirectional/SMOTE Public Pipelines",
   "summary": "A recent pit-stop paper reports Bi-LSTM results with SMOTE and stratified validation, but those choices are risky for online next-lap prediction because bidirectional context and weak splits can inflate performance.",

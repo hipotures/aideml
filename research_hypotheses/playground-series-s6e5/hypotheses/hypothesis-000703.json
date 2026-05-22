@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stress-test CV with chronology gaps, then keep only ensemble members that survive",
   "summary": "This dataset mixes years and repeated races/drivers, so leakage-sensitive features can look strong under naive grouped CV.",

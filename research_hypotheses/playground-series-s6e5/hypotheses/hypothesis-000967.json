@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap quota model plus within-group renormalization",
   "summary": "A next-lap pit event is partly a competition within each Year-Race-Lap group: only a small subset of drivers pit on the following lap.",

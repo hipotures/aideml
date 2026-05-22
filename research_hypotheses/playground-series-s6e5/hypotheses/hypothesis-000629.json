@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "CatBoost Ordered-Categorical Blend",
   "summary": "The best runs rely on AutoGluon GBM/XGB, while CatBoost is designed for categorical feature combinations and ordered target statistics.",

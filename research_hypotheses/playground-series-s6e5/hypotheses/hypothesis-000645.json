@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Pit Window Distance-to-Optimum Features",
   "summary": "Strategy models approximate optimum stint length from pit loss and degradation rate; public F1 strategy guides describe the stop decision as fresh-tyre gain versus pit-loss cost.",

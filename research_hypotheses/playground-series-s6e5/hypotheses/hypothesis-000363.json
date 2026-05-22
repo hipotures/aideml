@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-specific post-hoc recalibration tree on out-of-fold scores",
   "summary": "Public sources on calibration show that one global map can miss region-specific distortions, and beta calibration is often safer than plain logistic scaling for skewed score distributions.",

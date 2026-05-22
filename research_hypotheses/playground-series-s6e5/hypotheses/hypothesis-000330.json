@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend specialists with regime-gated rank averaging, not generic calibration",
   "summary": "Official scikit-learn docs note calibration generally should not improve ROC AUC, and isotonic can even change ranks via ties.",

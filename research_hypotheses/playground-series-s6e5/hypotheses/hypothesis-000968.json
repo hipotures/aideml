@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Adversarial-validation gated experts for train/test regime shift",
   "summary": "Previous summaries already pointed to shift-aware stacking, but the live literature on classifier-based covariate shift suggests making shift measurement explicit.",

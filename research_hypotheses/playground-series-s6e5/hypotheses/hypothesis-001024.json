@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multi-Task Next-Pit Horizon Stacking",
   "summary": "A recent lap-level pit-stop paper used a cascaded multi-task setup where next-lap classification is complemented by a regression estimate of laps remaining until stop.",

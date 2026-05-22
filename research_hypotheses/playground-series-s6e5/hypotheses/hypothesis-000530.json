@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-lap ranking sidecar for pit imminence",
   "summary": "F1 strategy is relative: official analysis says undercut/overcut decisions depend on rival position, traffic, and being within striking range, often around two seconds.",

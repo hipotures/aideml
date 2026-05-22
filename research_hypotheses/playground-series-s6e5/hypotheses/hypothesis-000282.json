@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "CatBoost Ordered-Categorical Specialist For Driver-Race Context",
   "summary": "Your current best solutions rely on hand-built frequency features, but CatBoost’s ordered categorical statistics are designed to reduce prediction shift and usually outperform naive frequency/mean encodings on high-cardinality categories like Driver, Race, and Driver x Compound.",

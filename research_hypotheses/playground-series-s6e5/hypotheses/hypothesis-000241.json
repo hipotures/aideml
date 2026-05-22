@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF empirical-Bayes strategy priors for high-cardinality IDs",
   "summary": "`Driver`, `Race`, and their interactions are high-cardinality and likely carry stable stop-style signal, but naive target means leak badly.",

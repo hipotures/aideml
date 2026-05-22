@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stability-weighted expert blend selected under both grouped and forward CV",
   "summary": "Scikit-learn’s GroupKFold and TimeSeriesSplit highlight different leakage risks: same-group contamination versus future-to-past leakage.",

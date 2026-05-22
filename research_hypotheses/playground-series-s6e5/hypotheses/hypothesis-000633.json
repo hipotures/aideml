@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Out-of-fold categorical hazard encodings",
   "summary": "Regularized target encoding is strong for high-cardinality categorical predictors, and scikit-learn documents cross-fitting as important to avoid overfitting.",

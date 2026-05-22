@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use explicit train-to-test importance weighting for domain shift",
   "summary": "The dataset has obvious shift candidates such as Pre-Season Testing and changing year/race mixes.",

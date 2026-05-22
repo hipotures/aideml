@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-fitted super-learner blend with beta calibration on logits",
   "summary": "For AUC tasks, monotone calibration alone does not help a single model, but cross-fitted blending of heterogeneous models often does.",

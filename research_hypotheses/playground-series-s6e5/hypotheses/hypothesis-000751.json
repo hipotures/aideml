@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Strictly OOF stacked ensemble with beta calibration and model-disagreement meta-features",
   "summary": "Prior work on stacking and beta calibration suggests the next gain may come from combination quality, not a single stronger base learner.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Grouped Pairwise Ranking on Candidate Laps Within a Race/Stint",
   "summary": "ROC AUC rewards correct ordering, and public ranking objectives are designed to learn winner-vs-loser pairs inside a group.",

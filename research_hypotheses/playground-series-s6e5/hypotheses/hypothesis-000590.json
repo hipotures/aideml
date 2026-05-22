@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-blocked CatBoost on raw high-cardinality categoricals",
   "summary": "The current best solutions hand-engineer many frequency/interactions for `Driver`, `Race`, and `Compound`, but CatBoost was designed to turn categorical values and combinations into ordered target statistics while reducing boosting bias.",

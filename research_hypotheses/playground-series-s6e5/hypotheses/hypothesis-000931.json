@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-averaged model-diversity ensemble",
   "summary": "The strongest snippets appear feature-focused, likely with one dominant GBDT setup.",

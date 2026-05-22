@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Out-Of-Fold Hazard Encodings",
   "summary": "Discrete-time survival framing treats next-lap stop probability as conditional hazard.",

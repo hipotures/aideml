@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Recurrent Discrete Hazard Model With Stop Resets",
   "summary": "This target is literally a one-step hazard.",

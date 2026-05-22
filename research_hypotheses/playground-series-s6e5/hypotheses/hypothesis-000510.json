@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stack auxiliary next-state tasks with the main PitNextLap model",
   "summary": "Recent F1 pit-stop work uses cascaded multi-task heads, combining next-lap stop classification with a remaining-laps-to-stop target.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-year grouped validation and OOF training",
   "summary": "Random row splits can leak near-identical race/lap/stint context across train and validation.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Discrete pit-window hazard priors",
   "summary": "Pit decisions are naturally a per-lap hazard with stint resets, not just an independent row classification problem.",

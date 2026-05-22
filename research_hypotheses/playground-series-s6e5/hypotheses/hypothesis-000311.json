@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regulation-Aware Sequence Decoder Over Rowwise Scores",
   "summary": "Pit calls are sequential decisions, not independent rows.",

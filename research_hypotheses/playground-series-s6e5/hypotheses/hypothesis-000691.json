@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend a within-lap ranking model with a calibrated classifier",
   "summary": "Pit decisions are relative within a lap: among the 20 drivers on that lap, only a few are near stopping.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Test OOF beta or Venn-Abers calibration only as a blend stabilizer",
   "summary": "Calibration usually does not improve a single model’s ROC AUC because monotone transforms preserve ranking, but it can materially help when combining heterogeneous specialists.",

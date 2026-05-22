@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-CatBoost raw-category specialist",
   "summary": "The dataset has very high-cardinality entities (`Driver`, `Race`, `Year`, compound interactions).",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotone-Constrained Strategy Pressure Model",
   "summary": "The current best solutions already create physically ordered pressure features, but unconstrained trees can still learn locally inverted responses.",

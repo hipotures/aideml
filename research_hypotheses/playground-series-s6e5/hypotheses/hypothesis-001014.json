@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Two-stage hazard-plus-calibration stack with sigmoid-only final mapping",
   "summary": "Recent F1 pit-stop work uses a cascaded setup that predicts both next-lap stop and horizon-to-stop, while survival literature treats this naturally as a discrete-time hazard with time-varying covariates.",

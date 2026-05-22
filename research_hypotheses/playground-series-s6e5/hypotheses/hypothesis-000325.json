@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend orthogonal experts with rank-based OOF ensembling",
   "summary": "ROC AUC rewards ranking, not calibrated probability scale.",

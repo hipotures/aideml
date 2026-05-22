@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF calibration-aware stacking with rank-preserving calibrators",
   "summary": "This is an AUC task, so calibration should not destroy ranking.",

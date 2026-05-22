@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Purged race-blocked rank stacker with a monotone physics expert",
   "summary": "Grouped leakage literature implies adjacent laps from the same driver-race can make CV too optimistic, especially once you add encoders or stackers.",

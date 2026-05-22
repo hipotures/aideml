@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-Specialized Experts With Monotone Sigmoid Blend",
   "summary": "F1 strategy literature repeatedly highlights different behavior under dry vs wet tyres and under neutralization-like conditions because pit-loss economics and degradation dynamics change sharply.",

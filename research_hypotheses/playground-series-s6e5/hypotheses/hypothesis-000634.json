@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-normalized ensemble blending",
   "summary": "ROC AUC depends on ordering, not probability calibration.",

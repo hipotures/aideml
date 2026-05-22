@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Grouped ordered CatBoost CTRs for sparse strategy entities",
   "summary": "Current best code mostly uses frequency encodings for high-cardinality fields.",

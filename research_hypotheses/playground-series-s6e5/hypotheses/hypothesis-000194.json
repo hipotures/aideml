@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Lap-level probability-mass normalization using empirical pit-count priors",
   "summary": "Pit calls are not independent across rows; on a given race lap, usually zero or a small cluster of cars pit.",

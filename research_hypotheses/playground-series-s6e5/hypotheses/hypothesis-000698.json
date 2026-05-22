@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Conservative pseudo-label adaptation with calibrated disagreement filtering",
   "summary": "Tabular self-training can help when unlabeled test rows are plentiful, but only if pseudo-labels are filtered by confidence and agreement.",

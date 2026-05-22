@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Target-safe pit hazard priors by stint state",
   "summary": "PitNextLap is a discrete hazard: probability of stopping on the next lap conditional on still running the current stint.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Adversarial-validation weighting for train-test drift",
   "summary": "The train/test split likely shifts by driver mix, season, and race composition.",

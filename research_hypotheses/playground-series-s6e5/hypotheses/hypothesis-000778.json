@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-preserving OOF ensemble with regime-specific weights",
   "summary": "Under shift, ensembles are often more reliable than single models, but isotonic calibration can change ROC-AUC by introducing ties.",

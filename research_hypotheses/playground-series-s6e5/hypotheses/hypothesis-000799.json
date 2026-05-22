@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Native-categorical XGBoost specialist",
   "summary": "The data has high-cardinality raw categories (`Driver`, `Race`, interactions by year/compound), and current best code mostly compresses them into frequency features.",

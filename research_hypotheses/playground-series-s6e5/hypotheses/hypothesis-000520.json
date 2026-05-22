@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Reframe `PitNextLap` as a discrete-time hazard model with auxiliary `laps_to_next_pit` supervision",
   "summary": "This target is naturally a time-to-event problem, not just an iid binary row classification task.",

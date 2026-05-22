@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Upgrade the prior hazard idea into a censored time-to-next-pit AFT model",
   "summary": "This target is naturally a time-to-event problem: rows before the next pit have an observed remaining-laps label, while rows with no later pit in the race are right-censored.",

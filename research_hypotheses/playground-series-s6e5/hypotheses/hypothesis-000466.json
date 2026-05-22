@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Native CatBoost categorical-diversity blend",
   "summary": "The public competition write-up used CatBoost but dropped Driver and one-hot encoded objects, while CatBoost documentation recommends native categorical handling and ordered target statistics to reduce target leakage.",

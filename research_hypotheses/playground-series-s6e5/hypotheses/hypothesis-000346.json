@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Discrete Stint Hazard Priors",
   "summary": "Pit windows are naturally discrete hazards: given the stint survived to tyre age t, what is the chance of stopping on the next lap?",

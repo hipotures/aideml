@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Lap-group ranker specialist blended with binary classifier",
   "summary": "The target is next-lap pit probability, but operationally only a few cars per lap are truly under strongest stop pressure.",

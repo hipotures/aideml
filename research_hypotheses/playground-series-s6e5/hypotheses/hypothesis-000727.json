@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Sigmoid-Calibrated Regime Blend",
   "summary": "You already have several near-tied models, so gain may now come from safer blending.",

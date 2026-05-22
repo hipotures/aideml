@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Purged race-level walk-forward CV with embargo",
   "summary": "`PitNextLap` uses a forward 1-lap horizon, so adjacent laps from the same driver/race create overlapping label windows and can make ordinary grouped CV mildly optimistic.",

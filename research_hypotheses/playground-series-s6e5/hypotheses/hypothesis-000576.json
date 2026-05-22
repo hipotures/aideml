@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Sequence Residual Model Over Last 5-8 Laps",
   "summary": "Recent pit-stop prediction work found sequential deep models strongest because pit calls depend on evolving trends, not one-row snapshots.",

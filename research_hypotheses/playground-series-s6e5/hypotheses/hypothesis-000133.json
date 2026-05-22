@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Distill censored time-to-next-stop into classifier features",
   "summary": "AFT survival models are designed for time-to-event targets with censoring, which matches laps-until-next-pit better than a plain binary label.",

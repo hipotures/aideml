@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Undercut/overcut pressure features from estimated post-stop rejoin battles",
   "summary": "Game-theoretic F1 strategy work shows competition materially changes optimal pit timing; ignoring opponents can reduce winning odds.",

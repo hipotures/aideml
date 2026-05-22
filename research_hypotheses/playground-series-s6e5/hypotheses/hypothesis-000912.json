@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cascaded multi-task expert for stop now, laps-to-stop, and next compound",
   "summary": "Recent F1 pit-stop work uses a cascaded multi-task design where next-lap stop probability is complemented by a regression head for remaining laps, and older race-strategy work explicitly splits pit/no-pit from next-compound choice.",

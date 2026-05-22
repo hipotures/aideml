@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Year-aware covariate-shift weighting and expert blending",
   "summary": "The data span 2022-2025 with many drivers and likely rule/car changes, so the train-test mix is unlikely stationary.",

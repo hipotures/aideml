@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use diversity-first OOF ensembling with post-hoc calibration",
   "summary": "AUC often improves from combining differently biased tabular models, and scikit-learn’s stacking/calibration APIs are designed around cross-validated predictions.",

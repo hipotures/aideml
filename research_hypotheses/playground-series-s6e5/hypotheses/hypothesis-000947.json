@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Year Grouped Hazard Priors",
   "summary": "Random row CV can leak race strategy patterns because rows from the same race/driver trajectory appear in both train and validation.",

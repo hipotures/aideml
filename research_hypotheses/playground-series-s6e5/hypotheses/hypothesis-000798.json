@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotone-constrained strategy booster",
   "summary": "Pit urgency should usually increase as tyre-age pressure, service-window overage, and finish infeasibility worsen, while immediately-post-pit freshness should suppress it.",

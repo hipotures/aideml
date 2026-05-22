@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF empirical stop-percentile priors by track and compound",
   "summary": "Official strategy guides emphasize that degradation level and pit-lane time change whether a one-stop or two-stop is viable.",

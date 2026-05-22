@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Leak-safe empirical hazard priors",
   "summary": "The current best solution hand-codes tyre life windows.",

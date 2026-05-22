@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap query ranker blended by OOF rank",
   "summary": "ROC AUC rewards ordering, and CatBoost supports groupwise ranking objectives.",

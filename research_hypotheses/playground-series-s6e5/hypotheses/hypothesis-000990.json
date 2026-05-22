@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Sequence Specialist Blended With GBDT",
   "summary": "Recent F1 pit-window studies found deep sequential models competitive because cumulative degradation is inherently temporal.",

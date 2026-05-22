@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-held-out ordered-categorical stack with purge-aware validation",
   "summary": "CatBoost’s ordered boosting was built to reduce prediction shift from categorical leakage, which is highly relevant here because Driver/Race/Compound interactions are high-cardinality and repeated within race sequences.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Latent neutralization/weather shock expert",
   "summary": "F1 strategy changes sharply when Safety Car/VSC windows open or grip suddenly drops; official analysis notes reduced pit-loss under Safety Car and teams can pre-arm stops for those windows.",

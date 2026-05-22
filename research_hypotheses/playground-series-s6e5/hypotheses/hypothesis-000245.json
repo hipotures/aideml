@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Smooth additive specialist (EBM/GAM) blended with tree model",
   "summary": "Your current top solutions are heavily tree-plus-hand-feature oriented.",

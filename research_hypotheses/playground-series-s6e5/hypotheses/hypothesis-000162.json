@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Embargoed race-level CV plus fold-safe logit blending with beta calibration",
   "summary": "Adjacent laps from the same driver-race have overlapping label horizons, so naive grouped CV can still overstate quality.",

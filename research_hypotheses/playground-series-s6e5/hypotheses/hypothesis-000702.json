@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Query-wise ranking model by race-lap context, then calibrate",
   "summary": "AUC is ranking-based, and pit decisions are relative within local race context.",

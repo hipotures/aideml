@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Small OOF stack with sigmoid-only regime calibration",
   "summary": "Calibration docs note that isotonic can change ROC-AUC by introducing ties, while sigmoid preserves ranking.",

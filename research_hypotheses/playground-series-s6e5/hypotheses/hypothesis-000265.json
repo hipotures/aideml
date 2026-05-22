@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multi-horizon discrete-time hazard head plus rank-preserving blend",
   "summary": "Discrete-time survival work shows that next-event timing can be reframed as person-period binary hazards, letting standard classifiers model conditional event risk across multiple future intervals.",

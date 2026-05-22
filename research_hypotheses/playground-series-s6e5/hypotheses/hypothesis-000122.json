@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Dual-CV ensemble with sigmoid-calibrated blend, not raw single-model probabilities",
   "summary": "For AUC tasks, diversity across model families often beats extra feature tinkering.",

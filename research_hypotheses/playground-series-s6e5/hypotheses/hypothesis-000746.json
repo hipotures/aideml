@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotone Multi-Horizon Hazard Stack With Beta-Calibrated Blend",
   "summary": "Recent F1 pit-stop papers report value from jointly predicting next-stop timing and classification, and discrete-time hazard models are a natural fit for lap-level event prediction.",

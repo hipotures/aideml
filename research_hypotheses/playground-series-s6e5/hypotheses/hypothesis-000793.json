@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-fitted hierarchical target encodings for driver/track strategy memory",
   "summary": "The current best stack still relies mostly on numeric heuristics plus frequency encoding.",

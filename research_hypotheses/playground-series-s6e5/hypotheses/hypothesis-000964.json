@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-First Rank Blend Across Binary, Survival, And Pairwise Models",
   "summary": "ROC AUC rewards ordering quality, not probability calibration.",

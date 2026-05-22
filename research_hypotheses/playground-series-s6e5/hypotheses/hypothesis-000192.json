@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Shape-constrained monotone specialist for tyre-age and finish-window logic",
   "summary": "XGBoost monotonic constraints can improve performance when domain priors are strong.",

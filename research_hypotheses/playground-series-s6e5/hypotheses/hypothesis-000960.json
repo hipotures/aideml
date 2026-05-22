@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Sigmoid Logit Stacking of Orthogonal Experts",
   "summary": "The local-CV/public gap suggests model diversity is likely worth more than another round of feature inflation, but ROC AUC rewards preserved ranking.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Temporal Entity-History Encodings Instead Of Raw Frequencies",
   "summary": "The strongest current code still relies on simple in-sample frequency features for high-cardinality categories.",

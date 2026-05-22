@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-safe regime stack with sigmoid-only calibration",
   "summary": "Scikit-learn notes isotonic calibration can change ROC-AUC by introducing ties, while sigmoid is strictly monotonic and preserves ranking.",

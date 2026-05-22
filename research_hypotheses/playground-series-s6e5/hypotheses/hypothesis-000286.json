@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap ranking specialist with groupwise objective",
   "summary": "ROC AUC rewards ranking, and CatBoost exposes ranking losses plus native categorical handling; F1 strategy is also inherently relative to the other cars on the same lap rather than purely absolute.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a censored time-to-next-pit specialist and blend it AUC-safely",
   "summary": "Each row is naturally a time-to-event state.",

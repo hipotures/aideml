@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Two-Stage Structural-Zero Gate For Pit Windows",
   "summary": "Most laps are obvious non-pit laps, so treating every row as the same binary problem may dilute the rare-event signal.",

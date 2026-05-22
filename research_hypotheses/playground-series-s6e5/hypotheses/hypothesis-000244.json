@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Approximate pit-utility and rejoin-slot features",
   "summary": "Real pit calls depend on whether stopping now is actually advantageous given pit-loss, traffic gap, and undercut/overcut conditions, not just tyre wear.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use lap-group ranking plus sigmoid-calibrated regime blend",
   "summary": "Pit calls are partly relative within a lap and race state, but final submissions are scored by global ROC AUC.",

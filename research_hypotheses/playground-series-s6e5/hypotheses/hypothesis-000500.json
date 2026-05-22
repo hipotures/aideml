@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Pre-season testing specialist or domain gate",
   "summary": "Race includes Pre-Season Testing, which is not a Grand Prix strategy environment.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Low-weight AUC-optimized pairwise specialist blended with tree baseline",
   "summary": "Since the metric is ROC AUC, a model trained with pairwise AUC/ranking loss can add diversity beyond logloss-trained tabular boosters.",

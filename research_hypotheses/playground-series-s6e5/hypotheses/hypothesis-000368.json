@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Next-Lap Plus Horizon Multi-Task Specialist",
   "summary": "A recent lap-level F1 preprint uses a cascaded multi-task design: next-lap pit classification plus laps-until-stop regression.",

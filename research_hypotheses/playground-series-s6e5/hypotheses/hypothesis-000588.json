@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Leakage-resistant high-cardinality strategy encodings",
   "summary": "`Driver`, `Race`, and their interactions are high-cardinality and strategy-heavy.",

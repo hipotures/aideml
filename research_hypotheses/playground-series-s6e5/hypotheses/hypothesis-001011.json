@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-fitted CatBoost on raw categorical identities instead of mostly frequency encodings",
   "summary": "The dataset has very high-cardinality Driver and many race-context combinations; CatBoost’s ordered target statistics were designed specifically to fight prediction shift and target leakage in categorical boosting.",

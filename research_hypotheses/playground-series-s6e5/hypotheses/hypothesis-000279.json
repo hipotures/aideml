@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-boosting categorical specialist with raw IDs and pairwise race-lap context",
   "summary": "Your data has very high-cardinality Driver and race identifiers.",

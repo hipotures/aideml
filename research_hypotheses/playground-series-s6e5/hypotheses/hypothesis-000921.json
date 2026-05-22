@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Empirical Pit-Window Hazard Features",
   "summary": "Pit stopping is a hazard/event-timing problem: probability spikes at common stint ages and race-progress windows rather than varying smoothly with tyre life alone.",

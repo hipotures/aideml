@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Candidate-window LambdaRank reranker on top of the current classifier",
   "summary": "ROC AUC is a pairwise ranking metric, and ranking objectives are designed to optimize pair ordering directly.",

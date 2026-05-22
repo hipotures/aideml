@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Venn-Abers-Calibrated OOF Specialist Blend",
   "summary": "Your best nodes already cluster tightly, so the next gain may be from stabilizing blend tails rather than changing core features.",

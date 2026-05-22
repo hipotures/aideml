@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Model pit-now versus wait-one-lap as an explicit counterfactual value gap",
   "summary": "Public F1 strategy explanations and recent game-theoretic F1 work both frame the decision as relative action value, not absolute pit probability.",

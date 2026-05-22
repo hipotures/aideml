@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Rank-Average Blend With Beta/Sigmoid Calibration",
   "summary": "If you add a ranking model, a survival model, and a categorical specialist, the main remaining lift is likely in how they are combined.",

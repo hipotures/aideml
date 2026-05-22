@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary stop-horizon target distilled back into next-lap AUC model",
   "summary": "A recent pit-stop decision paper reports gains from coupling next-lap classification with a stop-horizon regression head.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Short-window time-series transform specialist for last-k lap shape",
   "summary": "Adjacent work on pit-stop prediction favors sequence models, and ROCKET/MiniRocket-style transforms are strong, cheap baselines for short ordered signals.",

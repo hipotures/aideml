@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a monotone-constrained booster on physically directional features",
   "summary": "Several engineered features should be monotone in pit propensity under fixed context, such as service pressure, finish-stop pressure, and impossibility of finishing on current tyres.",

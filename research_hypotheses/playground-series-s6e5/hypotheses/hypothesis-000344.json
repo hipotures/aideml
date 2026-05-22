@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Explicit SC/VSC Detector With Regime-Gated Blend",
   "summary": "FIA SC/VSC procedures create a different decision regime, and official F1 analysis explicitly notes that cheap Safety Car stops change optimal pit timing.",

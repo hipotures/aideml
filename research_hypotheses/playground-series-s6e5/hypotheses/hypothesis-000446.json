@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Grouped ranking model plus AUC-first OOF rank stacking",
   "summary": "ROC AUC rewards ordering, and CatBoost has grouped ranking/classification objectives designed for data with internal group structure.",

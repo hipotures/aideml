@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-Lap Ranker Sidecar",
   "summary": "ROC AUC rewards ordering, and pit calls are often relative to nearby rivals rather than absolute thresholds.",

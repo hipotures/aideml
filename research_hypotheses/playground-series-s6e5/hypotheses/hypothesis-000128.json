@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Hierarchical stint-hazard priors instead of fixed compound life tables",
   "summary": "The current best features hard-code generic compound life windows.",

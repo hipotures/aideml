@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Infer hidden cheap-stop and crossover regimes from field-synchronous shocks",
   "summary": "Public F1 analysis repeatedly shows pit timing changes abruptly when SC/VSC makes stops cheaper or when wet/dry crossover points are reached.",

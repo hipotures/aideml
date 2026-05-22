@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use a query-group ranker and AUC-safe OOF stacking instead of raw probability averaging",
   "summary": "AUC is fundamentally about ordering, and LightGBM/CatBoost ranking objectives can learn which laps within a driver-race or driver-stint are most stop-like.",

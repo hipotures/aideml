@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a same-lap race-context ranker with race-lap queries",
   "summary": "Pit calls are competitive decisions: teams react to rivals, traffic, and undercut windows.",

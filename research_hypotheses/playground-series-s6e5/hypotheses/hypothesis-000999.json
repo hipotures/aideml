@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-safe regime blend with parametric calibration, not isotonic",
   "summary": "Calibration docs warn isotonic can create ties and change ROC AUC.",

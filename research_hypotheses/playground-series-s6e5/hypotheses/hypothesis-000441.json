@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-cat specialist with purged OOF rank blending",
   "summary": "CatBoost’s ordered boosting and ordered categorical statistics are designed to reduce prediction-shift leakage on sparse categories, which fits this dataset’s many rare drivers and race contexts.",

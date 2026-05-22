@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap group ranking model stacked with classifier OOF scores",
   "summary": "ROC AUC is a ranking metric, and official XGBoost/CatBoost ranking docs support groupwise or pairwise training by query.",

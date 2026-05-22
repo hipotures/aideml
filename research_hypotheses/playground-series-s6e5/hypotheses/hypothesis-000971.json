@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-group ranking model to identify the most likely next stopper within each lap",
   "summary": "Pit calls are competitive and relative: on a given `(Year,Race,LapNumber)` only a few drivers are realistic next-lap pit candidates.",

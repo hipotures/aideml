@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use local contest ranking and AUC-safe blending instead of generic calibration",
   "summary": "Pit decisions are often relative contests against nearby cars; F1 strategy notes undercut/overcut usually matters only when rivals are within striking range.",

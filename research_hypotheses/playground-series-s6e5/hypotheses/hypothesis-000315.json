@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ambiguity-Window Specialist Trained On Hard Negatives",
   "summary": "Most negatives are trivial early-stint or impossible-to-pit laps, so AUC can plateau while the model still misses the subtle boundary cases.",

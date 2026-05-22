@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Whole-grid lap snapshot encoder instead of row-local features",
   "summary": "Official F1 strategy explanations emphasize that pit calls depend on the bigger race picture, not just one car.",

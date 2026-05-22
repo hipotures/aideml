@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-blocked monotone calibration and blend selection",
   "summary": "Post-hoc monotone calibration can preserve ranking while fixing score shape, and Venn-Abers/Beta calibration are stronger than plain Platt in many binary settings.",

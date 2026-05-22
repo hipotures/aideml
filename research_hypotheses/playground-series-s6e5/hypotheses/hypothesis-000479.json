@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a time-to-next-stop auxiliary model",
   "summary": "Recent F1 pit-stop work uses multi-task heads for both next-lap classification and laps-until-stop regression, and discrete-time survival modeling treats each lap as a hazard step.",

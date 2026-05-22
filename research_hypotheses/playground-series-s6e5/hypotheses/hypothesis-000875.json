@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a stint phase-change sidecar that detects tyre-cliff onset, not just absolute tyre age",
   "summary": "Predictive-maintenance literature repeatedly treats degradation as multi-phase with a change point, and F1 strategy articles explain that undercut value depends on when old tyres stop behaving linearly.",

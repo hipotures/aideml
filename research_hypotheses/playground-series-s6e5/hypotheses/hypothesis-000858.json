@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Dual-Axis OOF Selection With Regime-Wise Sigmoid Calibration",
   "summary": "Several prior directions already point to CV sensitivity.",

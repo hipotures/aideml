@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Direct AUC-oriented learner instead of pure logloss boosting",
   "summary": "The competition metric is ROC AUC, and literature on AUC optimization plus CatBoost ranking docs both support pairwise formulations when ordering matters more than calibrated probabilities.",

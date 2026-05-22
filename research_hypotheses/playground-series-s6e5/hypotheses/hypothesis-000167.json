@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-native ranker plus rank-averaged ensemble instead of probability-focused calibration",
   "summary": "CatBoost ranking objectives support groupwise optimization with `GroupId`, and ROC AUC depends only on ordering, not calibration.",

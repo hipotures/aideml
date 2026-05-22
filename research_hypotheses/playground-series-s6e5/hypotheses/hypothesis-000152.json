@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-specific blending with beta calibration on OOF logits",
   "summary": "Public calibration work suggests isotonic can overfit smaller slices, while beta calibration is a lighter fix for skewed score distributions.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Driver-Team Strategy Prior Proxies",
   "summary": "Public F1 pit datasets emphasize driver/team behavior, average stop patterns, stint length, and pit frequency as predictive strategy variables.",

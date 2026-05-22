@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Overcut/Warm-Up Regime Specialist",
   "summary": "Public F1 strategy analyses stress that undercut is not universal: on low-deg, hard-warm-up tracks, staying out can beat fresh tyres for 1-2 laps.",

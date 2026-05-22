@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-Driver Race Ranker Instead of Pure Pointwise Classification",
   "summary": "ROC AUC rewards ordering, and XGBoost's ranking objectives are explicitly pairwise within query groups.",

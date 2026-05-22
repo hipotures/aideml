@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Hierarchical historical pit-window quantile priors",
   "summary": "Official F1 glossary defines a pit window from tyre life data, and recent tyre-degradation work emphasizes degradation as a key driver of stop timing.",

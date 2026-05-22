@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Empirical-Bayes Stint Hazard Priors",
   "summary": "The current best code is rich in static tyre-window heuristics, but recent F1 and survival literature points toward latent degradation plus sequential event-risk estimation.",

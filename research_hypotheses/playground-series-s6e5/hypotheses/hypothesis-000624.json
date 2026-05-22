@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Constraint-aware temporal post-processing",
   "summary": "Race strategy is sequential and pit stops reset tyre state; public simulators and modelling references represent stints as timelines with resets.",

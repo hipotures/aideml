@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-fitted partial-pooling encoders for Driver/Race history",
   "summary": "Current best code uses frequency counts only, but the data has very high-cardinality `Driver` and race-context categories.",

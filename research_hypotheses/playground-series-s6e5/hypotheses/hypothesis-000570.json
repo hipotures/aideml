@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-lap learning-to-rank sidecar",
   "summary": "Pit calls are competitive, not independent: strategists react to nearby rivals, and official F1 explanations emphasize undercut/overcut viability only when a rival is within striking range.",

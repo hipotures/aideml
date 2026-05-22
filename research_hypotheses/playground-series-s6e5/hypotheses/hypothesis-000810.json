@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-preserving sigmoid/beta stack instead of isotonic final calibration",
   "summary": "For ROC AUC, monotone transforms are safe but isotonic can introduce ties and alter ranking; scikit-learn notes this explicitly.",

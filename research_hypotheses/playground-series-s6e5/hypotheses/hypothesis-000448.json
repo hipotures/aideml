@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary Laps-To-Stop Target Instead Of Pure Binary Training",
   "summary": "A recent F1 pit-stop paper reports a cascaded multi-task design where next-lap classification is complemented by predicting remaining laps to the stop.",

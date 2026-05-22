@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap query ranking instead of plain binary classification",
   "summary": "Pit calls are relative within a race/lap context: teams choose who among active cars is most pit-ready now.",

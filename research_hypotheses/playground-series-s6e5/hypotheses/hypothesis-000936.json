@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Diverse GBDT Rank Ensemble With OOF Calibration",
   "summary": "The best current CV scores are very close, suggesting diminishing returns from more single-model features.",

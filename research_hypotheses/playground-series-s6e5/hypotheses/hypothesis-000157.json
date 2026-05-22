@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-specific ensemble with beta calibration on out-of-fold predictions",
   "summary": "The public best appears plateaued near the same CV with similar heuristic features, which is a classic sign that diversity and probability shaping may matter more than more features.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Diversified CatBoost plus weighted ensemble",
   "summary": "The best runs use only GBM and XGB with AutoGluon weighted ensembling disabled.",

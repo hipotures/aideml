@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Causal sequence teacher as an ensemble feature",
   "summary": "Public F1 pit-stop decision research uses time-series deep models because pit decisions depend on recent trajectory, not only a row snapshot.",

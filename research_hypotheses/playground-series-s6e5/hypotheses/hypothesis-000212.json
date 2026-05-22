@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap query ranking specialist",
   "summary": "At a given race lap, pit decisions are relative to the local field state, and CatBoost supports groupwise ranking objectives/metrics via `GroupId` and `QueryAUC`.",

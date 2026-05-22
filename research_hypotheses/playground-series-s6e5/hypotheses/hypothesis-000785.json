@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Lap Query Ranker As Auxiliary Expert",
   "summary": "A stop call is partly a relative decision: among all drivers on this lap, who is most pit-ready now?",

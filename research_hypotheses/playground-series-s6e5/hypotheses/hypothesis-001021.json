@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Latent tyre-state filter features with stint resets",
   "summary": "A new F1 state-space paper models tyre pace as a latent process with pit-stop resets and compound-specific degradation.",

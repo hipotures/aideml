@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Model the whole lap snapshot, not only the focal driver row",
   "summary": "Pit decisions are multi-agent and depend on rival states, not just one car’s tyre age.",

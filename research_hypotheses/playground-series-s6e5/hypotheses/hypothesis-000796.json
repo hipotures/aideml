@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a monotone-constrained mechanistic booster as a low-variance expert",
   "summary": "Your best solutions already compute mechanistic variables like service pressure, finish pressure, and finish-feasibility gaps.",

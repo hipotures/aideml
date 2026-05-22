@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Purged OOF Stacking with Raw-Cat CatBoost Sidecar",
   "summary": "Current best code hand-engineers many category frequencies, but CatBoost is built to form categorical combinations with ordered target statistics, which can recover interaction signal without manual leakage-prone encodings.",

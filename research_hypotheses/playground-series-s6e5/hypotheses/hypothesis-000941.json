@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-Ensembled Categorical Hazard Models",
   "summary": "Current best appears feature-engineering-heavy, likely with one dominant tabular learner.",

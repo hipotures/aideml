@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Right-censored time-to-next-stop model converted to next-lap hazard",
   "summary": "XGBoost’s AFT survival objective is designed for time-to-event labels with censoring.",

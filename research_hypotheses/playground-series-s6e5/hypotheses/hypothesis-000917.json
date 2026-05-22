@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Empirical pit-window hazard priors",
   "summary": "Pit timing is naturally a hazard problem: probability of stopping rises with tyre age, compound, race progress, and stint number.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Joint Policy Auxiliary Stack With OOF Calibration",
   "summary": "Strategy papers treat pit timing jointly with compound choice and opponent interaction, not as an isolated binary label.",

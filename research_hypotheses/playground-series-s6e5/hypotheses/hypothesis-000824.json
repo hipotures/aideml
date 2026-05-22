@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Feature-Conditional Recalibration Instead of One Global Calibrator",
   "summary": "Calibration literature shows good global reliability can hide systematic miscalibration by covariate; beta calibration improves on plain logistic calibration for skewed scores, and Venn-Abers offers robust post-hoc probabilistic adjustment.",

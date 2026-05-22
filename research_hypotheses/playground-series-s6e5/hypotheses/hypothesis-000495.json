@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "CatBoost ordered-CTR interaction sidecar",
   "summary": "The table has high-cardinality Driver plus Race/Race_Year interactions.",

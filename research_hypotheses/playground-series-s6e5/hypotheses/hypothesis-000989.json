@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cascaded Multitask Stop-Horizon Model",
   "summary": "A recent pit-stop paper reports a cascaded setup where next-lap classification is complemented by a regression head for laps until stop.",

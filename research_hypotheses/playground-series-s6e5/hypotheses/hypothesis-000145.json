@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Query-level ranking by race lap instead of pure binary logloss",
   "summary": "At each lap, only a small subset of cars are realistic pit candidates.",

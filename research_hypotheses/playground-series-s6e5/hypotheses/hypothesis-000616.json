@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF pit-window hazard priors",
   "summary": "Pit decisions are closer to discrete-time hazard modeling than generic classification: probability rises at compound/stint-specific tyre ages and race-progress windows.",

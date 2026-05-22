@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-Safe Stacker With Sigmoid Calibration Only",
   "summary": "For ROC AUC, preserving ranking matters more than perfect probability calibration.",

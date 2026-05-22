@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-gated ensemble with rank-preserving blend instead of probability-heavy calibration",
   "summary": "Recent pit-stop papers find sequence models capture long dependencies, while tree models remain strong on tabular regime interactions.",

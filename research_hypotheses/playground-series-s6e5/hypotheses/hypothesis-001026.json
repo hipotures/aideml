@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered CatBoost on High-Cardinality Race Memory",
   "summary": "The dataset has many drivers and race-context combinations, and CatBoost’s ordered boosting plus ordered categorical statistics were designed specifically to reduce prediction shift from target leakage in such settings.",

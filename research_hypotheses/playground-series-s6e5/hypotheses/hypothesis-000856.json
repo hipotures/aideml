@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Raw-Categorical CatBoost Blend Instead Of More Manual Frequency Features",
   "summary": "Your strongest solutions still handcraft many sparse interactions like `Race_Compound` and `Driver_Compound`.",

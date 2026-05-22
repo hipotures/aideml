@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF sequence-model sidecar blended into the tabular tree",
   "summary": "Recent pit-stop work found Bi-LSTM strongest among several sequence architectures because pit calls depend on temporal trends, not just current state.",

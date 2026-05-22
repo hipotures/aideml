@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Lap-Grouped Learning-to-Rank Blend",
   "summary": "AUC rewards ordering, and the real decision is partly relative: on a given lap, only a few drivers are plausible pit candidates.",

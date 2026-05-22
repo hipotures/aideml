@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Driver-Race LambdaRank Specialist",
   "summary": "ROC AUC is a ranking metric, and pairwise AUC optimization is well aligned with ordering imminent pit laps above safe laps.",

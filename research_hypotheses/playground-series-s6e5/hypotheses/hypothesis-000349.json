@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-Fitted Beta-Calibrated Rank Ensemble",
   "summary": "The metric rewards ordering, while tree ensembles often emit distorted probabilities.",

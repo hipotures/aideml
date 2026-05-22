@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censored Time-to-Next-Stop Hazard Stack",
   "summary": "Official XGBoost AFT guidance matches this setup: time-to-event with censoring.",

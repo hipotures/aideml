@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap ranking specialist blended with probability model",
   "summary": "Public ranking docs show CatBoost and LightGBM can optimize within-group ordering.",

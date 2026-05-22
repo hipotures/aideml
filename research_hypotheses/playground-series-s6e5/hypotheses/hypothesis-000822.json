@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Undercut-vs-Overcut Mixture of Experts",
   "summary": "F1 strategy articles make clear that high-degradation/high-energy circuits favor the undercut, while low-degradation/slow warm-up tracks can favor the overcut; a single global classifier likely averages across opposite mechanisms.",

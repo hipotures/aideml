@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-stint candidate ranking blended with calibrated classifier",
   "summary": "Official strategy analysis emphasizes that pit calls are local comparisons between stopping now, stopping one lap later, or reacting to a nearby rival.",

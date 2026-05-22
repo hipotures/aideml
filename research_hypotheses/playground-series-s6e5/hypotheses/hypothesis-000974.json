@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Mixture-of-experts ensemble with fold-safe beta calibration",
   "summary": "Public F1 papers emphasize strong regime differences under dry vs wet conditions and severe imbalance; calibration literature shows tree scores are often miscalibrated, and beta calibration can outperform plain Platt scaling on skewed score distributions.",

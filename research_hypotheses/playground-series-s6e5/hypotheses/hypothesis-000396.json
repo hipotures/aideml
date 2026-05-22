@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multi-horizon pit specialist",
   "summary": "Next-lap pit labels are noisy at the edge of a window, while survival-style models learn the event-time shape directly.",

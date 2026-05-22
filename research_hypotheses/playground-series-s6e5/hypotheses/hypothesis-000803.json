@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Held-Out Expert Blend With Beta or Local Calibration",
   "summary": "F1 pit probabilities are regime-heterogeneous: early-stint dry laps, late one-stop races, wet crossover laps, and traffic-driven undercuts do not share the same score-to-probability map.",

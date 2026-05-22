@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend diverse models with OOF rank averaging or an AUC-maximizing stack",
   "summary": "For ROC AUC, ranking matters more than calibration.",

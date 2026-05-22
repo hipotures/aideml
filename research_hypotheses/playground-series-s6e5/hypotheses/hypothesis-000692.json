@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Pseudo-horizon multitask stacker",
   "summary": "Recent F1 pit-stop work reports gains from predicting both next-lap pit probability and remaining laps until the next stop; the auxiliary horizon target should expose structure that hard pit-window heuristics miss.",

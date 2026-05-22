@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Strict OOF stacking plus post-hoc calibration instead of raw averaging",
   "summary": "Different families should capture different structure here: CatBoost for categoricals, GBDT/AFT for event timing, and ranking models for pit-window ordering.",

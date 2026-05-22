@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary laps-to-next-stop target with probability-horizon consistency",
   "summary": "A recent pit-stop paper reports a multi-task setup where next-lap classification is helped by a horizon regression head.",

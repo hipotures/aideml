@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Overcut-vs-Undercut Regime Experts",
   "summary": "Official F1 strategy analysis shows Monaco-like low-energy tracks can favor overcuts because new tyres warm slowly, while high-degradation venues favor earlier undercuts.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-Lap Pairwise Ranking Sidecar",
   "summary": "ROC AUC is a ranking metric, and CatBoost supports pairwise/groupwise ranking objectives when GroupId is provided.",

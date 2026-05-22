@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stint Hazard Features From Empirical Pit Windows",
   "summary": "F1 strategy models frame pit timing around optimal stint length, pit-loss tradeoffs, and compound-specific degradation.",

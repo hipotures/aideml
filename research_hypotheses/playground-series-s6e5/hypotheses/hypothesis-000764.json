@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap set encoder over the whole field context",
   "summary": "Each row is not independent: pit windows open relative to the whole race state, traffic, and who else may box.",

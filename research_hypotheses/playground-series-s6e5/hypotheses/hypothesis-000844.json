@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use purged race-time validation, then ensemble only stable models with light monotone calibration",
   "summary": "The remaining gains are small enough that selection bias is a real trap.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "GPBoost mixed-effects model for driver and circuit heterogeneity",
   "summary": "The dataset has very high-cardinality `Driver` plus repeated race structure.",

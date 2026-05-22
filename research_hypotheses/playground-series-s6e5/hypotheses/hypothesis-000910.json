@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Permutation-Invariant Field-Context Expert",
   "summary": "Current field context is mostly hand-engineered means/ranks plus a small adjacent-driver proxy, but pit timing is inherently multi-agent.",

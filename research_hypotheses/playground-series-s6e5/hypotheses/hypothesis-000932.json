@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Lap Pit Wave Prior",
   "summary": "F1 pit timing often clusters into strategy windows because teams react to the same tyre degradation, traffic, and undercut incentives.",

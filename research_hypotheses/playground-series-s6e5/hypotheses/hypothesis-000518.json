@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordinal Distance-To-Next-Stop Sidecar",
   "summary": "Recent F1 pit-stop decision work uses both next-lap classification and remaining-laps-to-stop regression; discrete-time survival framing also treats event timing as interval hazards.",

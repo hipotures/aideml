@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-Preserving OOF Blend With Sigmoid Calibration Only On The Final Mix",
   "summary": "AUC is rank-based, so isotonic calibration can hurt by introducing ties, while sigmoid calibration preserves ranking.",

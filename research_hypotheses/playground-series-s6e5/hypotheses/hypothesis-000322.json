@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Learn a historical out-lap warm-up tax instead of fixed undercut rules",
   "summary": "Official F1 and Pirelli sources emphasize that overcuts happen when fresh tyres, especially harder compounds or cold-track cases, are slow to switch on.",

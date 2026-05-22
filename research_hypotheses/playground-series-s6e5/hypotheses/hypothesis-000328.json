@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add rival-stop reaction features to model cover-the-undercut behavior",
   "summary": "Teams often pit reactively because a nearby rival already pitted or threatened an undercut.",

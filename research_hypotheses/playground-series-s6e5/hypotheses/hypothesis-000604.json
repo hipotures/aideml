@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Independent-race score-space stack with sigmoid calibration only on OOF predictions",
   "summary": "Calibration itself should not create AUC lift unless it changes ranks, but stacking heterogeneous models can.",

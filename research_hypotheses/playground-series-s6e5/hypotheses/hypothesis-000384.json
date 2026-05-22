@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered High-Cardinality Strategy Priors",
   "summary": "Inference from CatBoost ordered boosting and Bayesian encoders: the current pipeline underuses rare but important categorical structure such as `Driver x Race`, `Driver x Compound`, and `Race x Stint`, where shrinkage matters more than raw frequency counts.",

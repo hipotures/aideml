@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add A Fold-Safe Latent 'Remaining Stops' Strategy State",
   "summary": "Heilmeier’s VSE reports that remaining pit stops materially improves pit-call quality, and their pit probabilities differ by intended stop count.",

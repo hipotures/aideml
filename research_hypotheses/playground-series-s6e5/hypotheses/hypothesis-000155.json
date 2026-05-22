@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a race-lap ranking auxiliary model grouped by race context",
   "summary": "Pit calls are partly relative decisions: on a given lap, only a few cars are plausible stoppers.",

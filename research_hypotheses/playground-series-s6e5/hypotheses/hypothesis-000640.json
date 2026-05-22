@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF pit-window priors",
   "summary": "High-cardinality categorical encoding benchmarks and sklearn docs support cross-fitted target/statistical encodings to avoid leakage.",

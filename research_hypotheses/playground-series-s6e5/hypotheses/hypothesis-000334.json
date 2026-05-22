@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Driver-archetype cluster conditioning",
   "summary": "A Formula 1 strategy thesis found that clustering drivers by performance, tactical, and behavioral metrics improved strategic modeling.",

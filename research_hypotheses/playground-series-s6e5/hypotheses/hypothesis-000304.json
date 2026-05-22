@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-stint ranking model for imminent-stop ordering",
   "summary": "The decision is effectively an ordering problem inside each driver stint: which laps are most stop-imminent before the actual stop or finish.",

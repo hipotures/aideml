@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Residual causal sequence expert, blended rather than replacing GBDT",
   "summary": "AutoF1 reports that an RNN trained on historic race time series can support pit-stop strategy and explicitly suggests transformer-style positional modeling for pit-stop patterns.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered CatBoost categorical sidecar with blocked OOF blending",
   "summary": "Current best code manually frequency-encodes many high-cardinality race/driver combinations.",

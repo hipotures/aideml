@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-space specialist blend with regime gating, not probability averaging",
   "summary": "AUC depends on pair ordering, so preserving and blending ranks can outperform naive probability averaging when specialists are calibrated differently across regimes.",

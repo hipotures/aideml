@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Extend next-lap classification into a multi-horizon time-to-pit stack",
   "summary": "This directly develops the prior hazard idea into a more testable form.",

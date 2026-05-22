@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multi-horizon hazard model with remaining-stint auxiliary target",
   "summary": "This is naturally a discrete-time event problem.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-CTR CatBoost with high-order strategy categories",
   "summary": "CatBoost explicitly recommends native categorical handling and builds target statistics/combinations online, which is useful here because Driver, Race, Compound, Stint, and Year interact sparsely.",

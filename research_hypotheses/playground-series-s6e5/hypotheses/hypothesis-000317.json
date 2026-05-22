@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Lap Query Ranking Expert",
   "summary": "The real decision is often relative: among the 20 cars on the current lap, which ones are most likely to pit next.",

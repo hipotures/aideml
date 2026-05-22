@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF latent degradation state instead of more fixed tyre thresholds",
   "summary": "Recent F1 work models tyre energy or latent degradation as a hidden state, which is closer to the real decision variable than raw `TyreLife` or static compound life tables.",

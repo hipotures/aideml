@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotonic constrained tree specialist on wear and finish-feasibility variables",
   "summary": "Official LightGBM/XGBoost docs note monotone constraints can improve predictive performance when strong directional priors exist.",

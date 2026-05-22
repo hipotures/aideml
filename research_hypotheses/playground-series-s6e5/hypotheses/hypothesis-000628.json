@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Smoothed Pit-Window Hazard Encoding",
   "summary": "Race strategy guides describe compound-specific pit windows, and the data has repeated Race, Year, Compound, Stint, and TyreLife patterns.",

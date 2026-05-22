@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace Calibration-First Blending With a Direct AUC-Optimized OOF Meta-Learner",
   "summary": "The leaderboard metric is ROC AUC, so the final ensemble should optimize ranking directly, not just probability calibration.",

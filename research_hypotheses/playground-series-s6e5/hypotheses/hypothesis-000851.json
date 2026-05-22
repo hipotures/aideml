@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered CatBoost categorical expert",
   "summary": "This dataset has very high-cardinality identities and sparse interactions across Driver, Race, Year, Compound, and Stint.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-Specific OOF Blend With Venn-Abers Or Beta Calibration",
   "summary": "Current improvements seem to come from different experts capturing different parts of the problem.",

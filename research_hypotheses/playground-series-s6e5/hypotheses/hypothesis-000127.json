@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF horizon distillation plus sigmoid-calibrated blending",
   "summary": "Lap-level pit-stop papers and RUL literature both report gains from jointly predicting the event and its remaining horizon.",

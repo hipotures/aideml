@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censored time-to-next-stop model as an auxiliary specialist",
   "summary": "XGBoost AFT is built for censored time-to-event targets.",

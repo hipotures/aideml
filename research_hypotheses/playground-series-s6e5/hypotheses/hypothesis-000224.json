@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regularized OOF target encoding stack for high-cardinality IDs",
   "summary": "Benchmarks on high-cardinality categoricals found regularized target encoding consistently strong.",

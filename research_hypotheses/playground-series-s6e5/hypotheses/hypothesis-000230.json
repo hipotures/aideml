@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-preserving calibrated stacking rather than raw-probability averaging",
   "summary": "Scikit-learn notes sigmoid calibration is strictly monotonic and therefore preserves each model’s ranking, unlike isotonic which can change AUC through ties.",

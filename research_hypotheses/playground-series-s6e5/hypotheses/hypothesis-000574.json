@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Strict OOF regime-aware stack plus beta calibration",
   "summary": "Public docs and calibration literature support stacking only from cross-validated base predictions, and beta calibration is often safer than plain Platt when score distributions are skewed.",

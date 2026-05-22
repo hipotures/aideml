@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-level pit-window distance features",
   "summary": "Strategy models describe optimal stint length as a function of pit loss and degradation, while real F1 race strategy varies by circuit, compound, traffic, and safety-car likelihood.",

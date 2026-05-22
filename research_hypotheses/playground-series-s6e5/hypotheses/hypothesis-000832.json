@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Level Remaining-Stop Posterior As A Gating Feature",
   "summary": "Official F1 strategy guides repeatedly frame races as one-stop vs two-stop decision regimes driven by degradation and pit-lane loss.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF multi-family blend with rank-preserving calibration",
   "summary": "The strongest public tabular practice here is usually heterogeneous ensembling, but calibration must respect AUC.",

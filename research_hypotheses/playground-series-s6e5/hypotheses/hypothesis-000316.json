@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Dry-Tyre Legality State Machine",
   "summary": "FIA race regulations require two dry compounds in a dry race, while wet/intermediate conditions change that logic.",

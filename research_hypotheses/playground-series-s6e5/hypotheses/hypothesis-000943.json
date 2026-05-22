@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Smoothed race-compound hazard curves",
   "summary": "Pit windows are lap ranges where stopping becomes strategically viable, not just a raw tyre-life threshold.",

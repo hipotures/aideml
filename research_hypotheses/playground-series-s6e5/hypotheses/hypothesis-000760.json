@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap relative context features instead of global race heuristics",
   "summary": "Pit calls are relative decisions against the field, not just absolute tyre age.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-wise OOF beta calibration and expert blending",
   "summary": "AUC models often benefit from blending differently biased experts, but uncalibrated specialists can over-dominate.",

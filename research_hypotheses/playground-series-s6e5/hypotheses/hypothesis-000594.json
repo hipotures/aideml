@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Strict OOF regime-wise calibration and narrow stack",
   "summary": "The current plateau suggests ordering is already strong, so remaining leaderboard gain may come from probability shaping and model diversity.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Infer Safety-Car/VSC Regimes From Lap-Wide Distortions",
   "summary": "Public F1 strategy work treats FCY state as one of the highest-value pit predictors, and distinguishes first-lap SC/VSC from later laps because most opportunistic stops happen immediately.",

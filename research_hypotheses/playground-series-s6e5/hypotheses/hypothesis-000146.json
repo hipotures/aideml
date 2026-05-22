@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-safe OOF calibration and regime-specific blending",
   "summary": "Scikit-learn notes isotonic can change ROC-AUC because it introduces ties, while sigmoid preserves ranking; beta calibration is a richer parametric map than logistic and often more stable than isotonic.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Short-horizon sequence sidecar over last 3-6 laps",
   "summary": "Recent pit-stop papers report that temporal models, especially Bi-LSTM-style architectures, outperform simpler deep baselines because pit calls depend on developing trends in degradation and pace, not one-row snapshots.",

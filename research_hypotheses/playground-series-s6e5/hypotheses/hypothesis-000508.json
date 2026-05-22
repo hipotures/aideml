@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend a recurrent discrete-time hazard model",
   "summary": "Pit stops are recurrent time-to-event decisions within stints, not independent row labels.",

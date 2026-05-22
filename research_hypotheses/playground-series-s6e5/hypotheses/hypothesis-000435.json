@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Retrieval features from historical analogous stints",
   "summary": "Retrieval-augmented tabular models like TabR show that nearest-neighbor context can add signal beyond global tree rules.",

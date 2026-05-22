@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "First-Stop vs Later-Stop Decomposition",
   "summary": "The strategic logic for the opening stop differs from later stops: the first stop is constrained by start compound, traffic, and opening stint degradation, while later stops are closer to endgame window management.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Segment-specialist rank ensemble",
   "summary": "Dry slick races, wet/intermediate phases, fresh-post-pit rows, late mandatory-stop rows, and pre-season testing likely follow different mechanisms.",

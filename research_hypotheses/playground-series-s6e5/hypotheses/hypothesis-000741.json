@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "One-Positive-Per-Stint Listwise Specialist With Sigmoid-Calibrated Blend",
   "summary": "Within a stint, the terminal pre-pit lap is structurally special; CatBoost ranking objectives support within-group pair/list losses, which fit this geometry better than independent row classification.",

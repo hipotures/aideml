@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap grouped objective instead of plain binary loss",
   "summary": "Pit calls are relative within a race context: teams decide against same-lap competitors, tyre warm-up, and track-position windows.",

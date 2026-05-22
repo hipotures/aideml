@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Purged walk-forward OOF stacking with sigmoid calibration",
   "summary": "Because the label is a one-lap-forward event, nearby samples are leakage-prone; the strongest ensemble candidate is to generate strictly chronological OOF predictions from heterogeneous models and stack them with a rank-preserving calibrator rather than calibrating in-sample or using isotonic ties.",

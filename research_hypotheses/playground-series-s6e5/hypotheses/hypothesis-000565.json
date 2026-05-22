@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Tiny Multi-Task Sequence Sidecar as OOF Meta-Features",
   "summary": "Recent F1 pit-stop papers report that Bi-LSTM-style models and residual multi-task designs exploit lap-to-lap temporal structure that tabular boosters may compress away.",

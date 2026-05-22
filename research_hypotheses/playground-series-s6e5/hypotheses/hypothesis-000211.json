@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF Blend A Tree Model With A Tabular Transformer Specialist",
   "summary": "The current search seems dominated by handcrafted GBDT-style heuristics.",

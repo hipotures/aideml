@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Specialist experts plus monotonic stacking and sigmoid calibration",
   "summary": "Official docs suggest CatBoost can exploit raw categoricals well via ordered target statistics, while calibration guidance notes sigmoid calibration preserves ranking unlike isotonic.",

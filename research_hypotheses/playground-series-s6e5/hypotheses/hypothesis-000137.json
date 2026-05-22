@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Categorical specialist using ordered CTRs or hierarchical empirical-Bayes encodings",
   "summary": "The dataset has very high-cardinality driver identities across only four seasons, and published encoding benchmarks show regularized target encoding is usually stronger than crude integer or frequency encodings.",

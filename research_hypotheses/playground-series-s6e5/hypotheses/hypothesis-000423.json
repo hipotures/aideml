@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Shift-weighted specialist blend with final isotonic mapping",
   "summary": "Tabular OOD work shows robustness to distribution shift is partly separate from in-domain fit.",

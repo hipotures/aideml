@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime experts with beta calibration on OOF scores",
   "summary": "Sources on calibration suggest flexible post-hoc mapping can improve probability quality, and F1 strategy is clearly regime-dependent: dry mandatory-compound logic, wet/intermediate behavior, and late-race no-stop zones differ materially.",

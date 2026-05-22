@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censored AFT specialist for laps-until-next-stop",
   "summary": "The target is inherently a time-to-event problem.",

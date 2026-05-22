@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Learn OOF pit-window hazard priors instead of fixed tyre-age windows",
   "summary": "This target is naturally a discrete-time event hazard: the probability of stopping on the next lap given the driver has not yet stopped this lap.",

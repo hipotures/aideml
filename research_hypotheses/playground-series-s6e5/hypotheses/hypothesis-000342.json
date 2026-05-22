@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Prior-Only Degradation Residual Features",
   "summary": "Official F1 tyre analytics frame tyre condition as relative performance loss, not just age, and recent F1 research models degradation as a latent state inferred from lap times.",

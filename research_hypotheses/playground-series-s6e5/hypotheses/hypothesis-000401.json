@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add an auxiliary laps-to-next-stop target and feed its OOF prediction back into the classifier",
   "summary": "Recent F1 pit-stop work (SOSTA AI) uses a cascaded multi-task design where the binary next-lap call is complemented by estimating how many laps remain until the stop.",

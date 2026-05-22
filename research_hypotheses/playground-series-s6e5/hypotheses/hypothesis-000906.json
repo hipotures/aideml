@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend In A Lap-Grouped Ranking Expert Instead Of Another Pure Classifier",
   "summary": "ROC AUC rewards correct ordering, and pit calls are relative within a race-lap context: only a few drivers are plausible next-lap stoppers at once.",

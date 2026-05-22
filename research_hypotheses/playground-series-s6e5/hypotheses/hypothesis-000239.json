@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Pre-Season Testing Domain Adaptation",
   "summary": "Official F1 material makes clear that pre-season testing is operationally different from races: teams run experiments, reliability programs, and setup checks rather than normal race-intent strategy.",

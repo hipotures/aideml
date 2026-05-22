@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censoring-aware time-to-next-pit model, then convert back to next-lap risk",
   "summary": "This develops the earlier hazard/survival idea into a directly testable target.",

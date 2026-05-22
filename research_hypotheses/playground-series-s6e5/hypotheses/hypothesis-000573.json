@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Time-varying discrete hazard with monotone wear effects",
   "summary": "The strongest adjacent statistical framing is still discrete-time survival, but the source material suggests the effect of tyre age is not constant: undercut power, warm-up penalty, and degradation all vary by race phase and track context.",

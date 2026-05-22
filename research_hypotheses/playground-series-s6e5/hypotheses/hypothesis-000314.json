@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use Query-Ranking Only As An OOF Meta-Feature",
   "summary": "Race strategy is relative: a driver often pits because they are becoming the most vulnerable car in a local race context.",

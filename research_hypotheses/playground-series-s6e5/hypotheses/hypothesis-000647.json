@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Group-Aware Model Diversity and Rank Blending",
   "summary": "AUC rewards ordering, and previous runs rely on a single random split AutoGluon GBM/XGB family.",

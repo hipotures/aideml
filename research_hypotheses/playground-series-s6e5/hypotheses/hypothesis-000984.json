@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-specialist ensemble with local calibration instead of one global model",
   "summary": "F1 pit logic differs across dry vs wet, early vs late race, and first-stint vs later-stint regimes.",

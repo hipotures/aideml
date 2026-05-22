@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Two-stage dry-race legality model: `needs another stop before finish` then `pit next lap`",
   "summary": "The FIA rules require at least two dry-weather tyre specifications in a dry race unless inters/wets were used.",

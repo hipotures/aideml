@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary censored time-to-next-pit survival model",
   "summary": "This task is a one-lap hazard slice of a broader time-to-next-stop problem.",

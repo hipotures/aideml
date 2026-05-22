@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF strategy-state prior plus residual learner",
   "summary": "F1 pit decisions are state policies, not just tyre-age thresholds: VSE-style work models pit choice from race state, and dynamic-programming/game-theory papers define decisions from lap-by-lap state.",

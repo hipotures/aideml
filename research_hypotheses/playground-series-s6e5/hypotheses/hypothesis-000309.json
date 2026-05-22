@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotone-constraint booster on physics-safe features",
   "summary": "XGBoost supports explicit monotonic constraints, which fit several pit-stop priors: more stop debt, more excess tyre age versus finish window, and larger positive degradation pressure should not reduce stop probability all else equal.",

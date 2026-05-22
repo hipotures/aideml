@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Recurrent-Event Frailty Specialist for Driver/Race Heterogeneity",
   "summary": "Pit stops are repeated events, and recurrent-event literature emphasizes subject-specific heterogeneity and time-varying effects that plain global classifiers miss.",

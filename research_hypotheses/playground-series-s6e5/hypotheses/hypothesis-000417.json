@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Causal multi-task horizon buckets",
   "summary": "Recent lap-level pit-stop research and broader event-sequence/survival literature support predicting both the immediate event and a coarser time-to-event target.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap ranking specialist with monotonic post-calibration",
   "summary": "AUC is a ranking metric, and CatBoost supports groupwise/pairwise ranking objectives.",

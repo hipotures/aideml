@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-categorical CatBoost plus AFT duration blend",
   "summary": "CatBoost’s ordered CTR machinery is designed to compute categorical statistics from previous objects only, which is attractive for high-cardinality `Driver/Race/Compound/Stint` interactions; scikit-learn’s docs explicitly warn that non-cross-fitted target encoding can catastrophically overfit.",

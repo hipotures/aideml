@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Monotone-Constrained Dry Expert With Purged Chronological Stacking",
   "summary": "Official model docs note monotonic constraints can improve predictive performance when prior structure is strong.",

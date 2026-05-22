@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Adversarial Test-Likeness Reweighting",
   "summary": "The train/test overview already shows distribution shift risk across years, races, and driver identities.",

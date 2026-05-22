@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend A Survival-Style Sidecar With Rank Averaging Instead Of Probability Averaging",
   "summary": "AUC evaluates ranking, and ROC/AUC is invariant to monotone score transforms, so diverse models often combine better via rank blending than raw-probability averaging.",

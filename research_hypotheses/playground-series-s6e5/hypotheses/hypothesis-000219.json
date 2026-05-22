@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered CatBoost with raw high-cardinality categorical interactions",
   "summary": "Train/test contain hundreds of drivers and race-year context combinations; CatBoost was built to handle categorical leakage via ordered statistics and often wins when manual frequency encodings plateau.",

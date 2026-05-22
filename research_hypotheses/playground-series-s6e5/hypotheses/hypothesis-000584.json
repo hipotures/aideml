@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Two-time-scale monotone hazard surface over tyre age and laps remaining",
   "summary": "Pit propensity is naturally driven by at least two clocks: laps since stop and laps to finish.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-CTR CatBoost binary expert for high-cardinality race context",
   "summary": "The current best pipelines mostly reduce `Driver`/`Race`/interaction categories to frequency counts.",

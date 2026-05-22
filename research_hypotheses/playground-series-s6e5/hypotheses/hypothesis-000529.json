@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use race-lap ranking as a side model and stack it with binary/survival models",
   "summary": "At each race-lap, only a small subset of drivers are realistic pit candidates, so query-wise ranking is a natural adjacent formulation.",

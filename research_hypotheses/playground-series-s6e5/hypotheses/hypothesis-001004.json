@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a within-lap ranker, then beta-calibrate and blend",
   "summary": "At each lap only a few cars are plausible pit candidates, so relative urgency within the same lap may be easier to learn than absolute probability.",

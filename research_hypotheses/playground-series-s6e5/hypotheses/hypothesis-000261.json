@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap ranking specialist instead of only global binary AUC models",
   "summary": "Pit calls are relative decisions within a small same-lap candidate set.",

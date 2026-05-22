@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Analytic pit-economics features plus regime-specific sigmoid stacking",
   "summary": "Strategy references emphasize undercut thresholds, traffic penalties, and approximate optimal stint length from pit-loss vs degradation slope.",

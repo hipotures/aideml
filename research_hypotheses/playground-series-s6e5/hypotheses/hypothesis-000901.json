@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a raw-categorical CatBoost expert and blend by OOF rank, not calibration",
   "summary": "High-cardinality categories such as `Driver`, `Race`, `Year_Race`, and their interactions are likely being compressed by manual frequency encodings.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF hierarchical target encoding for driver/race/compound context",
   "summary": "Current best runs use frequency encodings and category crosses, but not target-aware encodings.",

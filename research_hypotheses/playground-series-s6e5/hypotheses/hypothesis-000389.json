@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-CatBoost specialist on strategy state tuples",
   "summary": "CatBoost was designed to reduce prediction shift from categorical target statistics, which is directly relevant here because `Driver`, `Race`, `Year`, `Compound`, and `Stint` are high-cardinality and strategy-like.",

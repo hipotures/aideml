@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Blend a CatBoost specialist with raw high-cardinality categories",
   "summary": "CatBoost’s ordered boosting and ordered target statistics are designed to learn from high-cardinality categorical identities without the prediction shift of naive target encoding.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Train a censored time-to-next-pit model and convert it to P(stop within 1 lap)",
   "summary": "This target is naturally a time-to-event problem with right censoring at race end or current stint continuation.",

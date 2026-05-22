@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-gated raw-categorical ensemble with sigmoid-only calibration",
   "summary": "Ordered boosting is well-suited for high-cardinality categorical interactions like Driver x Race x Compound, while sigmoid calibration preserves ranking unlike isotonic.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary laps-to-next-stop target with censored multi-task training",
   "summary": "A recent F1 pit-stop paper reports a cascaded setup where next-lap classification is complemented by estimating remaining laps to stop, and race-strategy literature treats pit timing as a dynamic timing problem rather than a pure binary event.",

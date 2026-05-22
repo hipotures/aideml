@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Fold-safe empirical pit-hazard tables",
   "summary": "Pit timing is a discrete-time hazard problem, and public survival references suggest flexible discrete-time models often beat simpler continuous assumptions.",

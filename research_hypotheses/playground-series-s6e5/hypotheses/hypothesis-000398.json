@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Minimax group-robust AUC super learner",
   "summary": "Super Learner explicitly supports AUC-based metalearning, and grouped CV is the right defense against race/year leakage.",

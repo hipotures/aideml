@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Adversarially Weighted, Regime-Specific OOF Stacking With Sigmoid Meta-Blending",
   "summary": "The train/test split likely contains temporal and regime shift across years, drivers, and new regulations.",

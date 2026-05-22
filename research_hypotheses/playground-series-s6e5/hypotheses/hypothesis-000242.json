@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Stint-survival prior from historical stint-end curves",
   "summary": "The target is effectively a one-step hazard: will the current stint end next lap?",

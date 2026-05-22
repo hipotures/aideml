@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Develop the prior blend idea into an AUC-preserving specialist rank ensemble",
   "summary": "For ROC AUC, monotone calibration usually does not help ranking, and scikit-learn notes isotonic can even alter AUC by introducing ties.",

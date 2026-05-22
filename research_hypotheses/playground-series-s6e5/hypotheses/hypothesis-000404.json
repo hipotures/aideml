@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Same-snapshot ranking expert over (Race, Lap) groups",
   "summary": "Adjacent ranking literature suggests LambdaMART-style objectives are strong when the real question is relative urgency inside a group.",

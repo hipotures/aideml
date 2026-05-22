@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multi-task next-stop horizon buckets instead of pure binary only",
   "summary": "Recent F1 work uses a classification head plus an auxiliary regression head for laps-to-stop, suggesting shared structure between imminent-stop classification and broader stop timing.",

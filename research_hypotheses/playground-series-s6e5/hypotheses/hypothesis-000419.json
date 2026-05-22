@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-CTR CatBoost on raw race entities",
   "summary": "The dataset has very high-cardinality categorical structure (`Driver`, `Race`, `Year`, `Compound`) that hand-made frequency features only approximate.",

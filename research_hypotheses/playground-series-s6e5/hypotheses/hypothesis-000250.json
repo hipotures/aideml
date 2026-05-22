@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-Preserving Two-Model Blend With Beta Calibration On OOF Predictions",
   "summary": "AUC usually benefits from blending complementary score shapes, and beta calibration is a stronger parametric calibrator than plain Platt scaling when score distributions are skewed.",

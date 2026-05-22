@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-safe foldwise sigmoid stacker instead of isotonic post-calibration",
   "summary": "The evaluation metric is ROC AUC.",

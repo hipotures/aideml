@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add fold-safe empirical hazard and remaining-stint priors",
   "summary": "`PitNextLap` is naturally a discrete-time hazard.",

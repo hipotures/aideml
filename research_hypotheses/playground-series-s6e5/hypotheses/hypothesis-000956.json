@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Archetype Priors Instead of Raw Race IDs",
   "summary": "Public strategy guides show large circuit-to-circuit differences in pit-lane loss and preferred stop count: COTA’s relatively low pit loss makes extra stops cheaper, while Sochi’s higher loss favors one-stops, and Monaco strategy is dominated by undercut/traffic balance.",

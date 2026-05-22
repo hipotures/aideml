@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-Query Ranking Objective Instead Of Pure BCE",
   "summary": "A pit call is relative to the other candidate laps in the same driver-race context.",

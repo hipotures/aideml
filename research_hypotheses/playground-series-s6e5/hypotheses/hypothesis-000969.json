@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Small sequence model over recent driver laps, rank-blended with the tree model",
   "summary": "Recent F1 research on tyre-energy prediction reports strong performance from deep time-series models, while classic motorsport strategy work also uses neural models for pit decisions.",

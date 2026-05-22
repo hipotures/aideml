@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-Preserving Ensemble With Leakage-Aware CV",
   "summary": "ROC AUC rewards ordering, so diversified models and validation design matter more than probability calibration.",

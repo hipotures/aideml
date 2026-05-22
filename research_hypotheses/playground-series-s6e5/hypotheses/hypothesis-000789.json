@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Lap-Group Ranker With Raw Categoricals",
   "summary": "Pit-now is partly a relative decision: on a given lap, some cars are much more stop-ready than others even when global hazard varies by race.",

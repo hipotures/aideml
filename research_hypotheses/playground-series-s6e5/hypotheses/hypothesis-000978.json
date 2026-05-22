@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a within-lap ranking model for pit urgency",
   "summary": "Pit calls are partly relative: teams react to competitors in the same race and lap, not just absolute tyre age.",

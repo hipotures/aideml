@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Censoring-aware AFT sidecar for remaining laps to next stop",
   "summary": "Rows near race end are naturally right-censored if no further pit stop occurs, which standard binary framing discards.",

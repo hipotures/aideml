@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Causal sequence-to-hazard model over each driver's race history",
   "summary": "Recent survival papers show recurrent/transformer hazard models handle longitudinal, non-proportional event risk better than static tabular models.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Diverse CatBoost plus AutoGluon ensemble",
   "summary": "The best runs rely mainly on AutoGluon GBM/XGB with feature tweaks.",

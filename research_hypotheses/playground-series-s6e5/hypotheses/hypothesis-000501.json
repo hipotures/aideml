@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Out-of-fold empirical hazard priors by strategy state",
   "summary": "The strongest current features encode physics-like windows but not learned historical stop propensity for specific race/lap/stint/compound states.",

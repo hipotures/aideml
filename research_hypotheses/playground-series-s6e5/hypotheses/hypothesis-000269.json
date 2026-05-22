@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use purged sequential validation and embargoed OOF encodings as model-selection guardrails",
   "summary": "Because the label asks about the next lap, adjacent rows within a driver stint have overlapping information.",

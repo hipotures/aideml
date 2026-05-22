@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Ordered-cat plus within-lap rank ensemble with sigmoid-only calibration",
   "summary": "CatBoost’s ordered categorical handling is explicitly designed to reduce target leakage from categorical statistics, and XGBoost ranking supports grouped query learning.",

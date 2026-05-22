@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Try a query-ranking model where each race-lap is a group",
   "summary": "Pit-next-lap is partly a within-lap ranking problem: among drivers on the same race/lap, who is most likely to box now?",

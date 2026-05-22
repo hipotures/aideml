@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-weekend holdout CV plus OOF target encoding",
   "summary": "Rows from the same race share hidden context like weather, tyre nomination, pit-loss, and pit-wave timing, so random row CV can overestimate generalization.",

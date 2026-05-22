@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Within-lap LightGBM ranker blended with classifier",
   "summary": "AUC rewards ordering, and the real decision is partly relative: who looks most urgent to pit on this lap versus other cars in the same race-lap context.",

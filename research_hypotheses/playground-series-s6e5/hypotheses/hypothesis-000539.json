@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary Multi-Horizon Stop Heads",
   "summary": "Discrete-time hazard literature supports predicting a sequence of future event probabilities rather than only the next step, and transformer hazard work shows benefits when dynamics are non-proportional.",

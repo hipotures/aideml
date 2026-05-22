@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary laps-to-pit multitask model",
   "summary": "Recent F1 pit-stop papers report gains from predicting both next-lap pit probability and distance-to-stop; the auxiliary horizon task can stabilize rare positive labels and sharpen borderline pit-window rows that plain binary AUC models treat similarly.",

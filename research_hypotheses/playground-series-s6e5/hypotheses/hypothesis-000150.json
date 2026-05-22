@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Hierarchical ordered categorical priors branch for Driver/Race interactions",
   "summary": "High-cardinality identities are central here, and both CatBoost and sklearn target-encoding docs stress leakage-resistant ordered/cross-fitted encoding.",

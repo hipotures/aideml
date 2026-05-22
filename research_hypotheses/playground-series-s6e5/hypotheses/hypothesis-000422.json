@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Auxiliary next-compound choice model feeding the pit classifier",
   "summary": "Public compound-decision work treats tyre choice after a stop as its own prediction problem.",

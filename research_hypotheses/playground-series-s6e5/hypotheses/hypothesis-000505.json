@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Post-process with per-stint stop-count mass constraints",
   "summary": "ROC AUC depends on ranking, but raw probabilities may assign too much positive mass across many laps in the same stint.",

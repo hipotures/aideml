@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Fold-safe specialist stack with rank blending, not raw-prob averaging",
   "summary": "Stacked generalization helps when base learners have different biases.",

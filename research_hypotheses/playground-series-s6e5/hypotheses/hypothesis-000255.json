@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-Optimized OOF Stacking With Sigmoid-Only Calibration",
   "summary": "Because the metric is ROC AUC, the final blend should optimize ranking directly.",

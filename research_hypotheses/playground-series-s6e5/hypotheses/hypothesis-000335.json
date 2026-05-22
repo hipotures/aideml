@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Counterfactual rejoin-pressure and opponent-response features",
   "summary": "Recent F1 strategy papers emphasize that pit decisions depend on competitors’ actions, not just self tyre state.",

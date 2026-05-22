@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add auxiliary time-to-stop targets, not just next-lap labels",
   "summary": "Pit-now is the sharp edge of a broader time-to-stop process.",

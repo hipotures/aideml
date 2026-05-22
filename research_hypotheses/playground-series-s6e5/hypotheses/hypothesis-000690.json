@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Replace frequency-only categorical features with grouped cross-fitted target priors",
   "summary": "The current best code uses category frequencies, but public guidance on target encoding shows that cross-fitted target statistics can add much more signal if leakage is controlled.",

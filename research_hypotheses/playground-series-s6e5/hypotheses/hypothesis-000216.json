@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "OOF regime specialists with rank-preserving calibration",
   "summary": "Different mechanisms drive stops in wet laps, mandatory-compound completion, late-race sprints, and standard dry degradation.",

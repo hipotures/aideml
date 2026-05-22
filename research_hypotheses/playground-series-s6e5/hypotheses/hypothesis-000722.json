@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a lap-group ranking specialist and blend it with the classifier",
   "summary": "Each race lap is effectively a small query set where only a few of ~20 drivers are plausible pit candidates.",

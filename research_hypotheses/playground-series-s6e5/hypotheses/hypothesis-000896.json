@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "AUC-first greedy rank stacking across heterogeneous experts",
   "summary": "ROC AUC is a ranking metric, so the biggest ensemble gains usually come from combining diverse rankers rather than re-calibrating one probability scale.",

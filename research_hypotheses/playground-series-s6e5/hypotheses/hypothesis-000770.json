@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Purged group CV plus regime-specific sigmoid-calibrated ensemble",
   "summary": "This task has strong within-race dependence, so optimistic local CV can come from race-group leakage even when features are legal.",

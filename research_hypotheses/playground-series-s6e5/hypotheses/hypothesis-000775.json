@@ -1,8 +1,7 @@
 {
   "enabled": false,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-lap query ranker",
   "summary": "Pit calls are relative within a lap: teams decide against the field state, not in isolation.",

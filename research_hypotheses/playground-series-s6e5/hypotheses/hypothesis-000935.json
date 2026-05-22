@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-Specific Models For Wet, Testing, And Late Race",
   "summary": "Wet/intermediate tyres, pre-season testing, and final-lap phases likely obey different pit logic from normal dry race stints.",

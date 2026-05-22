@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Regime-specific sigmoid stacking instead of isotonic calibration",
   "summary": "For ROC AUC, preserving rank matters.",

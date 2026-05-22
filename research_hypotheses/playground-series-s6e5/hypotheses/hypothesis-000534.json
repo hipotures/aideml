@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Race-grouped OOF stacking with sigmoid calibration only on held-out folds",
   "summary": "Two validation traps are likely here: same-race leakage through group-derived features and over-optimistic stacking/calibration fit on reused predictions.",

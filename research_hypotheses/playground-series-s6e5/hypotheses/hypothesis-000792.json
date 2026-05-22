@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Multivariate OOF Calibrator for Diverse Experts",
   "summary": "Calibration papers show beta calibration, ENIR, and multivariate isotonic methods can outperform a single sigmoid when combining distorted scores from different base learners.",

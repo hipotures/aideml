@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Embargoed race-blocked OOF for every encoder, stacker, and calibrator",
   "summary": "Recent leakage work on grouped/temporal data shows near-duplicate neighbors can make CV materially optimistic.",

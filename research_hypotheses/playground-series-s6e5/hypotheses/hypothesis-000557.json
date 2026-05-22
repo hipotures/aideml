@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Lap-Query LambdaMART Blend",
   "summary": "Pit calls are locally competitive: on most laps only a small subset of drivers are realistic pit candidates, so learning relative ordering inside each (Year, Race, LapNumber) group can complement global binary AUC models.",

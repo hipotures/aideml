@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Add a causal short-history sequence sidecar and use it only as an ensemble component",
   "summary": "Public F1 pit-stop studies report that Bi-LSTM/TCN-style models outperform weaker sequence baselines because pit calls depend on recent temporal trends in tyre wear, lap-time drift, and stint evolution.",

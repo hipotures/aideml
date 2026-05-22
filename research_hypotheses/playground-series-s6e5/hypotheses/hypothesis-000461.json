@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-Fitted Specialist Blend With Calibration",
   "summary": "ROC AUC is rank-based, so calibrating a single model does not help much directly, but blending multiple specialists can fail if their score scales are misaligned.",

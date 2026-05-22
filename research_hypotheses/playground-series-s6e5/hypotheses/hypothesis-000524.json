@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Use purged grouped temporal CV, then build only OOF-calibrated stacks on top of it",
   "summary": "This problem has both chronology and grouping.",

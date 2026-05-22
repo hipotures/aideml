@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Rank-Diverse Ensemble",
   "summary": "ROC AUC rewards ordering, not calibrated probability accuracy.",

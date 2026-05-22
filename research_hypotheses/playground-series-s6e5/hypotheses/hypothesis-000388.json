@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Untouched-Fold Logit Blend With Beta or Venn-Abers Calibration",
   "summary": "Prior work already pointed toward specialist blends; public calibration literature suggests Beta calibration and Venn-Abers are stronger post-hoc options than plain Platt in many binary settings.",

@@ -1,8 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "title": "Cross-fitted hierarchical target encoding for high-cardinality IDs",
   "summary": "`Driver`, `Race`, `Year`, and their interactions likely carry strong prior strategy tendencies, but naive target encoding can badly overfit.",
