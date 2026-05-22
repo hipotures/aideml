@@ -1,0 +1,14 @@
+{
+  "active": {},
+  "versions": {
+    "autogluon": [
+      {
+        "file": "autogluon-001.py",
+        "node_id": "b8b69f0fb6084d69b53e44ca941f1162",
+        "created_at": "2026-05-18T12:34:48",
+        "buggy": true,
+        "score": null
+      }
+    ]
+  }
+}

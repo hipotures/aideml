@@ -82,7 +82,7 @@ def import_archived_research_hypotheses(
     token_jaccard_threshold: float = 0.72,
     progress_callback: Callable[[str, int, int | None], None] | None = None,
 ) -> ArchivedImportResult:
-    target_dir = Path(repo_root) / "research_hypotheses" / task / "hypotheses"
+    target_dir = Path(repo_root) / "research_hypotheses" / task
     response_paths = sorted(Path(logs_dir).glob("*/research/checkpoint-*/response.json"))
     response_file_count = len(response_paths)
     candidates: list[_ArchivedCandidate] = []
@@ -167,13 +167,14 @@ def import_archived_research_hypotheses(
             )
             continue
 
-        output_path = target_dir / f"hypothesis-{next_id:06d}.json"
+        hypothesis_id = f"{next_id:06d}"
+        output_path = target_dir / hypothesis_id / f"hypothesis-{hypothesis_id}.json"
         next_id += 1
         created_paths.append(output_path)
         accepted_index.append(indexed)
         if dry_run:
             continue
-        target_dir.mkdir(parents=True, exist_ok=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -289,7 +290,13 @@ def _load_existing_index(target_dir: Path) -> list[_IndexedHypothesis]:
     if not target_dir.exists():
         return []
     indexed = []
-    for path in sorted(target_dir.glob("hypothesis-*.json")):
+    files = [
+        path
+        for path in target_dir.glob("*/hypothesis-*.json")
+        if path.parent.name.isdigit()
+    ]
+    files.extend((target_dir / "hypotheses").glob("hypothesis-*.json"))
+    for path in sorted(files):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
@@ -303,7 +310,13 @@ def _next_hypothesis_number(target_dir: Path) -> int:
     max_id = 0
     if not target_dir.exists():
         return 1
-    for path in target_dir.glob("hypothesis-*.json"):
+    files = [
+        path
+        for path in target_dir.glob("*/hypothesis-*.json")
+        if path.parent.name.isdigit()
+    ]
+    files.extend((target_dir / "hypotheses").glob("hypothesis-*.json"))
+    for path in files:
         match = HYPOTHESIS_FILENAME_RE.match(path.name)
         if match is not None:
             max_id = max(max_id, int(match.group(1)))

@@ -57,13 +57,18 @@ def import_research_hypotheses(
         raise ValueError(f"unsupported import mode: {mode}. Expected one of: {choices}")
 
     hypotheses = _load_hypotheses(input_path)
-    target_dir = Path(repo_root) / "research_hypotheses" / task / "hypotheses"
+    target_dir = Path(repo_root) / "research_hypotheses" / task
     next_id = _next_hypothesis_number(target_dir)
     created_paths: list[Path] = []
 
     for offset, raw_hypothesis in enumerate(hypotheses):
         hypothesis_id = next_id + offset
-        output_path = target_dir / f"hypothesis-{hypothesis_id:06d}.json"
+        hypothesis_id_text = f"{hypothesis_id:06d}"
+        output_path = (
+            target_dir
+            / hypothesis_id_text
+            / f"hypothesis-{hypothesis_id_text}.json"
+        )
         if output_path.exists():
             raise FileExistsError(f"Refusing to overwrite existing hypothesis: {output_path}")
         payload = _normalize_hypothesis(
@@ -74,7 +79,7 @@ def import_research_hypotheses(
         created_paths.append(output_path)
         if dry_run:
             continue
-        target_dir.mkdir(parents=True, exist_ok=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -114,7 +119,14 @@ def _next_hypothesis_number(target_dir: Path) -> int:
     max_id = 0
     if not target_dir.exists():
         return 1
-    for path in target_dir.glob("hypothesis-*.json"):
+    for path in target_dir.glob("*/hypothesis-*.json"):
+        if not path.parent.name.isdigit():
+            continue
+        match = HYPOTHESIS_FILENAME_RE.match(path.name)
+        if match is None or match.group(1) != path.parent.name:
+            continue
+        max_id = max(max_id, int(match.group(1)))
+    for path in (target_dir / "hypotheses").glob("hypothesis-*.json"):
         match = HYPOTHESIS_FILENAME_RE.match(path.name)
         if match is None:
             continue
@@ -180,7 +192,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--task",
         default="playground-series-s6e5",
-        help="Task slug under research_hypotheses/<task>/hypotheses.",
+        help="Task slug under research_hypotheses/<task>.",
     )
     parser.add_argument(
         "--mode",

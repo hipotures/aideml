@@ -74,6 +74,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
 MANUAL_HYPOTHESIS_AGENT_MODES = {"legacy", "autogluon"}
 MANUAL_USAGE_RESEARCH_MODES = {"manual", "hypothesis"}
+ROOT_CODE_PATTERN = re.compile(r"^(autogluon|legacy)-(\d{3})\.py$")
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,15 @@ class ManualHypothesisSelection:
     hypotheses: list[ManualHypothesis]
 
 
+@dataclass(frozen=True)
+class HypothesisRootCode:
+    hypothesis_id: str
+    agent_mode: str
+    path: Path
+    code: str
+    version: int
+
+
 def _json_default(value: Any) -> str:
     return str(value)
 
@@ -136,6 +146,30 @@ def _manual_agent_mode_key(cfg: Config) -> str:
     if mode in {"autogluon", "autogluon_preprocess"}:
         return "autogluon"
     return "legacy"
+
+
+def _hypothesis_dir(source_dir: Path, hypothesis_id: str) -> Path:
+    return source_dir / hypothesis_id
+
+
+def _hypothesis_file_path(source_dir: Path, hypothesis_id: str) -> Path:
+    return _hypothesis_dir(source_dir, hypothesis_id) / f"hypothesis-{hypothesis_id}.json"
+
+
+def _new_layout_hypothesis_files(source_dir: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in source_dir.glob("*/hypothesis-*.json"):
+        if not path.parent.name.isdigit():
+            continue
+        match = MANUAL_HYPOTHESIS_PATTERN.match(path.name)
+        if match is None or match.group(1) != path.parent.name:
+            continue
+        files.append(path)
+    return sorted(files)
+
+
+def _legacy_layout_hypothesis_files(source_dir: Path) -> list[Path]:
+    return sorted((source_dir / "hypotheses").glob("hypothesis-*.json"))
 
 
 def _manual_source_hash(source_dir: Path, files: list[Path]) -> str:
@@ -224,17 +258,18 @@ def load_manual_hypothesis_library(
 ) -> ManualHypothesisLibrary:
     task_slug = _manual_task_slug(cfg)
     source_dir = _manual_library_dir(cfg, repo_root=repo_root)
-    hypotheses_dir = source_dir / "hypotheses"
     if not source_dir.exists():
         raise ValueError(f"Missing manual research library: {source_dir}")
-    if not hypotheses_dir.exists():
-        raise ValueError(
-            f"Missing manual research hypotheses directory: {hypotheses_dir}"
-        )
 
-    files = sorted(hypotheses_dir.glob("hypothesis-*.json"))
+    files = _new_layout_hypothesis_files(source_dir)
     if not files:
-        raise ValueError(f"No manual research hypothesis files found in {hypotheses_dir}")
+        files = _legacy_layout_hypothesis_files(source_dir)
+    if not files:
+        raise ValueError(
+            "No manual research hypothesis files found in "
+            f"{source_dir} using <id>/hypothesis-<id>.json or "
+            "hypotheses/hypothesis-*.json."
+        )
 
     hypotheses: list[ManualHypothesis] = []
     seen_ids: set[str] = set()
@@ -251,6 +286,176 @@ def load_manual_hypothesis_library(
         source_hash=_manual_source_hash(source_dir, files),
         hypotheses=hypotheses,
     )
+
+
+def _manifest_path(hypothesis_dir: Path) -> Path:
+    return hypothesis_dir / "code_manifest.json"
+
+
+def _load_code_manifest(hypothesis_dir: Path) -> dict[str, Any]:
+    path = _manifest_path(hypothesis_dir)
+    if not path.exists():
+        return {}
+    try:
+        payload = _read_json(path)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid code manifest JSON in {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Code manifest {path} must be a JSON object.")
+    return payload
+
+
+def _code_versions(hypothesis_dir: Path, agent_mode: str) -> dict[int, Path]:
+    versions: dict[int, Path] = {}
+    for path in hypothesis_dir.glob(f"{agent_mode}-*.py"):
+        match = ROOT_CODE_PATTERN.match(path.name)
+        if match is None or match.group(1) != agent_mode:
+            continue
+        versions[int(match.group(2))] = path
+    return versions
+
+
+def _manifest_active_file(manifest: dict[str, Any], agent_mode: str) -> str | None:
+    active = manifest.get("active")
+    if isinstance(active, dict) and isinstance(active.get(agent_mode), str):
+        return active[agent_mode]
+    active_versions = manifest.get("active_versions")
+    if isinstance(active_versions, dict) and isinstance(
+        active_versions.get(agent_mode),
+        str,
+    ):
+        return active_versions[agent_mode]
+    return None
+
+
+def load_hypothesis_root_code(
+    cfg: Config,
+    hypothesis_id: str,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> HypothesisRootCode | None:
+    """Load the active flat-library root code for a hypothesis and agent mode."""
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    hypothesis_dir = _hypothesis_dir(source_dir, hypothesis_id)
+    if not hypothesis_dir.exists():
+        return None
+
+    agent_mode = _manual_agent_mode_key(cfg)
+    versions = _code_versions(hypothesis_dir, agent_mode)
+    if not versions:
+        return None
+
+    manifest = _load_code_manifest(hypothesis_dir)
+    version = max(versions)
+    path = versions[version]
+    entry = _manifest_entry_for_file(
+        manifest,
+        agent_mode=agent_mode,
+        file_name=path.name,
+    )
+    if entry is not None and entry.get("buggy") is True:
+        return None
+    return HypothesisRootCode(
+        hypothesis_id=hypothesis_id,
+        agent_mode=agent_mode,
+        path=path,
+        code=path.read_text(encoding="utf-8"),
+        version=version,
+    )
+
+
+def _manifest_entry_for_file(
+    manifest: dict[str, Any],
+    *,
+    agent_mode: str,
+    file_name: str,
+) -> dict[str, Any] | None:
+    versions = manifest.get("versions")
+    if not isinstance(versions, dict):
+        return None
+    mode_versions = versions.get(agent_mode)
+    if not isinstance(mode_versions, list):
+        return None
+    for entry in mode_versions:
+        if isinstance(entry, dict) and entry.get("file") == file_name:
+            return entry
+    return None
+
+
+def save_hypothesis_root_code(
+    cfg: Config,
+    *,
+    hypothesis_id: str,
+    code: str,
+    is_buggy: bool,
+    node_id: str | None = None,
+    score: float | None = None,
+    created_at: str | None = None,
+    repo_root: Path = REPO_ROOT,
+) -> Path:
+    """Save a generated root hypothesis node as the single flat-library file."""
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    hypothesis_dir = _hypothesis_dir(source_dir, hypothesis_id)
+    hypothesis_json = _hypothesis_file_path(source_dir, hypothesis_id)
+    if not hypothesis_json.exists():
+        raise ValueError(
+            f"Cannot save root code for unknown hypothesis {hypothesis_id}: "
+            f"{hypothesis_json} does not exist."
+        )
+
+    agent_mode = _manual_agent_mode_key(cfg)
+    hypothesis_dir.mkdir(parents=True, exist_ok=True)
+    manifest = _load_code_manifest(hypothesis_dir)
+    versions_by_number = _code_versions(hypothesis_dir, agent_mode)
+    highest_version = max(versions_by_number, default=0)
+    highest_path = versions_by_number.get(highest_version)
+    highest_entry = (
+        _manifest_entry_for_file(
+            manifest,
+            agent_mode=agent_mode,
+            file_name=highest_path.name,
+        )
+        if highest_path is not None
+        else None
+    )
+    highest_is_buggy = (
+        highest_entry.get("buggy") is True if highest_entry is not None else False
+    )
+    if highest_path is not None and (is_buggy or not highest_is_buggy):
+        return highest_path
+
+    next_version = highest_version + 1 if highest_path is not None else 1
+    path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
+
+    path.write_text(code, encoding="utf-8")
+
+    metadata = {
+        "buggy": bool(is_buggy),
+        "node_id": node_id,
+        "score": score,
+        "created_at": created_at,
+    }
+    versions = manifest.setdefault("versions", {})
+    if not isinstance(versions, dict):
+        manifest["versions"] = versions = {}
+    mode_versions = versions.setdefault(agent_mode, [])
+    if not isinstance(mode_versions, list):
+        versions[agent_mode] = mode_versions = []
+    versions[agent_mode] = [
+        entry
+        for entry in mode_versions
+        if not (isinstance(entry, dict) and entry.get("file") == path.name)
+    ]
+    versions[agent_mode].append({"file": path.name, **metadata})
+    active = manifest.setdefault("active", {})
+    if not isinstance(active, dict):
+        manifest["active"] = active = {}
+    if not is_buggy:
+        active[agent_mode] = path.name
+    else:
+        active.pop(agent_mode, None)
+    _write_json(_manifest_path(hypothesis_dir), manifest)
+    return path
 
 
 def _manual_run_dir(cfg: Config) -> Path:
@@ -295,7 +500,7 @@ def _write_manual_source_ref(
             "agent_mode": agent_mode,
             "compatible_hypothesis_count": compatible_count,
             "indexed_at": created_at,
-            "filename_pattern": "hypotheses/hypothesis-*.json",
+            "filename_pattern": "<id>/hypothesis-<id>.json",
         },
     )
 

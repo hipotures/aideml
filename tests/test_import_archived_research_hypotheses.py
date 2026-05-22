@@ -11,7 +11,7 @@ def _write_existing_hypothesis(root: Path, task: str, hypothesis_id: str) -> Non
         root
         / "research_hypotheses"
         / task
-        / "hypotheses"
+        / hypothesis_id
         / f"hypothesis-{hypothesis_id}.json"
     )
     path.parent.mkdir(parents=True, exist_ok=True)

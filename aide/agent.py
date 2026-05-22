@@ -34,8 +34,10 @@ from .research import (
     hypothesis_id_for_node,
     load_latest_manual_research_hints,
     load_latest_research_hints,
+    load_hypothesis_root_code,
     record_manual_claimed_usage,
     record_manual_prompt_node,
+    save_hypothesis_root_code,
     select_hypothesis_for_node,
 )
 from .telegram_notifications import append_node_with_best_score_notification
@@ -1074,26 +1076,33 @@ class Agent:
                 parent_node=parent_node,
                 completed_steps=len(self.journal.nodes),
             )
-            self.active_research_hypothesis_id = (
-                selection.hypotheses[0].id if selection.hypotheses else None
-            )
-            self.active_research_hypothesis_log_hint = (
-                format_hypothesis_for_log_panel(selection)
-            )
-            prompt["Hypothesis under verification"] = format_hypothesis_for_prompt(
-                selection
-            )
-            return {
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": [
-                    hypothesis.id for hypothesis in selection.hypotheses
-                ],
-                "research_source_hash": selection.source_hash,
-            }
+            return self._add_hypothesis_selection(prompt, selection)
         hints = load_latest_research_hints(self.cfg.log_dir)
         if hints is not None:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
         return None
+
+    def _add_hypothesis_selection(
+        self,
+        prompt: dict[str, Any],
+        selection: Any,
+    ) -> dict[str, Any]:
+        self.active_research_hypothesis_id = (
+            selection.hypotheses[0].id if selection.hypotheses else None
+        )
+        self.active_research_hypothesis_log_hint = (
+            format_hypothesis_for_log_panel(selection)
+        )
+        prompt["Hypothesis under verification"] = format_hypothesis_for_prompt(
+            selection
+        )
+        return {
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": [
+                hypothesis.id for hypothesis in selection.hypotheses
+            ],
+            "research_source_hash": selection.source_hash,
+        }
 
     def _add_memory_or_branch_context(
         self,
@@ -1203,9 +1212,11 @@ class Agent:
         print("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
 
-    def _draft(self) -> Node:
+    def _draft(self, *, hypothesis_selection: Any | None = None) -> Node:
         if is_autogluon_preprocess_mode(self.cfg):
-            return self._draft_autogluon_preprocess()
+            return self._draft_autogluon_preprocess(
+                hypothesis_selection=hypothesis_selection,
+            )
 
         prompt: Any = {
             "Introduction": (
@@ -1235,14 +1246,24 @@ class Agent:
         if self.acfg.data_preview:
             prompt["Data Overview"] = self.data_preview
 
-        research_metadata = self._add_research_hints(prompt, parent_node=None)
+        if hypothesis_selection is not None:
+            research_metadata = self._add_hypothesis_selection(
+                prompt,
+                hypothesis_selection,
+            )
+        else:
+            research_metadata = self._add_research_hints(prompt, parent_node=None)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._new_node(plan=plan, code=code),
             research_metadata,
         )
 
-    def _draft_autogluon_preprocess(self) -> Node:
+    def _draft_autogluon_preprocess(
+        self,
+        *,
+        hypothesis_selection: Any | None = None,
+    ) -> Node:
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. "
@@ -1269,7 +1290,13 @@ class Agent:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
 
         self._add_autogluon_context(prompt)
-        research_metadata = self._add_research_hints(prompt, parent_node=None)
+        if hypothesis_selection is not None:
+            research_metadata = self._add_hypothesis_selection(
+                prompt,
+                hypothesis_selection,
+            )
+        else:
+            research_metadata = self._add_research_hints(prompt, parent_node=None)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
             self._wrap_autogluon_preprocess_node(
@@ -1463,6 +1490,37 @@ class Agent:
         else:
             self.data_preview = build_data_overview(self.cfg)
 
+    def _draft_hypothesis_root(self) -> Node:
+        selection = select_hypothesis_for_node(
+            self.cfg,
+            journal=self.journal,
+            parent_node=None,
+            completed_steps=len(self.journal.nodes),
+        )
+        if len(selection.hypotheses) != 1:
+            raise ValueError("Hypothesis mode requires exactly one selected root.")
+        hypothesis_id = selection.hypotheses[0].id
+        self.active_research_hypothesis_id = hypothesis_id
+        self.active_research_hypothesis_log_hint = format_hypothesis_for_log_panel(
+            selection
+        )
+        root_code = load_hypothesis_root_code(self.cfg, hypothesis_id)
+        if root_code is not None:
+            metadata = {
+                "research_mode": "hypothesis",
+                "research_hypotheses_offered": [hypothesis_id],
+                "research_source_hash": selection.source_hash,
+            }
+            plan = (
+                f"Loaded library {root_code.agent_mode} root code for "
+                f"hypothesis {hypothesis_id} from {root_code.path.name}."
+            )
+            return self._apply_research_metadata(
+                self._new_node(plan=plan, code=root_code.code),
+                metadata,
+            )
+        return self._draft(hypothesis_selection=selection)
+
     def prepare_step(self) -> Node | None:
         if not self.journal.nodes or self.data_preview is None:
             self.update_data_preview()
@@ -1507,6 +1565,8 @@ class Agent:
                 and not self.journal.nodes
             ):
                 return self._autogluon_raw_baseline()
+            if parent_node is None and self._is_hypothesis_mode():
+                return self._draft_hypothesis_root()
             if parent_node is None:
                 return self._draft()
             if parent_node.is_buggy:
@@ -1528,6 +1588,25 @@ class Agent:
         self.parse_exec_result(
             node=node,
             exec_result=exec_result,
+        )
+        self._save_reviewed_hypothesis_root_code(node)
+
+    def _save_reviewed_hypothesis_root_code(self, node: Node) -> None:
+        if node.parent is not None or node.research_mode != "hypothesis":
+            return
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None:
+            return
+        score = None if node.metric is None else node.metric.value
+        created_at = dt.datetime.fromtimestamp(node.ctime).isoformat(timespec="seconds")
+        save_hypothesis_root_code(
+            self.cfg,
+            hypothesis_id=hypothesis_id,
+            code=node.code,
+            is_buggy=bool(node.is_buggy),
+            node_id=node.id,
+            score=score,
+            created_at=created_at,
         )
 
     def clear_active_step(self) -> None:

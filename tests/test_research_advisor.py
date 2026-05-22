@@ -4,9 +4,12 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 import aide.research as research
 from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
+from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.research import (
     RESEARCH_PROMPT_INTRO,
@@ -91,7 +94,7 @@ def _write_manual_hypothesis(
         root
         / "research_hypotheses"
         / task_slug
-        / "hypotheses"
+        / hypothesis_id
         / f"hypothesis-{hypothesis_id}.json"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,7 +243,7 @@ def test_playground_manual_hypotheses_do_not_reference_run_specific_ids():
             )
 
 
-def test_manual_hypothesis_library_rejects_missing_hypotheses_dir(tmp_path):
+def test_manual_hypothesis_library_rejects_missing_hypothesis_files(tmp_path):
     cfg = _manual_cfg(tmp_path)
     (tmp_path / "research_hypotheses" / "playground-series-s6e5").mkdir(
         parents=True
@@ -249,9 +252,9 @@ def test_manual_hypothesis_library_rejects_missing_hypotheses_dir(tmp_path):
     try:
         research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
     except ValueError as exc:
-        assert "Missing manual research hypotheses directory" in str(exc)
+        assert "No manual research hypothesis files found" in str(exc)
     else:
-        raise AssertionError("Expected missing hypotheses directory to fail")
+        raise AssertionError("Expected missing hypothesis files to fail")
 
 
 def test_manual_hypothesis_library_rejects_missing_required_fields(tmp_path):
@@ -1522,6 +1525,451 @@ def test_agent_includes_hard_hypothesis_contract_in_draft_prompt(
     assert node.research_mode == "hypothesis"
     assert node.research_hypotheses_offered == ["000001"]
     assert node.research_source_hash == "sha256:test"
+
+
+def test_hypothesis_root_code_loader_uses_highest_numbered_file(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "autogluon-001.py").write_text("print('one')\n")
+    (hypothesis_dir / "autogluon-002.py").write_text("print('two')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps({"active": {"autogluon": "autogluon-001.py"}}),
+        encoding="utf-8",
+    )
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "autogluon-002.py"
+    assert root_code.code == "print('two')\n"
+
+
+def test_hypothesis_root_code_loader_uses_highest_legacy_file(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('one')\n")
+    (hypothesis_dir / "legacy-002.py").write_text("print('two')\n")
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "legacy-002.py"
+    assert root_code.code == "print('two')\n"
+
+
+def test_hypothesis_root_code_loader_loads_single_unmanifested_file(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('one')\n")
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "legacy-001.py"
+    assert root_code.code == "print('one')\n"
+
+
+def test_hypothesis_root_code_loader_ignores_buggy_manifest_entry(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is None
+
+
+def test_hypothesis_root_code_loader_ignores_buggy_highest_version(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('old ok')\n")
+    (hypothesis_dir / "legacy-002.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                        },
+                        {
+                            "file": "legacy-002.py",
+                            "buggy": True,
+                        },
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is None
+
+
+def test_agent_loads_library_hypothesis_root_without_llm(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('from library')\n")
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash="sha256:test",
+        source_dir=hypothesis_dir.parent,
+        hypotheses=[
+            research.load_manual_hypothesis_library(
+                cfg,
+                repo_root=tmp_path,
+            ).hypotheses[0]
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    monkeypatch.setattr(
+        "aide.agent.load_hypothesis_root_code",
+        lambda _cfg, hypothesis_id: research.load_hypothesis_root_code(
+            _cfg,
+            hypothesis_id,
+            repo_root=tmp_path,
+        ),
+    )
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fail_plan_and_code(_prompt):
+        raise AssertionError("LLM should not be called for a library root")
+
+    agent.plan_and_code_query = fail_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert node.code == "print('from library')\n"
+    assert node.research_mode == "hypothesis"
+    assert node.research_hypotheses_offered == ["000001"]
+
+
+def test_agent_missing_library_root_still_uses_llm(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash="sha256:test",
+        source_dir=tmp_path / "research_hypotheses" / "playground-series-s6e5",
+        hypotheses=[
+            research.load_manual_hypothesis_library(
+                cfg,
+                repo_root=tmp_path,
+            ).hypotheses[0]
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    monkeypatch.setattr(
+        "aide.agent.load_hypothesis_root_code",
+        lambda _cfg, hypothesis_id: research.load_hypothesis_root_code(
+            _cfg,
+            hypothesis_id,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    captured = {}
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "I will verify hypothesis 000001.", "print('from llm')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert "Hypothesis under verification" in captured["prompt"]
+    assert node.code == "print('from llm')"
+    assert node.research_hypotheses_offered == ["000001"]
+
+
+def test_agent_buggy_library_root_still_uses_llm(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash="sha256:test",
+        source_dir=hypothesis_dir.parent,
+        hypotheses=[
+            research.load_manual_hypothesis_library(
+                cfg,
+                repo_root=tmp_path,
+            ).hypotheses[0]
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    monkeypatch.setattr(
+        "aide.agent.load_hypothesis_root_code",
+        lambda _cfg, hypothesis_id: research.load_hypothesis_root_code(
+            _cfg,
+            hypothesis_id,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(_prompt):
+        return "I will replace buggy hypothesis root code.", "print('from llm')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert node.code == "print('from llm')"
+    assert node.research_hypotheses_offered == ["000001"]
+
+
+def test_reviewed_llm_hypothesis_root_saves_single_file(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('new root')\n", plan="root")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+
+    agent.review_node(
+        node,
+        ExecutionResult(
+            term_out=[
+                'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+                '"metric": 0.91, "lower_is_better": false, '
+                '"research_hypotheses_llm_claimed_used": ["000001"]}'
+            ],
+            exec_time=1.0,
+            exc_type=None,
+        ),
+    )
+
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    assert (hypothesis_dir / "legacy-001.py").read_text() == "print('new root')\n"
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["active"]["legacy"] == "legacy-001.py"
+
+
+def test_reviewed_llm_hypothesis_root_after_buggy_highest_saves_next_version(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('old ok')\n")
+    (hypothesis_dir / "legacy-002.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                        },
+                        {
+                            "file": "legacy-002.py",
+                            "buggy": True,
+                        },
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('fixed root')\n", plan="root")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+
+    agent.review_node(
+        node,
+        ExecutionResult(
+            term_out=[
+                'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+                '"metric": 0.92, "lower_is_better": false, '
+                '"research_hypotheses_llm_claimed_used": ["000001"]}'
+            ],
+            exec_time=1.0,
+            exc_type=None,
+        ),
+    )
+
+    assert (hypothesis_dir / "legacy-003.py").read_text() == "print('fixed root')\n"
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["active"]["legacy"] == "legacy-003.py"
+    assert [entry["file"] for entry in manifest["versions"]["legacy"]] == [
+        "legacy-001.py",
+        "legacy-002.py",
+        "legacy-003.py",
+    ]
+
+
+def test_branch_hypothesis_node_does_not_save_library_root(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    parent = Node(code="print('parent')", plan="parent")
+    child = Node(code="print('branch')", plan="branch", parent=parent)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000001"]
+    child.is_buggy = False
+
+    agent._save_reviewed_hypothesis_root_code(child)
+
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    assert not list(hypothesis_dir.glob("legacy-*.py"))
+
+
+def test_buggy_duplicate_root_does_not_deactivate_existing_manifest(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    path = research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('same root')\n",
+        is_buggy=False,
+        node_id="ok-node",
+        score=0.91,
+        repo_root=tmp_path,
+    )
+
+    duplicate = research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('same root')\n",
+        is_buggy=True,
+        node_id="bug-node",
+        score=None,
+        repo_root=tmp_path,
+    )
+
+    assert duplicate == path
+    manifest = json.loads((path.parent / "code_manifest.json").read_text())
+    assert manifest["active"]["legacy"] == "legacy-001.py"
+    assert manifest["versions"]["legacy"][0]["buggy"] is False
+    assert manifest["versions"]["legacy"][0]["node_id"] == "ok-node"
 
 
 def test_agent_exposes_active_hypothesis_log_hint_during_generation(
