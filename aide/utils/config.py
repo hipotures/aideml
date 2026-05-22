@@ -488,6 +488,15 @@ def _save_node_artifacts(cfg: Config, node) -> None:
     if submission_path.exists() and submission_path.stat().st_mtime >= node.ctime:
         shutil.copy2(submission_path, artifact_dir / "submission.csv")
 
+    for name in (
+        "oof_predictions.csv",
+        "test_predictions.csv",
+        "validation_predictions.csv",
+    ):
+        prediction_path = cfg.workspace_dir / "working" / name
+        if prediction_path.exists() and prediction_path.stat().st_mtime >= node.ctime:
+            shutil.copy2(prediction_path, artifact_dir / name)
+
     error_text = _node_error_text(node)
     if error_text is not None:
         (artifact_dir / "error.txt").write_text(error_text + "\n")

@@ -125,6 +125,9 @@ def build_node_artifact_manifest(
 ) -> dict[str, Any]:
     solution_path = artifact_dir / "solution.py"
     submission_path = artifact_dir / "submission.csv"
+    oof_predictions_path = artifact_dir / "oof_predictions.csv"
+    test_predictions_path = artifact_dir / "test_predictions.csv"
+    validation_predictions_path = artifact_dir / "validation_predictions.csv"
     error_path = artifact_dir / "error.txt"
     code = solution_path.read_text(encoding="utf-8") if solution_path.exists() else node.code
     metric = metric_payload(node)
@@ -154,6 +157,12 @@ def build_node_artifact_manifest(
         "files": {
             "solution": file_entry(solution_path, base_dir=artifact_dir),
             "submission": submission,
+            "oof_predictions": file_entry(oof_predictions_path, base_dir=artifact_dir),
+            "test_predictions": file_entry(test_predictions_path, base_dir=artifact_dir),
+            "validation_predictions": file_entry(
+                validation_predictions_path,
+                base_dir=artifact_dir,
+            ),
             "error": error,
         },
         "node": {

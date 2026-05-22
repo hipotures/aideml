@@ -363,6 +363,14 @@ def run_profile_eval(
         generated_submission = workspace_dir / "working" / "submission.csv"
         if generated_submission.exists():
             shutil.copy2(generated_submission, artifact_dir / "submission.csv")
+        for name in (
+            "oof_predictions.csv",
+            "test_predictions.csv",
+            "validation_predictions.csv",
+        ):
+            generated_prediction = workspace_dir / "working" / name
+            if generated_prediction.exists():
+                shutil.copy2(generated_prediction, artifact_dir / name)
         generated_log = workspace_dir / "working" / "autogluon_stdout.log"
         if generated_log.exists() and not (artifact_dir / "autogluon_stdout.log").exists():
             shutil.copy2(generated_log, artifact_dir / "autogluon_stdout.log")
@@ -425,6 +433,18 @@ def run_profile_eval(
         "files": {
             "solution": _file_entry(artifact_dir / "solution.py", base_dir=artifact_dir),
             "submission": _file_entry(submission_path, base_dir=artifact_dir),
+            "oof_predictions": _file_entry(
+                artifact_dir / "oof_predictions.csv",
+                base_dir=artifact_dir,
+            ),
+            "test_predictions": _file_entry(
+                artifact_dir / "test_predictions.csv",
+                base_dir=artifact_dir,
+            ),
+            "validation_predictions": _file_entry(
+                artifact_dir / "validation_predictions.csv",
+                base_dir=artifact_dir,
+            ),
             "error": _file_entry(artifact_dir / "error.txt", base_dir=artifact_dir),
         },
         "node": {

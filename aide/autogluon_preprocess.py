@@ -337,10 +337,16 @@ def _read_csv(data_dir: Path, stem: str) -> pd.DataFrame:
 
 def _positive_probability(predictor: TabularPredictor, data: pd.DataFrame) -> pd.Series:
     proba = predictor.predict_proba(data)
+    return _positive_probability_from_proba(proba)
+
+
+def _positive_probability_from_proba(proba) -> pd.Series:
+    if isinstance(proba, pd.Series):
+        return proba.reset_index(drop=True)
     for positive_class in (1, 1.0, "1", "1.0", True):
         if positive_class in proba.columns:
-            return proba[positive_class]
-    return proba.iloc[:, -1]
+            return proba[positive_class].reset_index(drop=True)
+    return proba.iloc[:, -1].reset_index(drop=True)
 
 
 def _make_combined_frame(train_df: pd.DataFrame, test_df: pd.DataFrame) -> pd.DataFrame:
@@ -453,6 +459,80 @@ def _save_submission(submission: pd.DataFrame, working_dir: Path) -> Path:
     if artifact_submission_path.resolve() != submission_path.resolve():
         shutil.copy2(submission_path, artifact_submission_path)
     return submission_path
+
+
+def _save_prediction_artifact(frame: pd.DataFrame, working_dir: Path, filename: str) -> Path:
+    working_path = working_dir / filename
+    frame.to_csv(working_path, index=False)
+    artifact_dir = _artifact_dir(working_dir)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = artifact_dir / filename
+    if artifact_path.resolve() != working_path.resolve():
+        shutil.copy2(working_path, artifact_path)
+    return working_path
+
+
+def _save_autogluon_prediction_artifacts(
+    predictor: TabularPredictor,
+    *,
+    train_target: pd.Series,
+    test_ids: pd.Series,
+    test_pred: pd.Series,
+    working_dir: Path,
+    id_col: str,
+    target_col: str,
+    valid_data: pd.DataFrame | None,
+    valid_pred: pd.Series | None,
+) -> dict:
+    artifacts = {{}}
+    test_predictions = pd.DataFrame({{
+        id_col: pd.Series(test_ids).reset_index(drop=True),
+        target_col: pd.Series(test_pred).reset_index(drop=True),
+    }})
+    test_path = _save_prediction_artifact(
+        test_predictions,
+        working_dir,
+        "test_predictions.csv",
+    )
+    artifacts["test_predictions"] = str(test_path)
+
+    try:
+        oof_proba = predictor.predict_proba_oof(
+            transformed=False,
+            as_multiclass=True,
+        )
+        oof_pred = _positive_probability_from_proba(oof_proba)
+        if len(oof_pred) != len(train_target):
+            raise ValueError(f"OOF row count {{len(oof_pred)}} != train rows {{len(train_target)}}")
+        oof_frame = pd.DataFrame({{
+            "row": np.arange(len(train_target)),
+            "target": pd.Series(train_target).reset_index(drop=True),
+            "prediction": oof_pred.reset_index(drop=True),
+        }})
+        oof_path = _save_prediction_artifact(
+            oof_frame,
+            working_dir,
+            "oof_predictions.csv",
+        )
+        artifacts["oof_predictions"] = str(oof_path)
+        artifacts["oof_rows"] = int(len(oof_frame))
+    except Exception as exc:
+        artifacts["oof_error"] = f"{{type(exc).__name__}}: {{exc}}"
+
+    if valid_data is not None and valid_pred is not None:
+        validation_frame = pd.DataFrame({{
+            "row": np.arange(len(valid_data)),
+            "target": valid_data[target_col].reset_index(drop=True),
+            "prediction": pd.Series(valid_pred).reset_index(drop=True),
+        }})
+        validation_path = _save_prediction_artifact(
+            validation_frame,
+            working_dir,
+            "validation_predictions.csv",
+        )
+        artifacts["validation_predictions"] = str(validation_path)
+        artifacts["validation_rows"] = int(len(validation_frame))
+    return artifacts
 
 
 def _make_submission(
@@ -677,6 +757,7 @@ def main() -> None:
 
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting validation and prediction", flush=True)
+        valid_pred = None
         if valid_data is None:
             leaderboard = predictor.leaderboard(silent=True)
             score_candidates = [
@@ -697,6 +778,17 @@ def main() -> None:
             lower_is_better = False
 
         test_pred = _positive_probability(predictor, test_model)
+        prediction_artifacts = _save_autogluon_prediction_artifacts(
+            predictor,
+            train_target=y_train,
+            test_ids=test_df[id_col],
+            test_pred=test_pred,
+            working_dir=working_dir,
+            id_col=id_col,
+            target_col=target_col,
+            valid_data=valid_data,
+            valid_pred=valid_pred,
+        )
     submission = _make_submission(
         sample_submission,
         id_col=id_col,
@@ -710,6 +802,13 @@ def main() -> None:
     print(f"AIDE AutoGluon: submission saved to {{submission_path}}", flush=True)
     if artifact_submission_path.resolve() != submission_path.resolve():
         print(f"AIDE AutoGluon: artifact submission saved to {{artifact_submission_path}}", flush=True)
+    if prediction_artifacts.get("oof_predictions"):
+        print(f"AIDE AutoGluon: OOF predictions saved to {{prediction_artifacts['oof_predictions']}}", flush=True)
+    elif prediction_artifacts.get("oof_error"):
+        print(f"AIDE AutoGluon: OOF predictions unavailable: {{prediction_artifacts['oof_error']}}", flush=True)
+    if prediction_artifacts.get("validation_predictions"):
+        print(f"AIDE AutoGluon: validation predictions saved to {{prediction_artifacts['validation_predictions']}}", flush=True)
+    print(f"AIDE AutoGluon: test predictions saved to {{prediction_artifacts['test_predictions']}}", flush=True)
 
     summary = "AutoGluon preprocess wrapper completed."
     run_stats = {{
@@ -717,6 +816,7 @@ def main() -> None:
         "preprocess_time": float(preprocess_time),
         "training_time": float(training_time),
         "models": model_records,
+        "prediction_artifacts": prediction_artifacts,
     }}
     print(f"Validation {{eval_metric}}: {{metric_value:.6f}}")
     print("Submission saved successfully.")
