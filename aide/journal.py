@@ -117,6 +117,8 @@ class Node(DataClassJsonMixin):
 
     @property
     def is_submission_contract_error(self) -> bool:
+        if self.status == "generated":
+            return False
         validation = self.submission_validation or {}
         return (
             self.exc_type == "SubmissionValidationError"

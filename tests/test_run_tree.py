@@ -319,6 +319,18 @@ def test_journal_tree_renders_generated_only_node_as_pending_code():
     assert "bug·000123" not in output
 
 
+def test_journal_tree_renders_generated_node_with_stale_submission_error():
+    journal = Journal()
+    node = _hypothesis_node(_good_node(0.941), "000123")
+    mark_node_generated_only(node)
+    node.exc_type = "SubmissionValidationError"
+    journal.append(node)
+
+    output = _render_text(journal_to_rich_tree(journal))
+
+    assert "generated·000123" in output
+
+
 def test_tree_view_ignores_generated_only_node_when_selecting_best():
     journal = Journal()
     scored = _hypothesis_node(_good_node(0.941), "000111")
