@@ -27,7 +27,7 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, clone
 from sklearn.ensemble import StackingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -450,7 +450,7 @@ def model_uses_native_data(model_name: str, native_boosting_data: bool) -> bool:
     return native_boosting_data and model_name in NATIVE_BOOSTING_MODELS
 
 
-class NativeBoostingClassifier(BaseEstimator, ClassifierMixin):
+class NativeBoostingClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         model_cls: Any,
@@ -531,6 +531,19 @@ def build_estimator(
             ("classifier", model_cls(**kwargs)),
         ]
     )
+
+
+def apply_tuned_params(estimator: Any, params: dict[str, Any]) -> Any:
+    if not params:
+        return estimator
+    if hasattr(estimator, "model_params"):
+        estimator.model_params = {
+            **dict(getattr(estimator, "model_params") or {}),
+            **params,
+        }
+    else:
+        estimator.set_params(**{f"classifier__{key}": value for key, value in params.items()})
+    return estimator
 
 
 def compute_classifier_metrics(pipe: Pipeline, x_valid: pd.DataFrame, y_valid: pd.Series) -> dict[str, Any]:
@@ -741,12 +754,6 @@ def build_tuned_estimators(
         if model_class is None:
             continue
         params = parse_best_params(row.get("Best Params"))
-        kwargs = model_kwargs_for(
-            model_class,
-            random_state=random_state,
-            n_jobs_per_model=n_jobs,
-        )
-        kwargs.update(params)
         base_name = safe_estimator_name(model_name)
         name = base_name
         idx = 2
@@ -754,18 +761,20 @@ def build_tuned_estimators(
             name = f"{base_name}_{idx}"
             idx += 1
         used_names.add(name)
+        estimator = build_estimator(
+            model_name,
+            model_class,
+            x_reference,
+            categorical_encoder=categorical_encoder,
+            random_state=random_state,
+            n_jobs=n_jobs,
+            native_boosting_data=native_boosting_data,
+        )
+        apply_tuned_params(estimator, params)
         estimators.append(
             (
                 name,
-                build_estimator(
-                    model_name,
-                    model_class,
-                    x_reference,
-                    categorical_encoder=categorical_encoder,
-                    random_state=random_state,
-                    n_jobs=n_jobs,
-                    native_boosting_data=native_boosting_data,
-                ),
+                estimator,
             )
         )
         stack_models.append(
@@ -1005,6 +1014,171 @@ def write_tuned_stack_submission(
         "model_dir": None if models_dir is None else str(models_dir),
         "saved_base_models": saved_base_models,
         "saved_stack_model": None if stack_model_path is None else str(stack_model_path),
+    }
+
+
+def positive_class_proba(estimator: Any, x: pd.DataFrame) -> np.ndarray:
+    if hasattr(estimator, "predict_proba"):
+        proba = estimator.predict_proba(x)
+        if proba.ndim != 2 or proba.shape[1] < 2:
+            raise ValueError(f"Unexpected predict_proba shape: {proba.shape}")
+        classes = list(getattr(estimator, "classes_", []))
+        if 1 in classes:
+            index = classes.index(1)
+        elif "1" in classes:
+            index = classes.index("1")
+        else:
+            index = 1
+        return np.asarray(proba[:, index], dtype=float)
+    if hasattr(estimator, "decision_function"):
+        decision = np.asarray(estimator.decision_function(x), dtype=float)
+        return 1.0 / (1.0 + np.exp(-decision))
+    return np.asarray(estimator.predict(x), dtype=float)
+
+
+def write_tuned_oof_predictions(
+    tuned_scores: pd.DataFrame,
+    x_train: pd.DataFrame,
+    x_valid: pd.DataFrame,
+    y_train: pd.Series,
+    y_valid: pd.Series,
+    x_test: pd.DataFrame,
+    sample_submission: pd.DataFrame,
+    output_dir: Path,
+    *,
+    max_models: int | None,
+    exclude_models: set[str],
+    categorical_encoder: str,
+    random_state: int,
+    cv_folds: int,
+    n_jobs: int,
+    stack_top_k: int | None,
+    native_boosting_data: bool,
+    timeout: float | None,
+    console: Console,
+) -> dict[str, Any]:
+    from lazypredict.preprocessing import prepare_dataframes
+
+    try:
+        from threadpoolctl import threadpool_limits
+    except Exception:
+        threadpool_limits = None
+
+    x_final = pd.concat([x_train, x_valid], ignore_index=True)
+    y_final = pd.concat(
+        [pd.Series(y_train), pd.Series(y_valid)],
+        ignore_index=True,
+    )
+    source = np.array(["train"] * len(x_train) + ["valid"] * len(x_valid))
+    source_row = np.concatenate([np.arange(len(x_train)), np.arange(len(x_valid))])
+    x_final, x_test = prepare_dataframes(x_final, x_test)
+    estimators, stack_models = build_tuned_estimators(
+        tuned_scores,
+        x_final,
+        max_models=max_models,
+        exclude_models=exclude_models,
+        categorical_encoder=categorical_encoder,
+        random_state=random_state,
+        n_jobs=n_jobs,
+        native_boosting_data=native_boosting_data,
+        top_k=stack_top_k,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
+    limiter = (
+        threadpool_limits(limits=n_jobs)
+        if threadpool_limits is not None
+        else contextlib.nullcontext()
+    )
+    id_col = sample_submission.columns[0]
+    target_col = sample_submission.columns[1]
+    manifest: list[dict[str, Any]] = []
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    )
+    with progress:
+        task_id = progress.add_task(
+            f"Saving tuned OOF/test predictions ({cv_folds}-fold)",
+            total=len(estimators),
+        )
+        for (estimator_name, estimator), model_meta in zip(estimators, stack_models):
+            started = time.time()
+            try:
+                oof = np.full(len(x_final), np.nan, dtype=float)
+                for train_idx, valid_idx in cv.split(x_final, y_final):
+                    fold_estimator = clone(estimator)
+                    with model_timeout(timeout), limiter:
+                        fold_estimator.fit(
+                            x_final.iloc[train_idx],
+                            y_final.iloc[train_idx],
+                        )
+                        oof[valid_idx] = positive_class_proba(
+                            fold_estimator,
+                            x_final.iloc[valid_idx],
+                        )
+                if not np.isfinite(oof).all():
+                    raise ValueError("OOF predictions contain NaN or inf")
+                full_estimator = clone(estimator)
+                with model_timeout(timeout), limiter:
+                    full_estimator.fit(x_final, y_final)
+                    test_pred = positive_class_proba(full_estimator, x_test)
+                if not np.isfinite(test_pred).all():
+                    raise ValueError("Test predictions contain NaN or inf")
+
+                oof_path = output_dir / f"{estimator_name}-oof.csv"
+                test_path = output_dir / f"{estimator_name}-test.csv"
+                pd.DataFrame(
+                    {
+                        "row": np.arange(len(x_final)),
+                        "source": source,
+                        "source_row": source_row,
+                        "target": y_final.to_numpy(),
+                        "prediction": oof,
+                    }
+                ).to_csv(oof_path, index=False)
+                pd.DataFrame(
+                    {
+                        id_col: sample_submission[id_col].to_numpy(),
+                        target_col: test_pred,
+                    }
+                ).to_csv(test_path, index=False)
+                manifest.append(
+                    {
+                        "status": "ok",
+                        "model": model_meta["name"],
+                        "estimator_name": estimator_name,
+                        "oof_path": str(oof_path),
+                        "test_path": str(test_path),
+                        "oof_roc_auc": float(roc_auc_score(y_final, oof)),
+                        "rows": int(len(oof)),
+                        "test_rows": int(len(test_pred)),
+                        "time_taken": time.time() - started,
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001 - keep other OOF models
+                manifest.append(
+                    {
+                        "status": "error",
+                        "model": model_meta["name"],
+                        "estimator_name": estimator_name,
+                        "error": repr(exc),
+                        "time_taken": time.time() - started,
+                    }
+                )
+            progress.update(task_id, advance=1)
+    manifest_path = output_dir / "manifest.json"
+    with manifest_path.open("w") as f:
+        json.dump(manifest, f, indent=2)
+    return {
+        "status": "ok",
+        "path": str(output_dir),
+        "manifest_path": str(manifest_path),
+        "models": manifest,
     }
 
 
@@ -1412,13 +1586,7 @@ def run_lazy_tuning(
                     n_jobs=tune_n_jobs,
                     native_boosting_data=native_boosting_data,
                 )
-                if hasattr(pipe, "model_params"):
-                    pipe.model_params = {
-                        **dict(getattr(pipe, "model_params") or {}),
-                        **best_params,
-                    }
-                else:
-                    pipe.set_params(**{f"classifier__{key}": value for key, value in best_params.items()})
+                apply_tuned_params(pipe, best_params)
                 limiter = (
                     threadpool_limits(limits=tune_n_jobs)
                     if threadpool_limits is not None
@@ -1714,6 +1882,53 @@ def print_compact_tuning(
         )
 
 
+def print_compact_submissions(console: Console, details: list[dict[str, Any]]) -> None:
+    for detail in details:
+        submission = detail.get("submission")
+        if not isinstance(submission, dict):
+            continue
+        if submission.get("status") == "ok":
+            console.print(
+                "submission: "
+                f"{submission.get('path')} "
+                f"rows={submission.get('rows')} "
+                f"fit_rows={submission.get('fit_rows')}"
+            )
+            if submission.get("model_dir"):
+                console.print(f"models: {submission.get('model_dir')}")
+            if submission.get("saved_stack_model"):
+                console.print(f"stack model: {submission.get('saved_stack_model')}")
+        else:
+            console.print(
+                "submission failed: "
+                f"{submission.get('error') or 'unknown error'}"
+            )
+
+
+def print_compact_oof_predictions(console: Console, details: list[dict[str, Any]]) -> None:
+    for detail in details:
+        oof_predictions = detail.get("oof_predictions")
+        if not isinstance(oof_predictions, dict):
+            continue
+        if oof_predictions.get("status") == "ok":
+            ok_models = [
+                model
+                for model in oof_predictions.get("models", [])
+                if model.get("status") == "ok"
+            ]
+            console.print(
+                "oof predictions: "
+                f"{oof_predictions.get('path')} "
+                f"models={len(ok_models)} "
+                f"manifest={oof_predictions.get('manifest_path')}"
+            )
+        else:
+            console.print(
+                "oof predictions failed: "
+                f"{oof_predictions.get('error') or 'unknown error'}"
+            )
+
+
 def finite_or_none(value: Any) -> float | None:
     if value is None or pd.isna(value):
         return None
@@ -1891,6 +2106,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "With --submission, save fitted tuned base models and the fitted "
             "stacking model as joblib files. Enabled by default."
         ),
+    )
+    parser.add_argument(
+        "--save-oof-preds",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "With --tune, save leak-free OOF predictions and full-test "
+            "predictions for tuned models. Enabled by default."
+        ),
+    )
+    parser.add_argument(
+        "--oof-dir",
+        type=Path,
+        help="Optional directory for saved OOF/test prediction CSV files.",
     )
     parser.add_argument(
         "--models-dir",
@@ -2204,6 +2433,75 @@ def main(argv: list[str] | None = None) -> int:
                             "tune_elapsed": tuning_elapsed,
                         }
                     )
+                write_outputs(
+                    summary_path=summary_path,
+                    tuning_path=tuning_path,
+                    details_path=details_path,
+                    summary_rows=summary_rows,
+                    tuning_rows=tuning_rows,
+                    details=details,
+                )
+                render_tuning_results(console, tuning_rows)
+                console.print(f"partial tuning: {tuning_path}")
+                if args.save_oof_preds:
+                    try:
+                        if args.oof_dir is not None:
+                            oof_dir = args.oof_dir
+                            if len(selected) > 1:
+                                oof_dir = (
+                                    oof_dir
+                                    / f"rank{candidate_rank:02d}-step{record.get('step')}"
+                                )
+                        else:
+                            oof_dir = (
+                                run_dir
+                                / f"rank{candidate_rank:02d}-step{record.get('step')}-oof-preds"
+                            )
+                        oof_predictions = write_tuned_oof_predictions(
+                            tuned_scores,
+                            x_train,
+                            x_valid,
+                            y_train,
+                            y_valid,
+                            test_cleaned,
+                            sample_submission,
+                            oof_dir,
+                            max_models=max_models,
+                            exclude_models=exclude_models,
+                            categorical_encoder=args.categorical_encoder,
+                            random_state=args.random_state,
+                            cv_folds=args.cv_folds,
+                            n_jobs=args.stack_n_jobs,
+                            timeout=args.stack_timeout,
+                            native_boosting_data=args.native_boosting_data,
+                            stack_top_k=(
+                                None
+                                if args.stack_tuned_top_k <= 0
+                                else args.stack_tuned_top_k
+                            ),
+                            console=console,
+                        )
+                        detail["oof_predictions"] = oof_predictions
+                        console.print(
+                            "oof predictions: "
+                            f"{oof_predictions['path']} "
+                            f"manifest={oof_predictions['manifest_path']}"
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        detail["oof_predictions"] = {
+                            "status": "error",
+                            "error": repr(exc),
+                            "traceback": traceback.format_exc(),
+                        }
+                        console.print(f"  [red]oof predictions failed:[/red] {exc!r}")
+                    write_outputs(
+                        summary_path=summary_path,
+                        tuning_path=tuning_path,
+                        details_path=details_path,
+                        summary_rows=summary_rows,
+                        tuning_rows=tuning_rows,
+                        details=details,
+                    )
                 if args.stack_tuned:
                     stacking_started = time.time()
                     try:
@@ -2368,6 +2666,8 @@ def main(argv: list[str] | None = None) -> int:
     render_tuning_results(console, tuning_rows)
     print_compact_diagnostics(console, summary_rows, failure_rows)
     print_compact_tuning(console, tuning_rows)
+    print_compact_oof_predictions(console, details)
+    print_compact_submissions(console, details)
     console.print(f"summary: {summary_path}")
     if tuning_rows:
         console.print(f"tuning: {tuning_path}")
