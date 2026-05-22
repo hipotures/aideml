@@ -490,6 +490,7 @@ def _write_manual_source_ref(
         for hypothesis in library.hypotheses
         if hypothesis.enabled and agent_mode in hypothesis.agent_modes
     )
+    configured_root_limit = _configured_hypothesis_root_limit(cfg)
     _write_json(
         _manual_run_dir(cfg) / "source_ref.json",
         {
@@ -499,6 +500,11 @@ def _write_manual_source_ref(
             "enabled_hypothesis_count": enabled_count,
             "agent_mode": agent_mode,
             "compatible_hypothesis_count": compatible_count,
+            "configured_hypothesis_root_limit": configured_root_limit,
+            "effective_hypothesis_root_limit": effective_hypothesis_root_limit(
+                cfg,
+                compatible_count=compatible_count,
+            ),
             "indexed_at": created_at,
             "filename_pattern": "<id>/hypothesis-<id>.json",
         },
@@ -679,6 +685,16 @@ def _configured_hypothesis_root_limit(cfg: Config) -> int:
         return 100
 
 
+def effective_hypothesis_root_limit(cfg: Config, *, compatible_count: int) -> int:
+    compatible_count = max(int(compatible_count), 0)
+    if compatible_count == 0:
+        return 0
+    configured_limit = _configured_hypothesis_root_limit(cfg)
+    if configured_limit <= 0:
+        return compatible_count
+    return min(configured_limit, compatible_count)
+
+
 def _hypothesis_root_pool_complete(
     cfg: Config,
     *,
@@ -690,8 +706,11 @@ def _hypothesis_root_pool_complete(
     compatible_ids = {hypothesis.id for hypothesis in compatible}
     used_root_ids = _root_hypothesis_ids(journal)
     used_compatible_root_count = len(compatible_ids & used_root_ids)
-    root_limit = _configured_hypothesis_root_limit(cfg)
-    if root_limit > 0 and used_compatible_root_count >= root_limit:
+    root_limit = effective_hypothesis_root_limit(
+        cfg,
+        compatible_count=len(compatible),
+    )
+    if used_compatible_root_count >= root_limit:
         return True
     return compatible_ids.issubset(used_root_ids)
 

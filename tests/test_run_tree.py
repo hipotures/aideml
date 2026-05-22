@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+from pathlib import Path
 
 import pytest
 from rich.console import Console
@@ -1302,6 +1303,33 @@ def test_hypothesis_phase_status_ignores_lower_resume_limit(tmp_path):
     output = _render_text(build_hypothesis_phase_status(cfg, journal))
 
     assert "⬢ Phase      exploration 3/3 · exploitation 1/7" in output
+
+
+def test_hypothesis_phase_status_caps_configured_limit_to_compatible_count(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1000
+    cfg.agent.steps = 1000
+    cfg = prep_cfg(cfg)
+    source_ref_dir = Path(cfg.log_dir) / "research_hypotheses"
+    source_ref_dir.mkdir(parents=True)
+    (source_ref_dir / "source_ref.json").write_text(
+        json.dumps({"compatible_hypothesis_count": 511}),
+        encoding="utf-8",
+    )
+    journal = Journal()
+    for idx in range(1, 478):
+        journal.append(_hypothesis_node(_good_node(0.95), f"{idx:06d}"))
+
+    output = _render_text(build_hypothesis_phase_status(cfg, journal))
+
+    assert "⬢ Phase      exploration 477/511 · exploitation 0/489" in output
+    assert "477/1000" not in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():

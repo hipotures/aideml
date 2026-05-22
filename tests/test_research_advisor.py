@@ -518,6 +518,35 @@ def test_hypothesis_root_pool_respects_configured_root_limit(tmp_path):
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
 
 
+def test_hypothesis_root_limit_is_capped_by_compatible_library_size(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1000
+    for idx in range(1, 3):
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            f"{idx:06d}",
+            title=f"Hypothesis {idx}",
+        )
+    journal = Journal()
+    for hypothesis_id in ["000001", "000002"]:
+        used_root = _node(0.9, code="print('ok')", plan="root")
+        used_root.research_mode = "hypothesis"
+        used_root.research_hypotheses_offered = [hypothesis_id]
+        journal.append(used_root)
+
+    assert research.effective_hypothesis_root_limit(cfg, compatible_count=2) == 2
+    assert (
+        research.hypothesis_root_pool_exhausted(
+            cfg,
+            journal=journal,
+            repo_root=tmp_path,
+        )
+        is True
+    )
+
+
 def test_hypothesis_child_selection_uses_full_library_after_root_limit(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

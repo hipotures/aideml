@@ -24,6 +24,7 @@ from .journal2report import journal2report
 from .research import (
     ResearchAdvisor,
     count_scored_working_nodes,
+    effective_hypothesis_root_limit,
     hypothesis_id_for_node,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
@@ -1750,6 +1751,21 @@ def _positive_int(value: object, default: int) -> int:
     return parsed if parsed > 0 else default
 
 
+def _source_ref_compatible_hypothesis_count(cfg: Config) -> int | None:
+    source_ref_path = Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json"
+    try:
+        payload = json.loads(source_ref_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        compatible_count = int(payload.get("compatible_hypothesis_count"))
+    except (TypeError, ValueError):
+        return None
+    return compatible_count if compatible_count >= 0 else None
+
+
 def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
     if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
         return None
@@ -1763,8 +1779,14 @@ def build_hypothesis_phase_status(cfg: Config, journal: Journal) -> Text | None:
         getattr(cfg.research, "hypothesis_root_limit", 100),
         100,
     )
+    compatible_count = _source_ref_compatible_hypothesis_count(cfg)
+    root_limit = (
+        effective_hypothesis_root_limit(cfg, compatible_count=compatible_count)
+        if compatible_count is not None
+        else configured_root_limit
+    )
     exploration_budget = min(
-        max(configured_root_limit, root_count),
+        max(root_limit, root_count),
         total_budget,
     )
     exploitation_budget = max(total_budget - exploration_budget, 0)
