@@ -201,6 +201,26 @@ def test_parse_exec_result_accepts_json_string_review_response(tmp_path, monkeyp
     assert node.analysis == "good run"
 
 
+def test_review_node_clears_generated_status_after_execution(tmp_path):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan", status="generated")
+    exec_result = ExecutionResult(
+        term_out=[
+            'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+            '"metric": 0.9, "lower_is_better": false}\n'
+        ],
+        exec_time=1.0,
+        exc_type=None,
+    )
+
+    agent.review_node(node, exec_result)
+
+    assert node.status == "ok"
+    assert node.is_buggy is False
+    assert node.metric.value == 0.9
+
+
 def test_parse_exec_result_keeps_metric_when_review_reports_validity_warning(
     tmp_path,
     monkeypatch,

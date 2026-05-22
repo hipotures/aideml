@@ -1620,6 +1620,8 @@ class Agent:
             node=node,
             exec_result=exec_result,
         )
+        if node.status == "generated":
+            node.status = "bug" if node.is_buggy else "ok"
         self._save_reviewed_hypothesis_root_code(node)
 
     def _save_reviewed_hypothesis_root_code(self, node: Node) -> None:
