@@ -50,7 +50,10 @@ class Node(DataClassJsonMixin):
     ctime: float = field(default_factory=lambda: time.time(), kw_only=True)
     parent: Optional["Node"] = field(default=None, kw_only=True)
     children: set["Node"] = field(default_factory=set, kw_only=True)
-    status: Literal["ok", "bug", "failed"] | None = field(default=None, kw_only=True)
+    status: Literal["ok", "bug", "failed", "generated"] | None = field(
+        default=None,
+        kw_only=True,
+    )
 
     # ---- execution info ----
     _term_out: list[str] = field(default=None, kw_only=True)  # type: ignore
@@ -234,7 +237,7 @@ class Journal(DataClassJsonMixin):
     @property
     def good_nodes(self) -> list[Node]:
         """Return a list of nodes that are not considered buggy by the agent."""
-        return [n for n in self.nodes if not n.is_buggy]
+        return [n for n in self.nodes if not n.is_buggy and n.status != "generated"]
 
     def get_metric_history(self) -> list[MetricValue]:
         """Return a list of all metric values in the journal."""
@@ -248,7 +251,10 @@ class Journal(DataClassJsonMixin):
                 return None
         else:
             nodes = self.nodes
-        return max(nodes, key=lambda n: n.metric)
+        nodes_with_metrics = [n for n in nodes if n.metric is not None]
+        if not nodes_with_metrics:
+            return None
+        return max(nodes_with_metrics, key=lambda n: n.metric)
 
     def generate_summary(self, include_code: bool = False) -> str:
         """Generate a summary of the journal for the agent."""

@@ -414,6 +414,17 @@ def _resolve_all_model_configs(cfg: Config) -> None:
     _resolve_model_attrs(cfg.synthesis)
 
 
+def _best_solution_node(journal):
+    scored_nodes = [
+        node
+        for node in journal.nodes
+        if node.metric is not None and node.metric.value is not None
+    ]
+    if scored_nodes:
+        return max(scored_nodes, key=lambda node: node.metric)
+    return journal.nodes[-1] if journal.nodes else None
+
+
 def print_cfg(cfg: Config) -> None:
     rich.print(Syntax(OmegaConf.to_yaml(cfg), "yaml", theme="paraiso-dark"))
 
@@ -554,9 +565,10 @@ def save_run(
     tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
     # save the best found solution
     notify("Saving best solution")
-    best_node = journal.get_best_node(only_good=False)
-    with open(cfg.log_dir / "best_solution.py", "w") as f:
-        f.write(best_node.code)
+    best_node = _best_solution_node(journal)
+    if best_node is not None:
+        with open(cfg.log_dir / "best_solution.py", "w") as f:
+            f.write(best_node.code)
 
     if current_node is not None:
         notify("Saving node artifacts")

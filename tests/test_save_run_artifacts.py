@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import os
 
 from aide.journal import Journal, Node
+from aide.run import mark_node_generated_only
 from aide.utils.config import save_run
 from aide.utils.metric import MetricValue
 import json
@@ -99,6 +100,35 @@ def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
     expected = dict(node.run_stats)
     expected["total_exec_time"] = 1.0
     assert manifest["run_stats"] == expected
+
+
+def test_save_run_handles_generated_only_current_node_without_metric(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    scored = Node(code="print('scored')", plan="scored", ctime=1777750000.0)
+    scored.metric = MetricValue(0.5, maximize=True)
+    scored.is_buggy = False
+    scored._term_out = ["CV ROC AUC: 0.5000\n"]
+    scored.exec_time = 1.0
+    scored.exc_type = None
+    scored.analysis = "ran successfully"
+    generated = Node(code="print('generated')", plan="generated", ctime=1777750547.0)
+    mark_node_generated_only(generated)
+    journal.append(scored)
+    journal.append(generated)
+
+    save_run(cfg, journal, current_node=generated)
+
+    assert (log_dir / "best_solution.py").read_text() == "print('scored')"
+    manifest = json.loads(
+        (log_dir / "artifacts" / "20260502T213547" / "aide_result.json").read_text()
+    )
+    assert manifest["status"] == "generated"
+    assert manifest["local_score"] is None
 
 
 def test_save_run_does_not_archive_submission_when_missing(tmp_path):

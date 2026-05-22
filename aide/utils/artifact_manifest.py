@@ -99,6 +99,8 @@ def run_stats_payload(node: Node) -> dict[str, Any] | None:
 
 
 def node_status(node: Node) -> str:
+    if node.status == "generated":
+        return "generated"
     if node.status == "failed":
         return "failed"
     if node.is_buggy:
@@ -114,6 +116,8 @@ def node_origin(node: Node) -> str:
         return "seeded_base"
     if plan.startswith(SYNTHESIS_PLAN_PREFIX):
         return "synthesis"
+    if node.status == "generated":
+        return "generated"
     if node.status == "failed":
         return "failed"
     return "normal"

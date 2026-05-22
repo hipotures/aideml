@@ -10,6 +10,8 @@ from aide.journal import Journal, Node
 from aide.run import (
     find_latest_run_id,
     load_resume_state,
+    mark_node_generated_only,
+    next_generated_only_node,
     parse_runtime_args,
     parse_resume_args,
 )
@@ -93,6 +95,57 @@ def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides()
     assert runtime.telegram_test_message is True
     assert runtime.debug is True
     assert remaining == ["agent.steps=200"]
+
+
+def test_parse_runtime_args_extracts_skip_execution_flag():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--resume",
+            "2-example-run",
+            "--skip-execution",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.run_id == "2-example-run"
+    assert runtime.skip_execution is True
+    assert remaining == ["agent.steps=200"]
+
+
+def test_generated_only_nodes_are_pending_until_evaluated():
+    journal = Journal()
+    executed = Node(code="print('ok')", plan="ok")
+    executed.metric = MetricValue(0.9, maximize=True)
+    executed.is_buggy = False
+    pending = Node(code="print('later')", plan="later")
+    journal.append(executed)
+    journal.append(pending)
+
+    mark_node_generated_only(pending)
+
+    assert pending.status == "generated"
+    assert pending.is_buggy is False
+    assert pending.metric is None
+    assert next_generated_only_node(journal) is pending
+
+    pending.status = "ok"
+    assert next_generated_only_node(journal) is None
+
+
+def test_generated_only_nodes_are_not_scored_good_candidates():
+    journal = Journal()
+    executed = Node(code="print('ok')", plan="ok")
+    executed.metric = MetricValue(0.9, maximize=True)
+    executed.is_buggy = False
+    pending = Node(code="print('later')", plan="later")
+    journal.append(executed)
+    journal.append(pending)
+
+    mark_node_generated_only(pending)
+
+    assert journal.good_nodes == [executed]
+    assert journal.get_best_node() is executed
+    assert journal.get_best_node(only_good=False) is executed
 
 
 def test_parse_runtime_args_extracts_seed_options():

@@ -108,6 +108,7 @@ class RuntimeOptions:
     force_check_submissions: bool = False
     telegram_test_message: bool = False
     debug: bool = False
+    skip_execution: bool = False
     seed_sha_prefix: str | None = None
     seed_source_run: str | None = None
 
@@ -183,6 +184,8 @@ def parse_runtime_args(
             runtime = replace(runtime, telegram_test_message=True)
         elif arg == "--debug":
             runtime = replace(runtime, debug=True)
+        elif arg in {"--skip-execution", "--generate-only"}:
+            runtime = replace(runtime, skip_execution=True)
         elif arg == "--seed-from-sha":
             if runtime.seed_sha_prefix is not None:
                 raise ValueError("`--seed-from-sha` can only be provided once.")
@@ -256,6 +259,25 @@ def _is_timeout_node(node: Node) -> bool:
 
 def _show_hypothesis_failure_in_tree(node: Node) -> bool:
     return node.status == "failed" and hypothesis_id_for_node(node) is not None
+
+
+def mark_node_generated_only(node: Node) -> None:
+    node.status = "generated"
+    node.is_buggy = False
+    node.metric = None  # type: ignore[assignment]
+    node.exec_time = None  # type: ignore[assignment]
+    node.exc_type = None
+    node.exc_info = None
+    node.exc_stack = None
+    node._term_out = []
+    node.analysis = "Generated only; execution skipped by --skip-execution."
+
+
+def next_generated_only_node(journal: Journal) -> Node | None:
+    for node in journal.nodes:
+        if node.status == "generated":
+            return node
+    return None
 
 
 def load_resume_state(
@@ -404,7 +426,9 @@ def journal_to_rich_tree(
 
         synthesis_root = is_synthesis_root(node)
         suffix = _node_hypothesis_suffix(node)
-        if node.status == "failed" and suffix:
+        if node.status == "generated":
+            s = f"[cyan]● generated{suffix}[/cyan]"
+        elif node.status == "failed" and suffix:
             s = f"[red]failed{suffix}[/red]"
         elif synthesis_root and (
             node.is_buggy or node.metric is None or node.metric.value is None
@@ -482,6 +506,8 @@ def _tree_node_label(
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
+    if node.status == "generated":
+        return Text(f"● generated{suffix}", style="cyan")
     if node.is_terminal_failure:
         return Text(f"● failed{suffix}", style="red")
 
@@ -2790,6 +2816,11 @@ def run(argv: list[str] | None = None):
     debug_log("interpreter_ready", phase="startup")
 
     global_step = len(journal)
+    generated_only_evaluations = 0
+
+    def completed_work_units() -> int:
+        return len(journal) + generated_only_evaluations
+
     prog = Progress(
         TextColumn(f"[{TUI_ROW_LABEL_STYLE}]" + "{task.description}"),
         BarColumn(bar_width=20),
@@ -2797,7 +2828,7 @@ def run(argv: list[str] | None = None):
         TimeElapsedColumn(),
     )
     status = Status("[green]Generating code...")
-    prog.add_task("Progress:", total=cfg.agent.steps, completed=global_step)
+    prog.add_task("Progress:", total=cfg.agent.steps, completed=completed_work_units())
     status_override: str | None = None
     operator_notice: str | None = None
     stop_after_current_node = False
@@ -3084,7 +3115,7 @@ def run(argv: list[str] | None = None):
             scroll_top=scroll_top,
             viewport_height=tree_viewport_height(),
         )
-        prog.update(prog.task_ids[0], completed=global_step)
+        prog.update(prog.task_ids[0], completed=completed_work_units())
         elapsed = (
             time.monotonic() - agent.active_stage_started_at
             if agent.active_stage_started_at is not None
@@ -3199,10 +3230,27 @@ def run(argv: list[str] | None = None):
                 refresh_per_second=1,
                 screen=True,
             ) as live:
-                while global_step < cfg.agent.steps:
+                while completed_work_units() < cfg.agent.steps:
                     synthesized: SynthesisNode | None = None
+                    result_node: Node | None = None
+                    node_already_in_journal = False
                     try:
-                        if cfg.synthesis.enabled:
+                        pending_generated_node = (
+                            None
+                            if runtime_options.skip_execution
+                            else next_generated_only_node(journal)
+                        )
+                        if pending_generated_node is not None:
+                            result_node = pending_generated_node
+                            node_already_in_journal = True
+                            agent.active_parent_node = result_node.parent
+                            debug_log(
+                                "resume_generated_only_node",
+                                phase="execute",
+                                node=result_node,
+                                extra={"global_step": global_step},
+                            )
+                        elif cfg.synthesis.enabled and not runtime_options.skip_execution:
                             agent.active_parent_node = None
                             agent.set_active_stage("generating")
 
@@ -3268,13 +3316,20 @@ def run(argv: list[str] | None = None):
                             if synthesized is None:
                                 agent.clear_active_step()
 
-                        if synthesized is None:
+                        if result_node is None and synthesized is None:
                             debug_log(
                                 "before_prepare_step",
                                 phase="generate",
                                 extra={"global_step": global_step},
                             )
                             parent_node = agent.prepare_step()
+                            if runtime_options.skip_execution and parent_node is not None:
+                                interrupted = True
+                                interrupt_message = (
+                                    "Skip-execution mode finished generating root "
+                                    "candidates; no code was executed."
+                                )
+                                break
                             debug_log(
                                 "after_prepare_step",
                                 phase="generate",
@@ -3331,11 +3386,29 @@ def run(argv: list[str] | None = None):
                                     current_left_panel_view(blink_on=True)
                                 ),
                             )
-                        else:
+                        elif result_node is None:
                             result_node = synthesized.node
                         pending_artifact_dir = None
+                        assert result_node is not None
 
-                        if (
+                        if runtime_options.skip_execution and not node_already_in_journal:
+                            mark_node_generated_only(result_node)
+                            debug_log(
+                                "before_append_generated_only_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+                            append_node_with_best_score_notification(
+                                journal=journal,
+                                node=result_node,
+                                experiment_id=cfg.exp_name,
+                            )
+                            debug_log(
+                                "after_append_generated_only_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+                        elif (
                             synthesized is not None
                             and not synthesized.ready_for_execution
                         ):
@@ -3494,15 +3567,17 @@ def run(argv: list[str] | None = None):
                                 phase="journal",
                                 node=result_node,
                             )
-                            append_node_with_best_score_notification(
-                                journal=journal,
-                                node=result_node,
-                                experiment_id=cfg.exp_name,
-                            )
+                            if not node_already_in_journal:
+                                append_node_with_best_score_notification(
+                                    journal=journal,
+                                    node=result_node,
+                                    experiment_id=cfg.exp_name,
+                                )
                             debug_log(
                                 "after_append_node",
                                 phase="journal",
                                 node=result_node,
+                                extra={"already_in_journal": node_already_in_journal},
                             )
                             if synthesized is not None:
                                 synthesis_advisor.mark_injected(
@@ -3529,13 +3604,13 @@ def run(argv: list[str] | None = None):
                     debug_log(
                         "before_save_run",
                         phase="save",
-                        node=journal[-1],
+                        node=result_node,
                         extra={"global_step": global_step, "journal_size": len(journal)},
                     )
                     save_run(
                         cfg,
                         journal,
-                        current_node=journal[-1],
+                        current_node=result_node,
                         progress_callback=lambda message: update_save_status(
                             message,
                             live,
@@ -3544,11 +3619,14 @@ def run(argv: list[str] | None = None):
                     debug_log(
                         "after_save_run",
                         phase="save",
-                        node=journal[-1],
+                        node=result_node,
                         extra={"global_step": global_step, "journal_size": len(journal)},
                     )
                     status_override = None
-                    global_step = len(journal)
+                    if node_already_in_journal:
+                        generated_only_evaluations += 1
+                    else:
+                        global_step = len(journal)
                     if stop_after_current_node:
                         interrupted = True
                         interrupt_message = (

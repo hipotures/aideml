@@ -32,6 +32,7 @@ from aide.run import (
     clamp_tree_viewport,
     journal_to_rich_tree,
     last_error_lines,
+    mark_node_generated_only,
     move_tree_focus,
     _mark_node_execution_crash,
     next_left_panel_view,
@@ -304,6 +305,39 @@ def test_journal_tree_hides_failed_nodes_by_default():
 
     assert "failed" not in output.lower()
     assert "0.90000" in output
+
+
+def test_journal_tree_renders_generated_only_node_as_pending_code():
+    journal = Journal()
+    node = _hypothesis_node(_good_node(0.941), "000123")
+    mark_node_generated_only(node)
+    journal.append(node)
+
+    output = _render_text(journal_to_rich_tree(journal))
+
+    assert "generated·000123" in output
+    assert "bug·000123" not in output
+
+
+def test_tree_view_ignores_generated_only_node_when_selecting_best():
+    journal = Journal()
+    scored = _hypothesis_node(_good_node(0.941), "000111")
+    generated = _hypothesis_node(Node(code="print('later')", plan="later"), "000123")
+    journal.append(scored)
+    journal.append(generated)
+    mark_node_generated_only(generated)
+
+    output = _render_text(
+        render_tree_view(
+            build_tree_view(journal),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "* 0.94100·000111" in output
+    assert "generated·000123" in output
 
 
 def test_journal_tree_hides_catboost_gpu_oom_nodes_by_default():
