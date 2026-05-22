@@ -65,6 +65,11 @@ def file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
     }
 
 
+def prediction_file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
+    gz_path = path.with_name(f"{path.name}.gz")
+    return file_entry(gz_path, base_dir=base_dir) or file_entry(path, base_dir=base_dir)
+
+
 def metric_payload(node: Node) -> dict[str, Any]:
     metric = node.metric
     if metric is None:
@@ -157,9 +162,9 @@ def build_node_artifact_manifest(
         "files": {
             "solution": file_entry(solution_path, base_dir=artifact_dir),
             "submission": submission,
-            "oof_predictions": file_entry(oof_predictions_path, base_dir=artifact_dir),
-            "test_predictions": file_entry(test_predictions_path, base_dir=artifact_dir),
-            "validation_predictions": file_entry(
+            "oof_predictions": prediction_file_entry(oof_predictions_path, base_dir=artifact_dir),
+            "test_predictions": prediction_file_entry(test_predictions_path, base_dir=artifact_dir),
+            "validation_predictions": prediction_file_entry(
                 validation_predictions_path,
                 base_dir=artifact_dir,
             ),

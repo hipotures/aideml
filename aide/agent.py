@@ -984,7 +984,7 @@ class Agent:
             "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
             'All the provided input data is stored in "./input" directory.',
             '**If there is test data provided for this task, please save the test predictions in a `submission.csv` file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
-            'When you train with cross-validation, also save leak-free out-of-fold predictions to `./working/oof_predictions.csv` with columns `row`, `target`, and `prediction`; save full test probabilities/predictions to `./working/test_predictions.csv` using the sample-submission id and target columns. If you only use a holdout split, save holdout predictions to `./working/validation_predictions.csv`.',
+            'When you train with cross-validation, also save leak-free out-of-fold predictions to gzip-compressed `./working/oof_predictions.csv.gz` with columns `row`, `target`, and `prediction`; save full test probabilities/predictions to `./working/test_predictions.csv.gz` using the sample-submission id and target columns. If you only use a holdout split, save holdout predictions to `./working/validation_predictions.csv.gz`.',
             'You can also use the "./working" directory to store any temporary files that your code needs to create.',
         ]
         if self.acfg.expose_prediction:

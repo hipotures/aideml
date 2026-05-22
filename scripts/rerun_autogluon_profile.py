@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import difflib
+import gzip
 import json
 import os
 import resource
@@ -86,6 +87,14 @@ def _copy_or_link_input(source: Path, destination: Path) -> None:
         if target.exists():
             continue
         os.symlink(child.resolve(), target, target_is_directory=child.is_dir())
+
+
+def _copy_prediction_artifact_gz(source: Path, destination: Path) -> None:
+    if source.suffix == ".gz":
+        shutil.copy2(source, destination)
+        return
+    with source.open("rb") as src, gzip.open(destination, "wb") as dst:
+        shutil.copyfileobj(src, dst)
 
 
 def source_input_dir(*, logs_dir: Path, run: str) -> Path:
@@ -368,9 +377,14 @@ def run_profile_eval(
             "test_predictions.csv",
             "validation_predictions.csv",
         ):
-            generated_prediction = workspace_dir / "working" / name
-            if generated_prediction.exists():
-                shutil.copy2(generated_prediction, artifact_dir / name)
+            gzip_name = f"{name}.gz"
+            for generated_prediction in (
+                workspace_dir / "working" / gzip_name,
+                workspace_dir / "working" / name,
+            ):
+                if generated_prediction.exists():
+                    _copy_prediction_artifact_gz(generated_prediction, artifact_dir / gzip_name)
+                    break
         generated_log = workspace_dir / "working" / "autogluon_stdout.log"
         if generated_log.exists() and not (artifact_dir / "autogluon_stdout.log").exists():
             shutil.copy2(generated_log, artifact_dir / "autogluon_stdout.log")
@@ -434,15 +448,15 @@ def run_profile_eval(
             "solution": _file_entry(artifact_dir / "solution.py", base_dir=artifact_dir),
             "submission": _file_entry(submission_path, base_dir=artifact_dir),
             "oof_predictions": _file_entry(
-                artifact_dir / "oof_predictions.csv",
+                artifact_dir / "oof_predictions.csv.gz",
                 base_dir=artifact_dir,
             ),
             "test_predictions": _file_entry(
-                artifact_dir / "test_predictions.csv",
+                artifact_dir / "test_predictions.csv.gz",
                 base_dir=artifact_dir,
             ),
             "validation_predictions": _file_entry(
-                artifact_dir / "validation_predictions.csv",
+                artifact_dir / "validation_predictions.csv.gz",
                 base_dir=artifact_dir,
             ),
             "error": _file_entry(artifact_dir / "error.txt", base_dir=artifact_dir),

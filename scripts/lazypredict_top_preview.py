@@ -90,9 +90,17 @@ def write_outputs(
     tuning_rows: list[dict[str, Any]],
     details: list[dict[str, Any]],
 ) -> None:
-    pd.DataFrame(summary_rows).to_csv(summary_path, index=False)
+    pd.DataFrame(summary_rows).to_csv(
+        summary_path,
+        index=False,
+        compression="gzip" if summary_path.name.endswith(".gz") else None,
+    )
     if tuning_rows:
-        pd.DataFrame(tuning_rows).to_csv(tuning_path, index=False)
+        pd.DataFrame(tuning_rows).to_csv(
+            tuning_path,
+            index=False,
+            compression="gzip" if tuning_path.name.endswith(".gz") else None,
+        )
     details_path.write_text(json.dumps(details, indent=2, default=str) + "\n")
 
 
@@ -1130,8 +1138,8 @@ def write_tuned_oof_predictions(
                 if not np.isfinite(test_pred).all():
                     raise ValueError("Test predictions contain NaN or inf")
 
-                oof_path = output_dir / f"{estimator_name}-oof.csv"
-                test_path = output_dir / f"{estimator_name}-test.csv"
+                oof_path = output_dir / f"{estimator_name}-oof.csv.gz"
+                test_path = output_dir / f"{estimator_name}-test.csv.gz"
                 pd.DataFrame(
                     {
                         "row": np.arange(len(x_final)),
@@ -1140,13 +1148,13 @@ def write_tuned_oof_predictions(
                         "target": y_final.to_numpy(),
                         "prediction": oof,
                     }
-                ).to_csv(oof_path, index=False)
+                ).to_csv(oof_path, index=False, compression="gzip")
                 pd.DataFrame(
                     {
                         id_col: sample_submission[id_col].to_numpy(),
                         target_col: test_pred,
                     }
-                ).to_csv(test_path, index=False)
+                ).to_csv(test_path, index=False, compression="gzip")
                 manifest.append(
                     {
                         "status": "ok",
@@ -2194,8 +2202,8 @@ def main(argv: list[str] | None = None) -> int:
     run_id = timestamp_now()
     run_dir = args.output_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
-    summary_path = run_dir / "summary.csv"
-    tuning_path = run_dir / "tuning.csv"
+    summary_path = run_dir / "summary.csv.gz"
+    tuning_path = run_dir / "tuning.csv.gz"
     details_path = run_dir / "details.json"
     console.print(f"artifacts: {run_dir}")
     render_selected(console, selected)

@@ -1,6 +1,7 @@
 """configuration and setup utils"""
 
 import datetime as dt
+import gzip
 import json
 import shutil
 import sys
@@ -27,6 +28,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("aide")
 logger.setLevel(logging.WARNING)
+
+
+def _copy_prediction_artifact_gz(source: Path, destination: Path) -> None:
+    if source.suffix == ".gz":
+        shutil.copy2(source, destination)
+        return
+    with source.open("rb") as src, gzip.open(destination, "wb") as dst:
+        shutil.copyfileobj(src, dst)
 
 
 """ these dataclasses are just for type hinting, the actual config is in config.yaml """
@@ -493,9 +502,14 @@ def _save_node_artifacts(cfg: Config, node) -> None:
         "test_predictions.csv",
         "validation_predictions.csv",
     ):
-        prediction_path = cfg.workspace_dir / "working" / name
-        if prediction_path.exists() and prediction_path.stat().st_mtime >= node.ctime:
-            shutil.copy2(prediction_path, artifact_dir / name)
+        gzip_name = f"{name}.gz"
+        for prediction_path in (
+            cfg.workspace_dir / "working" / gzip_name,
+            cfg.workspace_dir / "working" / name,
+        ):
+            if prediction_path.exists() and prediction_path.stat().st_mtime >= node.ctime:
+                _copy_prediction_artifact_gz(prediction_path, artifact_dir / gzip_name)
+                break
 
     error_text = _node_error_text(node)
     if error_text is not None:

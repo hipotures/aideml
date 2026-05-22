@@ -462,8 +462,10 @@ def _save_submission(submission: pd.DataFrame, working_dir: Path) -> Path:
 
 
 def _save_prediction_artifact(frame: pd.DataFrame, working_dir: Path, filename: str) -> Path:
+    if not filename.endswith(".gz"):
+        filename = f"{{filename}}.gz"
     working_path = working_dir / filename
-    frame.to_csv(working_path, index=False)
+    frame.to_csv(working_path, index=False, compression="gzip")
     artifact_dir = _artifact_dir(working_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     artifact_path = artifact_dir / filename
@@ -712,7 +714,16 @@ def main() -> None:
     test_model = test_fe.copy()
 
     eval_metric, problem_type = _infer_metric(train_model[target_col])
-    if AIDE_AG_CONFIG.get("validation_strategy") == "holdout":
+    fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}) or {{}})
+    bagged_mode = int(fit_args.get("num_bag_folds") or 0) > 0 or bool(fit_args.get("auto_stack"))
+    if bagged_mode:
+        train_data = train_model
+        valid_data = None
+        print(
+            "AIDE AutoGluon: bagged mode detected; using internal OOF validation without tuning_data",
+            flush=True,
+        )
+    elif AIDE_AG_CONFIG.get("validation_strategy") == "holdout":
         stratify = train_model[target_col] if problem_type == "binary" else None
         train_data, valid_data = train_test_split(
             train_model,
@@ -739,7 +750,7 @@ def main() -> None:
         fit_kwargs["included_model_types"] = AIDE_AG_CONFIG["included_model_types"]
     if AIDE_AG_CONFIG.get("hyperparameters"):
         fit_kwargs["hyperparameters"] = AIDE_AG_CONFIG["hyperparameters"]
-    fit_kwargs.update(AIDE_AG_CONFIG.get("fit_args", {{}}))
+    fit_kwargs.update(fit_args)
     training_started_at = time.time()
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting fit", flush=True)
