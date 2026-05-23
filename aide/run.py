@@ -13,7 +13,8 @@ import threading
 import time
 import textwrap
 import tty
-from dataclasses import dataclass, replace
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
@@ -22,12 +23,16 @@ from .interpreter import ExecutionInterrupted, Interpreter
 from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import (
+    HypothesisRootReservation,
     ResearchAdvisor,
     _compatible_manual_hypotheses,
+    clear_hypothesis_root_generation_failure,
     count_scored_working_nodes,
     effective_hypothesis_root_limit,
     hypothesis_id_for_node,
     load_manual_hypothesis_library,
+    record_hypothesis_root_generation_failure,
+    reserve_hypothesis_roots,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -142,6 +147,36 @@ class TreeView:
 class ActiveRootGeneration:
     hypothesis_id: str
     launched_index: int
+
+
+@dataclass
+class ParallelRootFailureState:
+    attempts_by_hypothesis: dict[str, int] = field(default_factory=dict)
+    stop_refill: bool = False
+
+    def record_failure(self, hypothesis_id: str, exc: BaseException) -> bool:
+        _ = exc
+        attempts = self.attempts_by_hypothesis.get(hypothesis_id, 0) + 1
+        self.attempts_by_hypothesis[hypothesis_id] = attempts
+        if attempts >= 3:
+            self.stop_refill = True
+            return True
+        return False
+
+
+@dataclass(frozen=True)
+class ParallelRootJob:
+    reservation: HypothesisRootReservation
+    node_ctime: float
+    artifact_dir_name: str
+    artifact_dir: Path
+    launched_index: int
+
+
+@dataclass(frozen=True)
+class ParallelRootResult:
+    job: ParallelRootJob
+    node: Node
 
 
 @dataclass(frozen=True)
@@ -2882,6 +2917,45 @@ def allocate_node_artifact_slot(log_dir: Path | str) -> tuple[float, str, Path]:
         return ctime, dir_name, artifact_dir
 
 
+def make_parallel_root_job(
+    *,
+    cfg: Config,
+    reservation: HypothesisRootReservation,
+    launched_index: int,
+) -> ParallelRootJob:
+    node_ctime, artifact_dir_name, artifact_dir = allocate_node_artifact_slot(
+        cfg.log_dir
+    )
+    return ParallelRootJob(
+        reservation=reservation,
+        node_ctime=node_ctime,
+        artifact_dir_name=artifact_dir_name,
+        artifact_dir=artifact_dir,
+        launched_index=launched_index,
+    )
+
+
+def generate_reserved_hypothesis_root(
+    *,
+    base_agent: Agent,
+    journal: Journal,
+    job: ParallelRootJob,
+) -> ParallelRootResult:
+    worker_agent = Agent(
+        task_desc=base_agent.task_desc,
+        cfg=base_agent.cfg,
+        journal=Journal(nodes=list(journal.nodes)),
+    )
+    worker_agent.data_preview = base_agent.data_preview
+    node = worker_agent.generate_preselected_hypothesis_root(
+        job.reservation.selection,
+        node_ctime=job.node_ctime,
+        llm_log_dir=job.artifact_dir,
+        artifact_dir_name=job.artifact_dir_name,
+    )
+    return ParallelRootResult(job=job, node=node)
+
+
 def enforce_journal_submission_contract(
     cfg,
     journal: Journal,
@@ -3066,7 +3140,7 @@ def run(argv: list[str] | None = None):
         journal = Journal()
         is_resume = False
 
-    validate_hypothesis_root_generate_workers(cfg)
+    hypothesis_root_generate_workers = validate_hypothesis_root_generate_workers(cfg)
 
     logger.info(f'Starting run "{cfg.exp_name}"')
     os.environ["AIDE_RUN_ID"] = cfg.exp_name
@@ -3209,6 +3283,7 @@ def run(argv: list[str] | None = None):
     key_reader: ArrowKeyReader | None = None
     pending_artifact_dir: Path | None = None
     display_node: Node | None = None
+    active_root_generations: list[ActiveRootGeneration] = []
 
     def request_execution_interrupt() -> KeyboardInterruptAction:
         nonlocal execution_interrupt_count, operator_notice, status_override
@@ -3449,6 +3524,7 @@ def run(argv: list[str] | None = None):
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
             active_hypothesis_id=active_hypothesis_id_for_display(),
+            active_root_generations=active_root_generations,
             blink_on=blink_on,
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
@@ -3598,6 +3674,148 @@ def run(argv: list[str] | None = None):
             dim=True,
         )
 
+    def parallel_root_workers_enabled() -> bool:
+        return (
+            runtime_options.skip_execution
+            and cfg.research.mode == "hypothesis"
+            and hypothesis_root_generate_workers > 1
+        )
+
+    def refresh_active_root_generations(
+        futures: dict[Future[ParallelRootResult], ParallelRootJob],
+    ) -> None:
+        nonlocal active_root_generations, pending_artifact_dir
+        active_root_generations = [
+            ActiveRootGeneration(
+                hypothesis_id=job.reservation.hypothesis_id,
+                launched_index=job.launched_index,
+            )
+            for job in futures.values()
+        ]
+        latest_job = max(
+            futures.values(),
+            key=lambda job: job.launched_index,
+            default=None,
+        )
+        pending_artifact_dir = latest_job.artifact_dir if latest_job else None
+
+    def run_parallel_generate_only_roots(live: Live) -> None:
+        nonlocal display_node, operator_notice, pending_artifact_dir
+        agent.set_active_stage("generating")
+        failure_state = ParallelRootFailureState()
+        launched_counter = 0
+        exhausted = False
+
+        def sleep_with_live_refresh(seconds: int) -> None:
+            deadline = time.monotonic() + seconds
+            while time.monotonic() < deadline:
+                live.update(generate_live(), refresh=True)
+                time.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
+
+        def launch_job(
+            executor: ThreadPoolExecutor,
+            futures: dict[Future[ParallelRootResult], ParallelRootJob],
+            reservation: HypothesisRootReservation,
+        ) -> None:
+            nonlocal launched_counter
+            launched_counter += 1
+            job = make_parallel_root_job(
+                cfg=cfg,
+                reservation=reservation,
+                launched_index=launched_counter,
+            )
+            future = executor.submit(
+                generate_reserved_hypothesis_root,
+                base_agent=agent,
+                journal=journal,
+                job=job,
+            )
+            futures[future] = job
+            refresh_active_root_generations(futures)
+
+        def launch_until_full(
+            executor: ThreadPoolExecutor,
+            futures: dict[Future[ParallelRootResult], ParallelRootJob],
+        ) -> int:
+            nonlocal exhausted
+            if failure_state.stop_refill or exhausted:
+                return 0
+            remaining_steps = cfg.agent.steps - len(journal) - len(futures)
+            slots = min(hypothesis_root_generate_workers - len(futures), remaining_steps)
+            if slots <= 0:
+                return 0
+            reservations = reserve_hypothesis_roots(
+                cfg,
+                journal=journal,
+                count=slots,
+                completed_steps=len(journal) + len(futures),
+            )
+            if not reservations:
+                exhausted = True
+                return 0
+            for reservation in reservations:
+                launch_job(executor, futures, reservation)
+            return len(reservations)
+
+        with ThreadPoolExecutor(max_workers=hypothesis_root_generate_workers) as executor:
+            futures: dict[Future[ParallelRootResult], ParallelRootJob] = {}
+            launch_until_full(executor, futures)
+            while futures:
+                done, _pending = wait(
+                    futures,
+                    timeout=1.0,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not done:
+                    live.update(generate_live(), refresh=True)
+                    continue
+                for future in done:
+                    job = futures.pop(future)
+                    refresh_active_root_generations(futures)
+                    try:
+                        result = future.result()
+                    except BaseException as exc:  # noqa: BLE001
+                        is_final = failure_state.record_failure(
+                            job.reservation.hypothesis_id,
+                            exc,
+                        )
+                        attempts = failure_state.attempts_by_hypothesis[
+                            job.reservation.hypothesis_id
+                        ]
+                        message = f"{exc.__class__.__name__}: {exc}"
+                        record_hypothesis_root_generation_failure(
+                            cfg,
+                            hypothesis_id=job.reservation.hypothesis_id,
+                            attempts=attempts,
+                            message=message,
+                        )
+                        operator_notice = (
+                            "Hypothesis root generation failed for "
+                            f"{job.reservation.hypothesis_id} "
+                            f"(attempt {attempts}/3): {message}"
+                        )
+                        if not is_final:
+                            sleep_with_live_refresh(5)
+                            launch_job(executor, futures, job.reservation)
+                        continue
+
+                    clear_hypothesis_root_generation_failure(
+                        cfg,
+                        hypothesis_id=result.job.reservation.hypothesis_id,
+                    )
+                    record_generated_only_node(
+                        agent=agent,
+                        journal=journal,
+                        node=result.node,
+                        experiment_id=cfg.exp_name,
+                    )
+                    display_node = result.node
+                    launch_until_full(executor, futures)
+                    refresh_active_root_generations(futures)
+                live.update(generate_live(), refresh=True)
+        refresh_active_root_generations({})
+        agent.clear_active_step()
+
     interrupted = False
     interrupt_message = ""
     try:
@@ -3614,6 +3832,14 @@ def run(argv: list[str] | None = None):
                     node_already_in_journal = False
                     display_node = None
                     try:
+                        if parallel_root_workers_enabled():
+                            run_parallel_generate_only_roots(live)
+                            interrupted = True
+                            interrupt_message = (
+                                "Skip-execution mode finished generating root "
+                                "candidates; no code was executed."
+                            )
+                            break
                         pending_generated_node = (
                             None
                             if runtime_options.skip_execution

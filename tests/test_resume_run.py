@@ -15,6 +15,7 @@ from aide.run import (
     next_generated_only_node,
     parse_runtime_args,
     parse_resume_args,
+    ParallelRootFailureState,
     record_generated_only_node,
     validate_hypothesis_root_generate_workers,
 )
@@ -254,6 +255,15 @@ def test_allocate_node_artifact_slot_sets_unique_explicit_name(tmp_path):
     assert first_dir.exists()
     assert second_dir.exists()
     assert len(first_dir_name.split("-")[-1]) == 8
+
+
+def test_generation_retry_policy_stops_refill_after_three_failures():
+    state = ParallelRootFailureState()
+
+    assert state.record_failure("000405", RuntimeError("network")) is False
+    assert state.record_failure("000405", RuntimeError("network")) is False
+    assert state.record_failure("000405", RuntimeError("network")) is True
+    assert state.stop_refill is True
 
 
 def test_parse_runtime_args_extracts_seed_options():
