@@ -9,6 +9,7 @@ from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
     _sparkline,
+    ActiveRootGeneration,
     active_run_log_path,
     build_all_hypotheses_view,
     build_best_branch_view,
@@ -910,6 +911,44 @@ def test_tree_best_and_active_focus_targets():
         == child.id
     )
     assert active_tree_item_id(view) == "active"
+
+
+def test_tree_renders_multiple_active_root_generations():
+    journal = Journal()
+    view = build_tree_view(
+        journal,
+        active_root_generations=[
+            ActiveRootGeneration("000405", launched_index=1),
+            ActiveRootGeneration("000941", launched_index=2),
+        ],
+        active_stage="generating",
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="active:000941",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "[ ]·000405" in output
+    assert "[*]·000941" in output
+    assert active_tree_item_id(view) == "active:000941"
+
+
+def test_tree_follow_active_uses_most_recent_launched_generation():
+    journal = Journal()
+    view = build_tree_view(
+        journal,
+        active_root_generations=[
+            ActiveRootGeneration("000941", launched_index=5),
+            ActiveRootGeneration("000405", launched_index=6),
+        ],
+        active_stage="generating",
+    )
+
+    assert active_tree_item_id(view) == "active:000405"
 
 
 def test_render_tree_view_highlights_focused_line_and_slices_viewport():

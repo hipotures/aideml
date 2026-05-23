@@ -139,6 +139,12 @@ class TreeView:
 
 
 @dataclass(frozen=True)
+class ActiveRootGeneration:
+    hypothesis_id: str
+    launched_index: int
+
+
+@dataclass(frozen=True)
 class LastErrorRecord:
     node: Node
     lines: list[str]
@@ -686,6 +692,7 @@ def build_tree_view(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
+    active_root_generations: list[ActiveRootGeneration] | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -703,6 +710,12 @@ def build_tree_view(
     parent_by_id: dict[str, str | None] = {"header": None}
     journal_nodes = set(journal.nodes)
     active_existing_node = active_node if active_node in journal_nodes else None
+    active_root_generations = active_root_generations or []
+    latest_active_root = (
+        max(active_root_generations, key=lambda item: item.launched_index)
+        if active_root_generations
+        else None
+    )
     active_item_id: str | None = None
     best_node = _visible_best_node(
         journal,
@@ -729,6 +742,8 @@ def build_tree_view(
         nonlocal active_item_id
         if active_stage is None:
             return
+        if active_root_generations and parent_id == "header":
+            return
         if active_existing_node is not None:
             return
         prefix = "".join(
@@ -746,6 +761,30 @@ def build_tree_view(
         )
         append_item(TreeViewItem("active", parent_id, line, focus_start=len(prefix)))
         active_item_id = "active"
+
+    def append_active_root_generations(parent_id: str) -> None:
+        nonlocal active_item_id
+        for index, generation in enumerate(active_root_generations):
+            is_latest = latest_active_root is not None and (
+                generation.hypothesis_id == latest_active_root.hypothesis_id
+            )
+            item_id = f"active:{generation.hypothesis_id}"
+            prefix = (
+                "└── "
+                if index == len(active_root_generations) - 1
+                else "├── "
+            )
+            line = Text(prefix)
+            line.append_text(
+                _tree_active_placeholder_line(
+                    active_stage=active_stage,
+                    active_hypothesis_id=generation.hypothesis_id,
+                    blink_on=blink_on if is_latest else False,
+                )
+            )
+            append_item(TreeViewItem(item_id, parent_id, line, focus_start=len(prefix)))
+            if is_latest:
+                active_item_id = item_id
 
     def append_rec(
         node: Node,
@@ -840,10 +879,19 @@ def build_tree_view(
         active_parent_node is None
         and active_stage is not None
         and active_existing_node is None
+        and not active_root_generations
     )
     for index, node in enumerate(roots):
-        append_rec(node, "header", [], index == len(roots) - 1 and not has_root_active)
-    if active_parent_node is None:
+        has_active_after_roots = has_root_active or bool(active_root_generations)
+        append_rec(
+            node,
+            "header",
+            [],
+            index == len(roots) - 1 and not has_active_after_roots,
+        )
+    if active_parent_node is None and active_root_generations:
+        append_active_root_generations("header")
+    elif active_parent_node is None:
         append_active("header", [])
 
     return TreeView(
