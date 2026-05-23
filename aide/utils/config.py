@@ -177,6 +177,8 @@ class ResearchConfig:
     manual_sample_size: int = 3
     manual_seed: int = 42
     hypothesis_root_limit: int = 100
+    hypothesis_root_order: str = "default"
+    hypothesis_root_score_mode: str = "autogluon"
     ignore_hypothesis_agent_modes: bool = False
 
 

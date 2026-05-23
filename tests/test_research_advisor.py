@@ -117,6 +117,40 @@ def _write_manual_hypothesis(
     return path
 
 
+def _write_code_manifest(
+    root: Path,
+    task_slug: str,
+    hypothesis_id: str,
+    *,
+    agent_mode: str,
+    file_name: str,
+    score: float | None,
+    buggy: bool = False,
+) -> None:
+    hypothesis_dir = root / "research_hypotheses" / task_slug / hypothesis_id
+    hypothesis_dir.mkdir(parents=True, exist_ok=True)
+    (hypothesis_dir / file_name).write_text("print('root code')\n", encoding="utf-8")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    agent_mode: [
+                        {
+                            "file": file_name,
+                            "buggy": buggy,
+                            "node_id": f"node-{hypothesis_id}",
+                            "score": score,
+                            "created_at": "2026-05-23T00:00:00",
+                        }
+                    ]
+                },
+                "active": {agent_mode: file_name} if not buggy else {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def _manual_cfg(tmp_path: Path):
     cfg = _cfg(tmp_path)
     data_dir = tmp_path / "playground-series-s6e5"
@@ -638,6 +672,53 @@ def test_select_hypothesis_avoids_previously_offered_interrupted_candidate(tmp_p
     )
 
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+
+
+def test_select_hypothesis_for_root_can_prioritize_manifest_scores(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = "legacy"
+    cfg.research.hypothesis_root_order = "manifest_score"
+    for idx in range(1, 4):
+        hypothesis_id = f"{idx:06d}"
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            hypothesis_id,
+            title=f"Hypothesis {idx}",
+        )
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        agent_mode="autogluon",
+        file_name="autogluon-001.py",
+        score=0.91,
+    )
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        agent_mode="autogluon",
+        file_name="autogluon-001.py",
+        score=0.95,
+    )
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=Journal(),
+        parent_node=None,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
+    source_ref = json.loads(
+        (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
+    )
+    assert source_ref["agent_mode"] == "legacy"
+    assert source_ref["hypothesis_root_order"] == "manifest_score"
+    assert source_ref["hypothesis_root_score_mode"] == "autogluon"
 
 
 def test_select_hypothesis_for_child_excludes_ancestors_and_siblings(tmp_path):

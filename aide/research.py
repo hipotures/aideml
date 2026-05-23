@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import math
 import random
 import re
 import subprocess
@@ -504,6 +505,16 @@ def _write_manual_source_ref(
                 cfg,
                 compatible_count=compatible_count,
             ),
+            "hypothesis_root_order": getattr(
+                cfg.research,
+                "hypothesis_root_order",
+                "default",
+            ),
+            "hypothesis_root_score_mode": getattr(
+                cfg.research,
+                "hypothesis_root_score_mode",
+                "autogluon",
+            ),
             "indexed_at": created_at,
             "filename_pattern": "<id>/hypothesis-<id>.json",
         },
@@ -862,6 +873,71 @@ def _hypothesis_sort_key(
     return attempts.get(hypothesis.id, 0), tie_break, hypothesis.id
 
 
+def _numeric_manifest_score(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    score = float(value)
+    return score if math.isfinite(score) else None
+
+
+def _best_manifest_score_for_mode(
+    *,
+    source_dir: Path,
+    hypothesis_id: str,
+    agent_mode: str,
+) -> float | None:
+    hypothesis_dir = _hypothesis_dir(source_dir, hypothesis_id)
+    try:
+        manifest = _load_code_manifest(hypothesis_dir)
+    except ValueError:
+        return None
+    versions = manifest.get("versions")
+    if not isinstance(versions, dict):
+        return None
+    mode_versions = versions.get(agent_mode)
+    if not isinstance(mode_versions, list):
+        return None
+    scores = [
+        score
+        for entry in mode_versions
+        if isinstance(entry, dict) and entry.get("buggy") is not True
+        if (score := _numeric_manifest_score(entry.get("score"))) is not None
+    ]
+    return max(scores, default=None)
+
+
+def _manifest_scores_for_hypotheses(
+    *,
+    source_dir: Path,
+    hypotheses: list[ManualHypothesis],
+    agent_mode: str,
+) -> dict[str, float]:
+    scores: dict[str, float] = {}
+    for hypothesis in hypotheses:
+        score = _best_manifest_score_for_mode(
+            source_dir=source_dir,
+            hypothesis_id=hypothesis.id,
+            agent_mode=agent_mode,
+        )
+        if score is not None:
+            scores[hypothesis.id] = score
+    return scores
+
+
+def _hypothesis_root_manifest_score_sort_key(
+    *,
+    hypothesis: ManualHypothesis,
+    manifest_scores: dict[str, float],
+    attempts: dict[str, int],
+    seed_text: str,
+) -> tuple[int, int, float, float, str]:
+    score = manifest_scores.get(hypothesis.id)
+    tie_break = random.Random(f"{seed_text}:{hypothesis.id}").random()
+    if score is not None:
+        return (attempts.get(hypothesis.id, 0), 0, -score, tie_break, hypothesis.id)
+    return (attempts.get(hypothesis.id, 0), 1, 0.0, tie_break, hypothesis.id)
+
+
 def _metric_for_hypothesis_ranking(node: Node) -> float:
     assert node.metric is not None and node.metric.value is not None
     value = float(node.metric.value)
@@ -944,6 +1020,29 @@ def select_hypothesis_for_node(
             key=lambda hypothesis: _hypothesis_child_root_score_sort_key(
                 hypothesis=hypothesis,
                 root_scores=root_scores,
+                attempts=attempts,
+                seed_text=seed_text,
+            ),
+        )[0]
+    elif (
+        parent_node is None
+        and getattr(cfg.research, "hypothesis_root_order", "default")
+        == "manifest_score"
+    ):
+        score_mode = str(
+            getattr(cfg.research, "hypothesis_root_score_mode", "autogluon")
+            or "autogluon"
+        )
+        manifest_scores = _manifest_scores_for_hypotheses(
+            source_dir=library.source_dir,
+            hypotheses=candidates,
+            agent_mode=score_mode,
+        )
+        selected = sorted(
+            candidates,
+            key=lambda hypothesis: _hypothesis_root_manifest_score_sort_key(
+                hypothesis=hypothesis,
+                manifest_scores=manifest_scores,
                 attempts=attempts,
                 seed_text=seed_text,
             ),

@@ -46,6 +46,11 @@ research:
   manual_sample_size: 3
   manual_seed: 42
   hypothesis_root_limit: 100
+  # default: stable randomized root ordering with usage de-duplication.
+  # manifest_score: prioritize roots by the best numeric score recorded in
+  # code_manifest.json for hypothesis_root_score_mode.
+  hypothesis_root_order: default
+  hypothesis_root_score_mode: autogluon
   # If true, manual hypothesis selection treats every enabled hypothesis as
   # compatible with the current agent mode. Useful for deriving AutoGluon
   # experiments from legacy-only hypotheses.
