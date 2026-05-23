@@ -516,6 +516,43 @@ def test_load_resume_state_persists_submission_contract_revalidation(tmp_path):
     assert persisted.nodes[0].exc_type == "SubmissionValidationError"
 
 
+def test_load_resume_state_does_not_submission_validate_generated_nodes(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    log_dir = tmp_path / "logs" / "2-existing-run"
+    workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    (workspace_dir / "input" / "sample_submission.csv").write_text(
+        "id,PitNextLap\n1,0.0\n"
+    )
+
+    journal = Journal()
+    generated = Node(code="print('generated')", plan="generated")
+    journal.append(generated)
+    mark_node_generated_only(generated)
+    generated.is_buggy = True
+    generated.exc_type = "SubmissionValidationError"
+    generated.exc_info = {"args": ["missing artifact submission.csv"]}
+    generated._term_out = [
+        "SubmissionValidationError: missing artifact submission.csv\n"
+    ]
+    serialize.dump_json(journal, log_dir / "journal.json")
+
+    _cfg, loaded = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+    persisted = serialize.load_json(log_dir / "journal.json", Journal)
+
+    assert loaded.nodes[0].status == "generated"
+    assert loaded.nodes[0].is_buggy is False
+    assert loaded.nodes[0].exc_type is None
+    assert loaded.nodes[0]._term_out == []
+    assert persisted.nodes[0].status == "generated"
+    assert persisted.nodes[0].is_buggy is False
+    assert persisted.nodes[0].exc_type is None
+
+
 def test_load_resume_state_force_revalidates_cached_submission(tmp_path, monkeypatch):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     log_dir = tmp_path / "logs" / "2-existing-run"

@@ -1702,10 +1702,11 @@ def test_run_data_shows_last_error_below_separator(tmp_path):
     assert "Execution time:" not in output
 
 
-def test_run_data_shows_last_error_step_and_time(tmp_path):
+def test_run_data_shows_last_error_location_and_time(tmp_path):
     journal = Journal()
-    node = _bug_node()
+    node = _hypothesis_node(_bug_node(), "000749")
     node.ctime = dt.datetime(2026, 5, 7, 12, 23, 44).timestamp()
+    node.artifact_dir_name = "20260507T122344-deadbeef"
     journal.append(node)
 
     output = _render_text(
@@ -1720,7 +1721,10 @@ def test_run_data_shows_last_error_step_and_time(tmp_path):
         )
     )
 
-    assert "Last Error · 0@12:23:44" in output
+    assert "Last Error · 000749 @ 12:23:44" in output
+    assert "artifact " in output
+    assert "logs/2-example-run/artifacts/20260507T122344-deadbeef" in output
+    assert "node 0" not in output
 
 
 def test_run_data_shows_resources_below_last_error(tmp_path):

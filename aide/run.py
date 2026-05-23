@@ -1943,18 +1943,29 @@ def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
 def _last_error_title(record: LastErrorRecord | None) -> str:
     if record is None:
         return "Last Error"
-    step = record.node.step if record.node.step is not None else "?"
+    hypothesis_id = hypothesis_id_for_node(record.node)
+    hypothesis_text = f" · {hypothesis_id}" if hypothesis_id is not None else ""
     timestamp = dt.datetime.fromtimestamp(record.node.ctime).strftime("%H:%M:%S")
-    return f"Last Error · {step}@{timestamp}"
+    return f"Last Error{hypothesis_text} @ {timestamp}"
 
 
-def build_last_error_summary(journal: Journal) -> Group:
+def build_last_error_summary(journal: Journal, *, log_dir: Path | None = None) -> Group:
     record = last_error_record(journal)
     lines: list[Text] = [Text(_last_error_title(record), style="bold red")]
     error_lines = record.lines if record is not None else []
     if not error_lines:
         lines.append(Text("-", style="dim"))
     else:
+        if log_dir is not None and record is not None:
+            artifact_dir = artifact_dir_for_node(log_dir, record.node)
+            base_path = log_dir.resolve().parents[1]
+            lines.append(
+                Text(
+                    "artifact "
+                    + _relative_display_path(artifact_dir, base_path),
+                    style="yellow",
+                )
+            )
         lines.extend(Text(line, style="dim") for line in error_lines)
     return Group(*lines)
 
@@ -2859,7 +2870,7 @@ def build_run_data(
     operator_notice_summary = build_operator_notice_summary(operator_notice)
     if operator_notice_summary is not None:
         lines.extend([Rule(style="dim"), operator_notice_summary])
-    lines.extend([Rule(style="dim"), build_last_error_summary(journal)])
+    lines.extend([Rule(style="dim"), build_last_error_summary(journal, log_dir=log_dir)])
     if resource_active:
         lines.extend(
             [
@@ -3153,9 +3164,17 @@ def enforce_journal_submission_contract(
         return 0
 
     changed = 0
+    for node in journal.nodes:
+        if node.status != "generated":
+            continue
+        if node.is_buggy or node.exc_type is not None or node._term_out:
+            mark_node_generated_only(node)
+            changed += 1
+
     nodes_to_check = [
         node
         for node in journal.nodes
+        if node.status != "generated"
         if not node.is_buggy or node.is_submission_contract_error
     ]
     for node in nodes_to_check:
