@@ -1147,10 +1147,14 @@ def reserve_hypothesis_roots(
     journal: Journal,
     count: int,
     completed_steps: int,
+    reserved_hypothesis_ids: set[str] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> list[HypothesisRootReservation]:
     reservations: list[HypothesisRootReservation] = []
     working_journal = Journal(nodes=list(journal.nodes))
+    reserved_hypothesis_ids = set(reserved_hypothesis_ids or set())
+    for reserved_id in sorted(reserved_hypothesis_ids):
+        _append_reserved_placeholder(working_journal, hypothesis_id=reserved_id)
     failures = _load_root_generation_failures(cfg)
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
     compatible_by_id = {
@@ -1160,6 +1164,8 @@ def reserve_hypothesis_roots(
     for retry_id in sorted(failures):
         if len(reservations) >= count:
             break
+        if retry_id in reserved_hypothesis_ids:
+            continue
         retry = compatible_by_id.get(retry_id)
         if retry is None:
             continue

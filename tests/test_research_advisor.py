@@ -784,6 +784,38 @@ def test_reserve_hypothesis_roots_retries_failed_generation_first(tmp_path):
     assert [reservation.hypothesis_id for reservation in reservations] == ["000002"]
 
 
+def test_reserve_hypothesis_roots_excludes_inflight_reserved_ids(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_order = "manifest_score"
+    cfg.research.hypothesis_root_score_mode = "autogluon"
+    for hypothesis_id, score in [
+        ("000001", 0.95),
+        ("000002", 0.94),
+        ("000003", 0.93),
+    ]:
+        _write_manual_hypothesis(tmp_path, "playground-series-s6e5", hypothesis_id)
+        _write_code_manifest(
+            tmp_path,
+            "playground-series-s6e5",
+            hypothesis_id,
+            agent_mode="autogluon",
+            file_name="autogluon-001.py",
+            score=score,
+        )
+
+    reservations = research.reserve_hypothesis_roots(
+        cfg,
+        journal=Journal(),
+        count=1,
+        completed_steps=0,
+        reserved_hypothesis_ids={"000001", "000002"},
+        repo_root=tmp_path,
+    )
+
+    assert [reservation.hypothesis_id for reservation in reservations] == ["000003"]
+
+
 def test_select_hypothesis_for_child_excludes_ancestors_and_siblings(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

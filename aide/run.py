@@ -814,7 +814,7 @@ def build_tree_view(
                 _tree_active_placeholder_line(
                     active_stage=active_stage,
                     active_hypothesis_id=generation.hypothesis_id,
-                    blink_on=blink_on if is_latest else False,
+                    blink_on=blink_on,
                 )
             )
             append_item(TreeViewItem(item_id, parent_id, line, focus_start=len(prefix)))
@@ -3043,11 +3043,15 @@ def stage_status_message(
     agent_mode: str | None = None,
     active_artifact_dir: Path | None = None,
     active_hypothesis_id: str | None = None,
+    active_hypothesis_ids: list[str] | None = None,
 ) -> str:
     elapsed_text = _format_elapsed(elapsed)
-    hypothesis_text = (
-        f" @ {active_hypothesis_id}" if active_hypothesis_id is not None else ""
-    )
+    if active_hypothesis_ids:
+        hypothesis_text = " @ " + ", ".join(active_hypothesis_ids)
+    else:
+        hypothesis_text = (
+            f" @ {active_hypothesis_id}" if active_hypothesis_id is not None else ""
+        )
     if active_stage == "generating":
         return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
     if active_stage == "executing":
@@ -3534,6 +3538,15 @@ def run(argv: list[str] | None = None):
                 return hypothesis_id
         return None
 
+    def active_root_hypothesis_ids_for_display() -> list[str]:
+        return [
+            generation.hypothesis_id
+            for generation in sorted(
+                active_root_generations,
+                key=lambda item: item.launched_index,
+            )
+        ]
+
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
             journal,
@@ -3602,6 +3615,7 @@ def run(argv: list[str] | None = None):
                 agent_mode=cfg.agent.mode,
                 active_artifact_dir=active_artifact_dir,
                 active_hypothesis_id=active_hypothesis_id_for_display(),
+                active_hypothesis_ids=active_root_hypothesis_ids_for_display(),
             )
         )
 
@@ -3767,6 +3781,9 @@ def run(argv: list[str] | None = None):
                 journal=journal,
                 count=slots,
                 completed_steps=len(journal) + len(futures),
+                reserved_hypothesis_ids={
+                    job.reservation.hypothesis_id for job in futures.values()
+                },
             )
             if not reservations:
                 exhausted = True

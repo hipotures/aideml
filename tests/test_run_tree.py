@@ -932,7 +932,7 @@ def test_tree_renders_multiple_active_root_generations():
         )
     )
 
-    assert "[ ]·000405" in output
+    assert "[*]·000405" in output
     assert "[*]·000941" in output
     assert active_tree_item_id(view) == "active:000941"
 
@@ -2180,6 +2180,13 @@ def test_stage_status_message_names_review_stage():
     assert (
         stage_status_message("generating", active_hypothesis_id="000946")
         == "[green]Generating code @ 000946..."
+    )
+    assert (
+        stage_status_message(
+            "generating",
+            active_hypothesis_ids=["000253", "000324", "000386", "000901"],
+        )
+        == "[green]Generating code @ 000253, 000324, 000386, 000901..."
     )
     assert stage_status_message("executing") == "[magenta]Executing code..."
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
