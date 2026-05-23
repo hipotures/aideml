@@ -130,6 +130,7 @@ class TreeView:
     index_by_id: dict[str, int]
     parent_by_id: dict[str, str | None]
     children_by_id: dict[str, list[str]]
+    active_item_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -594,6 +595,35 @@ def _tree_node_label(
     return label
 
 
+def _tree_active_node_label(
+    node: Node,
+    *,
+    active_stage: str | None,
+    blink_on: bool,
+    best_node: Node | None,
+    disable_oom_saturated_parents: bool = False,
+    synthesis_node_ids: set[str] | None = None,
+) -> Text:
+    line = _tree_active_placeholder_line(
+        active_stage=active_stage,
+        active_hypothesis_id=None,
+        blink_on=blink_on,
+    )
+    line.append(" ")
+    label = _tree_node_label(
+        node,
+        best_node=best_node,
+        disable_oom_saturated_parents=disable_oom_saturated_parents,
+        synthesis_node_ids=synthesis_node_ids,
+    )
+    if node.status == "generated":
+        suffix = _node_hypothesis_suffix(node)
+        line.append(f"generated{suffix}", style="cyan")
+    else:
+        line.append_text(label)
+    return line
+
+
 def _tree_active_placeholder_line(
     *,
     active_stage: str | None,
@@ -634,6 +664,7 @@ def synthesis_injected_node_ids(log_dir: Path | str) -> set[str]:
 def build_tree_view(
     journal: Journal,
     *,
+    active_node: Node | None = None,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
@@ -653,6 +684,8 @@ def build_tree_view(
     children_by_id: dict[str, list[str]] = {"header": []}
     parent_by_id: dict[str, str | None] = {"header": None}
     journal_nodes = set(journal.nodes)
+    active_existing_node = active_node if active_node in journal_nodes else None
+    active_item_id: str | None = None
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
@@ -675,7 +708,10 @@ def build_tree_view(
             children_by_id.setdefault(item.parent_id, []).append(item.item_id)
 
     def append_active(parent_id: str, ancestor_has_next: list[bool]) -> None:
+        nonlocal active_item_id
         if active_stage is None:
+            return
+        if active_existing_node is not None:
             return
         prefix = "".join(
             "│   " if has_next else "    "
@@ -691,6 +727,7 @@ def build_tree_view(
             )
         )
         append_item(TreeViewItem("active", parent_id, line, focus_start=len(prefix)))
+        active_item_id = "active"
 
     def append_rec(
         node: Node,
@@ -709,14 +746,28 @@ def build_tree_view(
         )
         prefix += "└── " if is_last else "├── "
         line = Text(prefix)
-        line.append_text(
-            _tree_node_label(
-                node,
-                best_node=best_node,
-                disable_oom_saturated_parents=disable_oom_saturated_parents,
-                synthesis_node_ids=synthesis_node_ids,
+        if node is active_existing_node and active_stage is not None:
+            nonlocal active_item_id
+            active_item_id = node.id
+            line.append_text(
+                _tree_active_node_label(
+                    node,
+                    active_stage=active_stage,
+                    blink_on=blink_on,
+                    best_node=best_node,
+                    disable_oom_saturated_parents=disable_oom_saturated_parents,
+                    synthesis_node_ids=synthesis_node_ids,
+                )
             )
-        )
+        else:
+            line.append_text(
+                _tree_node_label(
+                    node,
+                    best_node=best_node,
+                    disable_oom_saturated_parents=disable_oom_saturated_parents,
+                    synthesis_node_ids=synthesis_node_ids,
+                )
+            )
         append_item(
             TreeViewItem(
                 node.id,
@@ -744,7 +795,7 @@ def build_tree_view(
             )
         ]
         next_ancestors = [*ancestor_has_next, not is_last]
-        has_active_child = node is active_parent_node
+        has_active_child = node is active_parent_node and active_existing_node is None
         for index, child in enumerate(visible_children):
             append_rec(
                 child,
@@ -767,7 +818,11 @@ def build_tree_view(
             or not node.is_submission_contract_error
         )
     ]
-    has_root_active = active_parent_node is None and active_stage is not None
+    has_root_active = (
+        active_parent_node is None
+        and active_stage is not None
+        and active_existing_node is None
+    )
     for index, node in enumerate(roots):
         append_rec(node, "header", [], index == len(roots) - 1 and not has_root_active)
     if active_parent_node is None:
@@ -778,6 +833,7 @@ def build_tree_view(
         index_by_id={item.item_id: index for index, item in enumerate(items)},
         parent_by_id=parent_by_id,
         children_by_id=children_by_id,
+        active_item_id=active_item_id,
     )
 
 
@@ -851,6 +907,8 @@ def best_tree_item_id(
 
 
 def active_tree_item_id(view: TreeView) -> str | None:
+    if view.active_item_id is not None and view.active_item_id in view.index_by_id:
+        return view.active_item_id
     return "active" if "active" in view.index_by_id else None
 
 
@@ -3296,6 +3354,7 @@ def run(argv: list[str] | None = None):
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
             journal,
+            active_node=agent.active_node,
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
             active_hypothesis_id=active_hypothesis_id_for_display(),

@@ -355,6 +355,38 @@ def test_journal_tree_renders_generated_node_with_stale_submission_error():
     assert "generated·000123" in output
 
 
+def test_tree_view_marks_existing_generated_node_active_without_placeholder():
+    journal = Journal()
+    active = _hypothesis_node(_good_node(0.941), "000123")
+    mark_node_generated_only(active)
+    other = _hypothesis_node(_good_node(0.942), "000456")
+    mark_node_generated_only(other)
+    journal.append(active)
+    journal.append(other)
+
+    view = build_tree_view(
+        journal,
+        active_node=active,
+        active_parent_node=None,
+        active_stage="executing",
+        active_hypothesis_id="000123",
+        blink_on=True,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "[*] generated·000123" in output
+    assert "[*]·000123" not in output
+    assert output.count("[*]") == 1
+    assert active_tree_item_id(view) == active.id
+
+
 def test_tree_view_ignores_generated_only_node_when_selecting_best():
     journal = Journal()
     scored = _hypothesis_node(_good_node(0.941), "000111")
