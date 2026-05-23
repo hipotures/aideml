@@ -45,6 +45,7 @@ from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue, WorstMetricValue
+from .utils.node_artifacts import node_artifact_dir as artifact_dir_for_node
 from .utils.response import (
     extract_code,
     extract_jsons,
@@ -582,8 +583,7 @@ class Agent:
         self.active_stage_started_at = time.monotonic() if stage is not None else None
 
     def _node_artifact_dir(self, node: Node) -> Path:
-        timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
-        return Path(self.cfg.log_dir) / "artifacts" / timestamp
+        return artifact_dir_for_node(self.cfg.log_dir, node)
 
     def _new_node(
         self,

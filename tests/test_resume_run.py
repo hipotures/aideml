@@ -17,6 +17,7 @@ from aide.run import (
     record_generated_only_node,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
+from aide.utils.node_artifacts import node_artifact_dir, node_artifact_submission_path
 from aide.utils.metric import MetricValue
 from aide.utils import serialize
 
@@ -207,6 +208,28 @@ def test_generated_only_nodes_are_not_scored_good_candidates():
     assert journal.good_nodes == [executed]
     assert journal.get_best_node() is executed
     assert journal.get_best_node(only_good=False) is executed
+
+
+def test_node_artifact_dir_uses_explicit_name(tmp_path):
+    node = Node(
+        code="print('x')",
+        plan="x",
+        ctime=1_779_492_701.0,
+        artifact_dir_name="20260523T220603-a1b2c3d4",
+    )
+
+    assert node_artifact_dir(tmp_path, node) == (
+        tmp_path / "artifacts" / "20260523T220603-a1b2c3d4"
+    )
+    assert node_artifact_submission_path(tmp_path, node) == (
+        tmp_path / "artifacts" / "20260523T220603-a1b2c3d4" / "submission.csv"
+    )
+
+
+def test_node_artifact_dir_falls_back_to_legacy_ctime_timestamp(tmp_path):
+    node = Node(code="print('x')", plan="x", ctime=1_779_492_701.0)
+
+    assert node_artifact_dir(tmp_path, node).name == "20260523T013141"
 
 
 def test_parse_runtime_args_extracts_seed_options():

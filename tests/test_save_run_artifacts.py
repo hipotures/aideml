@@ -62,6 +62,32 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
 
 
+def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(
+        code="print('current node')",
+        plan="plan",
+        ctime=1_779_492_701.0,
+        artifact_dir_name="20260523T220603-a1b2c3d4",
+    )
+    node.is_buggy = False
+    node._term_out = ["ok\n"]
+    node.exec_time = 1.0
+    node.exc_type = None
+    node.analysis = "ran successfully"
+    journal.append(node)
+
+    save_run(cfg, journal, current_node=node)
+
+    artifact_dir = cfg.log_dir / "artifacts" / "20260523T220603-a1b2c3d4"
+    assert (artifact_dir / "solution.py").read_text() == "print('current node')"
+
+
 def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"

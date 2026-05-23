@@ -21,6 +21,7 @@ import logging
 from . import tree_export
 from . import copytree, preproc_data, serialize
 from .artifact_manifest import write_node_artifact_manifest
+from .node_artifacts import node_artifact_dir as artifact_dir_for_node
 
 shutup.mute_warnings()
 logging.basicConfig(
@@ -475,10 +476,6 @@ def prep_agent_workspace(cfg: Config):
         preproc_data(cfg.workspace_dir / "input")
 
 
-def _node_artifact_timestamp(node) -> str:
-    return dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
-
-
 def _node_error_text(node) -> str | None:
     if not getattr(node, "is_buggy", False):
         return None
@@ -515,8 +512,7 @@ def _node_error_text(node) -> str | None:
 
 
 def _save_node_artifacts(cfg: Config, node) -> None:
-    timestamp = _node_artifact_timestamp(node)
-    artifact_dir = cfg.log_dir / "artifacts" / timestamp
+    artifact_dir = artifact_dir_for_node(cfg.log_dir, node)
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
     with open(artifact_dir / "solution.py", "w") as f:

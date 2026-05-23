@@ -79,6 +79,10 @@ from .utils.config import (
 )
 from .utils.memory_debug import MemoryDebugLogger
 from .utils.metric import MetricValue, WorstMetricValue
+from .utils.node_artifacts import (
+    node_artifact_dir as artifact_dir_for_node,
+    node_artifact_submission_path as artifact_submission_path_for_node,
+)
 from .utils.resource_monitor import (
     DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
     ResourceHistory,
@@ -2790,13 +2794,11 @@ def enforce_submission_contract(cfg, node: Node) -> bool:
 
 
 def _node_artifact_submission_path(cfg, node: Node) -> Path:
-    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
-    return Path(cfg.log_dir) / "artifacts" / timestamp / "submission.csv"
+    return artifact_submission_path_for_node(cfg.log_dir, node)
 
 
 def _node_artifact_dir(cfg, node: Node) -> Path:
-    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
-    return Path(cfg.log_dir) / "artifacts" / timestamp
+    return artifact_dir_for_node(cfg.log_dir, node)
 
 
 def _node_artifact_dir_from_ctime(cfg, ctime: float) -> Path:
