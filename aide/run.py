@@ -2392,6 +2392,16 @@ def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | No
     return Group(*lines)
 
 
+def build_agent_mode_summary(cfg: Config | None) -> Group | None:
+    if cfg is None:
+        return None
+    mode = str(getattr(cfg.agent, "mode", "legacy"))
+    line = Text()
+    line.append("▶ mode      ", style=TUI_ROW_LABEL_STYLE)
+    line.append(mode, style=TUI_NEUTRAL_VALUE_STYLE)
+    return Group(Text("Agent", style=TUI_ROW_LABEL_STYLE), line)
+
+
 def build_operator_notice_summary(notice: str | None) -> Group | None:
     if notice is None or not notice.strip():
         return None
@@ -2479,6 +2489,9 @@ def build_run_data(
     model_summary = build_model_summary(model_settings)
     if model_summary is not None:
         lines.extend(["", model_summary])
+    agent_mode_summary = build_agent_mode_summary(cfg)
+    if agent_mode_summary is not None:
+        lines.extend(["", agent_mode_summary])
     lines.extend(
         [
             "",

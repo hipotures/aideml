@@ -1829,6 +1829,29 @@ def test_run_data_shows_resolved_model_settings(tmp_path):
     assert output.index("Models") < output.index("Base path")
 
 
+def test_run_data_shows_agent_mode(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.agent.mode = "legacy"
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            cfg=cfg,
+        )
+    )
+
+    assert "Agent" in output
+    assert "mode" in output
+    assert "legacy" in output
+    assert output.index("Agent") < output.index("Base path")
+
+
 def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
