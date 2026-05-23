@@ -291,9 +291,29 @@ def record_generated_only_node(
     )
 
 
-def next_generated_only_node(journal: Journal) -> Node | None:
+def _hypothesis_root_for_node(node: Node) -> Node:
+    current = node
+    while current.parent is not None:
+        current = current.parent
+    return current
+
+
+def _matches_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool:
+    if forced_root is None:
+        return True
+    return hypothesis_id_for_node(_hypothesis_root_for_node(node)) == forced_root
+
+
+def next_generated_only_node(
+    journal: Journal,
+    *,
+    forced_root: str | None = None,
+) -> Node | None:
     for node in journal.nodes:
-        if node.status == "generated":
+        if node.status == "generated" and _matches_forced_hypothesis_root(
+            node,
+            forced_root,
+        ):
             return node
     return None
 
@@ -3393,7 +3413,14 @@ def run(argv: list[str] | None = None):
                         pending_generated_node = (
                             None
                             if runtime_options.skip_execution
-                            else next_generated_only_node(journal)
+                            else next_generated_only_node(
+                                journal,
+                                forced_root=getattr(
+                                    cfg.agent.search,
+                                    "forced_root",
+                                    None,
+                                ),
+                            )
                         )
                         if pending_generated_node is not None:
                             result_node = pending_generated_node

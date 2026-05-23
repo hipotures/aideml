@@ -133,6 +133,23 @@ def test_generated_only_nodes_are_pending_until_evaluated():
     assert next_generated_only_node(journal) is None
 
 
+def test_generated_only_selection_respects_forced_root_scope():
+    journal = Journal()
+    outside_root = Node(code="print('outside')", plan="outside")
+    outside_root.research_mode = "hypothesis"
+    outside_root.research_hypotheses_offered = ["000111"]
+    forced_root = Node(code="print('forced')", plan="forced")
+    forced_root.research_mode = "hypothesis"
+    forced_root.research_hypotheses_offered = ["000222"]
+    journal.append(outside_root)
+    journal.append(forced_root)
+
+    mark_node_generated_only(outside_root)
+    mark_node_generated_only(forced_root)
+
+    assert next_generated_only_node(journal, forced_root="000222") is forced_root
+
+
 def test_record_generated_only_node_marks_saves_and_appends():
     journal = Journal()
     node = Node(code="print('generated')", plan="generated")
