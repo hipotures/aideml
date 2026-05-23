@@ -2962,6 +2962,8 @@ def generate_reserved_hypothesis_root(
         journal=Journal(nodes=list(journal.nodes)),
     )
     worker_agent.data_preview = base_agent.data_preview
+    if worker_agent.data_preview is None:
+        worker_agent.update_data_preview()
     node = worker_agent.generate_preselected_hypothesis_root(
         job.reservation.selection,
         node_ctime=job.node_ctime,

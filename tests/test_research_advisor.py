@@ -10,6 +10,10 @@ from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
+from aide.run import (
+    ParallelRootJob,
+    generate_reserved_hypothesis_root,
+)
 from aide.research import (
     RESEARCH_PROMPT_INTRO,
     ResearchAdvisor,
@@ -1996,6 +2000,53 @@ def test_agent_generates_preselected_hypothesis_root_without_selector(
     assert node.ctime == 1_779_492_701.0
     assert node.artifact_dir_name == "20260523T220603-a1b2c3d4"
     assert node.research_hypotheses_offered == ["000001"]
+
+
+def test_parallel_root_worker_initializes_missing_data_preview(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[library.hypotheses[0]],
+    )
+    reservation = research.HypothesisRootReservation(
+        selection=selection,
+        hypothesis_id="000001",
+        completed_steps=0,
+    )
+    job = ParallelRootJob(
+        reservation=reservation,
+        node_ctime=1_779_492_701.0,
+        artifact_dir_name="20260523T220603-a1b2c3d4",
+        artifact_dir=tmp_path / "artifact",
+        launched_index=1,
+    )
+    base_agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    assert base_agent.data_preview is None
+    captured: dict[str, object] = {}
+
+    def fake_plan_and_code(self, prompt):
+        captured["data_overview"] = prompt.get("Data Overview")
+        return "I will implement hypothesis 000001.", "print('root')"
+
+    monkeypatch.setattr(Agent, "plan_and_code_query", fake_plan_and_code)
+
+    result = generate_reserved_hypothesis_root(
+        base_agent=base_agent,
+        journal=Journal(),
+        job=job,
+    )
+
+    assert result.node.code == "print('root')"
+    assert captured["data_overview"] is not None
 
 
 def test_agent_buggy_library_root_still_uses_llm(tmp_path, monkeypatch):
