@@ -4,6 +4,7 @@ import re
 import subprocess
 from pathlib import Path
 
+import aide.agent as agent_module
 import aide.research as research
 from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
@@ -2460,6 +2461,27 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     assert any('device="cuda"' in line for line in gpu_guidelines)
     assert any('device_type="gpu"' in line for line in gpu_guidelines)
     assert any('device_type="cuda"' in line for line in gpu_guidelines)
+
+
+def test_agent_prompt_only_lists_importable_packages(tmp_path, monkeypatch):
+    available = {"numpy", "pandas", "sklearn", "catboost"}
+    monkeypatch.setattr(
+        agent_module,
+        "find_spec",
+        lambda name: object() if name in available else None,
+    )
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    installed = agent._prompt_environment["Installed Packages"]
+
+    assert "`numpy`" in installed
+    assert "`pandas`" in installed
+    assert "`scikit-learn`" in installed
+    assert "`catboost`" in installed
+    assert "`torch`" not in installed
+    assert "PyTorch" not in installed
+    assert "all packages are already installed" not in installed
 
 
 def test_legacy_agent_prompt_parallelizes_expensive_blend_search(tmp_path):

@@ -4,6 +4,7 @@ import json
 import math
 import random
 import time
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Callable
 
@@ -982,26 +983,40 @@ class Agent:
 
     @property
     def _prompt_environment(self):
+        candidate_pkgs = [
+            ("numpy", "numpy"),
+            ("pandas", "pandas"),
+            ("scikit-learn", "sklearn"),
+            ("statsmodels", "statsmodels"),
+            ("xgboost", "xgboost"),
+            ("catboost", "catboost"),
+            ("autogluon", "autogluon"),
+            ("lightgbm", "lightgbm"),
+            ("torch", "torch"),
+            ("torchvision", "torchvision"),
+            ("torch-geometric", "torch_geometric"),
+            ("bayesian-optimization", "bayes_opt"),
+            ("timm", "timm"),
+        ]
         pkgs = [
-            "numpy",
-            "pandas",
-            "scikit-learn",
-            "statsmodels",
-            "xgboost",
-            "catboost",
-            "autogluon",
-            "lightGBM",
-            "torch",
-            "torchvision",
-            "torch-geometric",
-            "bayesian-optimization",
-            "timm",
+            display_name
+            for display_name, import_name in candidate_pkgs
+            if find_spec(import_name) is not None
         ]
         random.shuffle(pkgs)
         pkg_str = ", ".join([f"`{p}`" for p in pkgs])
+        neural_hint = (
+            " For neural networks, PyTorch is importable and can be used."
+            if "torch" in pkgs
+            else ""
+        )
 
         env_prompt = {
-            "Installed Packages": f"Your solution can use any relevant machine learning packages such as: {pkg_str}. Feel free to use any other packages too (all packages are already installed!). For neural networks we suggest using PyTorch rather than TensorFlow."
+            "Installed Packages": (
+                "Detected importable machine learning packages include: "
+                f"{pkg_str}. Other packages may be available, but verify imports "
+                f"before relying on them.{neural_hint}"
+            )
         }
         return env_prompt
 
