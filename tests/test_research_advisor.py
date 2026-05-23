@@ -429,6 +429,45 @@ def test_select_manual_hypotheses_filters_by_agent_mode(tmp_path):
     assert source_ref["compatible_hypothesis_count"] == 1
 
 
+def test_select_manual_hypotheses_can_ignore_agent_modes(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    cfg.research.manual_sample_size = 2
+    cfg.research.ignore_hypothesis_agent_modes = True
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Legacy-only hypothesis",
+        agent_modes=["legacy"],
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        title="AutoGluon-compatible hypothesis",
+        agent_modes=["autogluon"],
+    )
+
+    selection = research.select_manual_hypotheses(
+        cfg,
+        completed_steps=10,
+        repo_root=tmp_path,
+    )
+
+    assert {hypothesis.id for hypothesis in selection.hypotheses} == {
+        "000001",
+        "000002",
+    }
+    source_ref = json.loads(
+        (Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json").read_text()
+    )
+    assert source_ref["agent_mode"] == "autogluon"
+    assert source_ref["enabled_hypothesis_count"] == 2
+    assert source_ref["compatible_hypothesis_count"] == 2
+    assert source_ref["compatible_hypothesis_ids"] == ["000001", "000002"]
+
+
 def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

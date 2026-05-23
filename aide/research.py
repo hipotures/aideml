@@ -485,16 +485,9 @@ def _write_manual_source_ref(
 ) -> None:
     enabled_count = sum(1 for hypothesis in library.hypotheses if hypothesis.enabled)
     agent_mode = _manual_agent_mode_key(cfg)
-    compatible_count = sum(
-        1
-        for hypothesis in library.hypotheses
-        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
-    )
-    compatible_ids = sorted(
-        hypothesis.id
-        for hypothesis in library.hypotheses
-        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
-    )
+    compatible_hypotheses = _compatible_manual_hypotheses(cfg, library)
+    compatible_count = len(compatible_hypotheses)
+    compatible_ids = sorted(hypothesis.id for hypothesis in compatible_hypotheses)
     configured_root_limit = _configured_hypothesis_root_limit(cfg)
     _write_json(
         _manual_run_dir(cfg) / "source_ref.json",
@@ -582,11 +575,7 @@ def select_manual_hypotheses(
 ) -> ManualHypothesisSelection:
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
     agent_mode = _manual_agent_mode_key(cfg)
-    compatible_hypotheses = [
-        hypothesis
-        for hypothesis in library.hypotheses
-        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
-    ]
+    compatible_hypotheses = _compatible_manual_hypotheses(cfg, library)
     sample_size = int(cfg.research.manual_sample_size)
     if sample_size <= 0:
         raise ValueError("research.manual_sample_size must be greater than 0.")
@@ -636,6 +625,8 @@ def _compatible_manual_hypotheses(
     cfg: Config,
     library: ManualHypothesisLibrary,
 ) -> list[ManualHypothesis]:
+    if getattr(cfg.research, "ignore_hypothesis_agent_modes", False):
+        return [hypothesis for hypothesis in library.hypotheses if hypothesis.enabled]
     agent_mode = _manual_agent_mode_key(cfg)
     return [
         hypothesis

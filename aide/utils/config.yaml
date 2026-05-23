@@ -46,6 +46,10 @@ research:
   manual_sample_size: 3
   manual_seed: 42
   hypothesis_root_limit: 100
+  # If true, manual hypothesis selection treats every enabled hypothesis as
+  # compatible with the current agent mode. Useful for deriving AutoGluon
+  # experiments from legacy-only hypotheses.
+  ignore_hypothesis_agent_modes: False
 
 # optional external Codex solution synthesis
 synthesis:
