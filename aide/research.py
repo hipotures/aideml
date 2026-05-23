@@ -110,6 +110,14 @@ class ManualHypothesisSelection:
 
 
 @dataclass(frozen=True)
+class HypothesisRootReservation:
+    selection: ManualHypothesisSelection
+    hypothesis_id: str
+    completed_steps: int
+    retry_attempts: int = 0
+
+
+@dataclass(frozen=True)
 class HypothesisRootCode:
     hypothesis_id: str
     agent_mode: str
@@ -476,6 +484,49 @@ def _load_manual_usage(cfg: Config) -> dict[str, Any]:
 
 def _write_manual_usage(cfg: Config, usage: dict[str, Any]) -> None:
     _write_json(_manual_run_dir(cfg) / "usage.json", usage)
+
+
+def _root_generation_failures_path(cfg: Config) -> Path:
+    return _manual_run_dir(cfg) / "root_generation_failures.json"
+
+
+def _load_root_generation_failures(cfg: Config) -> dict[str, Any]:
+    path = _root_generation_failures_path(cfg)
+    if not path.exists():
+        return {}
+    try:
+        data = _read_json(path)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_root_generation_failures(cfg: Config, data: dict[str, Any]) -> None:
+    _write_json(_root_generation_failures_path(cfg), data)
+
+
+def record_hypothesis_root_generation_failure(
+    cfg: Config,
+    *,
+    hypothesis_id: str,
+    attempts: int,
+    message: str,
+) -> None:
+    failures = _load_root_generation_failures(cfg)
+    failures[hypothesis_id] = {
+        "attempts": attempts,
+        "message": message,
+        "last_failed_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+    _write_root_generation_failures(cfg, failures)
+
+
+def clear_hypothesis_root_generation_failure(cfg: Config, *, hypothesis_id: str) -> None:
+    failures = _load_root_generation_failures(cfg)
+    if hypothesis_id not in failures:
+        return
+    del failures[hypothesis_id]
+    _write_root_generation_failures(cfg, failures)
 
 
 def _write_manual_source_ref(
@@ -1077,6 +1128,102 @@ def select_hypothesis_for_node(
         source_dir=library.source_dir,
         hypotheses=[selected],
     )
+
+
+def _append_reserved_placeholder(
+    journal: Journal,
+    *,
+    hypothesis_id: str,
+) -> None:
+    placeholder = Node(code="", plan="reserved hypothesis root")
+    placeholder.research_mode = "hypothesis"
+    placeholder.research_hypotheses_offered = [hypothesis_id]
+    journal.append(placeholder)
+
+
+def reserve_hypothesis_roots(
+    cfg: Config,
+    *,
+    journal: Journal,
+    count: int,
+    completed_steps: int,
+    repo_root: Path = REPO_ROOT,
+) -> list[HypothesisRootReservation]:
+    reservations: list[HypothesisRootReservation] = []
+    working_journal = Journal(nodes=list(journal.nodes))
+    failures = _load_root_generation_failures(cfg)
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    compatible_by_id = {
+        hypothesis.id: hypothesis for hypothesis in _compatible_manual_hypotheses(cfg, library)
+    }
+
+    for retry_id in sorted(failures):
+        if len(reservations) >= count:
+            break
+        retry = compatible_by_id.get(retry_id)
+        if retry is None:
+            continue
+        step = completed_steps + len(reservations)
+        created_at = dt.datetime.now().isoformat(timespec="seconds")
+        _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
+        _append_manual_offer(
+            cfg=cfg,
+            completed_steps=step,
+            offered_ids=[retry.id],
+            source_hash=library.source_hash,
+            created_at=created_at,
+        )
+        _record_manual_offer_usage(
+            cfg=cfg,
+            offered_ids=[retry.id],
+            completed_steps=step,
+            created_at=created_at,
+        )
+        selection = ManualHypothesisSelection(
+            completed_steps=step,
+            source_hash=library.source_hash,
+            source_dir=library.source_dir,
+            hypotheses=[retry],
+        )
+        failure = failures.get(retry.id, {})
+        reservations.append(
+            HypothesisRootReservation(
+                selection=selection,
+                hypothesis_id=retry.id,
+                completed_steps=step,
+                retry_attempts=(
+                    int(failure.get("attempts", 0))
+                    if isinstance(failure, dict)
+                    else 0
+                ),
+            )
+        )
+        _append_reserved_placeholder(working_journal, hypothesis_id=retry.id)
+
+    while len(reservations) < count:
+        try:
+            selection = select_hypothesis_for_node(
+                cfg,
+                journal=working_journal,
+                parent_node=None,
+                completed_steps=completed_steps + len(reservations),
+                repo_root=repo_root,
+            )
+        except ValueError:
+            break
+        if len(selection.hypotheses) != 1:
+            raise ValueError("Hypothesis mode requires exactly one selected root.")
+        hypothesis_id = selection.hypotheses[0].id
+        reservations.append(
+            HypothesisRootReservation(
+                selection=selection,
+                hypothesis_id=hypothesis_id,
+                completed_steps=selection.completed_steps,
+            )
+        )
+        _append_reserved_placeholder(working_journal, hypothesis_id=hypothesis_id)
+
+    return reservations
 
 
 def _latest_manual_offer(cfg: Config) -> dict[str, Any] | None:
