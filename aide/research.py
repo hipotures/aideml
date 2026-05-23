@@ -737,6 +737,47 @@ def _root_hypothesis_ids(journal: Journal) -> set[str]:
     return ids
 
 
+def _unmaterialized_root_offer_ids(
+    cfg: Config,
+    *,
+    journal: Journal,
+    compatible_by_id: dict[str, ManualHypothesis],
+    reserved_hypothesis_ids: set[str],
+) -> list[str]:
+    path = _manual_run_dir(cfg) / "offers.jsonl"
+    if not path.exists():
+        return []
+    materialized_root_ids = _root_hypothesis_ids(journal)
+    retry_ids: list[str] = []
+    seen: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        offered = payload.get("offered")
+        if not isinstance(offered, list):
+            continue
+        for offered_id in offered:
+            if not isinstance(offered_id, str):
+                continue
+            if offered_id in seen:
+                continue
+            if offered_id in materialized_root_ids:
+                continue
+            if offered_id in reserved_hypothesis_ids:
+                continue
+            if offered_id not in compatible_by_id:
+                continue
+            seen.add(offered_id)
+            retry_ids.append(offered_id)
+    return retry_ids
+
+
 def _configured_hypothesis_root_limit(cfg: Config) -> int:
     try:
         return int(getattr(cfg.research, "hypothesis_root_limit", 100))
@@ -1161,7 +1202,19 @@ def reserve_hypothesis_roots(
         hypothesis.id: hypothesis for hypothesis in _compatible_manual_hypotheses(cfg, library)
     }
 
-    for retry_id in sorted(failures):
+    retry_ids = sorted(failures)
+    retry_ids.extend(
+        retry_id
+        for retry_id in _unmaterialized_root_offer_ids(
+            cfg,
+            journal=journal,
+            compatible_by_id=compatible_by_id,
+            reserved_hypothesis_ids=reserved_hypothesis_ids,
+        )
+        if retry_id not in failures
+    )
+
+    for retry_id in retry_ids:
         if len(reservations) >= count:
             break
         if retry_id in reserved_hypothesis_ids:

@@ -784,6 +784,67 @@ def test_reserve_hypothesis_roots_retries_failed_generation_first(tmp_path):
     assert [reservation.hypothesis_id for reservation in reservations] == ["000002"]
 
 
+def test_reserve_hypothesis_roots_retries_unmaterialized_offers_first(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    for hypothesis_id in ["000001", "000002", "000003"]:
+        _write_manual_hypothesis(tmp_path, "playground-series-s6e5", hypothesis_id)
+
+    usage_dir = Path(cfg.log_dir) / "research_hypotheses"
+    usage_dir.mkdir(parents=True)
+    (usage_dir / "offers.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "checkpoint_step": 0,
+                        "offered": ["000001"],
+                        "source_hash": "sha256:test",
+                        "created_at": "2026-05-23T00:00:00",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "checkpoint_step": 1,
+                        "offered": ["000002"],
+                        "source_hash": "sha256:test",
+                        "created_at": "2026-05-23T00:01:00",
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (usage_dir / "usage.json").write_text(
+        json.dumps(
+            {
+                "000001": {"offered_count": 1},
+                "000002": {"offered_count": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    journal = Journal()
+    materialized = _node(0.9, code="print('ok')", plan="root")
+    materialized.research_mode = "hypothesis"
+    materialized.research_hypotheses_offered = ["000001"]
+    journal.append(materialized)
+
+    reservations = research.reserve_hypothesis_roots(
+        cfg,
+        journal=journal,
+        count=2,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert [reservation.hypothesis_id for reservation in reservations] == [
+        "000002",
+        "000003",
+    ]
+
+
 def test_reserve_hypothesis_roots_excludes_inflight_reserved_ids(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
