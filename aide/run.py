@@ -3112,6 +3112,25 @@ def allocate_node_artifact_slot(log_dir: Path | str) -> tuple[float, str, Path]:
         return ctime, dir_name, artifact_dir
 
 
+def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
+    if node.artifact_dir_name is not None:
+        artifact_dir = _node_artifact_dir(cfg, node)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        return artifact_dir
+
+    artifacts_dir = Path(cfg.log_dir) / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        dir_name = new_artifact_dir_name(ctime=node.ctime)
+        artifact_dir = artifacts_dir / dir_name
+        try:
+            artifact_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            continue
+        node.artifact_dir_name = dir_name
+        return artifact_dir
+
+
 def make_parallel_root_job(
     *,
     cfg: Config,
@@ -3570,8 +3589,7 @@ def run(argv: list[str] | None = None):
 
     def prepare_node_artifact_env(node: Node) -> str | None:
         previous = os.environ.get("AIDE_NODE_ARTIFACT_DIR")
-        artifact_dir = _node_artifact_dir(cfg, node)
-        artifact_dir.mkdir(parents=True, exist_ok=True)
+        artifact_dir = ensure_node_artifact_slot(cfg, node)
         os.environ["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir)
         return previous
 
