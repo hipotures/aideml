@@ -2555,6 +2555,7 @@ def build_agent_mode_summary(
     cfg: Config | None,
     *,
     skip_execution: bool = False,
+    hypothesis_root_generate_workers: int = 1,
 ) -> Group | None:
     if cfg is None:
         return None
@@ -2568,7 +2569,16 @@ def build_agent_mode_summary(
         "generate-only" if skip_execution else "execute",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
-    return Group(Text("Agent", style=TUI_ROW_LABEL_STYLE), mode_line, run_line)
+    lines = [Text("Agent", style=TUI_ROW_LABEL_STYLE), mode_line, run_line]
+    if skip_execution:
+        workers_line = Text()
+        workers_line.append("▶ workers   ", style=TUI_ROW_LABEL_STYLE)
+        workers_line.append(
+            str(hypothesis_root_generate_workers),
+            style=TUI_NEUTRAL_VALUE_STYLE,
+        )
+        lines.append(workers_line)
+    return Group(*lines)
 
 
 def build_operator_notice_summary(notice: str | None) -> Group | None:
@@ -2614,6 +2624,7 @@ def build_run_data(
     operator_notice: str | None = None,
     include_generated_hypothesis_roots: bool = True,
     skip_execution: bool = False,
+    hypothesis_root_generate_workers: int = 1,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -2659,7 +2670,11 @@ def build_run_data(
     model_summary = build_model_summary(model_settings)
     if model_summary is not None:
         lines.extend(["", model_summary])
-    agent_mode_summary = build_agent_mode_summary(cfg, skip_execution=skip_execution)
+    agent_mode_summary = build_agent_mode_summary(
+        cfg,
+        skip_execution=skip_execution,
+        hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+    )
     if agent_mode_summary is not None:
         lines.extend(["", agent_mode_summary])
     lines.extend(
@@ -3622,6 +3637,7 @@ def run(argv: list[str] | None = None):
                     operator_notice=operator_notice,
                     include_generated_hypothesis_roots=runtime_options.skip_execution,
                     skip_execution=runtime_options.skip_execution,
+                    hypothesis_root_generate_workers=hypothesis_root_generate_workers,
                 ),
                 (0, 1, 0, 1),
             ),
