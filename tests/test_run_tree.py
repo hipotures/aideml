@@ -2029,6 +2029,10 @@ def test_run_log_summary_prefers_process_log_over_active_hypothesis_hint(tmp_pat
 
 def test_stage_status_message_names_review_stage():
     assert stage_status_message("generating") == "[green]Generating code..."
+    assert (
+        stage_status_message("generating", active_hypothesis_id="000946")
+        == "[green]Generating code @ 000946..."
+    )
     assert stage_status_message("executing") == "[magenta]Executing code..."
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
     assert (

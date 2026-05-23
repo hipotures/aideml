@@ -490,6 +490,11 @@ def _write_manual_source_ref(
         for hypothesis in library.hypotheses
         if hypothesis.enabled and agent_mode in hypothesis.agent_modes
     )
+    compatible_ids = sorted(
+        hypothesis.id
+        for hypothesis in library.hypotheses
+        if hypothesis.enabled and agent_mode in hypothesis.agent_modes
+    )
     configured_root_limit = _configured_hypothesis_root_limit(cfg)
     _write_json(
         _manual_run_dir(cfg) / "source_ref.json",
@@ -500,6 +505,7 @@ def _write_manual_source_ref(
             "enabled_hypothesis_count": enabled_count,
             "agent_mode": agent_mode,
             "compatible_hypothesis_count": compatible_count,
+            "compatible_hypothesis_ids": compatible_ids,
             "configured_hypothesis_root_limit": configured_root_limit,
             "effective_hypothesis_root_limit": effective_hypothesis_root_limit(
                 cfg,

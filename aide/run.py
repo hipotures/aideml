@@ -23,9 +23,11 @@ from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import (
     ResearchAdvisor,
+    _compatible_manual_hypotheses,
     count_scored_working_nodes,
     effective_hypothesis_root_limit,
     hypothesis_id_for_node,
+    load_manual_hypothesis_library,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -1783,12 +1785,17 @@ def _count_hypothesis_root_nodes(
     journal: Journal,
     *,
     include_generated: bool = True,
+    compatible_hypothesis_ids: set[str] | None = None,
 ) -> int:
     return sum(
         1
         for node in journal.nodes
         if node.parent is None
         and hypothesis_id_for_node(node) is not None
+        and (
+            compatible_hypothesis_ids is None
+            or hypothesis_id_for_node(node) in compatible_hypothesis_ids
+        )
         and (include_generated or node.status != "generated")
     )
 
@@ -1826,6 +1833,37 @@ def _source_ref_compatible_hypothesis_count(cfg: Config) -> int | None:
     return compatible_count if compatible_count >= 0 else None
 
 
+def _source_ref_compatible_hypothesis_ids(cfg: Config) -> set[str] | None:
+    source_ref_path = Path(cfg.log_dir) / "research_hypotheses" / "source_ref.json"
+    try:
+        payload = json.loads(source_ref_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    raw_ids = payload.get("compatible_hypothesis_ids")
+    if not isinstance(raw_ids, list) or not all(isinstance(item, str) for item in raw_ids):
+        return None
+    return set(raw_ids)
+
+
+def _current_compatible_hypothesis_ids(cfg: Config) -> set[str] | None:
+    try:
+        library = load_manual_hypothesis_library(cfg)
+    except (FileNotFoundError, OSError, ValueError):
+        return None
+    return {
+        hypothesis.id
+        for hypothesis in _compatible_manual_hypotheses(cfg, library)
+    }
+
+
+def _compatible_hypothesis_ids_for_phase_status(cfg: Config) -> set[str] | None:
+    return _source_ref_compatible_hypothesis_ids(cfg) or _current_compatible_hypothesis_ids(
+        cfg
+    )
+
+
 def build_hypothesis_phase_status(
     cfg: Config,
     journal: Journal,
@@ -1839,16 +1877,25 @@ def build_hypothesis_phase_status(
     if total_budget <= 0:
         return None
 
+    compatible_hypothesis_ids = _compatible_hypothesis_ids_for_phase_status(cfg)
     root_count = _count_hypothesis_root_nodes(
         journal,
         include_generated=include_generated_roots,
+        compatible_hypothesis_ids=compatible_hypothesis_ids,
     )
-    all_root_count = _count_hypothesis_root_nodes(journal)
+    all_root_count = _count_hypothesis_root_nodes(
+        journal,
+        compatible_hypothesis_ids=compatible_hypothesis_ids,
+    )
     configured_root_limit = _positive_int(
         getattr(cfg.research, "hypothesis_root_limit", 100),
         100,
     )
-    compatible_count = _source_ref_compatible_hypothesis_count(cfg)
+    compatible_count = (
+        len(compatible_hypothesis_ids)
+        if compatible_hypothesis_ids is not None
+        else _source_ref_compatible_hypothesis_count(cfg)
+    )
     root_limit = (
         effective_hypothesis_root_limit(cfg, compatible_count=compatible_count)
         if compatible_count is not None
@@ -2654,10 +2701,14 @@ def stage_status_message(
     *,
     agent_mode: str | None = None,
     active_artifact_dir: Path | None = None,
+    active_hypothesis_id: str | None = None,
 ) -> str:
     elapsed_text = _format_elapsed(elapsed)
+    hypothesis_text = (
+        f" @ {active_hypothesis_id}" if active_hypothesis_id is not None else ""
+    )
     if active_stage == "generating":
-        return f"[green]Generating code...{elapsed_text}"
+        return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
     if active_stage == "executing":
         if agent_mode == AGENT_MODE:
             autogluon_log = (
@@ -2671,7 +2722,7 @@ def stage_status_message(
         return f"[magenta]Executing code...{elapsed_text}"
     if active_stage == "reviewing":
         return f"[cyan]Reviewing result...{elapsed_text}"
-    return f"[green]Generating code...{elapsed_text}"
+    return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
 
 
 KeyboardInterruptAction = Literal["continue", "abort"]
@@ -3189,6 +3240,7 @@ def run(argv: list[str] | None = None):
                 elapsed,
                 agent_mode=cfg.agent.mode,
                 active_artifact_dir=active_artifact_dir,
+                active_hypothesis_id=agent.active_research_hypothesis_id,
             )
         )
 
