@@ -662,6 +662,37 @@ def test_hypothesis_forced_root_scope_selects_only_descendants(tmp_path, monkeyp
     assert trace["best_node"]["rejected_at"] == "forced_root_scope"
 
 
+def test_hypothesis_forced_hypothesis_does_not_expand_child_hypotheses(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.forced_hypothesis = "000941"
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.95226), "000941")
+    journal.append(root)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: [],
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is None
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["reason"] == "no_good_nodes_after_filters"
+
+
 def test_hypothesis_forced_root_scope_debugs_only_descendants(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = True

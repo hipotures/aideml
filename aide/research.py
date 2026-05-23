@@ -767,11 +767,20 @@ def _hypothesis_candidates_for_node_from_library(
     library: ManualHypothesisLibrary,
 ) -> list[ManualHypothesis]:
     by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    forced_hypothesis = getattr(cfg.agent.search, "forced_hypothesis", None)
     compatible = _compatible_manual_hypotheses(cfg, library)
+    if forced_hypothesis is not None:
+        compatible = [
+            hypothesis
+            for hypothesis in compatible
+            if hypothesis.id == forced_hypothesis
+        ]
 
     if parent_node is not None and parent_node.is_buggy:
         inherited_id = hypothesis_id_for_node(parent_node)
         if inherited_id is None:
+            return []
+        if forced_hypothesis is not None and inherited_id != forced_hypothesis:
             return []
         inherited = by_id.get(inherited_id)
         return [inherited] if inherited is not None else []
@@ -785,6 +794,8 @@ def _hypothesis_candidates_for_node_from_library(
             return []
         blocked_ids = _root_hypothesis_ids(journal)
     else:
+        if forced_hypothesis is not None:
+            return []
         blocked_ids = _ancestor_hypothesis_ids(parent_node)
         blocked_ids |= _direct_child_hypothesis_ids(parent_node, journal)
 

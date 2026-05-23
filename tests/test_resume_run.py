@@ -150,6 +150,25 @@ def test_generated_only_selection_respects_forced_root_scope():
     assert next_generated_only_node(journal, forced_root="000222") is forced_root
 
 
+def test_generated_only_selection_respects_forced_hypothesis_exact_id():
+    journal = Journal()
+    forced_root = Node(code="print('forced')", plan="forced")
+    forced_root.research_mode = "hypothesis"
+    forced_root.research_hypotheses_offered = ["000941"]
+    child = Node(code="print('child')", plan="child", parent=forced_root)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000365"]
+    journal.append(forced_root)
+    journal.append(child)
+
+    mark_node_generated_only(forced_root)
+    mark_node_generated_only(child)
+
+    assert (
+        next_generated_only_node(journal, forced_hypothesis="000941") is forced_root
+    )
+
+
 def test_record_generated_only_node_marks_saves_and_appends():
     journal = Journal()
     node = Node(code="print('generated')", plan="generated")

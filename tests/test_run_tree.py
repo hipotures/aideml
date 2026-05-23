@@ -598,7 +598,10 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     journal.append(strong)
     journal.append(child)
 
-    view = build_root_hypotheses_view(journal)
+    view = build_root_hypotheses_view(
+        journal,
+        hypothesis_mode_labels={"000111": "leg", "000222": "ag,leg"},
+    )
     output = _render_text(
         render_tree_view(
             view,
@@ -609,9 +612,9 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     )
 
     assert "Root hypotheses" in output
-    assert "#    score    hypothesis  time" in output
-    assert "002  0.95200  000222      05-18 05:59" in output
-    assert "001  0.95000  000111      05-18 03:12" in output
+    assert "#    score    hypothesis  time         mode" in output
+    assert "002  0.95200  000222      05-18 05:59  ag,leg" in output
+    assert "001  0.95000  000111      05-18 03:12  leg" in output
     assert output.index("000222") < output.index("000111")
     assert "000333" not in output
     assert "0.99000" not in output

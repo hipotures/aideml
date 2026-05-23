@@ -304,16 +304,23 @@ def _matches_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool
     return hypothesis_id_for_node(_hypothesis_root_for_node(node)) == forced_root
 
 
+def _matches_forced_hypothesis(node: Node, forced_hypothesis: str | None) -> bool:
+    if forced_hypothesis is None:
+        return True
+    return hypothesis_id_for_node(node) == forced_hypothesis
+
+
 def next_generated_only_node(
     journal: Journal,
     *,
     forced_root: str | None = None,
+    forced_hypothesis: str | None = None,
 ) -> Node | None:
     for node in journal.nodes:
         if node.status == "generated" and _matches_forced_hypothesis_root(
             node,
             forced_root,
-        ):
+        ) and _matches_forced_hypothesis(node, forced_hypothesis):
             return node
     return None
 
@@ -899,7 +906,31 @@ def _plain_line_view(title: str, lines: list[Text]) -> TreeView:
     )
 
 
-def build_root_hypotheses_view(journal: Journal) -> TreeView:
+def _hypothesis_mode_label(agent_modes: list[str]) -> str:
+    labels = []
+    if "autogluon" in agent_modes:
+        labels.append("ag")
+    if "legacy" in agent_modes:
+        labels.append("leg")
+    return ",".join(labels) if labels else "n/a"
+
+
+def _hypothesis_mode_labels(cfg: Config) -> dict[str, str]:
+    try:
+        library = load_manual_hypothesis_library(cfg)
+    except (OSError, ValueError):
+        return {}
+    return {
+        hypothesis.id: _hypothesis_mode_label(hypothesis.agent_modes)
+        for hypothesis in library.hypotheses
+    }
+
+
+def build_root_hypotheses_view(
+    journal: Journal,
+    *,
+    hypothesis_mode_labels: dict[str, str] | None = None,
+) -> TreeView:
     roots = [
         node
         for node in journal.nodes
@@ -908,17 +939,23 @@ def build_root_hypotheses_view(journal: Journal) -> TreeView:
         and _is_scored_hypothesis_node(node)
     ]
     roots.sort(key=_metric_sort_key, reverse=True)
-    lines = [Text("#    score    hypothesis  time", style=TUI_ROW_LABEL_STYLE)]
+    lines = [Text("#    score    hypothesis  time         mode", style=TUI_ROW_LABEL_STYLE)]
     for node in roots:
         hypothesis_id = hypothesis_id_for_node(node) or "n/a"
         step = node.step if node.step is not None else "?"
         step_text = f"{step:03d}" if isinstance(step, int) else str(step).rjust(3)
         time_text = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
+        mode_text = (
+            hypothesis_mode_labels.get(hypothesis_id, "n/a")
+            if hypothesis_mode_labels is not None
+            else "n/a"
+        )
         line = Text()
         line.append(f"{step_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
         line.append(f"{_score_text(node):<9}", style=TUI_METRIC_VALUE_STYLE)
         line.append(f"{hypothesis_id:<12}", style=TUI_NEUTRAL_VALUE_STYLE)
-        line.append(time_text, style=TUI_INACTIVE_VALUE_STYLE)
+        line.append(f"{time_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
+        line.append(mode_text, style=TUI_INACTIVE_VALUE_STYLE)
         lines.append(line)
     if not roots:
         lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
@@ -3263,7 +3300,10 @@ def run(argv: list[str] | None = None):
         if left_panel_view == "tree":
             return current_tree_view(blink_on=blink_on)
         if left_panel_view == "root":
-            return build_root_hypotheses_view(journal)
+            return build_root_hypotheses_view(
+                journal,
+                hypothesis_mode_labels=_hypothesis_mode_labels(cfg),
+            )
         if left_panel_view == "all":
             return build_all_hypotheses_view(journal)
         return build_best_branch_view(journal)
@@ -3418,6 +3458,11 @@ def run(argv: list[str] | None = None):
                                 forced_root=getattr(
                                     cfg.agent.search,
                                     "forced_root",
+                                    None,
+                                ),
+                                forced_hypothesis=getattr(
+                                    cfg.agent.search,
+                                    "forced_hypothesis",
                                     None,
                                 ),
                             )

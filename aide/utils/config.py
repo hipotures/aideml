@@ -117,6 +117,7 @@ class SearchConfig:
     disable_oom_saturated_parents: bool = False
     hypothesis_child_order: str = "root_score"
     forced_root: str | None = None
+    forced_hypothesis: str | None = None
     hypothesis_max_non_improving_children_per_parent: int = 10
     hypothesis_min_improvement_epsilon: float = 0.00002
 
@@ -308,10 +309,16 @@ def _normalize_forced_root_cli_overrides(cli_args: Sequence[str]) -> list[str]:
             normalized.append(arg)
             continue
         key, value = item
-        if key not in {"forced_root", "agent.search.forced_root"}:
+        aliases = {
+            "forced_root": "agent.search.forced_root",
+            "agent.search.forced_root": "agent.search.forced_root",
+            "forced_hypothesis": "agent.search.forced_hypothesis",
+            "agent.search.forced_hypothesis": "agent.search.forced_hypothesis",
+        }
+        target_key = aliases.get(key)
+        if target_key is None:
             normalized.append(arg)
             continue
-        target_key = "agent.search.forced_root"
         if _is_nullish(value):
             normalized.append(f"{target_key}=null")
             continue
