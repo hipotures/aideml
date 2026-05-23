@@ -2450,14 +2450,24 @@ def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | No
     return Group(*lines)
 
 
-def build_agent_mode_summary(cfg: Config | None) -> Group | None:
+def build_agent_mode_summary(
+    cfg: Config | None,
+    *,
+    skip_execution: bool = False,
+) -> Group | None:
     if cfg is None:
         return None
     mode = str(getattr(cfg.agent, "mode", "legacy"))
-    line = Text()
-    line.append("▶ mode      ", style=TUI_ROW_LABEL_STYLE)
-    line.append(mode, style=TUI_NEUTRAL_VALUE_STYLE)
-    return Group(Text("Agent", style=TUI_ROW_LABEL_STYLE), line)
+    mode_line = Text()
+    mode_line.append("▶ mode      ", style=TUI_ROW_LABEL_STYLE)
+    mode_line.append(mode, style=TUI_NEUTRAL_VALUE_STYLE)
+    run_line = Text()
+    run_line.append("▶ run       ", style=TUI_ROW_LABEL_STYLE)
+    run_line.append(
+        "generate-only" if skip_execution else "execute",
+        style=TUI_NEUTRAL_VALUE_STYLE,
+    )
+    return Group(Text("Agent", style=TUI_ROW_LABEL_STYLE), mode_line, run_line)
 
 
 def build_operator_notice_summary(notice: str | None) -> Group | None:
@@ -2502,6 +2512,7 @@ def build_run_data(
     cfg: Config | None = None,
     operator_notice: str | None = None,
     include_generated_hypothesis_roots: bool = True,
+    skip_execution: bool = False,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -2547,7 +2558,7 @@ def build_run_data(
     model_summary = build_model_summary(model_settings)
     if model_summary is not None:
         lines.extend(["", model_summary])
-    agent_mode_summary = build_agent_mode_summary(cfg)
+    agent_mode_summary = build_agent_mode_summary(cfg, skip_execution=skip_execution)
     if agent_mode_summary is not None:
         lines.extend(["", agent_mode_summary])
     lines.extend(
@@ -3454,6 +3465,7 @@ def run(argv: list[str] | None = None):
                     cfg=cfg,
                     operator_notice=operator_notice,
                     include_generated_hypothesis_roots=runtime_options.skip_execution,
+                    skip_execution=runtime_options.skip_execution,
                 ),
                 (0, 1, 0, 1),
             ),

@@ -1861,7 +1861,7 @@ def test_run_data_shows_resolved_model_settings(tmp_path):
     assert output.index("Models") < output.index("Base path")
 
 
-def test_run_data_shows_agent_mode(tmp_path):
+def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.agent.mode = "legacy"
 
@@ -1875,12 +1875,15 @@ def test_run_data_shows_agent_mode(tmp_path):
             log_dir=tmp_path / "logs" / "2-example-run",
             workspace_dir=tmp_path / "workspaces" / "2-example-run",
             cfg=cfg,
+            skip_execution=True,
         )
     )
 
     assert "Agent" in output
     assert "mode" in output
     assert "legacy" in output
+    assert "run" in output
+    assert "generate-only" in output
     assert output.index("Agent") < output.index("Base path")
 
 
