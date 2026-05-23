@@ -1,11 +1,13 @@
 import os
 import time
 import datetime as dt
+import json
 from pathlib import Path
 
 import pytest
 from omegaconf import OmegaConf
 
+from aide.agent import Agent
 from aide.journal import Journal, Node
 from aide.run import (
     allocate_node_artifact_slot,
@@ -17,6 +19,7 @@ from aide.run import (
     parse_resume_args,
     ParallelRootFailureState,
     record_generated_only_node,
+    recover_generated_only_root_artifacts,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -204,6 +207,93 @@ def test_record_generated_only_node_marks_saves_and_appends():
     assert node.status == "generated"
     assert journal.nodes == [node]
     assert agent.saved_node is node
+
+
+def test_recover_generated_only_root_artifacts_materializes_completed_orphans(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / "playground-series-s6e5")
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-existing-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    cfg.exp_name = "2-existing-run"
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = "legacy"
+    cfg = prep_cfg(cfg)
+    cfg.log_dir.mkdir(parents=True)
+    cfg.workspace_dir.mkdir(parents=True)
+
+    run_research_dir = cfg.log_dir / "research_hypotheses"
+    run_research_dir.mkdir(parents=True)
+    (run_research_dir / "offers.jsonl").write_text(
+        json.dumps(
+            {
+                "checkpoint_step": 0,
+                "offered": ["000123"],
+                "source_hash": "sha256:test",
+                "created_at": "2026-05-23T00:00:00",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    artifact_dir = cfg.log_dir / "artifacts" / "20260523T233540-abcdef12"
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "context.json").write_text(
+        json.dumps(
+            {
+                "phase": "generate",
+                "parent_node_id": None,
+                "agent_mode": "legacy",
+                "node_ctime": 1779575740.0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (artifact_dir / "status.json").write_text(
+        json.dumps({"status": "completed"}),
+        encoding="utf-8",
+    )
+    (artifact_dir / "request.md").write_text(
+        "# Hypothesis under verification\n\n"
+        "Hypothesis ID: 000123\n"
+        "Implement this exact hypothesis.\n",
+        encoding="utf-8",
+    )
+    (artifact_dir / "response_raw.txt").write_text(
+        "Hypothesis ID 000123 recovered plan.\n\n```python\nprint('recovered')\n```\n",
+        encoding="utf-8",
+    )
+    (artifact_dir / "response.py").write_text(
+        "print('recovered')\n",
+        encoding="utf-8",
+    )
+
+    journal = Journal()
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    monkeypatch.setattr(agent, "save_hypothesis_root_code_for_node", lambda _node: None)
+
+    recovered = recover_generated_only_root_artifacts(
+        cfg=cfg,
+        journal=journal,
+        agent=agent,
+    )
+
+    assert recovered == 1
+    assert len(journal.nodes) == 1
+    node = journal.nodes[0]
+    assert node.status == "generated"
+    assert node.code == "print('recovered')\n"
+    assert node.plan == "Hypothesis ID 000123 recovered plan."
+    assert node.artifact_dir_name == "20260523T233540-abcdef12"
+    assert node.research_hypotheses_offered == ["000123"]
+    assert node.research_source_hash == "sha256:test"
+    usage = json.loads((run_research_dir / "usage.json").read_text())
+    assert usage["000123"]["prompt_node_ids"] == [node.id]
 
 
 def test_generated_only_nodes_are_not_scored_good_candidates():

@@ -31,6 +31,7 @@ from .research import (
     effective_hypothesis_root_limit,
     hypothesis_id_for_node,
     load_manual_hypothesis_library,
+    record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
     reserve_hypothesis_roots,
 )
@@ -100,6 +101,7 @@ from .utils.submission_validation import (
     validate_submission_file,
     validate_workspace_submission,
 )
+from .utils.response import extract_text_up_to_code
 
 logger = logging.getLogger("aide")
 
@@ -349,6 +351,173 @@ def record_generated_only_node(
         node=node,
         experiment_id=experiment_id,
     )
+
+
+def _artifact_context(path: Path) -> dict[str, Any]:
+    context_path = path / "context.json"
+    if not context_path.exists():
+        return {}
+    try:
+        payload = json.loads(context_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _artifact_status(path: Path) -> str | None:
+    status_path = path / "status.json"
+    if not status_path.exists():
+        return None
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    status = payload.get("status")
+    return status if isinstance(status, str) else None
+
+
+def _artifact_hypothesis_id(path: Path) -> str | None:
+    request_path = path / "request.md"
+    if not request_path.exists():
+        return None
+    text = request_path.read_text(encoding="utf-8", errors="replace")
+    match = re.search(
+        r"# Hypothesis under verification\b.*?Hypothesis ID:\s*(\d{6})\b",
+        text,
+        re.DOTALL,
+    )
+    if match:
+        return match.group(1)
+    match = re.search(r"\bHypothesis ID:\s*(\d{6})\b", text)
+    return match.group(1) if match else None
+
+
+def _artifact_node_ctime(path: Path, context: dict[str, Any]) -> float:
+    raw = context.get("node_ctime")
+    if isinstance(raw, int | float) and not isinstance(raw, bool):
+        return float(raw)
+    return path.stat().st_mtime
+
+
+def _source_hash_by_offered_hypothesis(cfg: Config) -> dict[str, str]:
+    path = Path(cfg.log_dir) / "research_hypotheses" / "offers.jsonl"
+    if not path.exists():
+        return {}
+    hashes: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        source_hash = payload.get("source_hash")
+        if not isinstance(source_hash, str):
+            continue
+        offered = payload.get("offered")
+        if not isinstance(offered, list):
+            continue
+        for hypothesis_id in offered:
+            if isinstance(hypothesis_id, str):
+                hashes.setdefault(hypothesis_id, source_hash)
+    return hashes
+
+
+def _root_hypothesis_ids_in_journal(journal: Journal) -> set[str]:
+    ids: set[str] = set()
+    for node in journal.nodes:
+        if node.parent is not None:
+            continue
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is not None:
+            ids.add(hypothesis_id)
+    return ids
+
+
+def _recoverable_generated_root_artifacts(
+    cfg: Config,
+    journal: Journal,
+) -> list[tuple[Path, str, float]]:
+    artifacts_dir = Path(cfg.log_dir) / "artifacts"
+    if not artifacts_dir.exists():
+        return []
+    existing_ids = _root_hypothesis_ids_in_journal(journal)
+    seen_ids = set(existing_ids)
+    candidates: list[tuple[float, str, Path, str]] = []
+    for path in sorted(item for item in artifacts_dir.iterdir() if item.is_dir()):
+        context = _artifact_context(path)
+        if context.get("phase") != "generate":
+            continue
+        if context.get("parent_node_id") is not None:
+            continue
+        if context.get("agent_mode") != cfg.agent.mode:
+            continue
+        if _artifact_status(path) != "completed":
+            continue
+        if not (path / "response.py").exists():
+            continue
+        hypothesis_id = _artifact_hypothesis_id(path)
+        if hypothesis_id is None or hypothesis_id in seen_ids:
+            continue
+        node_ctime = _artifact_node_ctime(path, context)
+        candidates.append((node_ctime, path.name, path, hypothesis_id))
+        seen_ids.add(hypothesis_id)
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    return [(path, hypothesis_id, node_ctime) for node_ctime, _name, path, hypothesis_id in candidates]
+
+
+def recover_generated_only_root_artifacts(
+    *,
+    cfg: Config,
+    journal: Journal,
+    agent: Agent,
+) -> int:
+    if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
+        return 0
+    source_hashes = _source_hash_by_offered_hypothesis(cfg)
+    recovered = 0
+    for artifact_dir, hypothesis_id, node_ctime in _recoverable_generated_root_artifacts(
+        cfg,
+        journal,
+    ):
+        code = (artifact_dir / "response.py").read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+        raw_path = artifact_dir / "response_raw.txt"
+        raw_response = (
+            raw_path.read_text(encoding="utf-8", errors="replace")
+            if raw_path.exists()
+            else ""
+        )
+        plan = extract_text_up_to_code(raw_response).strip()
+        if not plan:
+            plan = (
+                "Recovered generated-only root code for hypothesis "
+                f"{hypothesis_id} from {artifact_dir.name}."
+            )
+        node = Node(
+            code=code,
+            plan=plan,
+            ctime=node_ctime,
+            artifact_dir_name=artifact_dir.name,
+        )
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        node.research_source_hash = source_hashes.get(hypothesis_id)
+        record_manual_prompt_node(cfg, node)
+        record_generated_only_node(
+            agent=agent,
+            journal=journal,
+            node=node,
+            experiment_id=cfg.exp_name,
+        )
+        recovered += 1
+    return recovered
 
 
 def _hypothesis_root_for_node(node: Node) -> Node:
@@ -3206,6 +3375,16 @@ def run(argv: list[str] | None = None):
         cfg=cfg,
         journal=journal,
     )
+    recovered_generated_roots = recover_generated_only_root_artifacts(
+        cfg=cfg,
+        journal=journal,
+        agent=agent,
+    )
+    if recovered_generated_roots:
+        with Status(
+            f"Recovered {recovered_generated_roots} generated root artifacts ..."
+        ):
+            save_run(cfg, journal)
     research_advisor = ResearchAdvisor(cfg=cfg, task_desc=task_desc)
     synthesis_advisor = SynthesisAdvisor(cfg=cfg, task_desc=task_desc)
     interpreter = Interpreter(
