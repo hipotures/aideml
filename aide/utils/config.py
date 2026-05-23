@@ -1,6 +1,5 @@
 """configuration and setup utils"""
 
-import datetime as dt
 import gzip
 import json
 import shutil
