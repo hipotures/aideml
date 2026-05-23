@@ -221,6 +221,19 @@ def parse_runtime_args(
     return resume, runtime, remaining
 
 
+def validate_hypothesis_root_generate_workers(cfg: Config) -> int:
+    raw = getattr(cfg.research, "hypothesis_root_generate_workers", 1)
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise ValueError(
+            "research.hypothesis_root_generate_workers must be an integer from 1 to 8."
+        )
+    if raw < 1 or raw > 8:
+        raise ValueError(
+            "research.hypothesis_root_generate_workers must be an integer from 1 to 8."
+        )
+    return raw
+
+
 def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
     resume, _runtime, remaining = parse_runtime_args(argv)
     return resume, remaining
@@ -2989,6 +3002,8 @@ def run(argv: list[str] | None = None):
                 cfg.agent.mode = "autogluon_preprocess"
         journal = Journal()
         is_resume = False
+
+    validate_hypothesis_root_generate_workers(cfg)
 
     logger.info(f'Starting run "{cfg.exp_name}"')
     os.environ["AIDE_RUN_ID"] = cfg.exp_name

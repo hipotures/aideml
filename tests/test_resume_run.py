@@ -15,6 +15,7 @@ from aide.run import (
     parse_runtime_args,
     parse_resume_args,
     record_generated_only_node,
+    validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
 from aide.utils.node_artifacts import node_artifact_dir, node_artifact_submission_path
@@ -112,6 +113,15 @@ def test_parse_runtime_args_extracts_skip_execution_flag():
     assert resume.run_id == "2-example-run"
     assert runtime.skip_execution is True
     assert remaining == ["agent.steps=200"]
+
+
+@pytest.mark.parametrize("workers", [0, -1, 9, "four"])
+def test_validate_hypothesis_root_generate_workers_rejects_invalid_values(workers):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.hypothesis_root_generate_workers = workers
+
+    with pytest.raises(ValueError, match="hypothesis_root_generate_workers"):
+        validate_hypothesis_root_generate_workers(cfg)
 
 
 def test_generated_only_nodes_are_pending_until_evaluated():
