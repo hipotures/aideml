@@ -1,6 +1,6 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py"
+    "autogluon": "autogluon-002.py"
   },
   "versions": {
     "autogluon": [
@@ -8,8 +8,15 @@
         "file": "autogluon-001.py",
         "node_id": "c6e4899204804f39996cb0c8175db033",
         "created_at": "2026-05-22T14:46:01",
-        "buggy": false,
+        "buggy": true,
         "score": 0.9499068974798044
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": false,
+        "node_id": null,
+        "score": null,
+        "created_at": "2026-05-23T07:21:47+01:00"
       }
     ]
   }
