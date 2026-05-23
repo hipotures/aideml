@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 
 from aide.journal import Journal, Node
 from aide.run import (
+    allocate_node_artifact_slot,
     find_latest_run_id,
     load_resume_state,
     mark_node_generated_only,
@@ -240,6 +241,19 @@ def test_node_artifact_dir_falls_back_to_legacy_ctime_timestamp(tmp_path):
     node = Node(code="print('x')", plan="x", ctime=1_779_492_701.0)
 
     assert node_artifact_dir(tmp_path, node).name == "20260523T013141"
+
+
+def test_allocate_node_artifact_slot_sets_unique_explicit_name(tmp_path):
+    first_ctime, first_dir_name, first_dir = allocate_node_artifact_slot(tmp_path)
+    second_ctime, second_dir_name, second_dir = allocate_node_artifact_slot(tmp_path)
+
+    assert first_ctime <= second_ctime
+    assert first_dir_name != second_dir_name
+    assert first_dir.name == first_dir_name
+    assert second_dir.name == second_dir_name
+    assert first_dir.exists()
+    assert second_dir.exists()
+    assert len(first_dir_name.split("-")[-1]) == 8
 
 
 def test_parse_runtime_args_extracts_seed_options():

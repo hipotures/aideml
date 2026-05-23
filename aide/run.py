@@ -80,6 +80,7 @@ from .utils.config import (
 from .utils.memory_debug import MemoryDebugLogger
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.node_artifacts import (
+    new_artifact_dir_name,
     node_artifact_dir as artifact_dir_for_node,
     node_artifact_submission_path as artifact_submission_path_for_node,
 )
@@ -2819,6 +2820,20 @@ def _node_artifact_dir_from_ctime(cfg, ctime: float) -> Path:
     return Path(cfg.log_dir) / "artifacts" / timestamp
 
 
+def allocate_node_artifact_slot(log_dir: Path | str) -> tuple[float, str, Path]:
+    ctime = time.time()
+    artifacts_dir = Path(log_dir) / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        dir_name = new_artifact_dir_name(ctime=ctime)
+        artifact_dir = artifacts_dir / dir_name
+        try:
+            artifact_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            continue
+        return ctime, dir_name, artifact_dir
+
+
 def enforce_journal_submission_contract(
     cfg,
     journal: Journal,
@@ -3669,12 +3684,13 @@ def run(argv: list[str] | None = None):
                                 node=parent_node,
                                 extra={"global_step": global_step},
                             )
-                            node_ctime = time.time()
-                            pending_artifact_dir = _node_artifact_dir_from_ctime(
-                                cfg,
+                            (
                                 node_ctime,
+                                artifact_dir_name,
+                                pending_artifact_dir,
+                            ) = allocate_node_artifact_slot(
+                                cfg.log_dir,
                             )
-                            pending_artifact_dir.mkdir(parents=True, exist_ok=True)
 
                             def generate_current_node() -> Node:
                                 debug_log(
@@ -3719,6 +3735,8 @@ def run(argv: list[str] | None = None):
                                     current_left_panel_view(blink_on=True)
                                 ),
                             )
+                            if result_node.artifact_dir_name is None:
+                                result_node.artifact_dir_name = artifact_dir_name
                             display_node = result_node
                         elif result_node is None:
                             result_node = synthesized.node
