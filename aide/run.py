@@ -1194,6 +1194,39 @@ def build_search_decision_debug_view(decision: dict[str, Any] | None) -> Group:
     return Group(*lines)
 
 
+def _runtime_generated_decision(node: Node, *, journal_size: int) -> dict[str, Any]:
+    parent = node.parent
+    parent_metric = (
+        parent.metric.value
+        if parent is not None
+        and parent.metric is not None
+        and parent.metric.value is not None
+        else None
+    )
+    return {
+        "step": journal_size,
+        "mode": "runtime",
+        "reason": "execute_generated_only_node",
+        "selected": {
+            "node_id": node.id,
+            "step": node.step,
+            "hypothesis_id": hypothesis_id_for_node(node),
+            "metric": None,
+            "is_buggy": node.is_buggy,
+            "status": node.status,
+            "parent_id": parent.id if parent is not None else None,
+            "parent_step": parent.step if parent is not None else None,
+            "parent_metric": parent_metric,
+            "parent_is_buggy": parent.is_buggy if parent is not None else None,
+            "child_count": len(node.children),
+        },
+        "best_node": None,
+        "counts": {},
+        "rejections": {},
+        "top_candidates": [],
+    }
+
+
 class _Overlay:
     """Render a centered overlay panel over an existing Rich renderable."""
 
@@ -3367,6 +3400,10 @@ def run(argv: list[str] | None = None):
                             display_node = result_node
                             node_already_in_journal = True
                             agent.active_parent_node = result_node.parent
+                            agent.last_search_decision = _runtime_generated_decision(
+                                result_node,
+                                journal_size=len(journal),
+                            )
                             debug_log(
                                 "resume_generated_only_node",
                                 phase="execute",

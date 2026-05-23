@@ -136,6 +136,30 @@ def test_search_decision_debug_view_explains_best_node_rejection():
     assert "children=0 beats best if score >= 0.95182" in output
 
 
+def test_search_decision_debug_view_shows_runtime_generated_node():
+    view = build_search_decision_debug_view(
+        {
+            "step": 946,
+            "mode": "runtime",
+            "reason": "execute_generated_only_node",
+            "selected": {
+                "hypothesis_id": "000946",
+                "metric": None,
+                "step": 945,
+                "status": "generated",
+                "child_count": 0,
+            },
+            "best_node": None,
+        }
+    )
+
+    output = _render_text(view)
+
+    assert "SEARCH DECISION step=946 mode=runtime" in output
+    assert "execute_generated_only_node" in output
+    assert "SELECTED        n/a*000946" in output
+
+
 def test_overlay_top_centers_with_console_edge_margin():
     assert _overlay_top(console_height=40, overlay_height=10, edge_margin=3) == 15
     assert _overlay_top(console_height=20, overlay_height=10, edge_margin=3) == 5
