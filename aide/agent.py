@@ -33,6 +33,7 @@ from .research import (
     format_research_hints_for_prompt,
     hypothesis_root_pool_exhausted,
     hypothesis_id_for_node,
+    ManualHypothesisSelection,
     load_latest_manual_research_hints,
     load_latest_research_hints,
     load_hypothesis_root_code,
@@ -1536,13 +1537,17 @@ class Agent:
         else:
             self.data_preview = build_data_overview(self.cfg)
 
-    def _draft_hypothesis_root(self) -> Node:
-        selection = select_hypothesis_for_node(
-            self.cfg,
-            journal=self.journal,
-            parent_node=None,
-            completed_steps=len(self.journal.nodes),
-        )
+    def _draft_hypothesis_root(
+        self,
+        selection: ManualHypothesisSelection | None = None,
+    ) -> Node:
+        if selection is None:
+            selection = select_hypothesis_for_node(
+                self.cfg,
+                journal=self.journal,
+                parent_node=None,
+                completed_steps=len(self.journal.nodes),
+            )
         if len(selection.hypotheses) != 1:
             raise ValueError("Hypothesis mode requires exactly one selected root.")
         hypothesis_id = selection.hypotheses[0].id
@@ -1618,6 +1623,32 @@ class Agent:
             if parent_node.is_buggy:
                 return self._debug(parent_node)
             return self._improve(parent_node)
+        finally:
+            self._pending_node_ctime = previous_ctime
+            self._pending_llm_log_dir = previous_log_dir
+
+    def generate_preselected_hypothesis_root(
+        self,
+        selection: ManualHypothesisSelection,
+        *,
+        node_ctime: float,
+        llm_log_dir: Path,
+        artifact_dir_name: str,
+    ) -> Node:
+        self.set_active_stage("generating")
+        self.active_parent_node = None
+        self.active_research_hypothesis_id = selection.hypotheses[0].id
+        self.active_research_hypothesis_log_hint = format_hypothesis_for_log_panel(
+            selection
+        )
+        previous_ctime = self._pending_node_ctime
+        previous_log_dir = self._pending_llm_log_dir
+        self._pending_node_ctime = node_ctime
+        self._pending_llm_log_dir = llm_log_dir
+        try:
+            node = self._draft_hypothesis_root(selection)
+            node.artifact_dir_name = artifact_dir_name
+            return node
         finally:
             self._pending_node_ctime = previous_ctime
             self._pending_llm_log_dir = previous_log_dir

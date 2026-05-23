@@ -1957,6 +1957,47 @@ def test_agent_missing_library_root_still_uses_llm(tmp_path, monkeypatch):
     assert node.research_hypotheses_offered == ["000001"]
 
 
+def test_agent_generates_preselected_hypothesis_root_without_selector(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.data_preview = False
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=0,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[library.hypotheses[0]],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("selector called")
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        return "I will implement hypothesis 000001.", "print('root')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_preselected_hypothesis_root(
+        selection,
+        node_ctime=1_779_492_701.0,
+        llm_log_dir=tmp_path / "artifact",
+        artifact_dir_name="20260523T220603-a1b2c3d4",
+    )
+
+    assert node.code == "print('root')"
+    assert node.ctime == 1_779_492_701.0
+    assert node.artifact_dir_name == "20260523T220603-a1b2c3d4"
+    assert node.research_hypotheses_offered == ["000001"]
+
+
 def test_agent_buggy_library_root_still_uses_llm(tmp_path, monkeypatch):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
