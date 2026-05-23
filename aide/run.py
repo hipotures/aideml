@@ -2956,6 +2956,7 @@ def run(argv: list[str] | None = None):
     table_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
     pending_artifact_dir: Path | None = None
+    display_node: Node | None = None
 
     def request_execution_interrupt() -> KeyboardInterruptAction:
         nonlocal execution_interrupt_count, operator_notice, status_override
@@ -3178,12 +3179,23 @@ def run(argv: list[str] | None = None):
         )
         focused_tree_item_index = view.index_by_id.get(focused_tree_item_id, 0)
 
+    def active_hypothesis_id_for_display() -> str | None:
+        if agent.active_research_hypothesis_id is not None:
+            return agent.active_research_hypothesis_id
+        for node in (agent.active_node, display_node, agent.active_parent_node):
+            if node is None:
+                continue
+            hypothesis_id = hypothesis_id_for_node(node)
+            if hypothesis_id is not None:
+                return hypothesis_id
+        return None
+
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
             journal,
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
-            active_hypothesis_id=agent.active_research_hypothesis_id,
+            active_hypothesis_id=active_hypothesis_id_for_display(),
             blink_on=blink_on,
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
@@ -3240,7 +3252,7 @@ def run(argv: list[str] | None = None):
                 elapsed,
                 agent_mode=cfg.agent.mode,
                 active_artifact_dir=active_artifact_dir,
-                active_hypothesis_id=agent.active_research_hypothesis_id,
+                active_hypothesis_id=active_hypothesis_id_for_display(),
             )
         )
 
@@ -3343,6 +3355,7 @@ def run(argv: list[str] | None = None):
                     synthesized: SynthesisNode | None = None
                     result_node: Node | None = None
                     node_already_in_journal = False
+                    display_node = None
                     try:
                         pending_generated_node = (
                             None
@@ -3351,6 +3364,7 @@ def run(argv: list[str] | None = None):
                         )
                         if pending_generated_node is not None:
                             result_node = pending_generated_node
+                            display_node = result_node
                             node_already_in_journal = True
                             agent.active_parent_node = result_node.parent
                             debug_log(
@@ -3495,8 +3509,10 @@ def run(argv: list[str] | None = None):
                                     current_left_panel_view(blink_on=True)
                                 ),
                             )
+                            display_node = result_node
                         elif result_node is None:
                             result_node = synthesized.node
+                            display_node = result_node
                         pending_artifact_dir = None
                         assert result_node is not None
 
