@@ -34,6 +34,7 @@ from .research import (
     record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
     reserve_hypothesis_roots,
+    save_hypothesis_root_code,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -517,6 +518,42 @@ def recover_generated_only_root_artifacts(
             experiment_id=cfg.exp_name,
         )
         recovered += 1
+    return recovered
+
+
+def recover_buggy_root_repair_versions(*, cfg: Config, journal: Journal) -> int:
+    if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
+        return 0
+    recovered = 0
+    for node in journal.nodes:
+        if node.parent is None:
+            continue
+        if node.status == "generated":
+            continue
+        root = node.parent
+        while root.parent is not None:
+            root = root.parent
+        if not root.is_buggy:
+            continue
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None:
+            continue
+        if hypothesis_id_for_node(root) != hypothesis_id:
+            continue
+        score = None if node.metric is None else node.metric.value
+        path = save_hypothesis_root_code(
+            cfg,
+            hypothesis_id=hypothesis_id,
+            code=node.code,
+            is_buggy=bool(node.is_buggy),
+            node_id=node.id,
+            score=score,
+            created_at=dt.datetime.fromtimestamp(node.ctime).isoformat(
+                timespec="seconds"
+            ),
+            force_new_version=True,
+        )
+        recovered += int(path.exists())
     return recovered
 
 
@@ -3422,6 +3459,10 @@ def run(argv: list[str] | None = None):
         with Status(
             f"Recovered {recovered_generated_roots} generated root artifacts ..."
         ):
+            save_run(cfg, journal)
+    recovered_root_repairs = recover_buggy_root_repair_versions(cfg=cfg, journal=journal)
+    if recovered_root_repairs:
+        with Status(f"Recovered {recovered_root_repairs} buggy root repairs ..."):
             save_run(cfg, journal)
     research_advisor = ResearchAdvisor(cfg=cfg, task_desc=task_desc)
     synthesis_advisor = SynthesisAdvisor(cfg=cfg, task_desc=task_desc)

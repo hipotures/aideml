@@ -400,6 +400,7 @@ def save_hypothesis_root_code(
     node_id: str | None = None,
     score: float | None = None,
     created_at: str | None = None,
+    force_new_version: bool = False,
     repo_root: Path = REPO_ROOT,
 ) -> Path:
     """Save a generated root hypothesis node as the single flat-library file."""
@@ -444,7 +445,19 @@ def save_hypothesis_root_code(
     if not isinstance(mode_versions, list):
         versions[agent_mode] = mode_versions = []
 
-    if highest_path is not None and (is_buggy or not highest_is_buggy):
+    existing_entry = None
+    if node_id is not None:
+        for entry in mode_versions:
+            if isinstance(entry, dict) and entry.get("node_id") == node_id:
+                existing_entry = entry
+                break
+    if existing_entry is not None and isinstance(existing_entry.get("file"), str):
+        path = hypothesis_dir / existing_entry["file"]
+    elif force_new_version:
+        next_version = highest_version + 1 if highest_path is not None else 1
+        path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
+        path.write_text(code, encoding="utf-8")
+    elif highest_path is not None and (is_buggy or not highest_is_buggy):
         scored_existing = (
             highest_entry is not None
             and _numeric_manifest_score(highest_entry.get("score")) is not None

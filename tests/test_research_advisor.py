@@ -2384,6 +2384,73 @@ def test_reviewed_llm_hypothesis_root_after_buggy_highest_saves_next_version(
     ]
 
 
+def test_reviewed_buggy_root_repair_saves_next_root_version(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                            "node_id": "bug-root",
+                            "score": None,
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    root = Node(code="raise RuntimeError('bug')\n", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+    root.is_buggy = True
+    child = Node(code="print('fixed root')\n", plan="fix", parent=root)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000001"]
+
+    agent.review_node(
+        child,
+        ExecutionResult(
+            term_out=[
+                'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+                '"metric": 0.92, "lower_is_better": false, '
+                '"research_hypotheses_llm_claimed_used": ["000001"]}'
+            ],
+            exec_time=1.0,
+            exc_type=None,
+        ),
+    )
+
+    assert (hypothesis_dir / "legacy-001.py").read_text() == (
+        "raise RuntimeError('bug')\n"
+    )
+    assert (hypothesis_dir / "legacy-002.py").read_text() == "print('fixed root')\n"
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["active"]["legacy"] == "legacy-002.py"
+    assert [entry["file"] for entry in manifest["versions"]["legacy"]] == [
+        "legacy-001.py",
+        "legacy-002.py",
+    ]
+
+
 def test_branch_hypothesis_node_does_not_save_library_root(tmp_path, monkeypatch):
     cfg = _manual_cfg(tmp_path)
     _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")

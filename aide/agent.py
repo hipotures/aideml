@@ -1674,8 +1674,22 @@ class Agent:
         self.save_hypothesis_root_code_for_node(node)
 
     def save_hypothesis_root_code_for_node(self, node: Node) -> None:
-        if node.parent is not None or node.research_mode != "hypothesis":
+        if node.research_mode != "hypothesis":
             return
+        force_new_version = False
+        if node.parent is not None:
+            root = node.parent
+            while root.parent is not None:
+                root = root.parent
+            root_hypothesis_id = hypothesis_id_for_node(root)
+            node_hypothesis_id = hypothesis_id_for_node(node)
+            if (
+                not root.is_buggy
+                or root_hypothesis_id is None
+                or node_hypothesis_id != root_hypothesis_id
+            ):
+                return
+            force_new_version = True
         hypothesis_id = hypothesis_id_for_node(node)
         if hypothesis_id is None:
             return
@@ -1689,6 +1703,7 @@ class Agent:
             node_id=node.id,
             score=score,
             created_at=created_at,
+            force_new_version=force_new_version,
         )
 
     def clear_active_step(self) -> None:
