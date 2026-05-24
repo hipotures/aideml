@@ -1029,7 +1029,7 @@ class Agent:
             "No parts of the code should be skipped, don't terminate the before finishing the script.",
             "Your response should only contain a single code block.",
             f"Be aware of the running time of the code, it should complete within {humanize.naturaldelta(self.cfg.exec.timeout)}.",
-            'If you run a post-CV blend-weight search with many independent AUC/ROC-AUC evaluations, do not evaluate thousands of `roc_auc_score` calls serially. Use `joblib.Parallel` with `n_jobs=min(10, os.cpu_count() or 1)` and `prefer="threads"` to avoid copying large OOF arrays; print "Evaluating N blend candidates with M workers" before starting. Keep candidate grids bounded, and fall back to a simple 1D blend if joblib is unavailable.',
+            'If you run a post-CV blend-weight search with many independent AUC/ROC-AUC evaluations, do not evaluate thousands of `roc_auc_score` calls serially. Use `joblib.Parallel` with `n_jobs=min(16, os.cpu_count() or 1)` and `prefer="threads"` to avoid copying large OOF arrays; print "Evaluating N blend candidates with M workers" before starting. Keep candidate grids bounded, and fall back to a simple 1D blend if joblib is unavailable.',
             "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
             'All the provided input data is stored in "./input" directory.',
             '**If there is test data provided for this task, please save the test predictions in a `submission.csv` file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
@@ -1683,8 +1683,13 @@ class Agent:
                 root = root.parent
             root_hypothesis_id = hypothesis_id_for_node(root)
             node_hypothesis_id = hypothesis_id_for_node(node)
+            root_is_buggy = (
+                bool(root.is_buggy)
+                or root.status == "bug"
+                or root.is_submission_contract_error
+            )
             if (
-                not root.is_buggy
+                not root_is_buggy
                 or root_hypothesis_id is None
                 or node_hypothesis_id != root_hypothesis_id
             ):

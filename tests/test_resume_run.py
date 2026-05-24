@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-import aide.research as research
 from aide.agent import Agent
 from aide.journal import Journal, Node
 from aide.run import (
@@ -21,7 +20,6 @@ from aide.run import (
     parse_resume_args,
     ParallelRootFailureState,
     record_generated_only_node,
-    recover_buggy_root_repair_versions,
     recover_generated_only_root_artifacts,
     validate_hypothesis_root_generate_workers,
 )
@@ -297,103 +295,6 @@ def test_recover_generated_only_root_artifacts_materializes_completed_orphans(
     assert node.research_source_hash == "sha256:test"
     usage = json.loads((run_research_dir / "usage.json").read_text())
     assert usage["000123"]["prompt_node_ids"] == [node.id]
-
-
-def test_recover_buggy_root_repair_versions_saves_child_fix(
-    tmp_path,
-    monkeypatch,
-):
-    cfg = _load_cfg(use_cli_args=False)
-    data_dir = tmp_path / "playground-series-s6e5"
-    data_dir.mkdir()
-    cfg.data_dir = str(data_dir)
-    cfg.goal = "test goal"
-    cfg.log_dir = tmp_path / "logs" / "2-existing-run"
-    cfg.workspace_dir = tmp_path / "workspaces" / "2-existing-run"
-    cfg.exp_name = "2-existing-run"
-    cfg.research.enabled = True
-    cfg.research.mode = "hypothesis"
-    cfg.agent.mode = "legacy"
-    cfg = prep_cfg(cfg)
-
-    hypothesis_dir = (
-        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000123"
-    )
-    hypothesis_dir.mkdir(parents=True)
-    (hypothesis_dir / "hypothesis-000123.json").write_text(
-        json.dumps(
-            {
-                "enabled": True,
-                "agent_modes": ["legacy"],
-                "title": "Root bug",
-                "summary": "summary",
-                "rationale": "rationale",
-                "implementation_hint": "implementation",
-                "expected_effect": "effect",
-                "risk": "risk",
-            }
-        ),
-        encoding="utf-8",
-    )
-    (hypothesis_dir / "legacy-001.py").write_text(
-        "raise RuntimeError('bug')\n",
-        encoding="utf-8",
-    )
-    (hypothesis_dir / "code_manifest.json").write_text(
-        json.dumps(
-            {
-                "versions": {
-                    "legacy": [
-                        {
-                            "file": "legacy-001.py",
-                            "buggy": True,
-                            "node_id": "root-node",
-                            "score": None,
-                        }
-                    ]
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        "aide.run.save_hypothesis_root_code",
-        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
-            _cfg,
-            **kwargs,
-            repo_root=tmp_path,
-        ),
-    )
-
-    journal = Journal()
-    root = Node(code="raise RuntimeError('bug')\n", plan="root")
-    root.research_mode = "hypothesis"
-    root.research_hypotheses_offered = ["000123"]
-    root.is_buggy = True
-    root.metric = MetricValue(None, maximize=True)
-    journal.append(root)
-    child = Node(code="print('fixed')\n", plan="fix", parent=root)
-    child.research_mode = "hypothesis"
-    child.research_hypotheses_offered = ["000123"]
-    child.is_buggy = False
-    child.metric = MetricValue(0.92, maximize=True)
-    journal.append(child)
-
-    recovered = recover_buggy_root_repair_versions(cfg=cfg, journal=journal)
-
-    assert recovered == 1
-    assert (hypothesis_dir / "legacy-002.py").read_text() == "print('fixed')\n"
-    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
-    assert manifest["active"]["legacy"] == "legacy-002.py"
-    assert manifest["versions"]["legacy"][1]["node_id"] == child.id
-    assert manifest["versions"]["legacy"][1]["score"] == 0.92
-
-    recover_buggy_root_repair_versions(cfg=cfg, journal=journal)
-
-    assert sorted(path.name for path in hypothesis_dir.glob("legacy-*.py")) == [
-        "legacy-001.py",
-        "legacy-002.py",
-    ]
 
 
 def test_generated_only_nodes_are_not_scored_good_candidates():

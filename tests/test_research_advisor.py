@@ -2451,6 +2451,68 @@ def test_reviewed_buggy_root_repair_saves_next_root_version(tmp_path, monkeypatc
     ]
 
 
+def test_reviewed_status_bug_root_repair_saves_next_root_version(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("raise RuntimeError('bug')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                            "node_id": "bug-root",
+                            "score": None,
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    root = Node(code="raise RuntimeError('bug')\n", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000001"]
+    root.status = "bug"
+    root.is_buggy = False
+    child = Node(code="print('fixed root')\n", plan="fix", parent=root)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000001"]
+
+    agent.review_node(
+        child,
+        ExecutionResult(
+            term_out=[
+                'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+                '"metric": 0.92, "lower_is_better": false, '
+                '"research_hypotheses_llm_claimed_used": ["000001"]}'
+            ],
+            exec_time=1.0,
+            exc_type=None,
+        ),
+    )
+
+    assert (hypothesis_dir / "legacy-002.py").read_text() == "print('fixed root')\n"
+
+
 def test_branch_hypothesis_node_does_not_save_library_root(tmp_path, monkeypatch):
     cfg = _manual_cfg(tmp_path)
     _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
@@ -2861,6 +2923,7 @@ def test_legacy_agent_prompt_parallelizes_expensive_blend_search(tmp_path):
     guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
     assert any("blend-weight search" in line for line in guidelines)
     assert any("joblib.Parallel" in line for line in guidelines)
+    assert any("n_jobs=min(16, os.cpu_count() or 1)" in line for line in guidelines)
     assert any("prefer=\"threads\"" in line for line in guidelines)
     assert any("Evaluating N blend candidates with M workers" in line for line in guidelines)
 
