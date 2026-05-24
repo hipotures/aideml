@@ -553,6 +553,29 @@ def test_record_to_candidate_preserves_algo_for_kaggle_message_and_registry(tmp_
     assert candidate.algo == "AG"
 
 
+def test_record_to_candidate_accepts_suffixed_artifact_timestamp(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,target\n1,0.8\n")
+    record = {
+        "kind": "source_node",
+        "competition": "playground-series-s6e5",
+        "run": "2-ag-run",
+        "step": 12,
+        "node_id": "node-ag",
+        "timestamp": "20260504T134159-838a0027",
+        "local_score": 0.95026,
+        "metric_maximize": True,
+        "is_buggy": False,
+        "submission_path": str(submission_path),
+        "sha256": "13bc36ab26abcdef",
+    }
+
+    candidate = kaggle_submission_lab._record_to_candidate(record)
+
+    assert candidate.timestamp == "20260504T134159-838a0027"
+    assert candidate.ctime == _ctime("20260504T134159")
+
+
 def test_sync_registry_from_kaggle_updates_public_score(tmp_path, monkeypatch):
     registry = kaggle_submission_lab.smart.SubmissionRegistry(
         tmp_path / "registry.json",

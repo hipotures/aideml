@@ -482,6 +482,14 @@ def _timestamp_date(value: Any) -> str:
     return text[:8] if len(text) >= 8 else text
 
 
+def _record_timestamp_ctime(value: Any) -> float:
+    text = str(value or "")
+    match = re.match(r"^\d{8}T\d{6}", text)
+    if match is None:
+        raise ValueError(f"Invalid artifact timestamp: {text!r}")
+    return dt.datetime.strptime(match.group(0), "%Y%m%dT%H%M%S").timestamp()
+
+
 def _display_date(value: Any) -> str:
     text = smart._date_to_string(value) or ""
     if re.match(r"\d{4}-\d{2}-\d{2}", text):
@@ -820,7 +828,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         parent_node_id=None,
         ancestor_node_ids=(),
         timestamp=str(record.get("timestamp")),
-        ctime=dt.datetime.strptime(str(record.get("timestamp")), "%Y%m%dT%H%M%S").timestamp(),
+        ctime=_record_timestamp_ctime(record.get("timestamp")),
         local_score=record.get("local_score"),
         metric_maximize=record.get("metric_maximize", True),
         is_buggy=bool(record.get("is_buggy")),
