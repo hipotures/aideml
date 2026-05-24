@@ -345,7 +345,7 @@ def record_generated_only_node(
     experiment_id: str,
 ) -> None:
     mark_node_generated_only(node)
-    agent.save_hypothesis_root_code_for_node(node)
+    agent.save_hypothesis_root_code_for_node(node, activate=False)
     append_node_with_best_score_notification(
         journal=journal,
         node=node,

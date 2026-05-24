@@ -192,9 +192,16 @@ def test_record_generated_only_node_marks_saves_and_appends():
 
     class AgentStub:
         saved_node: Node | None = None
+        activate: bool | None = None
 
-        def save_hypothesis_root_code_for_node(self, node: Node) -> None:
+        def save_hypothesis_root_code_for_node(
+            self,
+            node: Node,
+            *,
+            activate: bool = True,
+        ) -> None:
             self.saved_node = node
+            self.activate = activate
 
     agent = AgentStub()
 
@@ -208,6 +215,7 @@ def test_record_generated_only_node_marks_saves_and_appends():
     assert node.status == "generated"
     assert journal.nodes == [node]
     assert agent.saved_node is node
+    assert agent.activate is False
 
 
 def test_recover_generated_only_root_artifacts_materializes_completed_orphans(
@@ -276,7 +284,11 @@ def test_recover_generated_only_root_artifacts_materializes_completed_orphans(
 
     journal = Journal()
     agent = Agent(task_desc="task", cfg=cfg, journal=journal)
-    monkeypatch.setattr(agent, "save_hypothesis_root_code_for_node", lambda _node: None)
+    monkeypatch.setattr(
+        agent,
+        "save_hypothesis_root_code_for_node",
+        lambda _node, *, activate=True: None,
+    )
 
     recovered = recover_generated_only_root_artifacts(
         cfg=cfg,

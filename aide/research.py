@@ -355,14 +355,20 @@ def load_hypothesis_root_code(
         return None
 
     manifest = _load_code_manifest(hypothesis_dir)
-    version = max(versions)
-    path = versions[version]
+    active_file = _manifest_active_file(manifest, agent_mode)
+    active_path = hypothesis_dir / active_file if active_file is not None else None
+    if active_path is not None and active_path in versions.values():
+        path = active_path
+        version = next(number for number, candidate in versions.items() if candidate == path)
+    else:
+        version = max(versions)
+        path = versions[version]
     entry = _manifest_entry_for_file(
         manifest,
         agent_mode=agent_mode,
         file_name=path.name,
     )
-    if entry is not None and entry.get("buggy") is True:
+    if entry is not None and not _manifest_entry_is_loadable(entry):
         return None
     return HypothesisRootCode(
         hypothesis_id=hypothesis_id,
@@ -389,6 +395,20 @@ def _manifest_entry_for_file(
         if isinstance(entry, dict) and entry.get("file") == file_name:
             return entry
     return None
+
+
+def _manifest_entry_is_loadable(entry: dict[str, Any]) -> bool:
+    if entry.get("buggy") is True or entry.get("status") == "bug":
+        return False
+    if entry.get("status") == "recovered":
+        return False
+    if (
+        entry.get("recovered_from") == "response.py"
+        and entry.get("node_id") is None
+        and _numeric_manifest_score(entry.get("score")) is None
+    ):
+        return False
+    return True
 
 
 def save_hypothesis_root_code(
@@ -433,8 +453,10 @@ def save_hypothesis_root_code(
         highest_entry.get("buggy") is True if highest_entry is not None else False
     )
 
+    status = "generated" if not activate else "bug" if is_buggy else "ok"
     metadata = {
-        "buggy": bool(is_buggy),
+        "buggy": bool(is_buggy) if activate else None,
+        "status": status,
         "node_id": node_id,
         "score": score,
         "created_at": created_at,

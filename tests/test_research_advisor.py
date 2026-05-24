@@ -1830,7 +1830,7 @@ def test_agent_includes_hard_hypothesis_contract_in_draft_prompt(
     assert node.research_source_hash == "sha256:test"
 
 
-def test_hypothesis_root_code_loader_uses_highest_numbered_file(tmp_path):
+def test_hypothesis_root_code_loader_uses_active_manifest_file(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.agent.mode = AGENT_MODE
     _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
@@ -1851,8 +1851,8 @@ def test_hypothesis_root_code_loader_uses_highest_numbered_file(tmp_path):
     )
 
     assert root_code is not None
-    assert root_code.path.name == "autogluon-002.py"
-    assert root_code.code == "print('two')\n"
+    assert root_code.path.name == "autogluon-001.py"
+    assert root_code.code == "print('one')\n"
 
 
 def test_hypothesis_root_code_loader_uses_highest_legacy_file(tmp_path):
@@ -1873,6 +1873,50 @@ def test_hypothesis_root_code_loader_uses_highest_legacy_file(tmp_path):
     assert root_code is not None
     assert root_code.path.name == "legacy-002.py"
     assert root_code.code == "print('two')\n"
+
+
+def test_hypothesis_root_code_loader_ignores_unexecuted_recovered_response(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('old ok')\n")
+    (hypothesis_dir / "legacy-002.py").write_text("print('recovered')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-002.py"},
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                            "status": "ok",
+                        },
+                        {
+                            "file": "legacy-002.py",
+                            "buggy": False,
+                            "score": None,
+                            "node_id": None,
+                            "recovered_from": "response.py",
+                        },
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is None
 
 
 def test_hypothesis_root_code_loader_loads_single_unmanifested_file(tmp_path):
@@ -2257,14 +2301,17 @@ def test_generated_only_hypothesis_root_saves_single_file(tmp_path, monkeypatch)
     node.research_mode = "hypothesis"
     node.research_hypotheses_offered = ["000001"]
 
-    agent.save_hypothesis_root_code_for_node(node)
+    agent.save_hypothesis_root_code_for_node(node, activate=False)
 
     hypothesis_dir = (
         tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
     )
     assert (hypothesis_dir / "legacy-001.py").read_text() == "print('generated root')\n"
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
-    assert manifest["active"]["legacy"] == "legacy-001.py"
+    entry = manifest["versions"]["legacy"][0]
+    assert entry["buggy"] is None
+    assert entry["status"] == "generated"
+    assert manifest.get("active", {}).get("legacy") is None
 
 
 def test_reviewed_generated_hypothesis_root_updates_manifest_score(
@@ -2287,11 +2334,12 @@ def test_reviewed_generated_hypothesis_root_updates_manifest_score(
     node.research_mode = "hypothesis"
     node.research_hypotheses_offered = ["000001"]
 
-    agent.save_hypothesis_root_code_for_node(node)
+    agent.save_hypothesis_root_code_for_node(node, activate=False)
     hypothesis_dir = (
         tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
     )
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["versions"]["legacy"][0]["status"] == "generated"
     assert manifest["versions"]["legacy"][0]["score"] is None
 
     agent.review_node(
@@ -2344,8 +2392,20 @@ def test_generated_hypothesis_root_can_be_saved_without_activating(
     )
     assert (hypothesis_dir / "legacy-001.py").read_text() == "print('generated root')\n"
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
-    assert manifest["versions"]["legacy"][0]["score"] is None
+    entry = manifest["versions"]["legacy"][0]
+    assert entry["buggy"] is None
+    assert entry["status"] == "generated"
+    assert entry["score"] is None
     assert manifest.get("active", {}).get("legacy") is None
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "legacy-001.py"
 
     agent.review_node(
         node,
@@ -2362,7 +2422,10 @@ def test_generated_hypothesis_root_can_be_saved_without_activating(
 
     assert list(hypothesis_dir.glob("legacy-*.py")) == [hypothesis_dir / "legacy-001.py"]
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
-    assert manifest["versions"]["legacy"][0]["score"] == 0.94783
+    entry = manifest["versions"]["legacy"][0]
+    assert entry["buggy"] is False
+    assert entry["status"] == "ok"
+    assert entry["score"] == 0.94783
     assert manifest["active"]["legacy"] == "legacy-001.py"
 
 
