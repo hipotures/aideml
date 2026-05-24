@@ -430,13 +430,6 @@ def save_hypothesis_root_code(
     highest_is_buggy = (
         highest_entry.get("buggy") is True if highest_entry is not None else False
     )
-    if highest_path is not None and (is_buggy or not highest_is_buggy):
-        return highest_path
-
-    next_version = highest_version + 1 if highest_path is not None else 1
-    path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
-
-    path.write_text(code, encoding="utf-8")
 
     metadata = {
         "buggy": bool(is_buggy),
@@ -450,6 +443,20 @@ def save_hypothesis_root_code(
     mode_versions = versions.setdefault(agent_mode, [])
     if not isinstance(mode_versions, list):
         versions[agent_mode] = mode_versions = []
+
+    if highest_path is not None and (is_buggy or not highest_is_buggy):
+        scored_existing = (
+            highest_entry is not None
+            and _numeric_manifest_score(highest_entry.get("score")) is not None
+        )
+        if is_buggy and scored_existing:
+            return highest_path
+        path = highest_path
+    else:
+        next_version = highest_version + 1 if highest_path is not None else 1
+        path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
+        path.write_text(code, encoding="utf-8")
+
     versions[agent_mode] = [
         entry
         for entry in mode_versions
