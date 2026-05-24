@@ -4262,6 +4262,10 @@ def run(argv: list[str] | None = None):
                             )
                             if result_node.artifact_dir_name is None:
                                 result_node.artifact_dir_name = artifact_dir_name
+                            agent.save_hypothesis_root_code_for_node(
+                                result_node,
+                                activate=False,
+                            )
                             display_node = result_node
                         elif result_node is None:
                             result_node = synthesized.node

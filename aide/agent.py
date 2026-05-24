@@ -1673,7 +1673,12 @@ class Agent:
     def _save_reviewed_hypothesis_root_code(self, node: Node) -> None:
         self.save_hypothesis_root_code_for_node(node)
 
-    def save_hypothesis_root_code_for_node(self, node: Node) -> None:
+    def save_hypothesis_root_code_for_node(
+        self,
+        node: Node,
+        *,
+        activate: bool = True,
+    ) -> None:
         if node.research_mode != "hypothesis":
             return
         force_new_version = False
@@ -1709,6 +1714,7 @@ class Agent:
             score=score,
             created_at=created_at,
             force_new_version=force_new_version,
+            activate=activate,
         )
 
     def clear_active_step(self) -> None:

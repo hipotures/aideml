@@ -401,6 +401,7 @@ def save_hypothesis_root_code(
     score: float | None = None,
     created_at: str | None = None,
     force_new_version: bool = False,
+    activate: bool = True,
     repo_root: Path = REPO_ROOT,
 ) -> Path:
     """Save a generated root hypothesis node as the single flat-library file."""
@@ -479,9 +480,9 @@ def save_hypothesis_root_code(
     active = manifest.setdefault("active", {})
     if not isinstance(active, dict):
         manifest["active"] = active = {}
-    if not is_buggy:
+    if activate and not is_buggy:
         active[agent_mode] = path.name
-    else:
+    elif activate:
         active.pop(agent_mode, None)
     _write_json(_manifest_path(hypothesis_dir), manifest)
     return path

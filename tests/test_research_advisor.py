@@ -2317,6 +2317,55 @@ def test_reviewed_generated_hypothesis_root_updates_manifest_score(
     assert manifest["active"]["legacy"] == "legacy-001.py"
 
 
+def test_generated_hypothesis_root_can_be_saved_without_activating(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    monkeypatch.setattr(
+        "aide.agent.save_hypothesis_root_code",
+        lambda _cfg, **kwargs: research.save_hypothesis_root_code(
+            _cfg,
+            **kwargs,
+            repo_root=tmp_path,
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('generated root')\n", plan="root")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+
+    agent.save_hypothesis_root_code_for_node(node, activate=False)
+
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    assert (hypothesis_dir / "legacy-001.py").read_text() == "print('generated root')\n"
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["versions"]["legacy"][0]["score"] is None
+    assert manifest.get("active", {}).get("legacy") is None
+
+    agent.review_node(
+        node,
+        ExecutionResult(
+            term_out=[
+                'AIDE_RESULT_JSON: {"is_bug": false, "summary": "ok", '
+                '"metric": 0.94783, "lower_is_better": false, '
+                '"research_hypotheses_llm_claimed_used": ["000001"]}'
+            ],
+            exec_time=1.0,
+            exc_type=None,
+        ),
+    )
+
+    assert list(hypothesis_dir.glob("legacy-*.py")) == [hypothesis_dir / "legacy-001.py"]
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    assert manifest["versions"]["legacy"][0]["score"] == 0.94783
+    assert manifest["active"]["legacy"] == "legacy-001.py"
+
+
 def test_reviewed_llm_hypothesis_root_after_buggy_highest_saves_next_version(
     tmp_path,
     monkeypatch,
