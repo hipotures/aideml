@@ -565,6 +565,38 @@ def test_hypothesis_search_debugs_buggy_root_before_branching_after_root_sweep(
     assert selected is buggy_root
 
 
+def test_hypothesis_search_debugs_failed_root_before_branching_after_root_sweep(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+
+    journal = Journal()
+    failed_root = _hypothesis_node(_failed_node(), "000101")
+    good_root = _hypothesis_node(_good_node(0.9510), "000102")
+    for node in [failed_root, good_root]:
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is failed_root
+
+
 def test_hypothesis_search_does_not_force_non_root_bug_before_branching(
     tmp_path,
     monkeypatch,

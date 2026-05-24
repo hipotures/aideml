@@ -441,6 +441,16 @@ def _metric_value(node: Node | None) -> float | None:
     return float(value) if value is not None else None
 
 
+def _is_debuggable_failed_hypothesis_root(node: Node) -> bool:
+    return (
+        node.status == "failed"
+        and node.parent is None
+        and node.code
+        and hypothesis_id_for_node(node) is not None
+        and not node.is_submission_contract_error
+    )
+
+
 def _search_node_payload(node: Node | None) -> dict[str, Any] | None:
     if node is None:
         return None
@@ -691,7 +701,10 @@ class Agent:
                 and n.is_leaf
                 and n.debug_depth < search_cfg.max_debug_depth
                 and not n.is_submission_contract_error
-                and not n.is_terminal_failure
+                and (
+                    not n.is_terminal_failure
+                    or _is_debuggable_failed_hypothesis_root(n)
+                )
                 and _is_in_forced_hypothesis_root(n, forced_hypothesis_root)
             )
         ]
