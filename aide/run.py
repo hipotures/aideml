@@ -2325,6 +2325,7 @@ def build_hypothesis_phase_status(
     journal: Journal,
     *,
     include_generated_roots: bool = True,
+    selected_hypothesis_ids: tuple[str, ...] | None = None,
 ) -> Text | None:
     if not cfg.research.enabled or getattr(cfg.research, "mode", "llm") != "hypothesis":
         return None
@@ -2333,7 +2334,10 @@ def build_hypothesis_phase_status(
     if total_budget <= 0:
         return None
 
-    compatible_hypothesis_ids = _compatible_hypothesis_ids_for_phase_status(cfg)
+    selected_ids = set(selected_hypothesis_ids or ())
+    compatible_hypothesis_ids = (
+        selected_ids if selected_ids else _compatible_hypothesis_ids_for_phase_status(cfg)
+    )
     root_count = _count_hypothesis_root_nodes(
         journal,
         include_generated=include_generated_roots,
@@ -2347,27 +2351,34 @@ def build_hypothesis_phase_status(
         getattr(cfg.research, "hypothesis_root_limit", 100),
         100,
     )
-    compatible_count = (
-        len(compatible_hypothesis_ids)
-        if compatible_hypothesis_ids is not None
-        else _source_ref_compatible_hypothesis_count(cfg)
-    )
-    root_limit = (
-        effective_hypothesis_root_limit(cfg, compatible_count=compatible_count)
-        if compatible_count is not None
-        else configured_root_limit
-    )
+    if selected_ids:
+        root_limit = len(selected_ids)
+    else:
+        compatible_count = (
+            len(compatible_hypothesis_ids)
+            if compatible_hypothesis_ids is not None
+            else _source_ref_compatible_hypothesis_count(cfg)
+        )
+        root_limit = (
+            effective_hypothesis_root_limit(cfg, compatible_count=compatible_count)
+            if compatible_count is not None
+            else configured_root_limit
+        )
     exploration_budget = min(
         max(root_limit, all_root_count),
         total_budget,
     )
     exploitation_budget = max(total_budget - exploration_budget, 0)
-    completed_count = min(
-        _count_hypothesis_completed_nodes(
-            journal,
-            include_generated=include_generated_roots,
-        ),
-        total_budget,
+    completed_count = (
+        root_count
+        if selected_ids
+        else min(
+            _count_hypothesis_completed_nodes(
+                journal,
+                include_generated=include_generated_roots,
+            ),
+            total_budget,
+        )
     )
     exploitation_count = max(completed_count - root_count, 0)
     if exploitation_budget > 0:
@@ -2832,6 +2843,7 @@ def build_run_data(
     include_generated_hypothesis_roots: bool = True,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
+    selected_hypothesis_ids: tuple[str, ...] = (),
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -2858,6 +2870,7 @@ def build_run_data(
             cfg,
             journal,
             include_generated_roots=include_generated_hypothesis_roots,
+            selected_hypothesis_ids=selected_hypothesis_ids,
         )
         if cfg is not None
         else None
@@ -3897,6 +3910,7 @@ def run(argv: list[str] | None = None):
                     include_generated_hypothesis_roots=runtime_options.skip_execution,
                     skip_execution=runtime_options.skip_execution,
                     hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+                    selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
                 ),
                 (0, 1, 0, 1),
             ),

@@ -1510,6 +1510,36 @@ def test_hypothesis_phase_status_caps_configured_limit_to_compatible_count(tmp_p
     assert "477/1000" not in output
 
 
+def test_hypothesis_phase_status_uses_selected_generate_only_ids(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 202
+    cfg.agent.steps = 1500
+    cfg = prep_cfg(cfg)
+    journal = Journal()
+    for idx in range(1, 203):
+        node = _hypothesis_node(_good_node(0.95), f"{idx:06d}")
+        if idx <= 39:
+            mark_node_generated_only(node)
+        journal.append(node)
+
+    output = _render_text(
+        build_hypothesis_phase_status(
+            cfg,
+            journal,
+            selected_hypothesis_ids=tuple(f"{idx:06d}" for idx in range(1, 40)),
+        )
+    )
+
+    assert "⬢ Phase      exploration 39/39 · exploitation 0/1461" in output
+    assert "202/202" not in output
+
+
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
