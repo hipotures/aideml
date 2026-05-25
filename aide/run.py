@@ -401,6 +401,10 @@ def save_parallel_generate_only_run(
     return GENERATE_ONLY_FINISHED_MESSAGE
 
 
+def should_cleanup_workspace_on_exit(*, is_resume: bool, journal: Journal) -> bool:
+    return not is_resume and len(journal) == 0
+
+
 def _artifact_context(path: Path) -> dict[str, Any]:
     context_path = path / "context.json"
     if not context_path.exists():
@@ -1834,7 +1838,7 @@ def emit_completion_bell(
 ) -> None:
     def ring() -> None:
         try:
-            with open(tty_path, "a", encoding="utf-8") as tty:
+            with open(tty_path, "w") as tty:
                 tty.write("\x07")
                 tty.flush()
         except OSError:
@@ -3517,7 +3521,7 @@ def run(argv: list[str] | None = None):
                 save_run(cfg, journal)
 
     def cleanup():
-        if not is_resume and global_step == 0:
+        if should_cleanup_workspace_on_exit(is_resume=is_resume, journal=journal):
             shutil.rmtree(cfg.workspace_dir)
 
     atexit.register(cleanup)

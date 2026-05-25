@@ -22,6 +22,7 @@ from aide.run import (
     record_generated_only_node,
     recover_generated_only_root_artifacts,
     save_parallel_generate_only_run,
+    should_cleanup_workspace_on_exit,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -266,6 +267,15 @@ def test_save_parallel_generate_only_run_persists_journal(tmp_path):
     assert len(loaded.nodes) == 1
     assert loaded.nodes[0].status == "generated"
     assert loaded.nodes[0].code == "print('generated')"
+
+
+def test_generated_only_journal_prevents_workspace_cleanup():
+    journal = Journal()
+    node = Node(code="print('generated')", plan="generated")
+    mark_node_generated_only(node)
+    journal.append(node)
+
+    assert should_cleanup_workspace_on_exit(is_resume=False, journal=journal) is False
 
 
 def test_recover_generated_only_root_artifacts_materializes_completed_orphans(

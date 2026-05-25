@@ -1,3 +1,4 @@
+import builtins
 import datetime as dt
 import json
 from pathlib import Path
@@ -428,12 +429,32 @@ def test_final_tree_renderable_prints_complete_tree_without_focus():
     assert "\x1b[7m" not in output
 
 
-def test_emit_completion_bell_writes_two_bells_to_tty_path(tmp_path):
-    tty_path = tmp_path / "tty"
+def test_emit_completion_bell_writes_two_bells_to_tty_path(monkeypatch):
+    writes = []
 
-    emit_completion_bell(tty_path=tty_path, sleep_seconds=0)
+    class FakeTty:
+        def __enter__(self):
+            return self
 
-    assert tty_path.read_text() == "\x07\x07"
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def write(self, text):
+            writes.append(text)
+
+        def flush(self):
+            writes.append("flush")
+
+    def fake_open(path, mode):
+        assert path == "/dev/tty"
+        assert mode == "w"
+        return FakeTty()
+
+    monkeypatch.setattr(builtins, "open", fake_open)
+
+    emit_completion_bell(sleep_seconds=0)
+
+    assert writes == ["\x07", "flush", "\x07", "flush"]
 
 
 def test_journal_tree_hides_catboost_gpu_oom_nodes_by_default():
