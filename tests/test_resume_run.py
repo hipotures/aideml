@@ -15,6 +15,7 @@ from aide.run import (
     find_latest_run_id,
     load_resume_state,
     mark_node_generated_only,
+    maybe_seed_scored_hypothesis_roots,
     next_generated_only_node,
     parse_runtime_args,
     parse_resume_args,
@@ -148,6 +149,55 @@ def test_validate_hypothesis_root_generate_workers_rejects_invalid_values(worker
 
     with pytest.raises(ValueError, match="hypothesis_root_generate_workers"):
         validate_hypothesis_root_generate_workers(cfg)
+
+
+def test_seed_scored_hypothesis_roots_ignores_resume(monkeypatch):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.seed_scored_roots = True
+    journal = Journal()
+    seeded = Node(code="print('seeded')", plan="seeded")
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    assert count == 0
+    assert len(journal) == 0
+
+
+def test_seed_scored_hypothesis_roots_appends_only_for_new_hypothesis_runs(
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.seed_scored_roots = True
+    journal = Journal()
+    seeded = Node(code="print('seeded')", plan="seeded")
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=False,
+    )
+
+    assert count == 1
+    assert journal.nodes == [seeded]
+    assert seeded.step == 0
 
 
 def test_generated_only_nodes_are_pending_until_evaluated():

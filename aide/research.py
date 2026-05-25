@@ -22,6 +22,7 @@ from .autogluon_preprocess import (
 from .journal import Journal, Node
 from .utils import data_preview
 from .utils.config import Config
+from .utils.metric import MetricValue
 
 RESEARCH_PROMPT_INTRO = (
     "You are a research scientist and Kaggle competition strategist. Your job "
@@ -124,6 +125,13 @@ class HypothesisRootCode:
     path: Path
     code: str
     version: int
+
+
+@dataclass(frozen=True)
+class ScoredHypothesisRootCode(HypothesisRootCode):
+    score: float
+    created_at: str | None
+    source_node_id: str | None
 
 
 def _json_default(value: Any) -> str:
@@ -377,6 +385,118 @@ def load_hypothesis_root_code(
         code=path.read_text(encoding="utf-8"),
         version=version,
     )
+
+
+def load_scored_hypothesis_root_code(
+    cfg: Config,
+    hypothesis_id: str,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> ScoredHypothesisRootCode | None:
+    """Load active ROOT code only when its manifest proves it executed with a score."""
+    root_code = load_hypothesis_root_code(
+        cfg,
+        hypothesis_id,
+        repo_root=repo_root,
+    )
+    if root_code is None:
+        return None
+
+    manifest = _load_code_manifest(root_code.path.parent)
+    entry = _manifest_entry_for_file(
+        manifest,
+        agent_mode=root_code.agent_mode,
+        file_name=root_code.path.name,
+    )
+    if entry is None or not _manifest_entry_is_loadable(entry):
+        return None
+    score = _numeric_manifest_score(entry.get("score"))
+    if score is None:
+        return None
+    created_at = entry.get("created_at")
+    source_node_id = entry.get("node_id")
+    return ScoredHypothesisRootCode(
+        hypothesis_id=root_code.hypothesis_id,
+        agent_mode=root_code.agent_mode,
+        path=root_code.path,
+        code=root_code.code,
+        version=root_code.version,
+        score=score,
+        created_at=created_at if isinstance(created_at, str) else None,
+        source_node_id=source_node_id if isinstance(source_node_id, str) else None,
+    )
+
+
+def _manifest_created_at_timestamp(created_at: str | None) -> float | None:
+    if not created_at:
+        return None
+    try:
+        normalized = created_at.replace("Z", "+00:00")
+        return dt.datetime.fromisoformat(normalized).timestamp()
+    except ValueError:
+        return None
+
+
+def _scored_hypothesis_node(
+    *,
+    root_code: ScoredHypothesisRootCode,
+    source_hash: str,
+) -> Node:
+    timestamp = _manifest_created_at_timestamp(root_code.created_at)
+    node = Node(
+        code=root_code.code,
+        plan=(
+            f"Seeded scored ROOT hypothesis {root_code.hypothesis_id} "
+            f"from {root_code.agent_mode} {root_code.path.name}."
+        ),
+        **({"ctime": timestamp} if timestamp is not None else {}),
+    )
+    node.metric = MetricValue(root_code.score, maximize=True)
+    node.is_buggy = False
+    node.status = "ok"
+    node._term_out = [
+        (
+            "Seeded from code_manifest.json; "
+            f"score={root_code.score:.5f}; file={root_code.path.name}."
+        )
+    ]
+    node.exec_time = 0.0
+    node.exc_type = None
+    node.exc_info = None
+    node.exc_stack = None
+    node.analysis = (
+        "Seeded from previously executed hypothesis ROOT code with numeric "
+        f"manifest score {root_code.score:.5f}."
+    )
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = [root_code.hypothesis_id]
+    node.research_source_hash = source_hash
+    return node
+
+
+def scored_hypothesis_root_nodes(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> list[Node]:
+    """Build completed ROOT nodes from scored active manifest code for this mode."""
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    nodes: list[Node] = []
+    for hypothesis in _compatible_manual_hypotheses(cfg, library):
+        root_code = load_scored_hypothesis_root_code(
+            cfg,
+            hypothesis.id,
+            repo_root=repo_root,
+        )
+        if root_code is None:
+            continue
+        nodes.append(
+            _scored_hypothesis_node(
+                root_code=root_code,
+                source_hash=library.source_hash,
+            )
+        )
+    return nodes
 
 
 def _manifest_entry_for_file(

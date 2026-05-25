@@ -54,6 +54,10 @@ research:
   # Number of concurrent hypothesis ROOT code generations in --generate-only.
   # Valid range is 1..8. Default 1 preserves serial behavior.
   hypothesis_root_generate_workers: 1
+  # If true, a new hypothesis run starts with already executed/scored ROOT code
+  # from code_manifest.json materialized as completed tree nodes. Ignored on
+  # --resume. Default false preserves empty-run behavior.
+  seed_scored_roots: False
   # If true, manual hypothesis selection treats every enabled hypothesis as
   # compatible with the current agent mode. Useful for deriving AutoGluon
   # experiments from legacy-only hypotheses.

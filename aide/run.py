@@ -34,6 +34,7 @@ from .research import (
     record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
     reserve_hypothesis_roots,
+    scored_hypothesis_root_nodes,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -403,6 +404,27 @@ def save_parallel_generate_only_run(
 
 def should_cleanup_workspace_on_exit(*, is_resume: bool, journal: Journal) -> bool:
     return not is_resume and len(journal) == 0
+
+
+def maybe_seed_scored_hypothesis_roots(
+    cfg: Config,
+    journal: Journal,
+    *,
+    is_resume: bool,
+) -> int:
+    if is_resume:
+        return 0
+    if not getattr(cfg.research, "seed_scored_roots", False):
+        return 0
+    if not getattr(cfg.research, "enabled", False):
+        return 0
+    if getattr(cfg.research, "mode", None) != "hypothesis":
+        return 0
+
+    nodes = scored_hypothesis_root_nodes(cfg)
+    for node in nodes:
+        journal.append(node)
+    return len(nodes)
 
 
 def _artifact_context(path: Path) -> dict[str, Any]:
@@ -3519,6 +3541,15 @@ def run(argv: list[str] | None = None):
                     seed_source,
                 )
                 save_run(cfg, journal)
+        else:
+            with Status("Seeding run from scored hypothesis roots ..."):
+                seeded_count = maybe_seed_scored_hypothesis_roots(
+                    cfg,
+                    journal,
+                    is_resume=is_resume,
+                )
+                if seeded_count:
+                    save_run(cfg, journal)
 
     def cleanup():
         if should_cleanup_workspace_on_exit(is_resume=is_resume, journal=journal):

@@ -2031,6 +2031,105 @@ def test_hypothesis_root_code_loader_ignores_buggy_highest_version(tmp_path):
     assert root_code is None
 
 
+def test_scored_hypothesis_root_nodes_use_current_agent_mode(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = "legacy"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text(
+        "print('legacy scored')\n",
+        encoding="utf-8",
+    )
+    (hypothesis_dir / "autogluon-001.py").write_text(
+        "print('autogluon scored')\n",
+        encoding="utf-8",
+    )
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {
+                    "legacy": "legacy-001.py",
+                    "autogluon": "autogluon-001.py",
+                },
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                            "status": "ok",
+                            "node_id": "legacy-node",
+                            "score": 0.951,
+                            "created_at": "2026-05-23T00:00:00",
+                        }
+                    ],
+                    "autogluon": [
+                        {
+                            "file": "autogluon-001.py",
+                            "buggy": False,
+                            "status": "ok",
+                            "node_id": "autogluon-node",
+                            "score": 0.962,
+                            "created_at": "2026-05-24T00:00:00",
+                        }
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    legacy_nodes = research.scored_hypothesis_root_nodes(
+        cfg,
+        repo_root=tmp_path,
+    )
+    cfg.agent.mode = "autogluon_preprocess"
+    autogluon_nodes = research.scored_hypothesis_root_nodes(
+        cfg,
+        repo_root=tmp_path,
+    )
+
+    assert len(legacy_nodes) == 1
+    assert legacy_nodes[0].code == "print('legacy scored')\n"
+    assert legacy_nodes[0].metric.value == 0.951
+    assert legacy_nodes[0].research_hypotheses_offered == ["000001"]
+    assert legacy_nodes[0].is_buggy is False
+    assert legacy_nodes[0].status == "ok"
+    assert len(autogluon_nodes) == 1
+    assert autogluon_nodes[0].code == "print('autogluon scored')\n"
+    assert autogluon_nodes[0].metric.value == 0.962
+
+
+def test_scored_hypothesis_root_nodes_skip_unscored_or_buggy_code(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000002")
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        agent_mode="legacy",
+        file_name="legacy-001.py",
+        score=None,
+    )
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        agent_mode="legacy",
+        file_name="legacy-001.py",
+        score=0.94,
+        buggy=True,
+    )
+
+    nodes = research.scored_hypothesis_root_nodes(cfg, repo_root=tmp_path)
+
+    assert nodes == []
+
+
 def test_agent_loads_library_hypothesis_root_without_llm(tmp_path, monkeypatch):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
