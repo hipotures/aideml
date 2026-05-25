@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich.progress import Progress
+
 
 HYPOTHESIS_RE = re.compile(r"^hypothesis-(\d{6})\.json$")
 
@@ -36,6 +38,19 @@ class PromotionPlan:
     existing: tuple[PromotionEntry, ...]
     conflicts: tuple[str, ...]
     skipped: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PromotionCandidate:
+    rank_score: float
+    source_score: float
+    journal_path: Path
+    source_run_id: str
+    source_agent_mode: str
+    source_aux: bool
+    node: dict[str, Any]
+    branch_path: tuple[str, ...]
+    artifact_dir: str | None
 
 
 def repo_root() -> Path:
@@ -220,29 +235,20 @@ def _promotion_entry(
     )
 
 
-def plan_branch_hypothesis_promotion(
+def _branch_candidates_from_journal(
     *,
-    root: Path,
-    task: str,
     journal_path: Path,
-    top_n: int,
-    agent_mode: str | None = None,
-) -> PromotionPlan:
-    if top_n <= 0:
-        raise ValueError("--top-n must be greater than zero")
-
-    root = Path(root)
-    task_dir = root / "research_hypotheses" / task
+    agent_mode: str | None,
+    skipped: list[str],
+) -> list[PromotionCandidate]:
     source_run_id = journal_path.parent.name
-    source_agent_mode = _normalize_agent_mode(agent_mode or _read_run_agent_mode(journal_path.parent))
+    source_agent_mode = _normalize_agent_mode(
+        agent_mode or _read_run_agent_mode(journal_path.parent)
+    )
     source_aux = _read_run_aux(journal_path.parent)
     nodes, parent_by_id = _load_journal(journal_path)
     nodes_by_id = {str(node.get("id") or ""): node for node in nodes}
-    existing_by_source = _existing_promotions(task_dir)
-    conflicts: list[str] = []
-    skipped: list[str] = []
-
-    candidates: list[tuple[float, float, dict[str, Any]]] = []
+    candidates: list[PromotionCandidate] = []
     for node in nodes:
         node_id = str(node.get("id") or "")
         if node_id not in parent_by_id:
@@ -253,40 +259,72 @@ def plan_branch_hypothesis_promotion(
             continue
         code = node.get("code")
         if not isinstance(code, str) or not code.strip():
-            skipped.append(f"Branch node {node_id} has empty code.")
+            skipped.append(f"{source_run_id}:{node_id} branch node has empty code.")
             continue
         score = _node_score(node)
         if score is None:
-            skipped.append(f"Branch node {node_id} has no numeric score.")
+            skipped.append(
+                f"{source_run_id}:{node_id} branch node has no numeric score."
+            )
             continue
-        candidates.append((score[1], score[0], node))
+        candidates.append(
+            PromotionCandidate(
+                rank_score=score[1],
+                source_score=score[0],
+                journal_path=journal_path,
+                source_run_id=source_run_id,
+                source_agent_mode=source_agent_mode,
+                source_aux=source_aux,
+                node=node,
+                branch_path=_branch_path(
+                    node,
+                    nodes_by_id=nodes_by_id,
+                    parent_by_id=parent_by_id,
+                ),
+                artifact_dir=_source_artifact_dir(journal_path, node),
+            )
+        )
+    return candidates
 
-    candidates.sort(key=lambda item: item[0], reverse=True)
+
+def _plan_from_candidates(
+    *,
+    root: Path,
+    task: str,
+    journal_path: Path,
+    candidates: list[PromotionCandidate],
+    top_n: int,
+    skipped: list[str],
+) -> PromotionPlan:
+    if top_n <= 0:
+        raise ValueError("--top-n must be greater than zero")
+
+    task_dir = root / "research_hypotheses" / task
+    existing_by_source = _existing_promotions(task_dir)
+    conflicts: list[str] = []
+
+    candidates.sort(key=lambda item: item.rank_score, reverse=True)
     selected = candidates[:top_n]
     next_id = _next_hypothesis_number(task_dir)
     created: list[PromotionEntry] = []
     existing: list[PromotionEntry] = []
 
-    for _rank_score, score, node in selected:
-        source_node_id = str(node.get("id") or "")
-        existing_id = existing_by_source.get((source_run_id, source_node_id))
-        branch_path = _branch_path(
-            node,
-            nodes_by_id=nodes_by_id,
-            parent_by_id=parent_by_id,
+    for candidate in selected:
+        source_node_id = str(candidate.node.get("id") or "")
+        existing_id = existing_by_source.get(
+            (candidate.source_run_id, source_node_id)
         )
-        artifact_dir = _source_artifact_dir(journal_path, node)
         if existing_id is not None:
             existing.append(
                 _promotion_entry(
                     hypothesis_id=existing_id,
-                    source_run_id=source_run_id,
-                    source_agent_mode=source_agent_mode,
-                    source_aux=source_aux,
-                    node=node,
-                    score=score,
-                    branch_path=branch_path,
-                    artifact_dir=artifact_dir,
+                    source_run_id=candidate.source_run_id,
+                    source_agent_mode=candidate.source_agent_mode,
+                    source_aux=candidate.source_aux,
+                    node=candidate.node,
+                    score=candidate.source_score,
+                    branch_path=candidate.branch_path,
+                    artifact_dir=candidate.artifact_dir,
                     destination_dir=task_dir / existing_id,
                 )
             )
@@ -298,13 +336,13 @@ def plan_branch_hypothesis_promotion(
         created.append(
             _promotion_entry(
                 hypothesis_id=hypothesis_id,
-                source_run_id=source_run_id,
-                source_agent_mode=source_agent_mode,
-                source_aux=source_aux,
-                node=node,
-                score=score,
-                branch_path=branch_path,
-                artifact_dir=artifact_dir,
+                source_run_id=candidate.source_run_id,
+                source_agent_mode=candidate.source_agent_mode,
+                source_aux=candidate.source_aux,
+                node=candidate.node,
+                score=candidate.source_score,
+                branch_path=candidate.branch_path,
+                artifact_dir=candidate.artifact_dir,
                 destination_dir=task_dir / hypothesis_id,
             )
         )
@@ -317,6 +355,91 @@ def plan_branch_hypothesis_promotion(
         existing=tuple(existing),
         conflicts=tuple(conflicts),
         skipped=tuple(skipped),
+    )
+
+
+def plan_branch_hypothesis_promotion(
+    *,
+    root: Path,
+    task: str,
+    journal_path: Path,
+    top_n: int,
+    agent_mode: str | None = None,
+) -> PromotionPlan:
+    if top_n <= 0:
+        raise ValueError("--top-n must be greater than zero")
+
+    root = Path(root)
+    skipped: list[str] = []
+    candidates = _branch_candidates_from_journal(
+        journal_path=journal_path,
+        agent_mode=agent_mode,
+        skipped=skipped,
+    )
+    return _plan_from_candidates(
+        root=root,
+        task=task,
+        journal_path=journal_path,
+        candidates=candidates,
+        top_n=top_n,
+        skipped=skipped,
+    )
+
+
+def _run_journal_paths(logs_dir: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in logs_dir.glob("*/journal.json")
+        if path.is_file()
+    )
+
+
+def plan_branch_hypothesis_promotion_from_logs(
+    *,
+    root: Path,
+    task: str,
+    logs_dir: Path,
+    top_n: int,
+    agent_mode: str | None = None,
+    show_progress: bool = False,
+) -> PromotionPlan:
+    if top_n <= 0:
+        raise ValueError("--top-n must be greater than zero")
+
+    root = Path(root)
+    journals = _run_journal_paths(logs_dir)
+    skipped: list[str] = []
+    candidates: list[PromotionCandidate] = []
+
+    if show_progress and journals:
+        with Progress() as progress:
+            task_id = progress.add_task("Scanning journals", total=len(journals))
+            for journal_path in journals:
+                candidates.extend(
+                    _branch_candidates_from_journal(
+                        journal_path=journal_path,
+                        agent_mode=agent_mode,
+                        skipped=skipped,
+                    )
+                )
+                progress.advance(task_id)
+    else:
+        for journal_path in journals:
+            candidates.extend(
+                _branch_candidates_from_journal(
+                    journal_path=journal_path,
+                    agent_mode=agent_mode,
+                    skipped=skipped,
+                )
+            )
+
+    return _plan_from_candidates(
+        root=root,
+        task=task,
+        journal_path=logs_dir,
+        candidates=candidates,
+        top_n=top_n,
+        skipped=skipped,
     )
 
 
@@ -439,9 +562,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Promote top scored branch hypothesis nodes to new ROOT hypotheses.",
     )
-    parser.add_argument("journal", type=Path)
+    parser.add_argument("journal", type=Path, nargs="?")
     parser.add_argument("--task", default="playground-series-s6e5")
     parser.add_argument("--repo-root", type=Path, default=repo_root())
+    parser.add_argument(
+        "--logs-dir",
+        type=Path,
+        default=None,
+        help="Directory containing AIDE run logs. Used when no journal is provided.",
+    )
     parser.add_argument("--top-n", type=int, required=True)
     parser.add_argument(
         "--agent-mode",
@@ -455,13 +584,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        plan = plan_branch_hypothesis_promotion(
-            root=args.repo_root.resolve(),
-            task=args.task,
-            journal_path=args.journal,
-            top_n=args.top_n,
-            agent_mode=args.agent_mode,
-        )
+        root = args.repo_root.resolve()
+        if args.journal is None:
+            logs_dir = args.logs_dir or root / "logs"
+            plan = plan_branch_hypothesis_promotion_from_logs(
+                root=root,
+                task=args.task,
+                logs_dir=logs_dir,
+                top_n=args.top_n,
+                agent_mode=args.agent_mode,
+                show_progress=True,
+            )
+        else:
+            plan = plan_branch_hypothesis_promotion(
+                root=root,
+                task=args.task,
+                journal_path=args.journal,
+                top_n=args.top_n,
+                agent_mode=args.agent_mode,
+            )
         apply_promotion_plan(plan, dry_run=args.dry_run)
         _print_report(plan, dry_run=args.dry_run)
         return 1 if plan.conflicts else 0

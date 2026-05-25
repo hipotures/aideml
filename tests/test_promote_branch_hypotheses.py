@@ -4,13 +4,21 @@ from pathlib import Path
 from scripts.promote_branch_hypotheses import (
     apply_promotion_plan,
     plan_branch_hypothesis_promotion,
+    plan_branch_hypothesis_promotion_from_logs,
 )
 
 
-def _write_run(tmp_path: Path, *, mode: str = "autogluon_preprocess") -> Path:
-    run_dir = tmp_path / "logs" / "run-1"
+def _write_run(
+    tmp_path: Path,
+    *,
+    run_id: str = "run-1",
+    mode: str = "autogluon_preprocess",
+    branch_scores: tuple[float, float, float] = (0.95, 0.94, 0.93),
+) -> Path:
+    run_dir = tmp_path / "logs" / run_id
     run_dir.mkdir(parents=True)
     (run_dir / "config.yaml").write_text(f"agent:\n  mode: {mode}\n", encoding="utf-8")
+    branch_a_score, branch_b_score, branch_c_score = branch_scores
     journal = {
         "nodes": [
             {
@@ -31,7 +39,7 @@ def _write_run(tmp_path: Path, *, mode: str = "autogluon_preprocess") -> Path:
                 "research_hypotheses_offered": ["000201"],
                 "code": "print('branch a')\n",
                 "is_buggy": False,
-                "metric": {"value": 0.95, "maximize": True},
+                "metric": {"value": branch_a_score, "maximize": True},
                 "artifact_dir_name": "branch-a-artifact",
                 "ctime": 1001.0,
             },
@@ -42,7 +50,7 @@ def _write_run(tmp_path: Path, *, mode: str = "autogluon_preprocess") -> Path:
                 "research_hypotheses_offered": ["000202"],
                 "code": "print('branch b')\n",
                 "is_buggy": False,
-                "metric": {"value": 0.94, "maximize": True},
+                "metric": {"value": branch_b_score, "maximize": True},
                 "artifact_dir_name": "branch-b-artifact",
                 "ctime": 1002.0,
             },
@@ -53,7 +61,7 @@ def _write_run(tmp_path: Path, *, mode: str = "autogluon_preprocess") -> Path:
                 "research_hypotheses_offered": ["000203"],
                 "code": "print('branch c')\n",
                 "is_buggy": False,
-                "metric": {"value": 0.93, "maximize": True},
+                "metric": {"value": branch_c_score, "maximize": True},
                 "ctime": 1003.0,
             },
         ],
@@ -150,3 +158,29 @@ def test_promotion_can_override_agent_mode(tmp_path):
     assert (hypothesis_dir / "legacy-001.py").exists()
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
     assert manifest["active"]["legacy"] == "legacy-001.py"
+
+
+def test_promotion_without_journal_uses_all_run_journals(tmp_path):
+    task = "playground-series-s6e5"
+    _write_run(tmp_path, run_id="run-1", branch_scores=(0.91, 0.90, 0.89))
+    _write_run(tmp_path, run_id="run-2", branch_scores=(0.97, 0.96, 0.88))
+
+    plan = plan_branch_hypothesis_promotion_from_logs(
+        root=tmp_path,
+        task=task,
+        logs_dir=tmp_path / "logs",
+        top_n=3,
+        agent_mode=None,
+    )
+
+    assert [entry.source_run_id for entry in plan.created] == [
+        "run-2",
+        "run-2",
+        "run-1",
+    ]
+    assert [entry.source_node_id for entry in plan.created] == [
+        "branch-a",
+        "branch-b",
+        "branch-a",
+    ]
+    assert [entry.source_score for entry in plan.created] == [0.97, 0.96, 0.91]
