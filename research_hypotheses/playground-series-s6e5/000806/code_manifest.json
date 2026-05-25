@@ -17,9 +17,11 @@
       {
         "file": "legacy-001.py",
         "buggy": false,
-        "node_id": "4827c0e298224a75a3982c44fafde903",
-        "score": 0.9476401446447196,
-        "created_at": "2026-05-24T03:30:04"
+        "node_id": "09ca0055e0a24473a3f163f1109d5d85",
+        "score": 0.9526943400371382,
+        "created_at": "2026-05-25T20:44:34",
+        "status": "ok",
+        "aux": true
       }
     ]
   }

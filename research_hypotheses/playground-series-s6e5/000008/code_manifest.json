@@ -16,10 +16,12 @@
     "legacy": [
       {
         "file": "legacy-001.py",
-        "buggy": false,
-        "node_id": "49954ea4c070491f8d0d835aefc9a7aa",
-        "score": 0.9484252571556512,
-        "created_at": "2026-05-24T03:25:19"
+        "buggy": null,
+        "node_id": "3d968b026bff4604a24ab26158214b2f",
+        "score": null,
+        "created_at": "2026-05-25T20:36:32",
+        "status": "generated",
+        "aux": true
       }
     ]
   }

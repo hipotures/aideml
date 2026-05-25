@@ -92,6 +92,8 @@ agent:
   data_preview: True
   # whether legacy full-script prompts should prefer CUDA/GPU-capable tabular models
   gpu: false
+  # whether workspace/input should use the merged competition + auxiliary train data
+  aux: false
 
   # LLM settings for coding
   code:

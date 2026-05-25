@@ -2388,6 +2388,86 @@ def test_reviewed_generated_hypothesis_root_updates_manifest_score(
     assert manifest["active"]["legacy"] == "legacy-001.py"
 
 
+def test_hypothesis_root_manifest_entry_records_aux_flag(tmp_path, monkeypatch):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.aux = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    node = _node(0.91, code="print('new root')\n", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+    node.ctime = 1000.0
+
+    research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code=node.code,
+        is_buggy=False,
+        node_id=node.id,
+        score=0.91,
+        created_at="2026-05-25T00:00:00",
+        repo_root=tmp_path,
+    )
+
+    manifest = json.loads(
+        (
+            tmp_path
+            / "research_hypotheses"
+            / "playground-series-s6e5"
+            / "000001"
+            / "code_manifest.json"
+        ).read_text()
+    )
+    assert manifest["versions"]["legacy"][0]["aux"] is True
+
+
+def test_hypothesis_root_manifest_update_preserves_source_provenance(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('promoted')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                            "score": 0.9,
+                            "source_run_id": "run-1",
+                            "source_node_id": "branch-a",
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    node = _node(0.92, code="print('promoted')\n", plan="plan")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+
+    research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code=node.code,
+        is_buggy=False,
+        node_id=node.id,
+        score=0.92,
+        created_at="2026-05-25T00:00:00",
+        repo_root=tmp_path,
+    )
+
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+    entry = manifest["versions"]["legacy"][0]
+    assert entry["score"] == 0.92
+    assert entry["source_run_id"] == "run-1"
+    assert entry["source_node_id"] == "branch-a"
+
+
 def test_generated_hypothesis_root_can_be_saved_without_activating(
     tmp_path,
     monkeypatch,

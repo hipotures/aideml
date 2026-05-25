@@ -460,6 +460,7 @@ def save_hypothesis_root_code(
         "node_id": node_id,
         "score": score,
         "created_at": created_at,
+        "aux": bool(getattr(cfg.agent, "aux", False)),
     }
     versions = manifest.setdefault("versions", {})
     if not isinstance(versions, dict):
@@ -493,12 +494,18 @@ def save_hypothesis_root_code(
         path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
         path.write_text(code, encoding="utf-8")
 
+    previous_entry = _manifest_entry_for_file(
+        manifest,
+        agent_mode=agent_mode,
+        file_name=path.name,
+    )
     versions[agent_mode] = [
         entry
         for entry in mode_versions
         if not (isinstance(entry, dict) and entry.get("file") == path.name)
     ]
-    versions[agent_mode].append({"file": path.name, **metadata})
+    preserved_metadata = previous_entry if previous_entry is not None else {}
+    versions[agent_mode].append({"file": path.name, **preserved_metadata, **metadata})
     active = manifest.setdefault("active", {})
     if not isinstance(active, dict):
         manifest["active"] = active = {}

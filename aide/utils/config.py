@@ -151,6 +151,7 @@ class AgentConfig:
 
     search: SearchConfig
     gpu: bool = False
+    aux: bool = False
     mode: str = "legacy"
     autogluon: AutoGluonConfig = field(default_factory=AutoGluonConfig)
 
@@ -451,7 +452,7 @@ def load_task_desc(cfg: Config):
             )
 
         with open(cfg.desc_file) as f:
-            return f.read()
+            return _with_aux_task_desc_note(f.read(), cfg)
 
     # or generate it from the goal and eval args
     if cfg.goal is None:
@@ -463,6 +464,29 @@ def load_task_desc(cfg: Config):
     if cfg.eval is not None:
         task_desc["Task evaluation"] = cfg.eval
 
+    return _with_aux_task_desc_note(task_desc, cfg)
+
+
+def _with_aux_task_desc_note(task_desc, cfg: Config):
+    if not getattr(cfg.agent, "aux", False):
+        return task_desc
+
+    note = (
+        "Additional data note: In this run, `train.csv.gz` has been prebuilt by "
+        "merging the competition training rows with the original/external F1 "
+        "strategy dataset. The competition train/test files are synthetic Kaggle "
+        "Playground tabular data; the auxiliary rows come from the original F1 "
+        "strategy data. The `source_is_aux` column marks row provenance: `0` for "
+        "competition rows and `1` for original/external auxiliary rows. "
+        "`test.csv.gz` remains the competition test set only, with "
+        "`source_is_aux=0`."
+    )
+
+    if isinstance(task_desc, str):
+        return f"{task_desc.rstrip()}\n\n{note}\n"
+
+    task_desc = dict(task_desc)
+    task_desc["Additional data note"] = note
     return task_desc
 
 
@@ -471,9 +495,74 @@ def prep_agent_workspace(cfg: Config):
     (cfg.workspace_dir / "input").mkdir(parents=True, exist_ok=True)
     (cfg.workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
-    copytree(cfg.data_dir, cfg.workspace_dir / "input", use_symlinks=not cfg.copy_data)
+    if getattr(cfg.agent, "aux", False):
+        copy_aux_input(cfg)
+    else:
+        copytree(cfg.data_dir, cfg.workspace_dir / "input", use_symlinks=not cfg.copy_data)
+        hide_aux_input(cfg.workspace_dir / "input")
     if cfg.preprocess_data:
         preproc_data(cfg.workspace_dir / "input")
+
+
+def _copy_or_symlink_file(source: Path, destination: Path, *, copy_data: bool) -> None:
+    if destination.exists() or destination.is_symlink():
+        destination.unlink()
+    if copy_data:
+        shutil.copyfile(source, destination)
+    else:
+        destination.symlink_to(source)
+
+
+def copy_aux_input(cfg: Config) -> None:
+    source_train = cfg.data_dir / "train-aux.csv.gz"
+    source_test = cfg.data_dir / "test-aux.csv.gz"
+    source_sample = cfg.data_dir / "sample_submission.csv.gz"
+    if not source_train.exists():
+        raise FileNotFoundError(
+            f"agent.aux=true requires prebuilt merged train file: {source_train}"
+        )
+    if not source_test.exists():
+        raise FileNotFoundError(
+            f"agent.aux=true requires prebuilt auxiliary test file: {source_test}"
+        )
+    if not source_sample.exists():
+        raise FileNotFoundError(
+            f"agent.aux=true requires sample submission file: {source_sample}"
+        )
+    input_dir = cfg.workspace_dir / "input"
+    _copy_or_symlink_file(
+        source_train,
+        input_dir / "train.csv.gz",
+        copy_data=bool(cfg.copy_data),
+    )
+    _copy_or_symlink_file(
+        source_test,
+        input_dir / "test.csv.gz",
+        copy_data=bool(cfg.copy_data),
+    )
+    _copy_or_symlink_file(
+        source_sample,
+        input_dir / "sample_submission.csv.gz",
+        copy_data=bool(cfg.copy_data),
+    )
+    validate_aux_workspace_input(input_dir)
+
+
+def validate_aux_workspace_input(input_dir: Path) -> None:
+    expected = {"train.csv.gz", "test.csv.gz", "sample_submission.csv.gz"}
+    present = {path.name for path in input_dir.iterdir() if path.is_file() or path.is_symlink()}
+    if present != expected:
+        raise ValueError(
+            "agent.aux=true workspace input must contain exactly "
+            f"{sorted(expected)}, got {sorted(present)}"
+        )
+
+
+def hide_aux_input(input_dir: Path) -> None:
+    for name in ("f1_strategy_dataset_v4.csv", "train-aux.csv.gz", "test-aux.csv.gz"):
+        path = input_dir / name
+        if path.exists() or path.is_symlink():
+            path.unlink()
 
 
 def _node_error_text(node) -> str | None:
