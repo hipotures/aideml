@@ -1,0 +1,32 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Promoted branch f42ef990",
+  "summary": "Promoted high-scoring branch solution so it can be evaluated as a root hypothesis.",
+  "rationale": "The source branch produced a strong validation score and should be re-tested independently from a root position.",
+  "implementation_hint": "Use the promoted root code exactly as the starting implementation.",
+  "expected_effect": "Preserve the source branch behavior while allowing normal root selection and aux-data evaluation.",
+  "risk": "The promoted branch may overfit the original run context.",
+  "sources": [
+    "aide://2-delectable-curvy-dolphin/journal.json#f42ef99018f04edeb85b4d289540efa8"
+  ],
+  "origin": {
+    "kind": "promoted_branch",
+    "source_run_id": "2-delectable-curvy-dolphin",
+    "source_node_id": "f42ef99018f04edeb85b4d289540efa8",
+    "source_agent_mode": "autogluon",
+    "source_score": 0.952642035592215,
+    "source_aux": false,
+    "source_branch_path": [
+      "000324",
+      "000365",
+      "000020",
+      "000011",
+      "000703",
+      "000459"
+    ],
+    "source_artifact_dir": null
+  }
+}

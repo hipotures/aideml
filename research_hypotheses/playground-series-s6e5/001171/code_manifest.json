@@ -1,0 +1,32 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "file": "autogluon-001.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "f42ef99018f04edeb85b4d289540efa8",
+        "score": 0.952642035592215,
+        "created_at": "2026-05-18T15:40:51",
+        "aux": false,
+        "source_run_id": "2-delectable-curvy-dolphin",
+        "source_node_id": "f42ef99018f04edeb85b4d289540efa8",
+        "source_agent_mode": "autogluon",
+        "source_score": 0.952642035592215,
+        "source_aux": false,
+        "source_branch_path": [
+          "000324",
+          "000365",
+          "000020",
+          "000011",
+          "000703",
+          "000459"
+        ],
+        "source_artifact_dir": null
+      }
+    ]
+  }
+}

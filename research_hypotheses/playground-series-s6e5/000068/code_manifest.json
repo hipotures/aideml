@@ -3,13 +3,15 @@
     "legacy": [
       {
         "file": "legacy-001.py",
-        "buggy": null,
-        "status": "generated",
+        "buggy": false,
+        "status": "ok",
         "node_id": "279beaa26aa240bca99e3b322db37810",
-        "score": null,
+        "score": 0.947713407962673,
         "created_at": "2026-05-25T03:19:20"
       }
     ]
   },
-  "active": {}
+  "active": {
+    "legacy": "legacy-001.py"
+  }
 }

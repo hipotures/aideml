@@ -12,15 +12,16 @@
     "legacy": [
       {
         "file": "legacy-001.py",
-        "buggy": null,
-        "status": "generated",
+        "buggy": false,
+        "status": "ok",
         "node_id": "4ac1d57cb4d74249bd3effc2f18edc8a",
-        "score": null,
+        "score": 0.9185039340332267,
         "created_at": "2026-05-25T03:24:00"
       }
     ]
   },
   "active": {
-    "autogluon": "autogluon-001.py"
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-001.py"
   }
 }
