@@ -1564,11 +1564,8 @@ def format_hypothesis_for_prompt(
         ),
         (
             "Your solution sketch must explicitly mention this hypothesis ID. "
-            "The result/review JSON must report "
-            f'research_hypotheses_llm_claimed_used as ["{hypothesis.id}"]. '
-            "This field means the newly assigned hypothesis implemented in this "
-            "mutation; previously implemented parent hypotheses are listed in "
-            "Branch context and should not be repeated in this field."
+            "Do not add hypothesis-id bookkeeping variables or result fields to "
+            "the generated code."
         ),
         "",
         f"Title: {hypothesis.title}",

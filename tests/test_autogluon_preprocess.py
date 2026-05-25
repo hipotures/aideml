@@ -239,7 +239,7 @@ def test_generated_preprocess_timeout_raises_clear_error(tmp_path):
             time.sleep(2)
 
 
-def test_build_autogluon_wrapper_can_emit_hypothesis_claim(tmp_path):
+def test_build_autogluon_wrapper_does_not_emit_hypothesis_claim(tmp_path):
     cfg = _cfg(tmp_path)
 
     code = build_autogluon_wrapper(
@@ -248,8 +248,8 @@ def test_build_autogluon_wrapper_can_emit_hypothesis_claim(tmp_path):
         research_hypothesis_id="000123",
     )
 
-    assert '"research_hypotheses_llm_claimed_used": ["000123"]' in code
-    assert '"research_usage_note": "Verified assigned hypothesis 000123."' in code
+    assert "research_hypotheses_llm_claimed_used" not in code
+    assert "research_usage_note" not in code
 
 
 def test_generated_quiet_model_output_supports_redirect_queue_streams(tmp_path, monkeypatch):

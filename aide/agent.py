@@ -87,7 +87,7 @@ review_func_spec = FunctionSpec(
             "research_hypotheses_llm_claimed_used": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Research hypothesis ids that the implementation intentionally used. Include only ids that were explicitly offered in the prompt. In hypothesis mode, return exactly the single assigned id if and only if the implementation verifies that hypothesis.",
+                "description": "Optional diagnostic list of offered research hypothesis ids that the implementation intentionally used. This field is not used to validate or reject runs.",
             },
             "research_usage_note": {
                 "type": ["string", "null"],
@@ -100,8 +100,6 @@ review_func_spec = FunctionSpec(
             "metric",
             "lower_is_better",
             "validity_warning",
-            "research_hypotheses_llm_claimed_used",
-            "research_usage_note",
         ],
         "additionalProperties": False,
     },
@@ -182,50 +180,17 @@ def _offered_research_claims(node: Node, raw_claimed: list[str]) -> list[str]:
     return [item for item in raw_claimed if item in offered]
 
 
-def _mark_hypothesis_protocol_failure(
-    node: Node,
-    *,
-    expected_id: str,
-    raw_claimed: list[str],
-) -> None:
-    claimed_text = ", ".join(raw_claimed) if raw_claimed else "none"
-    previous = str(node.analysis or "").strip()
-    failure = (
-        "Hypothesis verification failed: "
-        f"expected hypothesis id {expected_id}, got {claimed_text}."
-    )
-    node.analysis = f"{previous}\n\n{failure}".strip()
-    node.status = "failed"
-    node.is_buggy = True
-    node.metric = WorstMetricValue()
-    node.research_hypotheses_llm_claimed_used = []
-    node.research_usage_note = failure
-
-
-def _record_hypothesis_claim_missing_after_bug(
-    node: Node,
-    *,
-    expected_id: str,
-    raw_claimed: list[str],
-) -> None:
-    claimed_text = ", ".join(raw_claimed) if raw_claimed else "none"
-    note = (
-        "Hypothesis claim missing after technical execution failure: "
-        f"expected hypothesis id {expected_id}, got {claimed_text}. "
-        "Keeping this node as a debuggable bug instead of terminal failed."
-    )
-    previous = str(node.analysis or "").strip()
-    node.analysis = f"{previous}\n\n{note}".strip()
-    node.status = None
-    node.research_usage_note = note
-
-
 def _apply_research_claims_from_response(
     cfg: Config,
     node: Node,
     response: dict[str, Any],
 ) -> bool:
     raw_claimed = _raw_claimed_research_ids(response)
+    if node.research_mode == "hypothesis":
+        node.research_hypotheses_llm_claimed_used = []
+        node.research_usage_note = None
+        return True
+
     node.research_hypotheses_llm_claimed_used = _offered_research_claims(
         node,
         raw_claimed,
@@ -236,27 +201,6 @@ def _apply_research_claims_from_response(
         if isinstance(usage_note, str) and usage_note.strip()
         else None
     )
-
-    if node.research_mode == "hypothesis":
-        expected = (
-            node.research_hypotheses_offered[0]
-            if len(node.research_hypotheses_offered) == 1
-            else None
-        )
-        if expected is None or raw_claimed != [expected]:
-            if node.is_buggy:
-                _record_hypothesis_claim_missing_after_bug(
-                    node,
-                    expected_id=expected or "<missing>",
-                    raw_claimed=raw_claimed,
-                )
-                return True
-            _mark_hypothesis_protocol_failure(
-                node,
-                expected_id=expected or "<missing>",
-                raw_claimed=raw_claimed,
-            )
-            return False
 
     record_manual_claimed_usage(cfg, node)
     return True
@@ -1874,16 +1818,15 @@ class Agent:
                 else "Manual research hypotheses offered"
             )
             instruction = (
-                "Report exactly this id in "
-                "research_hypotheses_llm_claimed_used. If the implementation "
-                "did not implement this assigned hypothesis, leave the list "
-                "empty so the node can be marked failed."
+                "Evaluate whether the code ran successfully and produced a valid "
+                "metric. Do not fail the run because of missing or mismatched "
+                "hypothesis-id bookkeeping fields in the code output."
                 if node.research_mode == "hypothesis"
                 else (
-                    "Report only offered ids in "
-                    "research_hypotheses_llm_claimed_used. Use an empty list if "
-                    "the implementation did not intentionally use any offered "
-                    "manual research hypothesis."
+                    "If the implementation output includes manual research "
+                    "bookkeeping, you may report offered ids in "
+                    "research_hypotheses_llm_claimed_used. Otherwise omit it or "
+                    "use an empty list."
                 )
             )
             prompt[prompt_title] = {

@@ -1086,7 +1086,7 @@ def test_select_hypothesis_for_debug_inherits_buggy_parent_hypothesis(tmp_path):
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000007"]
 
 
-def test_format_hypothesis_for_prompt_is_hard_contract_without_source_hash(tmp_path):
+def test_format_hypothesis_for_prompt_omits_self_report_contract(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
     _write_manual_hypothesis(
@@ -1109,7 +1109,8 @@ def test_format_hypothesis_for_prompt_is_hard_contract_without_source_hash(tmp_p
     assert "Hypothesis verification contract" in rendered
     assert "Hypothesis ID: 000001" in rendered
     assert "Implement this exact hypothesis" in rendered
-    assert "research_hypotheses_llm_claimed_used" in rendered
+    assert "research_hypotheses_llm_claimed_used" not in rendered
+    assert "Do not add hypothesis-id bookkeeping" in rendered
     assert "Research source hash" not in rendered
 
 

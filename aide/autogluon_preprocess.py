@@ -275,18 +275,8 @@ def build_autogluon_wrapper(
     settings = resolve_autogluon_settings(cfg)
     constants = build_visible_autogluon_config(cfg, settings)
     constants_literal = pprint.pformat(constants, sort_dicts=True, width=88)
+    _ = research_hypothesis_id
     research_marker_fields = ""
-    if research_hypothesis_id is not None:
-        research_marker_fields = (
-            "\n        "
-            + '"research_hypotheses_llm_claimed_used": '
-            + json.dumps([research_hypothesis_id])
-            + ","
-            "\n        "
-            + '"research_usage_note": '
-            + json.dumps(f"Verified assigned hypothesis {research_hypothesis_id}.")
-            + ","
-        )
     return (
         f'''from __future__ import annotations
 

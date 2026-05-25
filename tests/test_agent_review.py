@@ -21,10 +21,10 @@ def _cfg(tmp_path: Path):
 def test_review_schema_is_valid_for_codex_structured_output():
     assert review_func_spec.json_schema["additionalProperties"] is False
     assert "validity_warning" in review_func_spec.json_schema["required"]
-    assert "research_hypotheses_llm_claimed_used" in review_func_spec.json_schema[
+    assert "research_hypotheses_llm_claimed_used" not in review_func_spec.json_schema[
         "required"
     ]
-    assert "research_usage_note" in review_func_spec.json_schema["required"]
+    assert "research_usage_note" not in review_func_spec.json_schema["required"]
     assert review_func_spec.json_schema["properties"]["validity_warning"]["type"] == [
         "string",
         "null",
@@ -318,7 +318,7 @@ def test_parse_result_marker_records_manual_research_claim_from_plan(tmp_path):
     )
 
 
-def test_parse_exec_result_marks_hypothesis_node_failed_when_claim_missing(
+def test_parse_exec_result_accepts_hypothesis_node_when_claim_missing(
     tmp_path,
     monkeypatch,
 ):
@@ -348,14 +348,14 @@ def test_parse_exec_result_marks_hypothesis_node_failed_when_claim_missing(
 
     agent.parse_exec_result(node, exec_result)
 
-    assert node.status == "failed"
-    assert node.is_buggy is True
-    assert node.metric.is_worst
+    assert node.status is None
+    assert node.is_buggy is False
+    assert node.metric.value == 0.91
     assert node.research_hypotheses_llm_claimed_used == []
-    assert "expected hypothesis id 000123" in node.analysis
+    assert "expected hypothesis id 000123" not in node.analysis
 
 
-def test_parse_exec_result_keeps_hypothesis_technical_failure_debuggable_when_claim_missing(
+def test_parse_exec_result_keeps_hypothesis_technical_failure_debuggable_without_claim(
     tmp_path,
     monkeypatch,
 ):
@@ -390,7 +390,8 @@ def test_parse_exec_result_keeps_hypothesis_technical_failure_debuggable_when_cl
     assert node.is_buggy is True
     assert node.metric.is_worst
     assert node.research_hypotheses_llm_claimed_used == []
-    assert "Keeping this node as a debuggable bug" in node.analysis
+    assert "Keeping this node as a debuggable bug" not in node.analysis
+    assert "Technical preprocessing failure" in node.analysis
 
 
 def test_parse_exec_result_keeps_hypothesis_preprocess_timeout_as_bug(
@@ -429,11 +430,11 @@ def test_parse_exec_result_keeps_hypothesis_preprocess_timeout_as_bug(
     assert node.is_terminal_failure is False
     assert node.is_buggy is True
     assert node.metric.is_worst
-    assert node.research_hypotheses_llm_claimed_used == ["000123"]
+    assert node.research_hypotheses_llm_claimed_used == []
     assert "must be simplified" in node.analysis
 
 
-def test_parse_exec_result_accepts_exact_hypothesis_claim(tmp_path, monkeypatch):
+def test_parse_exec_result_ignores_hypothesis_claim(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     cfg.research.mode = "hypothesis"
     agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
@@ -463,12 +464,12 @@ def test_parse_exec_result_accepts_exact_hypothesis_claim(tmp_path, monkeypatch)
     assert node.status is None
     assert node.is_buggy is False
     assert node.metric.value == 0.91
-    assert node.research_hypotheses_llm_claimed_used == ["000123"]
-    usage = json.loads((Path(cfg.log_dir) / "research_hypotheses" / "usage.json").read_text())
-    assert usage["000123"]["llm_claimed_used_count"] == 1
+    assert node.research_hypotheses_llm_claimed_used == []
+    usage_path = Path(cfg.log_dir) / "research_hypotheses" / "usage.json"
+    assert not usage_path.exists()
 
 
-def test_parse_result_marker_requires_hypothesis_claim(tmp_path):
+def test_parse_result_marker_accepts_missing_hypothesis_claim(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.mode = "hypothesis"
     agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
@@ -486,6 +487,7 @@ def test_parse_result_marker_requires_hypothesis_claim(tmp_path):
 
     agent.parse_exec_result(node, exec_result)
 
-    assert node.status == "failed"
-    assert node.is_terminal_failure is True
-    assert node.metric.is_worst
+    assert node.status is None
+    assert node.is_terminal_failure is False
+    assert node.is_buggy is False
+    assert node.metric.value == 0.92
