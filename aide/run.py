@@ -49,7 +49,7 @@ from .utils.seed_artifact import (
     source_is_autogluon,
 )
 from omegaconf import OmegaConf
-from rich.console import Group
+from rich.console import Console, Group
 from rich._loop import loop_last
 from rich.layout import Layout
 from rich.live import Live
@@ -378,6 +378,27 @@ def record_generated_only_node(
         node=node,
         experiment_id=experiment_id,
     )
+
+
+GENERATE_ONLY_FINISHED_MESSAGE = (
+    "Skip-execution mode finished generating root candidates; no code was executed."
+)
+
+
+def save_parallel_generate_only_run(
+    *,
+    cfg: Config,
+    journal: Journal,
+    current_node: Node | None = None,
+    progress_callback: Callable[[str], None] | None = None,
+) -> str:
+    save_run(
+        cfg,
+        journal,
+        current_node=current_node,
+        progress_callback=progress_callback,
+    )
+    return GENERATE_ONLY_FINISHED_MESSAGE
 
 
 def _artifact_context(path: Path) -> dict[str, Any]:
@@ -1770,6 +1791,59 @@ def render_tree_view(
             line.stylize("reverse", item.focus_start, len(line.plain))
         lines.append(line)
     return Group(*lines)
+
+
+def build_final_tree_renderable(
+    journal: Journal,
+    *,
+    show_invalid_submission_branches: bool = False,
+    disable_oom_saturated_parents: bool = False,
+    synthesis_node_ids: set[str] | None = None,
+) -> Group:
+    view = build_tree_view(
+        journal,
+        show_invalid_submission_branches=show_invalid_submission_branches,
+        disable_oom_saturated_parents=disable_oom_saturated_parents,
+        synthesis_node_ids=synthesis_node_ids,
+    )
+    return Group(*(item.line for item in view.items))
+
+
+def print_final_tree(
+    journal: Journal,
+    *,
+    log_dir: Path | str | None = None,
+    show_invalid_submission_branches: bool = False,
+    disable_oom_saturated_parents: bool = False,
+) -> None:
+    synthesis_node_ids = synthesis_injected_node_ids(log_dir) if log_dir else set()
+    Console().print(
+        build_final_tree_renderable(
+            journal,
+            show_invalid_submission_branches=show_invalid_submission_branches,
+            disable_oom_saturated_parents=disable_oom_saturated_parents,
+            synthesis_node_ids=synthesis_node_ids,
+        )
+    )
+
+
+def emit_completion_bell(
+    *,
+    tty_path: Path | str = "/dev/tty",
+    sleep_seconds: float = 0.3,
+) -> None:
+    def ring() -> None:
+        try:
+            with open(tty_path, "a", encoding="utf-8") as tty:
+                tty.write("\x07")
+                tty.flush()
+        except OSError:
+            sys.stderr.write("\x07")
+            sys.stderr.flush()
+
+    ring()
+    time.sleep(sleep_seconds)
+    ring()
 
 
 class ArrowKeyReader:
@@ -4131,9 +4205,14 @@ def run(argv: list[str] | None = None):
                         if parallel_root_workers_enabled():
                             run_parallel_generate_only_roots(live)
                             interrupted = True
-                            interrupt_message = (
-                                "Skip-execution mode finished generating root "
-                                "candidates; no code was executed."
+                            interrupt_message = save_parallel_generate_only_run(
+                                cfg=cfg,
+                                journal=journal,
+                                current_node=display_node,
+                                progress_callback=lambda message: update_save_status(
+                                    message,
+                                    live,
+                                ),
                             )
                             break
                         pending_generated_node = (
@@ -4583,6 +4662,14 @@ def run(argv: list[str] | None = None):
         debug_log("before_cleanup_session", phase="cleanup")
         interpreter.cleanup_session()
         debug_log("after_cleanup_session", phase="cleanup")
+
+    print_final_tree(
+        journal,
+        log_dir=cfg.log_dir,
+        show_invalid_submission_branches=runtime_options.show_invalid_submission_branches,
+        disable_oom_saturated_parents=cfg.agent.search.disable_oom_saturated_parents,
+    )
+    emit_completion_bell()
 
     if interrupted:
         print(interrupt_message)

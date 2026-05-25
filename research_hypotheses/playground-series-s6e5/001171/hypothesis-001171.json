@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Promoted branch 72365f36",
+  "summary": "Promoted high-scoring branch solution so it can be evaluated as a root hypothesis.",
+  "rationale": "The source branch produced a strong validation score and should be re-tested independently from a root position.",
+  "implementation_hint": "Use the promoted root code exactly as the starting implementation.",
+  "expected_effect": "Preserve the source branch behavior while allowing normal root selection and aux-data evaluation.",
+  "risk": "The promoted branch may overfit the original run context.",
+  "sources": [
+    "aide://2-private-pony-from-eldorado/journal.json#72365f363cc04dad8a1710eb3c0f7c4b"
+  ],
+  "origin": {
+    "kind": "promoted_branch",
+    "source_run_id": "2-private-pony-from-eldorado",
+    "source_node_id": "72365f363cc04dad8a1710eb3c0f7c4b",
+    "source_agent_mode": "legacy",
+    "source_score": 0.9526943400371382,
+    "source_aux": true,
+    "source_branch_path": [
+      "000806",
+      "000530"
+    ],
+    "source_artifact_dir": "logs/2-private-pony-from-eldorado/artifacts/20260525T211254-4bb10b8b"
+  }
+}

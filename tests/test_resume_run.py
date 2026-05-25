@@ -21,6 +21,7 @@ from aide.run import (
     ParallelRootFailureState,
     record_generated_only_node,
     recover_generated_only_root_artifacts,
+    save_parallel_generate_only_run,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -234,6 +235,37 @@ def test_record_generated_only_node_marks_saves_and_appends():
     assert journal.nodes == [node]
     assert agent.saved_node is node
     assert agent.activate is False
+
+
+def test_save_parallel_generate_only_run_persists_journal(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-generated-only-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-generated-only-run"
+    cfg.exp_name = "2-generated-only-run"
+    cfg = prep_cfg(cfg)
+    cfg.log_dir = tmp_path / "logs" / "2-generated-only-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-generated-only-run"
+
+    journal = Journal()
+    node = Node(code="print('generated')", plan="generated")
+    mark_node_generated_only(node)
+    journal.append(node)
+
+    message = save_parallel_generate_only_run(
+        cfg=cfg,
+        journal=journal,
+        current_node=node,
+    )
+
+    assert message == (
+        "Skip-execution mode finished generating root candidates; no code was executed."
+    )
+    loaded = serialize.load_json(cfg.log_dir / "journal.json", Journal)
+    assert len(loaded.nodes) == 1
+    assert loaded.nodes[0].status == "generated"
+    assert loaded.nodes[0].code == "print('generated')"
 
 
 def test_recover_generated_only_root_artifacts_materializes_completed_orphans(

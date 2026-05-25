@@ -22,6 +22,8 @@ from aide.run import (
     build_hypothesis_phase_status,
     build_operator_notice_summary,
     build_root_hypotheses_view,
+    build_final_tree_renderable,
+    emit_completion_bell,
     model_settings_for_run,
     ResourceSnapshot,
     ArrowKeyReader,
@@ -407,6 +409,31 @@ def test_tree_view_ignores_generated_only_node_when_selecting_best():
 
     assert "* 0.94100·000111" in output
     assert "generated·000123" in output
+
+
+def test_final_tree_renderable_prints_complete_tree_without_focus():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.941), "000111")
+    child = _hypothesis_node(_good_node(0.942), "000222")
+    child.parent = root
+    root.children.add(child)
+    journal.append(root)
+    journal.append(child)
+
+    output = _render_text(build_final_tree_renderable(journal))
+
+    assert "Solution tree" in output
+    assert "0.94100·000111" in output
+    assert "* 0.94200·000222" in output
+    assert "\x1b[7m" not in output
+
+
+def test_emit_completion_bell_writes_two_bells_to_tty_path(tmp_path):
+    tty_path = tmp_path / "tty"
+
+    emit_completion_bell(tty_path=tty_path, sleep_seconds=0)
+
+    assert tty_path.read_text() == "\x07\x07"
 
 
 def test_journal_tree_hides_catboost_gpu_oom_nodes_by_default():
