@@ -7,10 +7,17 @@
         "node_id": "339cee9d6369455fb0f7883bcaf67ff8",
         "score": null,
         "created_at": "2026-05-23T21:53:18"
+      },
+      {
+        "file": "legacy-002.py",
+        "buggy": false,
+        "node_id": "a3343cc3ad4c4d0292ed00e892c64947",
+        "score": 0.931501746695143,
+        "created_at": "2026-05-24T02:01:38"
       }
     ]
   },
   "active": {
-    "legacy": "legacy-001.py"
+    "legacy": "legacy-002.py"
   }
 }

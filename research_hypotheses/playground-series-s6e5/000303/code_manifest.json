@@ -11,6 +11,16 @@
         "buggy": false,
         "score": 0.9495356668488415
       }
+    ],
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": null,
+        "status": "generated",
+        "node_id": "bfaba602a8d14e44a7ca08ffd19da05b",
+        "score": null,
+        "created_at": "2026-05-25T03:23:49"
+      }
     ]
   }
 }

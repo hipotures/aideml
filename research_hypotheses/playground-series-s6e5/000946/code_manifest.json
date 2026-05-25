@@ -8,6 +8,16 @@
         "score": null,
         "created_at": "2026-05-23T04:54:54"
       }
+    ],
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": null,
+        "status": "generated",
+        "node_id": "782c212a0bda40a19bcb8f3a41364fec",
+        "score": null,
+        "created_at": "2026-05-25T03:27:38"
+      }
     ]
   },
   "active": {

@@ -1,6 +1,7 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py"
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-001.py"
   },
   "versions": {
     "autogluon": [
@@ -10,6 +11,15 @@
         "created_at": "2026-05-18T11:09:44",
         "buggy": false,
         "score": 0.9501048975877402
+      }
+    ],
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": false,
+        "node_id": "fa1f982ccfc8438ab4ed53c169ccb6dc",
+        "score": 0.9274845994988608,
+        "created_at": "2026-05-24T15:22:13"
       }
     ]
   }
