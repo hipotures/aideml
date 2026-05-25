@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Year-aware Cumulative_Degradation corruption guard",
+  "summary": "Treat Cumulative_Degradation as a potentially corrupted synthetic proxy in 2025-style rows instead of a clean physics feature.",
+  "rationale": "The deep-dive EDA notes that Cumulative_Degradation behaves plausibly in older rows but jumps within 2025 synthetic stints. Many feature stacks multiply or divide by this column as if it were physical degradation, which can turn generator artifacts into brittle splits.",
+  "implementation_hint": "Create year/regime diagnostics for monotonicity and within-stint jumpiness of Cumulative_Degradation. Add flags such as `degradation_jump_anomaly`, `degradation_untrusted_year`, and clipped/robust versions; compare models that use raw degradation, robust degradation only, and degradation features gated by year or anomaly score.",
+  "expected_effect": "May reduce false confidence from noisy degradation interactions and improve generalization on rows where degradation is a synthetic artifact rather than tyre state.",
+  "risk": "If the corruption pattern is also present in public/private test, removing raw signal can hurt; run as an ablation rather than a hard cleanup.",
+  "sources": [
+    "https://www.kaggle.com/code/simarbirsinghsandhu/deep-dive-eda-comp-original-dataset",
+    "https://www.kaggle.com/code/daniilkutsy/f1-pitnextlap-analysis-eda-iqr-z-score-vif"
+  ]
+}

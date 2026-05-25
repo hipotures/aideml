@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Public-submission rank remap and gated micro-intervention blender",
+  "summary": "When only public submission files are available, treat high-scoring predictions as rank sources, remap unusual distributions onto a trusted anchor, and apply tightly gated corrections instead of broad averaging.",
+  "rationale": "Multiple high-vote blender notebooks converge on the same pattern: direct probability averaging works only for similar distributions, while irregular high-scoring sources such as the 0.95446 file should be used as ordering signals. The richer notebooks add logit-rank remaps, confidence gates, micro-band rescaling, and tail-only max/min interventions for ROC-AUC.",
+  "implementation_hint": "Build a submission-ingestion script that validates row IDs, clips probabilities, computes pairwise correlations and rank correlations, identifies an anchor, and tests: small direct blends, rank remap, logit-rank remap, middle-only gates, tail-only OR/AND rank interventions, and percentile micro-band rescaling. Keep a report of changed-row counts because no OOF target exists for pure public submissions.",
+  "expected_effect": "Can extract leaderboard-only micro gains from diverse public submissions without destroying the anchor distribution.",
+  "risk": "No honest local validation when only submissions are available; this should be tracked separately from model hypotheses and can overfit public LB noise.",
+  "sources": [
+    "https://www.kaggle.com/code/flexonafft/f1-submission-blender-0-9545",
+    "https://www.kaggle.com/code/raunakdey07/f1-pit-stops-blender-0-95454",
+    "https://www.kaggle.com/code/safar1/lb-score-0-95449",
+    "https://www.kaggle.com/code/anthonytherrien/predicting-f1-pit-stops-blend",
+    "https://www.kaggle.com/code/sohailkhanlml/f1-pit-stop-blending-the-leaderboard-0-95418",
+    "https://www.kaggle.com/code/sohailkhanlml/ps-e5-blending-works-0-95411",
+    "https://www.kaggle.com/code/nawfeelrahman1124444/s6e5-0-95452",
+    "https://www.kaggle.com/code/sohailkhanlml/f1-0-95419-diversity-is-all-we-need",
+    "https://www.kaggle.com/code/safar1/lb-score-0-95452",
+    "https://www.kaggle.com/code/azzamradman/knock-the-blender-with-one-liner",
+    "https://www.kaggle.com/code/muhammadusmankhan0/predicting-f1-pitstops-with-blending",
+    "https://www.kaggle.com/code/giovannyrodrguez/95446-lb"
+  ]
+}

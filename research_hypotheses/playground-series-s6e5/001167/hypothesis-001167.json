@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Shrinkage driver-group logit residual correction",
+  "summary": "After a strong base stack, learn small fold-safe residual logit offsets for driver and driver-context groups instead of adding more raw driver features.",
+  "rationale": "Pilkwang’s driver notebook argues that driver identity may be too weak or leaky as a main feature but still useful as a post-stack bias correction. A shrinkage residual layer can capture persistent driver/team strategy bias while keeping the base model’s ordering as the engine.",
+  "implementation_hint": "Train the base model with strict OOF predictions. On each fold, compute residuals in logit space by groups such as Driver, Driver+Compound, Driver+Race, and Driver+Stint using only training-fold residuals with empirical-Bayes shrinkage/min-count fallback. Search a small lambda for adding the group residual to validation/test logits and promote only if OOF AUC beats the uncorrected base.",
+  "expected_effect": "Small but potentially robust lift if the base stack is miscalibrated for recurring driver-context tendencies.",
+  "risk": "Driver residuals can memorize random folds; use grouped validation and shrink heavily for rare drivers.",
+  "sources": [
+    "https://www.kaggle.com/code/pilkwang/s6e5-driver-s-high-driver-feature-eng",
+    "https://www.kaggle.com/code/simarbirsinghsandhu/deep-dive-eda-comp-original-dataset"
+  ]
+}

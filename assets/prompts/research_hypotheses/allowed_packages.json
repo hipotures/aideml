@@ -16,7 +16,7 @@
       "polars",
       "ydf",
       "tabpfn",
-      "pytabkit",
+      "pytabkit[models,autogluon,extra,hpo,bench,dev]==1.7.3",
       "tabm",
       "pytorch-tabular",
       "flaml",

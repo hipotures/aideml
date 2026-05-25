@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "U-shaped LapTime_Delta binning and middle-stability suppressor",
+  "summary": "Model LapTime_Delta as a nonlinear U-shaped signal: both very negative and very positive deltas can precede pits, while stable middle laps suppress pit risk.",
+  "rationale": "The deep-dive EDA reports near-zero linear correlation for LapTime_Delta but a clear decile pattern: extremes carry signal, while middle bins are low-risk. Existing features use raw, absolute, and positive-part transforms, but the notebook-specific insight is the low-risk middle stability band plus two-sided extremes.",
+  "implementation_hint": "Within folds, create quantile bins or spline features for LapTime_Delta, signed extreme flags, middle-stability flags, and interactions with TyreLife, Compound, RaceProgress, and recent pit-wave state. Compare against raw/absolute/squared-only transforms.",
+  "expected_effect": "Could improve borderline pit-window ranking where linear models or trees underuse the symmetric extreme-lap signal.",
+  "risk": "Extreme deltas may encode safety-car/out-lap artifacts rather than pit pressure; validate by race-group folds and avoid bins with tiny support.",
+  "sources": [
+    "https://www.kaggle.com/code/simarbirsinghsandhu/deep-dive-eda-comp-original-dataset",
+    "https://www.kaggle.com/code/aidensong123/f1-pit-stops-eda-tyre-life-pit-waves-drift",
+    "https://www.kaggle.com/code/daniilkutsy/f1-pitnextlap-analysis-eda-iqr-z-score-vif"
+  ]
+}

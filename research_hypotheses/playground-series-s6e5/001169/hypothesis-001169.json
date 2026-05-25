@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "OOF weak-slice audit driving specialist reweighting",
+  "summary": "Use OOF predictions to find Race/Compound/Year/PitStop slices with unusually low AUC, then train or reweight targeted specialists for those slices.",
+  "rationale": "The Kospintr notebook evaluates AUC by subcategory and worst multicategory subsets instead of relying only on global OOF AUC. For this competition, errors can concentrate in rare compounds, seasons, or pit-state regimes, so a slice audit can guide targeted experiments rather than another broad feature sweep.",
+  "implementation_hint": "After each base stack, compute OOF AUC by single categories and selected multicategory keys such as Compound x Year x PitStop, Race x Compound, and Stint x Compound. For consistently weak slices with enough positives/negatives, test sample reweighting, a slice-specific expert, or a gated blend. Promote only if global OOF and weak-slice AUC both improve.",
+  "expected_effect": "Can recover gains on hidden failure modes while keeping the main model unchanged for already-easy regimes.",
+  "risk": "Slice hunting can overfit OOF noise; require minimum support, repeat across seeds/folds, and keep the intervention small.",
+  "sources": [
+    "https://www.kaggle.com/code/kospintr/pitstop-catb-hgbc-xgb-lgbm-realmlp-baseline",
+    "https://www.kaggle.com/code/pilkwang/s6e5-driver-s-high-driver-feature-eng",
+    "https://www.kaggle.com/code/josephnehrenz/s6e5-context-aware-f1-pit-stop-lgbm-stacker"
+  ]
+}

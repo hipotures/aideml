@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Higher-moment target-stat features for binned numeric and categorical groups",
+  "summary": "Augment simple target encodings with fold-safe mean, std, skew, median, min, max, and count statistics over categorical and discretized numeric groups.",
+  "rationale": "The Kospintr baseline does not only target-encode category means; it constructs a family of target statistics for original categoricals and bucketized numerics. Higher moments can tell the model whether a group has stable pit risk, bimodal behavior, or sparse/unreliable history.",
+  "implementation_hint": "Within each CV fold, discretize key numerics such as RaceProgress, TyreLife, LapTime_Delta, and Cumulative_Degradation, then compute smoothed group target mean/std/skew/median/min/max/count for selected categoricals and bins. Apply fold-training stats to validation/test with global fallback and compare against mean-only encodings.",
+  "expected_effect": "May add reliability and shape information beyond plain target means, especially for sparse Race/Compound/Stint/TyreLife buckets.",
+  "risk": "Large feature count and multiple target-derived statistics increase leakage/overfit risk; must be strictly fold-local with smoothing.",
+  "sources": [
+    "https://www.kaggle.com/code/kospintr/pitstop-catb-hgbc-xgb-lgbm-realmlp-baseline",
+    "https://www.kaggle.com/code/josephnehrenz/s6e5-context-aware-f1-pit-stop-lgbm-stacker"
+  ]
+}

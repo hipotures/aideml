@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "TabNet attention sidecar for race-group OOF diversity",
+  "summary": "Train a small TabNet classifier with race-grouped folds and use its OOF predictions only as a low-weight diversity sidecar.",
+  "rationale": "The public TabNet notebook reports weaker standalone OOF than GBDTs, but its sequential attention and sparse feature selection may make errors different enough to help a stack on specific regimes. This is distinct from TabM/TabPFN because the inductive bias is attentive feature masking, not MLP ensembling or foundation-style inference.",
+  "implementation_hint": "Use GroupKFold by Race or Year_Race, categorical embeddings for Driver/Compound/Race, and only a compact feature set with lagged rolling pace, tyre degradation, and position deltas. Export OOF/test probabilities and test rank/logit blend weights capped at a small maximum such as 5-10%.",
+  "expected_effect": "Probably weak alone, but may add a small decorrelated signal if blended only where OOF says it helps.",
+  "risk": "The cited notebook’s OOF is low; TabNet can overfit and adds dependency/runtime cost. Kill quickly if its OOF rank correlation with stronger models is high or its blend weight goes to zero.",
+  "sources": [
+    "https://www.kaggle.com/code/sohailkhanlml/tabnet-predicting-f1-pit-stops-oof-auc-0-9154"
+  ]
+}

@@ -73,7 +73,7 @@ polars
 ydf
 protobuf>=6.31.1,<7
 tabpfn
-pytabkit
+pytabkit[models,autogluon,extra,hpo,bench,dev]==1.7.3
 tabm
 pytorch-tabular
 flaml

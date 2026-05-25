@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "OOF artifact registry for rank-vs-probability blend search",
+  "summary": "Standardize saved OOF/test prediction artifacts and search rank-normalized and probability-scale blends only after strict row and target alignment checks.",
+  "rationale": "Pilkwang’s OOF rank-blend notebook separates expensive model fitting from blend search and refuses to blend artifacts that do not share IDs, targets, and row counts. This is more reliable than ad hoc CSV averaging and gives an internal AUC criterion for choosing rank or probability blending.",
+  "implementation_hint": "Define an artifact contract: `oof_<model>.csv` with id/target/pred and `sub_<model>.csv` with id/PitNextLap. Discover paired artifacts, validate full OOF coverage and submission row counts, compute base OOF AUCs, then search simplex weights over both raw probabilities and rank-normalized predictions. Export blend weights, OOF blend, and submission.",
+  "expected_effect": "Improves blend reproducibility and usually finds small AUC gains from rank-scale diversity without relying on public LB guessing.",
+  "risk": "OOF artifacts from incompatible folds or partial training sets can silently overfit unless alignment and provenance are enforced.",
+  "sources": [
+    "https://www.kaggle.com/code/pilkwang/s6e5-driver-s-high-driver-feature-eng",
+    "https://www.kaggle.com/code/pilkwang/s6e5-oof-rank-blend"
+  ]
+}

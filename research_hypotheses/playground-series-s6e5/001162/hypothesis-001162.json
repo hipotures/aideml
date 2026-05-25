@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "KS-gated original-data augmentation with domain flags",
+  "summary": "Use the original F1 strategy dataset as extra training data only through feature-specific shift gates and explicit domain/sample-weight controls.",
+  "rationale": "The deep-dive original-dataset notebooks report a target-rate gap and uneven feature drift: TyreLife, Position, and Position_Change are relatively stable, while LapNumber, RaceProgress, LapTime_Delta, and Stint are high-shift. Blind concatenation can import useful positives but also teach the model a different synthetic/original domain.",
+  "implementation_hint": "Compute KS or adversarial-shift scores between competition train and original data for each shared feature. Add original rows with an `is_original` flag, lower sample weight for high-shift rows, and optionally mask or interaction-encode high-shift features with the domain flag. Compare full concat, stable-feature-only concat, and weighted concat under race/year grouped OOF.",
+  "expected_effect": "Could improve positive-class coverage and rare strategy windows while reducing the leaderboard risk from original-vs-synthetic covariate shift.",
+  "risk": "If the original target mechanism differs from the competition generator, even weighted rows can bias rank ordering; validation must separate true feature gains from domain memorization.",
+  "sources": [
+    "https://www.kaggle.com/code/yekenot/ps-s6-e5-realmlp-pytabkit",
+    "https://www.kaggle.com/code/kospintr/pitstop-catb-hgbc-xgb-lgbm-realmlp-baseline",
+    "https://www.kaggle.com/code/lucabasa/f1-strategy-eda-and-base-models",
+    "https://www.kaggle.com/code/simarbirsinghsandhu/deep-dive-eda-comp-original-dataset",
+    "https://www.kaggle.com/code/emanuellcs/predicting-f1-pit-stops-xgboost-baseline",
+    "https://www.kaggle.com/code/mohamedsadokaissaoui/beginner-friendly-xgboost-feature-engineering",
+    "https://www.kaggle.com/code/simarbirsinghsandhu/xgboost-gpu-fe-encoding",
+    "https://www.kaggle.com/code/danzthedeadly/lb-0-95-without-feature-engineering-beginner-guide",
+    "https://www.kaggle.com/code/aidensong123/f1-pit-stops-eda-tyre-life-pit-waves-drift",
+    "https://www.kaggle.com/code/ravi20076/playgrounds6e5-adversarialcv",
+    "https://www.kaggle.com/code/masayakawamata/s6e5-xgb-with-fe",
+    "https://www.kaggle.com/code/vladstud716373618/f1-advanced-feature-engineering-lgbm"
+  ]
+}
