@@ -32,10 +32,10 @@ def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path)
     )
     _write_csv_gz(
         data_dir / "train-aux.csv.gz",
-        "id,Driver,LapNumber,TyreLife,PitNextLap,source_is_aux,Normalized_TyreLife\n"
-        "1,A,10,5,0,0,0.5\n"
-        "2,B,20,8,1,0,0.4\n"
-        "-1,C,40,12,0,1,0.3\n",
+        "id,Driver,LapNumber,TyreLife,PitNextLap\n"
+        "1,A,10,5,0\n"
+        "2,B,20,8,1\n"
+        "-1,C,40,12,0\n",
     )
     _write_csv_gz(
         data_dir / "test.csv.gz",
@@ -43,8 +43,8 @@ def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path)
     )
     _write_csv_gz(
         data_dir / "test-aux.csv.gz",
-        "id,Driver,LapNumber,TyreLife,source_is_aux,Normalized_TyreLife\n"
-        "10,A,30,9,0,0.3\n",
+        "id,Driver,LapNumber,TyreLife\n"
+        "10,A,30,9\n",
     )
     _write_csv_gz(
         data_dir / "sample_submission.csv.gz",
@@ -66,11 +66,18 @@ def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path)
     test = pd.read_csv(input_dir / "test.csv.gz")
 
     assert len(train) == 3
-    assert train["source_is_aux"].tolist() == [0, 0, 1]
-    assert "source_is_aux" in test.columns
-    assert test["source_is_aux"].tolist() == [0]
-    assert "Normalized_TyreLife" in train.columns
-    assert train.loc[0, "Normalized_TyreLife"] == 0.5
+    assert list(train.columns) == [
+        "id",
+        "Driver",
+        "LapNumber",
+        "TyreLife",
+        "PitNextLap",
+    ]
+    assert list(test.columns) == ["id", "Driver", "LapNumber", "TyreLife"]
+    assert "source_is_aux" not in train.columns
+    assert "source_is_aux" not in test.columns
+    assert "Normalized_TyreLife" not in train.columns
+    assert "Normalized_TyreLife" not in test.columns
     assert sorted(path.name for path in input_dir.iterdir()) == [
         "sample_submission.csv.gz",
         "test.csv.gz",
@@ -124,7 +131,8 @@ def test_agent_aux_appends_merged_external_data_note_to_task_desc(tmp_path):
 
     assert "original/external F1 strategy dataset" in task_desc
     assert "synthetic Kaggle Playground tabular data" in task_desc
-    assert "`source_is_aux` column marks row provenance" in task_desc
+    assert "source/provenance-only columns" in task_desc
+    assert "same feature columns as the competition train file" in task_desc
     assert "`test.csv.gz` remains the competition test set only" in task_desc
 
 

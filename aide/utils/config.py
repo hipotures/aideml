@@ -477,10 +477,11 @@ def _with_aux_task_desc_note(task_desc, cfg: Config):
         "merging the competition training rows with the original/external F1 "
         "strategy dataset. The competition train/test files are synthetic Kaggle "
         "Playground tabular data; the auxiliary rows come from the original F1 "
-        "strategy data. The `source_is_aux` column marks row provenance: `0` for "
-        "competition rows and `1` for original/external auxiliary rows. "
-        "`test.csv.gz` remains the competition test set only, with "
-        "`source_is_aux=0`."
+        "strategy data. The merged train keeps the same feature columns as the "
+        "competition train file; source/provenance-only columns from the auxiliary "
+        "dataset are not exposed to the model. `test.csv.gz` remains the "
+        "competition test set only with the same feature columns as the original "
+        "competition test file."
     )
 
     if isinstance(task_desc, str):
