@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP PyTabKit original-kernel baseline",
+  "summary": "Port the high-performing public RealMLP/PyTabKit notebook into a reusable legacy root hypothesis for further branch exploration.",
+  "rationale": "The public kernel combines competition train/test with the original F1 strategy dataset, applies compact interaction and categorical encodings, then trains RealMLP with fold-wise original-data augmentation while validating only on competition rows. This produced the strongest observed local and public score among the tested variants.",
+  "implementation_hint": "Use the included legacy code as the root implementation. Keep the original dataset as a separate input file named f1_strategy_dataset_v4.csv, drop Normalized_TyreLife from it, append only each fold's original-training split to the competition-training split, and keep validation on competition rows only.",
+  "expected_effect": "Establish a strong neural tabular root for exploring incremental branch hypotheses beyond the AutoGluon roots.",
+  "risk": "The approach depends on pytabkit/torch availability and may be slower or weaker without a working GPU; the public-kernel validation protocol may not be directly comparable to all previous AIDE-generated roots.",
+  "sources": [
+    "file://.cache/kaggle_s6e5_notebooks/raw/yekenot__ps-s6-e5-realmlp-pytabkit/ps-s6-e5-realmlp-pytabkit.ipynb",
+    "file://experiments/yekenot-realmlp-pytabkit/solution.py"
+  ],
+  "origin": {
+    "kind": "manual_kernel_port",
+    "source_kernel": "yekenot/ps-s6-e5-realmlp-pytabkit",
+    "source_agent_mode": "legacy",
+    "source_cv_score": 0.9540533716984658,
+    "source_public_score": 0.95402,
+    "source_aux": false,
+    "requires_original_dataset": true,
+    "original_dataset_file": "f1_strategy_dataset_v4.csv",
+    "created_from_experiment": "experiments/yekenot-realmlp-pytabkit"
+  }
+}

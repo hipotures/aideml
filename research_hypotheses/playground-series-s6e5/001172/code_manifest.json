@@ -1,0 +1,24 @@
+{
+  "active": {
+    "legacy": "legacy-001.py"
+  },
+  "versions": {
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "manual-yekenot-realmlp-pytabkit",
+        "score": 0.9540533716984658,
+        "created_at": "2026-05-26T00:44:30",
+        "aux": false,
+        "source_agent_mode": "legacy",
+        "source_score": 0.9540533716984658,
+        "source_public_score": 0.95402,
+        "source_aux": false,
+        "source_kernel": "yekenot/ps-s6-e5-realmlp-pytabkit",
+        "source_artifact_dir": "experiments/yekenot-realmlp-pytabkit"
+      }
+    ]
+  }
+}
