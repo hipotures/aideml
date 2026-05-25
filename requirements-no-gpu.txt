@@ -7,7 +7,7 @@
 # Do not use plain `pip install -e .` with this file: setup.py reads the main
 # requirements.txt and would install the full dependency set.
 
---extra-index-url https://download.pytorch.org/whl/cpu
+--find-links https://download.pytorch.org/whl/cpu/torch/
 
 # AIDE requirements
 black~=26.3.1
