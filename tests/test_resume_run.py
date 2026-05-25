@@ -121,6 +121,24 @@ def test_parse_runtime_args_extracts_skip_execution_flag():
     assert remaining == ["agent.steps=200"]
 
 
+def test_parse_runtime_args_extracts_generate_only_hypothesis_ids():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--resume",
+            "2-example-run",
+            "--generate-only",
+            "001162",
+            "001170",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.run_id == "2-example-run"
+    assert runtime.skip_execution is True
+    assert runtime.generate_only_hypothesis_ids == ("001162", "001170")
+    assert remaining == ["agent.steps=200"]
+
+
 @pytest.mark.parametrize("workers", [0, -1, 9, "four"])
 def test_validate_hypothesis_root_generate_workers_rejects_invalid_values(workers):
     cfg = _load_cfg(use_cli_args=False)

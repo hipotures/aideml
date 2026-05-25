@@ -1232,6 +1232,7 @@ def reserve_hypothesis_roots(
     count: int,
     completed_steps: int,
     reserved_hypothesis_ids: set[str] | None = None,
+    forced_hypothesis_ids: tuple[str, ...] | list[str] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> list[HypothesisRootReservation]:
     reservations: list[HypothesisRootReservation] = []
@@ -1244,6 +1245,66 @@ def reserve_hypothesis_roots(
     compatible_by_id = {
         hypothesis.id: hypothesis for hypothesis in _compatible_manual_hypotheses(cfg, library)
     }
+
+    if forced_hypothesis_ids:
+        ordered_forced_ids = list(dict.fromkeys(forced_hypothesis_ids))
+        missing_ids = [
+            hypothesis_id
+            for hypothesis_id in ordered_forced_ids
+            if hypothesis_id not in compatible_by_id
+        ]
+        if missing_ids:
+            raise ValueError(
+                "Requested generate-only hypothesis id(s) are not available for "
+                f"agent mode {getattr(cfg.agent, 'mode', 'legacy')!r}: "
+                + ", ".join(missing_ids)
+            )
+        materialized_root_ids = _root_hypothesis_ids(journal)
+        for hypothesis_id in ordered_forced_ids:
+            if hypothesis_id in materialized_root_ids:
+                continue
+            if hypothesis_id in reserved_hypothesis_ids:
+                continue
+            if len(reservations) >= count:
+                break
+            hypothesis = compatible_by_id[hypothesis_id]
+            step = completed_steps + len(reservations)
+            created_at = dt.datetime.now().isoformat(timespec="seconds")
+            _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
+            _append_manual_offer(
+                cfg=cfg,
+                completed_steps=step,
+                offered_ids=[hypothesis.id],
+                source_hash=library.source_hash,
+                created_at=created_at,
+            )
+            _record_manual_offer_usage(
+                cfg=cfg,
+                offered_ids=[hypothesis.id],
+                completed_steps=step,
+                created_at=created_at,
+            )
+            selection = ManualHypothesisSelection(
+                completed_steps=step,
+                source_hash=library.source_hash,
+                source_dir=library.source_dir,
+                hypotheses=[hypothesis],
+            )
+            failure = failures.get(hypothesis.id, {})
+            reservations.append(
+                HypothesisRootReservation(
+                    selection=selection,
+                    hypothesis_id=hypothesis.id,
+                    completed_steps=step,
+                    retry_attempts=(
+                        int(failure.get("attempts", 0))
+                        if isinstance(failure, dict)
+                        else 0
+                    ),
+                )
+            )
+            _append_reserved_placeholder(working_journal, hypothesis_id=hypothesis.id)
+        return reservations
 
     retry_ids = sorted(failures)
     retry_ids.extend(

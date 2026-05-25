@@ -123,6 +123,7 @@ class RuntimeOptions:
     telegram_test_message: bool = False
     debug: bool = False
     skip_execution: bool = False
+    generate_only_hypothesis_ids: tuple[str, ...] = ()
     seed_sha_prefix: str | None = None
     seed_source_run: str | None = None
 
@@ -236,7 +237,33 @@ def parse_runtime_args(
         elif arg == "--debug":
             runtime = replace(runtime, debug=True)
         elif arg in {"--skip-execution", "--generate-only"}:
-            runtime = replace(runtime, skip_execution=True)
+            hypothesis_ids: list[str] = []
+            if arg == "--generate-only":
+                next_i = i + 1
+                while next_i < len(argv):
+                    next_arg = argv[next_i]
+                    if next_arg.startswith("-") or "=" in next_arg:
+                        break
+                    hypothesis_ids.extend(
+                        part.strip()
+                        for part in next_arg.split(",")
+                        if part.strip()
+                    )
+                    next_i += 1
+                if hypothesis_ids:
+                    i = next_i - 1
+            runtime = replace(
+                runtime,
+                skip_execution=True,
+                generate_only_hypothesis_ids=tuple(
+                    dict.fromkeys(
+                        [
+                            *runtime.generate_only_hypothesis_ids,
+                            *hypothesis_ids,
+                        ]
+                    )
+                ),
+            )
         elif arg == "--seed-from-sha":
             if runtime.seed_sha_prefix is not None:
                 raise ValueError("`--seed-from-sha` can only be provided once.")
@@ -3926,7 +3953,10 @@ def run(argv: list[str] | None = None):
         return (
             runtime_options.skip_execution
             and cfg.research.mode == "hypothesis"
-            and hypothesis_root_generate_workers > 1
+            and (
+                hypothesis_root_generate_workers > 1
+                or bool(runtime_options.generate_only_hypothesis_ids)
+            )
         )
 
     def refresh_active_root_generations(
@@ -4000,6 +4030,7 @@ def run(argv: list[str] | None = None):
                 reserved_hypothesis_ids={
                     job.reservation.hypothesis_id for job in futures.values()
                 },
+                forced_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
             )
             if not reservations:
                 exhausted = True

@@ -761,6 +761,29 @@ def test_reserve_hypothesis_roots_returns_unique_manifest_score_order(tmp_path):
     assert [reservation.completed_steps for reservation in reservations] == [0, 1]
 
 
+def test_reserve_hypothesis_roots_uses_forced_ids_and_ignores_root_limit(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.research.hypothesis_root_limit = 1
+    for hypothesis_id in ["000001", "000002", "000003"]:
+        _write_manual_hypothesis(tmp_path, "playground-series-s6e5", hypothesis_id)
+
+    reservations = research.reserve_hypothesis_roots(
+        cfg,
+        journal=Journal(),
+        count=3,
+        completed_steps=0,
+        forced_hypothesis_ids=("000003", "000001"),
+        repo_root=tmp_path,
+    )
+
+    assert [reservation.hypothesis_id for reservation in reservations] == [
+        "000003",
+        "000001",
+    ]
+    assert [reservation.completed_steps for reservation in reservations] == [0, 1]
+
+
 def test_reserve_hypothesis_roots_retries_failed_generation_first(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
