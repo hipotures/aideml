@@ -104,6 +104,21 @@ class RedirectQueue:
         pass
 
 
+def configure_child_process_logging(output_stream) -> None:
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        try:
+            handler.close()
+        except Exception:  # noqa: BLE001 - best-effort cleanup in forked child
+            pass
+
+    handler = logging.StreamHandler(output_stream)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.WARNING)
+
+
 class Interpreter:
     def __init__(
         self,
@@ -167,9 +182,10 @@ class Interpreter:
             except OSError as exc:
                 logger.debug(f"Failed to initialize process output log: {exc}")
 
-        # capture stdout and stderr
+        # capture stdout, stderr, and library logging emitted by executed code
         # trunk-ignore(mypy/assignment)
         sys.stdout = sys.stderr = RedirectQueue(result_outq, log_path=log_path)
+        configure_child_process_logging(sys.stderr)
 
     def _run_session(
         self, code_inq: Queue, result_outq: Queue, event_outq: Queue

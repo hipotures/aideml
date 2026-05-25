@@ -1,3 +1,4 @@
+import logging
 import os
 import queue
 import resource
@@ -72,6 +73,34 @@ def test_interpreter_executes_main_guard_like_script(tmp_path):
 
     assert result.exc_type is None
     assert "main ran" in "".join(result.term_out)
+
+
+def test_interpreter_child_does_not_inherit_parent_logging_handlers(tmp_path):
+    parent_log = tmp_path / "parent.log"
+    handler = logging.FileHandler(parent_log, encoding="utf-8")
+    handler.setLevel(logging.WARNING)
+    root_logger = logging.getLogger()
+    previous_level = root_logger.level
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.WARNING)
+
+    try:
+        interpreter = Interpreter(tmp_path, timeout=10, memory_limit_gb=None)
+        try:
+            result = interpreter.run(
+                "import logging\n"
+                "logging.warning('child warning from interpreter')\n"
+            )
+        finally:
+            interpreter.cleanup_session()
+    finally:
+        root_logger.removeHandler(handler)
+        handler.close()
+        root_logger.setLevel(previous_level)
+
+    assert result.exc_type is None
+    assert "child warning from interpreter" in "".join(result.term_out)
+    assert parent_log.read_text(encoding="utf-8") == ""
 
 
 def test_first_keyboard_interrupt_waits_for_execution_to_finish(tmp_path):
