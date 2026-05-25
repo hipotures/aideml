@@ -1136,7 +1136,11 @@ class Agent:
                 parent_node=parent_node,
                 completed_steps=len(self.journal.nodes),
             )
-            return self._add_hypothesis_selection(prompt, selection)
+            return self._add_hypothesis_selection(
+                prompt,
+                selection,
+                parent_node=parent_node,
+            )
         hints = load_latest_research_hints(self.cfg.log_dir)
         if hints is not None:
             prompt["External research hints"] = format_research_hints_for_prompt(hints)
@@ -1146,6 +1150,8 @@ class Agent:
         self,
         prompt: dict[str, Any],
         selection: Any,
+        *,
+        parent_node: Node | None = None,
     ) -> dict[str, Any]:
         self.active_research_hypothesis_id = (
             selection.hypotheses[0].id if selection.hypotheses else None
@@ -1156,6 +1162,10 @@ class Agent:
         prompt["Hypothesis under verification"] = format_hypothesis_for_prompt(
             selection
         )
+        if parent_node is not None:
+            reference = self._hypothesis_reference_implementation_for_prompt(selection)
+            if reference is not None:
+                prompt["Reference implementation for assigned hypothesis"] = reference
         return {
             "research_mode": "hypothesis",
             "research_hypotheses_offered": [
@@ -1163,6 +1173,47 @@ class Agent:
             ],
             "research_source_hash": selection.source_hash,
         }
+
+    def _hypothesis_reference_implementation_for_prompt(
+        self,
+        selection: Any,
+    ) -> str | None:
+        if not selection.hypotheses:
+            return None
+        hypothesis_id = selection.hypotheses[0].id
+        source_dir = Path(selection.source_dir)
+        if len(source_dir.parents) < 2:
+            return None
+        root_code = load_hypothesis_root_code(
+            self.cfg,
+            hypothesis_id,
+            repo_root=source_dir.parents[1],
+        )
+        if root_code is None:
+            return None
+
+        code = root_code.code
+        mode_note = (
+            f"Mode: {root_code.agent_mode}; file: {root_code.path.name}."
+        )
+        if is_autogluon_preprocess_mode(self.cfg):
+            preprocess_source = extract_preprocess_source(code)
+            if preprocess_source is None:
+                return None
+            code = preprocess_source
+            mode_note += " Only the `preprocess(df)` implementation is shown."
+
+        return (
+            f"This code is the stored implementation of the newly assigned "
+            f"hypothesis {hypothesis_id}. Use it only as implementation guidance "
+            "for applying this hypothesis on top of the `Previous solution` above. "
+            "Do not treat this reference code as the current parent solution; the "
+            "current parent solution remains the code in `Previous solution`. "
+            "Preserve the branch history and parent code unless the assigned "
+            "hypothesis requires a narrow change.\n\n"
+            f"{mode_note}\n\n"
+            f"{wrap_code(code)}"
+        )
 
     def _add_memory_or_branch_context(
         self,
