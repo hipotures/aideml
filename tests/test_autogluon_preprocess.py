@@ -128,6 +128,22 @@ def test_sanitize_preprocess_prompt_text_removes_unavailable_columns():
     assert "__is_train__" not in sanitized
 
 
+def test_sanitize_preprocess_prompt_text_removes_dangling_target_sentence_fragment():
+    text = (
+        "`PitNextLap` should contain probabilities for the positive class, not hard class\n"
+        "labels.\n"
+        "TyreLife (float64) has useful signal.\n"
+    )
+
+    sanitized = sanitize_preprocess_prompt_text(
+        text,
+        unavailable_columns=["id", "PitNextLap", "__is_train__"],
+    )
+
+    assert "TyreLife" in sanitized
+    assert "labels." not in sanitized
+
+
 def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     cfg = _cfg(tmp_path)
 
@@ -349,7 +365,8 @@ def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
     assert "if AIDE_AG_CONFIG.get(\"use_gpu\") is not None:" in code
     assert "fit_kwargs[\"num_gpus\"] = 1 if AIDE_AG_CONFIG[\"use_gpu\"] else 0" in code
-    assert "fit_kwargs.update(AIDE_AG_CONFIG.get(\"fit_args\", {}))" in code
+    assert "fit_args = dict(AIDE_AG_CONFIG.get(\"fit_args\", {}) or {})" in code
+    assert "fit_kwargs.update(fit_args)" in code
 
 
 def test_autogluon_best_profile_uses_only_models_presets_and_time_limit(tmp_path):
@@ -628,6 +645,7 @@ def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):
     journal = Journal()
     journal.append(parent)
     agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    agent.data_preview = "TyreLife (float64) has range 1.00 - 77.00\n"
     captured = {}
 
     def fake_plan_and_code(prompt):
@@ -645,6 +663,8 @@ def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):
     node = agent._improve(parent)
 
     assert "base_feature" in captured["prompt"]["Previous preprocess function"]
+    assert "Data Overview" in captured["prompt"]
+    assert "TyreLife" in captured["prompt"]["Data Overview"]
     assert node.parent is parent
     assert "base_feature" in node.code
 

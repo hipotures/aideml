@@ -3252,3 +3252,22 @@ def test_agent_includes_serialized_research_hints_in_improve_prompt(tmp_path):
     assert isinstance(hints, str)
     assert "improve research summary" in hints
     assert "Add race-driver sequential features" in hints
+
+
+def test_agent_includes_data_overview_in_improve_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    agent.data_preview = "Position (int64) has range: 1.00 - 20.00\n"
+    parent = _node(0.94, code="print('baseline')", plan="baseline")
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    assert "Data Overview" in captured["prompt"]
+    assert "Position" in captured["prompt"]["Data Overview"]

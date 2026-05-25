@@ -40,6 +40,8 @@ def sanitize_preprocess_prompt_text(
     for line in str(text or "").splitlines():
         if any(pattern.search(line) for pattern in patterns):
             continue
+        if line.strip() == "labels.":
+            continue
         kept.append(line)
     return "\n".join(kept).strip()
 

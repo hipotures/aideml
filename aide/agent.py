@@ -1399,6 +1399,9 @@ class Agent:
         }
         prompt["Instructions"] |= self._prompt_impl_guideline
 
+        if self.acfg.data_preview:
+            prompt["Data Overview"] = self.data_preview
+
         research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
         return self._apply_research_metadata(
@@ -1433,6 +1436,8 @@ class Agent:
             ],
         }
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
+        if self.acfg.data_preview:
+            prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
         self._add_autogluon_context(prompt)
         research_metadata = self._add_research_hints(prompt, parent_node=parent_node)
         plan, code = self.plan_and_code_query(prompt)
