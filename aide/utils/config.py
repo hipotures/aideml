@@ -561,7 +561,7 @@ def validate_aux_workspace_input(input_dir: Path) -> None:
 
 
 def hide_aux_input(input_dir: Path) -> None:
-    for name in ("f1_strategy_dataset_v4.csv", "train-aux.csv.gz", "test-aux.csv.gz"):
+    for name in ("train-aux.csv.gz", "test-aux.csv.gz"):
         path = input_dir / name
         if path.exists() or path.is_symlink():
             path.unlink()

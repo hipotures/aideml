@@ -12,6 +12,7 @@ from aide.journal import Journal, Node
 from aide.run import (
     allocate_node_artifact_slot,
     ensure_node_artifact_slot,
+    enforce_journal_submission_contract,
     find_latest_run_id,
     load_resume_state,
     mark_node_generated_only,
@@ -198,6 +199,40 @@ def test_seed_scored_hypothesis_roots_appends_only_for_new_hypothesis_runs(
     assert count == 1
     assert journal.nodes == [seeded]
     assert seeded.step == 0
+
+
+def test_submission_contract_skips_seeded_scored_roots_without_artifacts(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.workspace_dir = tmp_path / "workspace"
+    cfg.log_dir = tmp_path / "logs"
+    (cfg.workspace_dir / "input").mkdir(parents=True)
+    (cfg.workspace_dir / "input" / "sample_submission.csv").write_text(
+        "id,PitNextLap\n1,0.5\n",
+        encoding="utf-8",
+    )
+
+    journal = Journal()
+    node = Node(
+        code="print('seeded')",
+        plan="Seeded scored ROOT hypothesis 001172 from legacy legacy-001.py.",
+    )
+    node.metric = MetricValue(0.95405, maximize=True)
+    node.status = "ok"
+    node.is_buggy = False
+    node.exec_time = 0.0
+    node._term_out = [
+        "Seeded from code_manifest.json; score=0.95405; file=legacy-001.py."
+    ]
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["001172"]
+    journal.append(node)
+
+    changed = enforce_journal_submission_contract(cfg, journal)
+
+    assert changed == 0
+    assert node.metric.value == 0.95405
+    assert node.is_buggy is False
+    assert node.status == "ok"
 
 
 def test_generated_only_nodes_are_pending_until_evaluated():

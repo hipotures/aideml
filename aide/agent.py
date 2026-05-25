@@ -87,7 +87,7 @@ review_func_spec = FunctionSpec(
             "research_hypotheses_llm_claimed_used": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Optional diagnostic list of offered research hypothesis ids that the implementation intentionally used. This field is not used to validate or reject runs.",
+                "description": "Diagnostic list of offered research hypothesis ids that the implementation intentionally used. Use an empty list when none apply. This field is not used to validate or reject runs.",
             },
             "research_usage_note": {
                 "type": ["string", "null"],
@@ -100,6 +100,8 @@ review_func_spec = FunctionSpec(
             "metric",
             "lower_is_better",
             "validity_warning",
+            "research_hypotheses_llm_claimed_used",
+            "research_usage_note",
         ],
         "additionalProperties": False,
     },

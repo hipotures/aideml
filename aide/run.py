@@ -365,6 +365,22 @@ def mark_node_generated_only(node: Node) -> None:
     node.analysis = "Generated only; execution skipped by --skip-execution."
 
 
+def _is_seeded_scored_root_node(node: Node) -> bool:
+    if node.parent is not None:
+        return False
+    if node.status != "ok":
+        return False
+    if node.exec_time != 0.0:
+        return False
+    if node.artifact_dir_name is not None:
+        return False
+    plan = str(node.plan or "")
+    if not plan.startswith("Seeded scored ROOT hypothesis "):
+        return False
+    term_out = "".join(getattr(node, "_term_out", []) or [])
+    return "Seeded from code_manifest.json;" in term_out
+
+
 def record_generated_only_node(
     *,
     agent: Agent,
@@ -3340,6 +3356,7 @@ def enforce_journal_submission_contract(
         node
         for node in journal.nodes
         if node.status != "generated"
+        if not _is_seeded_scored_root_node(node)
         if not node.is_buggy or node.is_submission_contract_error
     ]
     for node in nodes_to_check:

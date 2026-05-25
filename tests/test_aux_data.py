@@ -85,7 +85,7 @@ def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path)
     ]
 
 
-def test_agent_aux_false_keeps_competition_train_only_and_hides_raw_aux(tmp_path):
+def test_agent_aux_false_keeps_competition_train_and_original_dataset_only(tmp_path):
     data_dir = tmp_path / "data" / "playground-series-s6e5"
     _write_csv_gz(
         data_dir / "train.csv.gz",
@@ -112,8 +112,9 @@ def test_agent_aux_false_keeps_competition_train_only_and_hides_raw_aux(tmp_path
 
     assert len(train) == 1
     assert "source_is_aux" not in train.columns
-    assert not (input_dir / "f1_strategy_dataset_v4.csv").exists()
+    assert (input_dir / "f1_strategy_dataset_v4.csv").exists()
     assert not (input_dir / "train-aux.csv.gz").exists()
+    assert not (input_dir / "test-aux.csv.gz").exists()
 
 
 def test_agent_aux_appends_merged_external_data_note_to_task_desc(tmp_path):

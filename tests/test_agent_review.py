@@ -20,11 +20,9 @@ def _cfg(tmp_path: Path):
 
 def test_review_schema_is_valid_for_codex_structured_output():
     assert review_func_spec.json_schema["additionalProperties"] is False
-    assert "validity_warning" in review_func_spec.json_schema["required"]
-    assert "research_hypotheses_llm_claimed_used" not in review_func_spec.json_schema[
-        "required"
-    ]
-    assert "research_usage_note" not in review_func_spec.json_schema["required"]
+    assert set(review_func_spec.json_schema["required"]) == set(
+        review_func_spec.json_schema["properties"]
+    )
     assert review_func_spec.json_schema["properties"]["validity_warning"]["type"] == [
         "string",
         "null",
