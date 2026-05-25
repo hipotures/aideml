@@ -3114,6 +3114,8 @@ def test_hypothesis_child_prompt_includes_legacy_reference_code(
     reference = captured["prompt"]["Reference implementation for assigned hypothesis"]
     assert "stored implementation of the newly assigned hypothesis 000303" in reference
     assert "Previous solution" in reference
+    assert "source of feature-engineering logic only" in reference
+    assert "Do not replace the parent training loop" in reference
     assert "helper_from_assigned_hypothesis" in reference
     assert "reference legacy code" in reference
 
@@ -3203,6 +3205,8 @@ def test_hypothesis_child_prompt_includes_autogluon_preprocess_reference_only(
 
     reference = captured["prompt"]["Reference implementation for assigned hypothesis"]
     assert "stored implementation of the newly assigned hypothesis 000303" in reference
+    assert "source of feature-engineering logic only" in reference
+    assert "Do not replace the parent training loop" in reference
     assert "assigned_feature" in reference
     assert "def preprocess" in reference
     assert "TabularPredictor" not in reference
@@ -3325,9 +3329,34 @@ def test_legacy_agent_prompt_prefers_behavior_preserving_optimization(tmp_path):
 
     agent._draft()
 
+    response_format = captured["prompt"]["Instructions"]["Response format"]
+    assert "Your response must contain exactly" in response_format
+    assert "Exactly one markdown Python code block" in response_format
+    assert "Do not include headings" in response_format
+
     guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
     assert any(
-        "reducing code size, memory use, or runtime" in line
+        "same validation protocol as the parent solution" in line
+        for line in guidelines
+    )
+    assert any(
+        "prefer 5-fold stratified CV" in line
+        for line in guidelines
+    )
+    assert any(
+        "minimal semantic patch over the parent solution" in line
+        for line in guidelines
+    )
+    assert any(
+        "Do not replace the parent training loop" in line
+        for line in guidelines
+    )
+    assert any(
+        "Same-lap covariate aggregates may use all rows available at prediction time" in line
+        for line in guidelines
+    )
+    assert any(
+        "Mechanical simplifications are allowed only" in line
         for line in guidelines
     )
 

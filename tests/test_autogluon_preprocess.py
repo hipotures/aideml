@@ -530,7 +530,8 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "__aide_row_id__" not in prompt_text
     assert "must replace the previous preprocess function" in prompt_text
     assert "Do not call `globals().get(\"preprocess\")`" in prompt_text
-    assert "reducing code size, memory use, or runtime" in prompt_text
+    assert "Mechanical simplifications are allowed only" in prompt_text
+    assert "Do not optimize by changing algorithms" in prompt_text
     assert "dedicated timeout of 180 seconds" in prompt_text
     assert "Avoid expensive Python callbacks" in prompt_text
     assert "rolling.apply" in prompt_text

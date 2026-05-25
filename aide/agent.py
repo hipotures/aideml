@@ -1037,13 +1037,15 @@ class Agent:
     @property
     def _prompt_impl_guideline(self):
         impl_guideline = [
-            "The code should **implement the proposed solution** and **print the value of the evaluation metric computed on a hold-out validation set**.",
+            "The code must print the primary validation metric using the same validation protocol as the parent solution, unless the assigned hypothesis explicitly requires changing the validation protocol. For this task, prefer 5-fold stratified CV and leak-free OOF predictions.",
             "The code should be a single-file python program that is self-contained and can be executed as-is.",
             "No parts of the code should be skipped, don't terminate the before finishing the script.",
-            "Your response should only contain a single code block.",
             f"Be aware of the running time of the code, it should complete within {humanize.naturaldelta(self.cfg.exec.timeout)}.",
             'If you run a post-CV blend-weight search with many independent AUC/ROC-AUC evaluations, do not evaluate thousands of `roc_auc_score` calls serially. Use `joblib.Parallel` with `n_jobs=min(16, os.cpu_count() or 1)` and `prefer="threads"` to avoid copying large OOF arrays; print "Evaluating N blend candidates with M workers" before starting. Keep candidate grids bounded, and fall back to a simple 1D blend if joblib is unavailable.',
-            "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
+            "The generated code should be a minimal semantic patch over the parent solution. The intended change set should be limited to adding feature-generation function(s) needed for the assigned hypothesis, calling those function(s) in the existing preprocessing path, adding the resulting columns to the existing feature set, and updating metadata for the assigned hypothesis.",
+            "Do not replace the parent training loop, model family, validation protocol, encoding strategy, fallback behavior, existing feature functions, ensembling behavior, or artifact-format behavior unless the assigned hypothesis explicitly requires it.",
+            "Same-lap covariate aggregates may use all rows available at prediction time, but must never use the target, labels, OOF predictions, model predictions, or future target-derived information. If train and test are concatenated for purely covariate-based context features, document this in a code comment and ensure no target column is present in the combined frame.",
+            "Mechanical simplifications are allowed only if they do not change model behavior, validation behavior, feature semantics, artifact names, or metadata. Do not optimize by changing algorithms, parameters, encoders, folds, model families, or training control flow.",
             'All the provided input data is stored in "./input" directory.',
             '**If there is test data provided for this task, please save the test predictions in a `submission.csv` file in the "./working" directory as described in the task description** This is extremely important since this file is used for grading/evaluation. DO NOT FORGET THE submission.csv file!',
             'When you train with cross-validation, also save leak-free out-of-fold predictions to gzip-compressed `./working/oof_predictions.csv.gz` with columns `row`, `target`, and `prediction`; save full test probabilities/predictions to `./working/test_predictions.csv.gz` using the sample-submission id and target columns. If you only use a holdout split, save holdout predictions to `./working/validation_predictions.csv.gz`.',
@@ -1078,9 +1080,9 @@ class Agent:
     def _prompt_resp_fmt(self):
         return {
             "Response format": (
-                "Your response should be a brief outline/sketch of your proposed solution in natural language (3-5 sentences), "
-                "followed by a single markdown code block (wrapped in ```) which implements this solution and prints out the evaluation metric. "
-                "There should be no additional headings or text in your response. Just natural language text followed by a newline and then the markdown code block. "
+                "Your response must contain exactly: 1. A 3-5 sentence natural-language sketch. "
+                "2. Exactly one markdown Python code block. Do not include headings, "
+                "bullet lists, explanations, or text after the code block."
             )
         }
 
@@ -1100,7 +1102,8 @@ class Agent:
                 "Do not change row count or reorder rows.",
                 "If your intended algorithm would remove rows, such as outlier filtering, do not drop them. Preserve all rows and instead add features such as an outlier flag, clipped/winsorized value, imputed clean value, anomaly score, or distance-from-normal feature.",
                 "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
-                "If you can preserve the intended behavior while reducing code size, memory use, or runtime, make that optimization instead of emitting verbose or redundant code.",
+                "Same-lap covariate aggregates may use all rows available at prediction time, but must never use the target, labels, OOF predictions, model predictions, or future target-derived information.",
+                "Mechanical simplifications are allowed only if they do not change model behavior, validation behavior, feature semantics, artifact names, or metadata. Do not optimize by changing algorithms, parameters, encoders, folds, model families, or training control flow.",
                 f"preprocess(df) has a dedicated timeout of {int(getattr(self.cfg.agent.autogluon, 'preprocess_timeout', 180))} seconds before AutoGluon training starts.",
                 "Avoid expensive Python callbacks over rows, groups, or rolling windows, especially `groupby.apply`, `rolling.apply`, and `np.polyfit` on full train+test data. Prefer bounded vectorized `groupby().transform`, `shift`, `rolling().mean/std/min/max`, and simple arithmetic features.",
             ]
@@ -1209,6 +1212,10 @@ class Agent:
             "for applying this hypothesis on top of the `Previous solution` above. "
             "Do not treat this reference code as the current parent solution; the "
             "current parent solution remains the code in `Previous solution`. "
+            "Treat the reference implementation as a source of feature-engineering logic only, "
+            "not as a replacement solution. Do not replace the parent training loop, "
+            "model family, validation protocol, encoding strategy, fallback behavior, "
+            "or existing feature functions unless the assigned hypothesis explicitly requires it. "
             "Preserve the branch history and parent code unless the assigned "
             "hypothesis requires a narrow change.\n\n"
             f"{mode_note}\n\n"
