@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 GBDT control expert",
+  "summary": "Add one GBDT control expert, preferably XGBoost CUDA or LightGBM CPU, without stacking or broad tuning.",
+  "rationale": "A single GBDT control tests whether tree-based decision boundaries complement the RealMLP baseline. On this task LightGBM should remain CPU-only because GPU/CUDA backends have shown native failures, while XGBoost has a straightforward CUDA histogram path.",
+  "implementation_hint": "Patch in exactly one GBDT expert. Prefer XGBoost with tree_method='hist' and device='cuda' when GPU is enabled; if using LightGBM, keep it CPU-only and do not set GPU/CUDA device parameters. Use the same folds, report standalone OOF AUC and simple average with RealMLP, and avoid adding CatBoost, stacking, or calibration.",
+  "expected_effect": "Identify whether a GBDT expert adds complementary ranking signal before investing in a larger ensemble.",
+  "risk": "GBDT may be weaker than RealMLP and can add runtime; LightGBM GPU should be avoided on this task due prior native aborts and bin-size issues.",
+  "sources": [
+    "https://xgboost.readthedocs.io/en/stable/gpu/index.html",
+    "https://lightgbm.readthedocs.io/en/stable/GPU-Tutorial.html"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 8,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -541,6 +541,82 @@ def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp
         is False
     )
 
+
+def test_select_hypothesis_for_node_uses_forced_disabled_child_queue(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "001172")
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "001176",
+        enabled=False,
+    )
+    research.write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis="001172",
+        children=("001176",),
+    )
+    journal = Journal()
+    root = _node(0.95, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["001172"]
+    journal.append(root)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["001176"]
+
+
+def test_forced_child_queue_skips_already_materialized_child(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "001172")
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "001176",
+        enabled=False,
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "001173",
+        enabled=False,
+    )
+    research.write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis="001172",
+        children=("001176", "001173"),
+    )
+    journal = Journal()
+    root = _node(0.95, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["001172"]
+    journal.append(root)
+    child = _node(0.94, code="print('child')", plan="child")
+    child.parent = root
+    root.children.add(child)
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["001176"]
+    journal.append(child)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=root,
+        completed_steps=2,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["001173"]
+
     second_root = _node(0.91, code="print('ok')", plan="root")
     second_root.research_mode = "hypothesis"
     second_root.research_hypotheses_offered = ["000002"]

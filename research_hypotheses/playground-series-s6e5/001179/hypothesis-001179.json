@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 CatBoost GPU second expert",
+  "summary": "Add CatBoost GPU as a single second expert alongside the legacy-001 RealMLP baseline and compare or average their OOF probabilities.",
+  "rationale": "CatBoost can capture categorical interactions and threshold effects differently from RealMLP. Testing it as the first distinct model family gives a cleaner signal than immediately adding multiple GBDTs and a stacker.",
+  "implementation_hint": "Use the same folds as the parent. Train CatBoost with task_type='GPU' and devices='0' when GPU is enabled, generate fold OOF and test probabilities, report RealMLP OOF AUC, CatBoost OOF AUC, their prediction correlation, and a simple average. Do not add logistic stacking, calibration, XGBoost, or LightGBM in this patch.",
+  "expected_effect": "Improve ensemble AUC if CatBoost errors are not perfectly correlated with RealMLP, even if CatBoost standalone is slightly weaker.",
+  "risk": "CatBoost may underperform or require careful categorical handling; GPU memory/runtime can become significant.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 7,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

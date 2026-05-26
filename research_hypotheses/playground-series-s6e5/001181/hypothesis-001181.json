@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 TabPFN benchmark or meta-signal",
+  "summary": "Test TabPFN as an experimental standalone OOF benchmark or as a single meta-signal, while preserving the legacy-001 baseline.",
+  "rationale": "TabPFN is a tabular foundation model and may offer a very different inductive bias from RealMLP and GBDTs. It should be tested cautiously because its preprocessing expectations, dataset-size limits, GPU requirements, and licensing constraints differ from the current pipeline.",
+  "implementation_hint": "Prefer a bounded experiment: either produce TabPFN OOF/test predictions on a restricted compatible feature view and compare against RealMLP, or add TabPFN OOF predictions as one meta-feature only if true OOF is preserved. Do not replace the full parent pipeline, and do not apply scaling or one-hot preprocessing if TabPFN guidance says to avoid it.",
+  "expected_effect": "Provide an orthogonal benchmark or useful meta-signal if TabPFN generalizes differently on this tabular F1 task.",
+  "risk": "May exceed practical size limits, be slow, or create licensing concerns; meta-feature use must be true OOF to avoid leakage.",
+  "sources": [
+    "https://github.com/PriorLabs/TabPFN"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 9,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

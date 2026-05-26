@@ -1,32 +1,30 @@
 #!/usr/bin/env python3
-"""Create an AIDE run with a seeded root and LLM-generated child nodes."""
+"""Create an AIDE run with a seeded root and forced first-layer child queue."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Iterable
 
-import aide.agent as agent_module
-from aide.agent import Agent
 from aide.journal import Journal, Node
 from aide.research import (
-    ManualHypothesisLibrary,
-    ManualHypothesisSelection,
+    FORCED_CHILD_QUEUE_FILE,
     _compatible_manual_hypotheses,
     load_manual_hypothesis_library,
+    write_forced_child_hypothesis_queue,
 )
-from aide.run import allocate_node_artifact_slot, mark_node_generated_only
+from aide.run import mark_node_generated_only
 from aide.utils.config import (
     _load_cfg,
-    load_task_desc,
     prep_agent_workspace,
     prep_cfg,
     save_run,
 )
-
+from aide.utils.metric import MetricValue
 
 @dataclass(frozen=True)
 class SeedGeneratedBranchResult:
@@ -35,10 +33,6 @@ class SeedGeneratedBranchResult:
     workspace_dir: Path
     root_hypothesis: str
     children: tuple[str, ...]
-
-
-ChildGenerator = Callable[..., Node]
-
 
 def _default_data_dir(repo_root: Path, task: str) -> Path:
     return repo_root / "aide" / "example_tasks" / task
@@ -70,6 +64,54 @@ def _generated_node(
     node.research_hypotheses_offered = [hypothesis_id]
     node.research_source_hash = source_hash
     mark_node_generated_only(node)
+    return node
+
+
+def _manifest_entry_for_code(hypothesis_dir: Path, agent_mode: str, code_file: str) -> dict:
+    manifest_path = hypothesis_dir / "code_manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    versions = manifest.get("versions", {})
+    if not isinstance(versions, dict):
+        return {}
+    entries = versions.get(agent_mode, [])
+    if not isinstance(entries, list):
+        return {}
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("file") == code_file:
+            return entry
+    return {}
+
+
+def _seeded_root_node(
+    *,
+    code: str,
+    plan: str,
+    hypothesis_id: str,
+    source_hash: str,
+    manifest_entry: dict,
+) -> Node:
+    node = _generated_node(
+        code=code,
+        plan=plan,
+        hypothesis_id=hypothesis_id,
+        source_hash=source_hash,
+    )
+    if manifest_entry.get("buggy") is False and manifest_entry.get("score") is not None:
+        node.status = "ok"
+        node.metric = MetricValue(manifest_entry["score"], maximize=True)
+        node.is_buggy = False
+        node.analysis = (
+            "Seeded from an existing executed hypothesis manifest; execution skipped."
+        )
+        node.run_stats = {
+            "seeded_from_manifest": True,
+            "source_score": manifest_entry["score"],
+        }
     return node
 
 
@@ -109,47 +151,6 @@ def _child_hypothesis_ids_for_mode(
     }
 
 
-def _selection_for_child(
-    *,
-    library: ManualHypothesisLibrary,
-    child_id: str,
-    completed_steps: int,
-) -> ManualHypothesisSelection:
-    for hypothesis in library.hypotheses:
-        if hypothesis.id == child_id:
-            return ManualHypothesisSelection(
-                completed_steps=completed_steps,
-                source_hash=library.source_hash,
-                source_dir=library.source_dir,
-                hypotheses=[hypothesis],
-            )
-    raise ValueError(f"Unknown hypothesis id: {child_id}")
-
-
-def _generate_child_with_agent(
-    *,
-    agent: Agent,
-    parent_node: Node,
-    selection: ManualHypothesisSelection,
-    node_ctime: float,
-    llm_log_dir: Path,
-) -> Node:
-    original_selector = agent_module.select_hypothesis_for_node
-
-    def selected_hypothesis_for_node(*_args, **_kwargs):
-        return selection
-
-    agent_module.select_hypothesis_for_node = selected_hypothesis_for_node
-    try:
-        return agent.generate_node(
-            parent_node,
-            node_ctime=node_ctime,
-            llm_log_dir=llm_log_dir,
-        )
-    finally:
-        agent_module.select_hypothesis_for_node = original_selector
-
-
 def seed_generated_branch(
     *,
     task: str,
@@ -164,7 +165,6 @@ def seed_generated_branch(
     workspaces_dir: Path = Path("workspaces"),
     repo_root: Path = Path("."),
     prepare_workspace: bool = True,
-    child_generator: ChildGenerator | None = None,
 ) -> SeedGeneratedBranchResult:
     repo_root = repo_root.resolve()
     logs_dir = logs_dir.resolve()
@@ -211,9 +211,14 @@ def seed_generated_branch(
     root_code_path = library.source_dir / root_hypothesis / root_code_file
     if not root_code_path.exists():
         raise FileNotFoundError(f"Missing root code file: {root_code_path}")
+    manifest_entry = _manifest_entry_for_code(
+        library.source_dir / root_hypothesis,
+        agent_mode,
+        root_code_file,
+    )
 
     journal = Journal()
-    root_node = _generated_node(
+    root_node = _seeded_root_node(
         code=root_code_path.read_text(encoding="utf-8"),
         plan=(
             f"Seeded generated ROOT hypothesis {root_hypothesis} "
@@ -221,6 +226,7 @@ def seed_generated_branch(
         ),
         hypothesis_id=root_hypothesis,
         source_hash=library.source_hash,
+        manifest_entry=manifest_entry,
     )
     journal.append(root_node)
 
@@ -230,37 +236,11 @@ def seed_generated_branch(
         (cfg.workspace_dir / "input").mkdir(parents=True, exist_ok=True)
         (cfg.workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
-    save_run(cfg, journal)
-
-    task_desc = load_task_desc(cfg)
-    agent = Agent(task_desc=task_desc, cfg=cfg, journal=journal)
-    agent.update_data_preview()
-    generate_child = child_generator or _generate_child_with_agent
-
-    for index, child_id in enumerate(children, start=1):
-        print(f"Generating child {index}/{len(children)}: {child_id}")
-        selection = _selection_for_child(
-            library=library,
-            child_id=child_id,
-            completed_steps=len(journal.nodes),
-        )
-        node_ctime, artifact_dir_name, artifact_dir = allocate_node_artifact_slot(
-            cfg.log_dir
-        )
-        child_node = generate_child(
-            agent=agent,
-            parent_node=root_node,
-            selection=selection,
-            node_ctime=node_ctime,
-            llm_log_dir=artifact_dir,
-        )
-        if child_node.parent is not root_node:
-            child_node.parent = root_node
-        if child_node.artifact_dir_name is None:
-            child_node.artifact_dir_name = artifact_dir_name
-        mark_node_generated_only(child_node)
-        journal.append(child_node)
-        save_run(cfg, journal)
+    write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis=root_hypothesis,
+        children=children,
+    )
 
     save_run(cfg, journal)
     return SeedGeneratedBranchResult(
@@ -276,8 +256,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Create a resumable AIDE run whose journal contains a generated "
-            "root node from an explicit code file and generated child nodes "
-            "created by patching that root with the requested text hypotheses."
+            "root node from an explicit code file plus a queue of first-layer "
+            "child hypotheses. The child code is generated later by normal "
+            "AIDE resume using that run's agent.code.model."
         )
     )
     parser.add_argument("--task", required=True)
@@ -319,7 +300,7 @@ def main() -> None:
     print(f"Log directory: {result.log_dir}")
     print(f"Workspace directory: {result.workspace_dir}")
     print(
-        "Generated tree: "
+        "Queued first-layer children: "
         f"{result.root_hypothesis} -> {', '.join(result.children)}"
     )
 

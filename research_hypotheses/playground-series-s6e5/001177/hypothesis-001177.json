@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 RealMLP micro-sweep",
+  "summary": "Make one small RealMLP hyperparameter change to test whether the legacy-001 neural model is underfit or already saturated.",
+  "rationale": "The parent RealMLP uses a fixed ensemble size, epoch count, batch size, hidden layout, and dropout. A single micro-sweep change can use the available GPU without confounding model tuning with feature or ensemble changes.",
+  "implementation_hint": "Patch exactly one RealMLP setting, such as n_epochs 5 to 8, n_ens 20 to 32, batch_size 256 to 512, hidden_sizes [512,256,128] to [768,384,192], or p_drop 0.05 to 0.10. Preserve feature engineering, validation folds, original-data handling, and submission outputs.",
+  "expected_effect": "Improve OOF AUC if the current RealMLP is underfit or benefits from a larger ensemble or slightly different regularization.",
+  "risk": "Higher capacity or longer training can overfit and increase runtime; changing more than one knob would make the result hard to attribute.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 5,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

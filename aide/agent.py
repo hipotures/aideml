@@ -31,6 +31,7 @@ from .research import (
     format_hypothesis_for_prompt,
     format_manual_research_hints_for_prompt,
     format_research_hints_for_prompt,
+    forced_child_hypothesis_ids_for_node,
     hypothesis_root_pool_exhausted,
     hypothesis_id_for_node,
     ManualHypothesisSelection,
@@ -765,6 +766,24 @@ class Agent:
                             "stage": "forced_root_scope",
                             "reason": f"outside_forced_root_{forced_hypothesis_root}",
                         }
+            forced_queue_parents = [
+                node
+                for node in good_nodes
+                if forced_child_hypothesis_ids_for_node(
+                    self.cfg,
+                    self.journal,
+                    node,
+                )
+            ]
+            if forced_queue_parents:
+                selected_forced_parent = min(
+                    forced_queue_parents,
+                    key=lambda node: node.step,
+                )
+                return finish(
+                    selected_forced_parent,
+                    "forced_child_hypothesis_queue",
+                )
             improvement_epsilon = float(
                 getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
             )

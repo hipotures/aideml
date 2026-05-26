@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 F1 domain feature micro-family",
+  "summary": "Apply one compact F1-domain feature family to the RealMLP legacy-001 baseline instead of broad feature expansion.",
+  "rationale": "The legacy-001 baseline already has useful ratios, lap-time/degradation interactions, count encodings, bins, and two combo target encodings. A narrow patch that adds race-relative lap-time and tyre-context features can test whether the model benefits from richer F1 strategy signals without confounding the result with a large feature rewrite.",
+  "implementation_hint": "Patch the parent feature engineering only. Add a small, coherent feature family such as TyreLife/RaceProgress, TyreLife*RaceProgress, LapNumber-TyreLife, Cumulative_Degradation/TyreLife, LapTime delta versus Race median, and LapTime rank within Race. Preserve the parent RealMLP training loop, folds, target encoding strategy, output files, and validation protocol.",
+  "expected_effect": "Improve OOF AUC if pit-stop risk is better represented by tyre age, degradation, and local race pace context than by the current raw and simple interaction features alone.",
+  "risk": "Race-level covariate statistics must not use the target or any prediction-derived signal; adding too many correlated features could add noise or overfit.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 2,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

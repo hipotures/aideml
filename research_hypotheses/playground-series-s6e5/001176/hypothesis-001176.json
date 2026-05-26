@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 feature-block ablation",
+  "summary": "Run a narrow ablation patch against legacy-001 feature engineering to test whether one existing feature block is hurting the RealMLP baseline.",
+  "rationale": "The parent uses floor-derived categorical features, count encoding, aggressive RaceProgress binning, and target encoding. Some blocks may add noise or overfit, so removing one block at a time can identify which parts actually carry the strong score.",
+  "implementation_hint": "Patch the parent by disabling exactly one existing feature block, such as numeric floor-categoricals, count encoding, RaceProgress=200 binning, or target encoding. Do not remove multiple blocks, change model parameters, alter folds, add new features, or rewrite the pipeline.",
+  "expected_effect": "Reveal whether a current feature block is harmful or redundant; a positive result would simplify the baseline and improve future patch reliability.",
+  "risk": "The ablation may reduce score; its value is diagnostic, and it is meaningful only relative to the legacy-001 parent.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 1,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -13,7 +13,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from .autogluon_preprocess import (
     extract_preprocess_source,
@@ -77,6 +77,7 @@ MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
 MANUAL_HYPOTHESIS_AGENT_MODES = {"legacy", "autogluon"}
 MANUAL_USAGE_RESEARCH_MODES = {"manual", "hypothesis"}
 ROOT_CODE_PATTERN = re.compile(r"^(autogluon|legacy)-(\d{3})\.py$")
+FORCED_CHILD_QUEUE_FILE = "forced_child_hypotheses.json"
 
 
 @dataclass(frozen=True)
@@ -641,6 +642,102 @@ def _manual_run_dir(cfg: Config) -> Path:
     return Path(cfg.log_dir) / "research_hypotheses"
 
 
+def _forced_child_queue_path(cfg: Config) -> Path:
+    return Path(cfg.log_dir) / FORCED_CHILD_QUEUE_FILE
+
+
+def write_forced_child_hypothesis_queue(
+    cfg: Config,
+    *,
+    root_hypothesis: str,
+    children: Iterable[str],
+) -> None:
+    path = _forced_child_queue_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(
+        path,
+        {
+            "root_hypothesis": root_hypothesis,
+            "children": list(children),
+        },
+    )
+
+
+def _load_forced_child_hypothesis_queue(cfg: Config) -> dict[str, Any] | None:
+    path = _forced_child_queue_path(cfg)
+    if not path.exists():
+        return None
+    try:
+        payload = _read_json(path)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _agent_mode_allows_hypothesis(cfg: Config, hypothesis: ManualHypothesis) -> bool:
+    if getattr(cfg.research, "ignore_hypothesis_agent_modes", False):
+        return True
+    return _manual_agent_mode_key(cfg) in hypothesis.agent_modes
+
+
+def _forced_child_candidates_for_node_from_library(
+    cfg: Config,
+    *,
+    journal: Journal,
+    parent_node: Node | None,
+    library: ManualHypothesisLibrary,
+) -> list[ManualHypothesis]:
+    if parent_node is None or parent_node.parent is not None or parent_node.is_buggy:
+        return []
+    parent_id = hypothesis_id_for_node(parent_node)
+    if parent_id is None:
+        return []
+    queue = _load_forced_child_hypothesis_queue(cfg)
+    if queue is None or queue.get("root_hypothesis") != parent_id:
+        return []
+    raw_children = queue.get("children")
+    if not isinstance(raw_children, list):
+        return []
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    blocked_ids = _ancestor_hypothesis_ids(parent_node)
+    blocked_ids |= _direct_child_hypothesis_ids(parent_node, journal)
+    for child_id in raw_children:
+        if not isinstance(child_id, str) or child_id in blocked_ids:
+            continue
+        hypothesis = by_id.get(child_id)
+        if hypothesis is None:
+            continue
+        if not _agent_mode_allows_hypothesis(cfg, hypothesis):
+            continue
+        return [hypothesis]
+    return []
+
+
+def forced_child_hypothesis_ids_for_node(
+    cfg: Config,
+    journal: Journal,
+    parent_node: Node,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> list[str]:
+    parent_id = hypothesis_id_for_node(parent_node)
+    if parent_id is None:
+        return []
+    queue = _load_forced_child_hypothesis_queue(cfg)
+    if queue is None or queue.get("root_hypothesis") != parent_id:
+        return []
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    return [
+        hypothesis.id
+        for hypothesis in _forced_child_candidates_for_node_from_library(
+            cfg,
+            journal=journal,
+            parent_node=parent_node,
+            library=library,
+        )
+    ]
+
+
 def _load_manual_usage(cfg: Config) -> dict[str, Any]:
     usage_path = _manual_run_dir(cfg) / "usage.json"
     if not usage_path.exists():
@@ -997,10 +1094,10 @@ def _ancestor_hypothesis_ids(parent_node: Node) -> set[str]:
 
 
 def _direct_child_hypothesis_ids(parent_node: Node, journal: Journal) -> set[str]:
-    journal_nodes = set(journal.nodes)
     ids: set[str] = set()
-    for child in parent_node.children:
-        if child not in journal_nodes:
+    linked_children = set(parent_node.children)
+    for child in journal.nodes:
+        if child.parent is not parent_node and child not in linked_children:
             continue
         hypothesis_id = hypothesis_id_for_node(child)
         if hypothesis_id is not None:
@@ -1048,6 +1145,15 @@ def _hypothesis_candidates_for_node_from_library(
             return []
         inherited = by_id.get(inherited_id)
         return [inherited] if inherited is not None else []
+
+    forced_child_candidates = _forced_child_candidates_for_node_from_library(
+        cfg,
+        journal=journal,
+        parent_node=parent_node,
+        library=library,
+    )
+    if forced_child_candidates:
+        return forced_child_candidates
 
     if parent_node is None:
         if _hypothesis_root_pool_complete(

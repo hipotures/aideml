@@ -119,7 +119,7 @@ class SearchConfig:
     forced_root: str | None = None
     forced_hypothesis: str | None = None
     hypothesis_max_non_improving_children_per_parent: int = 10
-    hypothesis_min_improvement_epsilon: float = 0.00002
+    hypothesis_min_improvement_epsilon: float = 0.00006
 
 
 @dataclass

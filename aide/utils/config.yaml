@@ -127,7 +127,7 @@ agent:
     # exact hypothesis and do not create child-hypothesis branches.
     forced_hypothesis: null
     hypothesis_max_non_improving_children_per_parent: 10
-    hypothesis_min_improvement_epsilon: 0.00002
+    hypothesis_min_improvement_epsilon: 0.00006
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.

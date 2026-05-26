@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 race-relative numeric context",
+  "summary": "Add per-Race and per-Race-Year covariate statistics for selected numeric columns to the RealMLP legacy-001 baseline.",
+  "rationale": "F1 pit decisions are contextual within each race. Absolute values for lap time, tyre life, degradation, progress, and lap number may be less informative than deviations, ratios, and ranks inside the same race or race-year context.",
+  "implementation_hint": "Patch feature engineering to add target-free context features for LapTime (s), TyreLife, Cumulative_Degradation, RaceProgress, and LapNumber: value minus group median, value divided by group mean with safe denominators, and percentile rank within Race and optionally Race-Year. If train/test/original rows are combined for covariate-only context, ensure the target column is absent and document that the operation is target-free.",
+  "expected_effect": "Improve ranking by letting RealMLP learn whether a car is strategically unusual relative to the local race field rather than only from raw feature magnitudes.",
+  "risk": "Groups absent from test or small race groups may produce unstable statistics; train+test concatenation must remain target-free.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 3,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

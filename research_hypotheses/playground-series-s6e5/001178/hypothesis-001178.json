@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 two-seed RealMLP average",
+  "summary": "Add a second RealMLP with a different seed and average it with the parent RealMLP without stacking or calibration.",
+  "rationale": "Neural tabular models can have useful seed variance. Before adding a new model family or logistic stacker, a minimal two-seed average tests whether the RealMLP predictions stabilize and improve by simple ensembling.",
+  "implementation_hint": "Keep the parent pipeline intact, train the same RealMLP configuration with one additional random seed such as 829 on the same folds, produce OOF/test probabilities for both seeds, and average them 0.5/0.5. Do not add LightGBM, CatBoost, XGBoost, rank stacking, or calibration in this patch.",
+  "expected_effect": "Improve OOF AUC and reduce prediction variance if the RealMLP baseline is seed-sensitive.",
+  "risk": "Roughly doubles RealMLP runtime and may give little benefit if both seeds are highly correlated.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 6,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

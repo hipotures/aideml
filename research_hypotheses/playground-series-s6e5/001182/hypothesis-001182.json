@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 simple OOF logistic stacking",
+  "summary": "Add a simple logistic stacker only after the parent branch already has at least two true OOF experts.",
+  "rationale": "Stacking is useful only when multiple OOF expert predictions already exist. Adding it too early mixes model discovery with ensembling and risks CV leakage, so this patch should only wrap existing OOF experts rather than create a new model zoo.",
+  "implementation_hint": "If the parent already produces two or more true OOF expert probability columns, train LogisticRegression on raw OOF predictions and optional percentile-rank versions, then apply the fold-trained stackers to test expert predictions. Do not train the stacker on in-fold predictions, do not add new experts in the same patch, and preserve submission/oof artifact names.",
+  "expected_effect": "Improve AUC by learning stable weights among already validated expert predictions while keeping the ensemble simple.",
+  "risk": "Invalid OOF construction will leak and inflate CV; if experts are too correlated, stacking can overfit without improving LB.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 10,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

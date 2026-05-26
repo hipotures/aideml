@@ -2,6 +2,7 @@ from pathlib import Path
 
 from aide.agent import Agent
 from aide.journal import Journal, Node
+from aide.research import write_forced_child_hypothesis_queue
 from aide.synthesis import SYNTHESIS_PLAN_PREFIX
 from aide.utils.config import _load_cfg, prep_cfg
 from aide.utils.metric import MetricValue, WorstMetricValue
@@ -723,6 +724,41 @@ def test_hypothesis_forced_hypothesis_does_not_expand_child_hypotheses(
     trace = agent.last_search_decision
     assert trace is not None
     assert trace["reason"] == "no_good_nodes_after_filters"
+
+
+def test_hypothesis_search_prioritizes_forced_child_queue_root(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis="001172",
+        children=("001176",),
+    )
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.950), "001172")
+    better_child = _hypothesis_node(_good_node(0.960, parent=root), "000806")
+    journal.append(root)
+    journal.append(better_child)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.forced_child_hypothesis_ids_for_node",
+        lambda _cfg, _journal, node, **_kwargs: ["001176"] if node is root else [],
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is root
+    assert agent.last_search_decision["reason"] == "forced_child_hypothesis_queue"
 
 
 def test_hypothesis_forced_root_scope_debugs_only_descendants(tmp_path, monkeypatch):

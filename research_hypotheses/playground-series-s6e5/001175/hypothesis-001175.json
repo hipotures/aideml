@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 controlled combo target encoding",
+  "summary": "Extend the existing legacy-001 TargetEncoder combo list by a few tyre-strategy combinations, one controlled family at a time.",
+  "rationale": "The parent only target-encodes Race+Compound and Race+Year. Pit behavior plausibly depends on compound, tyre age buckets, pit-stop state, and race-progress buckets, but target encoding can inflate CV if rare combinations are added indiscriminately.",
+  "implementation_hint": "Patch only the existing important_combos/TargetEncoder section. Add a small controlled set such as Compound+TyreLife_cat_, Race+Compound+TyreLife_cat_, Race+Compound+PitStop_cat_, or Year+Compound+RaceProgress quantile bin. Keep TargetEncoder CV and smoothing, avoid high-cardinality unique identifiers, and preserve the parent folds and RealMLP model.",
+  "expected_effect": "Improve OOF AUC by exposing interactions between compound, tyre age, race, and pit-stop state that are hard for the current encoded features to express.",
+  "risk": "Target encoding can overfit validation through rare groups or too many added combinations, so the patch must stay small.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 4,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}
