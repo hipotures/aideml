@@ -3367,9 +3367,22 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     gpu_guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
     assert any("CUDA-capable NVIDIA GPU" in line for line in gpu_guidelines)
     assert any('task_type="GPU"' in line for line in gpu_guidelines)
-    assert any('device="cuda"' in line for line in gpu_guidelines)
-    assert any('device_type="gpu"' in line for line in gpu_guidelines)
-    assert any('device_type="cuda"' in line for line in gpu_guidelines)
+    assert any(
+        'tree_method="hist"' in line and 'device="cuda"' in line
+        for line in gpu_guidelines
+    )
+    assert any(
+        'device_type="gpu"' in line
+        and 'device="gpu"' in line
+        and "OpenCL GPU backend" in line
+        and "gpu_platform_id=0" in line
+        and "gpu_device_id=0" in line
+        for line in gpu_guidelines
+    )
+    assert any(
+        'device_type="cuda"' in line and "Do not use the native CUDA backend" in line
+        for line in gpu_guidelines
+    )
 
 
 def test_agent_prompt_only_lists_importable_packages(tmp_path, monkeypatch):

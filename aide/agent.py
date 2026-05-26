@@ -1015,7 +1015,7 @@ class Agent:
                     "A CUDA-capable NVIDIA GPU is available. Prefer GPU-enabled training for tabular tree models when the chosen library supports it.",
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
-                    'For LightGBM, do not use `device_type="gpu"` or `device="gpu"`; that selects the OpenCL backend. If you explicitly use LightGBM on GPU, use the CUDA backend with `device_type="cuda"` or `device="cuda"`.',
+                    'For LightGBM, use the OpenCL GPU backend with `device_type="gpu"` or `device="gpu"` plus `gpu_platform_id=0` and `gpu_device_id=0` when training on GPU. Do not use the native CUDA backend (`device_type="cuda"` or `device="cuda"`) unless explicitly requested; it has produced native illegal-memory-access aborts on this task.',
                     "If a GPU-specific implementation fails, the next debug attempt may fall back to CPU.",
                 ]
             )
