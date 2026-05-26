@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two-seed RealMLP with low-weight CatBoost correction",
+  "summary": "Blend the two-seed RealMLP core with a CatBoost expert using only a small CatBoost weight.",
+  "rationale": "CatBoost-only showed a confirmed positive signal, but broad XGBoost/CatBoost averaging was negative. This patch treats CatBoost as a small residual corrector rather than an equal peer expert.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Add one CatBoostClassifier trained on the same folds and compatible features. Use GPU when available with task_type='GPU' and devices='0'. Blend final probabilities using a small OOF-selected grid such as RealMLP weight 0.90, 0.925, and 0.95. Do not add XGBoost, LightGBM, logistic stacking, calibration, or feature changes.",
+  "expected_effect": "Improve OOF AUC if CatBoost captures a small complementary residual signal.",
+  "risk": "CatBoost may be correlated or noisy enough that even a small weight reduces the strong RealMLP score.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 6,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

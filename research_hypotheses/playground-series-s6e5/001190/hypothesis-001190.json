@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 CatBoost GPU standalone expert",
+  "summary": "Train CatBoost GPU as a standalone second expert beside the legacy-001 RealMLP root and compare its OOF signal.",
+  "rationale": "CatBoost can capture categorical interactions and threshold structure differently from RealMLP. Testing it as a standalone expert from the simple root gives a clean read on whether a non-neural tabular model contributes independent signal.",
+  "implementation_hint": "Start from legacy-001.py. Keep the parent RealMLP path intact, add a CatBoostClassifier trained on the same folds, and report RealMLP OOF AUC, CatBoost OOF AUC, prediction correlation, and optionally a simple average. Use CatBoost GPU when agent.gpu is true with task_type='GPU' and devices='0'. Do not add LightGBM, XGBoost, stacking, calibration, or extra feature blocks.",
+  "expected_effect": "Improve or at least diversify OOF predictions if CatBoost captures categorical strategy interactions missed by RealMLP.",
+  "risk": "CatBoost may underperform alone or add correlated noise; GPU training can be memory-sensitive.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 8,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

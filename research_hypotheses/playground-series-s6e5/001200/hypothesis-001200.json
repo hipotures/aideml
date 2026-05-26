@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Floor-category variant for confirmed legacy block",
+  "summary": "Refine the confirmed useful numeric floor-category block instead of removing it or adding unrelated features.",
+  "rationale": "Removing numeric floor categories strongly hurt performance, so the block is useful. The next clean feature-engineering test is a small variant of that confirmed block, such as coarser buckets or rare-category clipping.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Preserve the existing floor-category idea but change exactly one aspect: use round instead of floor, coarsen buckets with floor(x / 2), or clip rare floor categories to a shared rare value. Pick one variant only. Do not alter count encoding, target encoding, model parameters, or add new model families.",
+  "expected_effect": "Improve OOF AUC if the useful floor-category block can be made less noisy or more stable.",
+  "risk": "The current floor transform may already be the best discretization, and changing it can lose threshold signal.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 8,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 race-relative numeric features",
+  "summary": "Add race-relative numeric context features to the simple legacy-001 RealMLP root.",
+  "rationale": "Formula 1 pit decisions are relative to the current race context, so absolute values such as lap time, tyre age, degradation, race progress, and lap number may be less informative than their position within the same race or race-year context. This patch tests that feature-engineering signal in isolation from ensembling, stacking, calibration, and extra model families.",
+  "implementation_hint": "Start from legacy-001.py. Patch feature engineering only. For a small selected numeric set such as LapTime (s), TyreLife, Cumulative_Degradation, RaceProgress, and LapNumber, add race-relative features like value minus Race median, value divided by Race mean, and percentile rank within Race or Race-Year. Do not change the RealMLP model, folds, target encoding, output files, or validation protocol.",
+  "expected_effect": "Improve OOF AUC if the model benefits from local race context rather than only raw absolute values.",
+  "risk": "Covariate statistics must not use target or prediction-derived signals; using train+test covariates is acceptable only if no target information leaks.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 1,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

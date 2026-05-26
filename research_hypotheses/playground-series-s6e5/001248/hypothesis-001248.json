@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Single LapTime rank feature within Race",
+  "summary": "Add only LapTime percentile rank within Race as a small feature test.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one covariate-only feature: LapTime rank percentile within Race. If train and test are combined to compute this rank, ensure the target column is excluded and document it in a code comment. Do not add the broader race-relative block.",
+  "expected_effect": "Recover a useful fragment of race-relative context without the broad block that underperformed.",
+  "risk": "Single-feature effects may be too small or noisy.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 46,
+    "original_label": "H46",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

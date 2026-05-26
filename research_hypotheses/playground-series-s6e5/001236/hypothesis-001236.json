@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost correction with depth minus one",
+  "summary": "Use a shallower CatBoost model as the low-weight correction.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Identify the current CatBoost depth and reduce it by one for the CatBoost expert only. Keep RealMLP core and blend weight unchanged. Do not add other CatBoost parameter changes.",
+  "expected_effect": "Regularize CatBoost so the correction captures robust interactions rather than noise.",
+  "risk": "Shallower depth may underfit and remove the useful CatBoost signal.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 34,
+    "original_label": "H34",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

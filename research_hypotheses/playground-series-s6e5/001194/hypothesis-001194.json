@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two-seed RealMLP with one n_ens32 expert",
+  "summary": "Use n_ens=32 only for the second RealMLP seed while keeping the first seed at the parent ensemble size.",
+  "rationale": "A full n_ens=32 upgrade for both seeds may be expensive. A mixed ensemble tests whether one stronger or more stable seed is enough to capture most of the benefit while preserving the cheaper original expert.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Keep the first RealMLP expert unchanged. Change only the second RealMLP expert to n_ens=32, preserve the same folds and features, and average the two probability vectors. Do not add other experts, feature changes, stacking, or calibration.",
+  "expected_effect": "Improve OOF AUC if a higher-ensemble second expert adds useful stability or diversity at lower cost than upgrading both seeds.",
+  "risk": "The mixed setup may be less balanced and may not improve over the equal two-seed parent.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 2,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

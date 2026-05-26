@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 XGBoost and CatBoost simple average",
+  "summary": "Add XGBoost and CatBoost experts to the legacy-001 root and test only a simple average with RealMLP.",
+  "rationale": "After testing individual expert directions, a controlled simple average can check whether two GBDT-style models add complementary signal to RealMLP without introducing a logistic stacker. The point is diversity, not a full composite pipeline.",
+  "implementation_hint": "Start from legacy-001.py. Add XGBoost and CatBoost using the same folds and features where practical. Use XGBoost GPU with tree_method='hist' and device='cuda' when agent.gpu is true; use CatBoost GPU with task_type='GPU' and devices='0'. Keep LightGBM on CPU if used at all, but this patch should prefer XGBoost and CatBoost only. Average OOF/test probabilities with a simple fixed or tiny OOF-selected weight grid. Do not add calibration, rank features, or logistic stacking.",
+  "expected_effect": "Improve OOF AUC if CatBoost/XGBoost error patterns complement the RealMLP root.",
+  "risk": "The extra experts can be weaker or highly correlated, and simple averaging may reduce the strong RealMLP signal.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu",
+    "https://xgboost.readthedocs.io/en/stable/gpu/index.html"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 9,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

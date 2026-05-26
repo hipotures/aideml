@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two CatBoost seeds as averaged correction",
+  "summary": "Average two CatBoost seeds before applying the low-weight correction to the RealMLP core.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Train a second CatBoost expert with the same folds and parameters except random seed. Set catboost_core = mean(catboost_seed_A, catboost_seed_B), then blend it with the RealMLP core using the parent CatBoost weight or 0.10 if the parent weight is implicit.",
+  "expected_effect": "Reduce CatBoost correction variance while preserving its complementary signal.",
+  "risk": "Two CatBoost models add cost and may remain highly correlated.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 32,
+    "original_label": "H32",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

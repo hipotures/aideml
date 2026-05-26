@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Triple blend 001199 001198 001193",
+  "summary": "Blend two CatBoost-corrected variants with the n_ens32 RealMLP variant.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Produce pred_001199, pred_001198, and pred_001193. Set final predictions to 0.60 * pred_001199 + 0.30 * pred_001198 + 0.10 * pred_001193. Avoid learned stacking.",
+  "expected_effect": "Combine confirmed public-positive CatBoost corrections with a cleaner stronger RealMLP component.",
+  "risk": "The extra component may increase complexity without adding independent ranking signal.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 9,
+    "original_label": "H09",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

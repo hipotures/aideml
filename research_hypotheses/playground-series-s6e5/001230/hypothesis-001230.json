@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost correction weight 0.075",
+  "summary": "Set the CatBoost correction weight to 0.075 against the RealMLP core.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Change only the fixed CatBoost blend weight to 0.075: final = 0.925 * realmlp_core + 0.075 * catboost_pred. Keep everything else unchanged.",
+  "expected_effect": "Probe the likely sweet spot between 0.05 and 0.10 CatBoost contribution.",
+  "risk": "Small CV differences among weights may be noise.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 28,
+    "original_label": "H28",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

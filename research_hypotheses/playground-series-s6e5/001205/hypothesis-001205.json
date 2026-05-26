@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Blend 001199 and 001198 with small 001198 shrink",
+  "summary": "Add only a small 15 percent contribution from 001198 to the stronger 001199 parent.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199 behavior. Create pred_001199 and pred_001198 under the same folds. Set final predictions to 0.85 * pred_001199 + 0.15 * pred_001198. Keep the blend fixed, not learned.",
+  "expected_effect": "Test whether 001198 is mainly useful as a light stabilizer rather than an equal partner.",
+  "risk": "A fixed small blend can still hurt if 001198 is just noise relative to 001199.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 3,
+    "original_label": "H03",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 ablate count encoding",
+  "summary": "Remove count encoding from the legacy-001 feature pipeline as an isolated ablation.",
+  "rationale": "The root code includes count encodings for categorical values. These may provide useful frequency priors, but they can also duplicate category information or over-emphasize dataset composition. A clean ablation measures whether count encoding is a net positive.",
+  "implementation_hint": "Start from legacy-001.py. Disable only the count-encoding block and remove the resulting count columns from the feature set. Keep floor categories, manual interactions, bins, combo target encoding, RealMLP settings, folds, and artifacts unchanged.",
+  "expected_effect": "Improve OOF AUC if count encoding is adding noisy or unstable frequency information.",
+  "risk": "Count encoding may be one of the useful compact categorical signals in the root baseline.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 3,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

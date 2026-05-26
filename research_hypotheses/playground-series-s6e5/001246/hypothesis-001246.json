@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Rank-based two-column stacker",
+  "summary": "Train a simple stacker on percentile ranks of RealMLP core and CatBoost predictions.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Convert OOF and test prediction columns to percentile ranks for p_realmlp_core and p_catboost. Train a strongly regularized logistic stacker on the two rank columns. Keep output valid probabilities.",
+  "expected_effect": "Optimize AUC-oriented ordering while reducing calibration dependence.",
+  "risk": "Rank transforms may discard useful probability magnitude information.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 44,
+    "original_label": "H44",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

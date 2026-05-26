@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Blend 001199 with 001193 n_ens32 RealMLP",
+  "summary": "Add a small amount of the n_ens32 two-seed RealMLP variant to 001199.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Recreate the 001193 concept as a two-seed RealMLP core with n_ens=32 where applicable. Set final predictions to 0.85 * pred_001199 + 0.15 * pred_001193. Keep CatBoost handling from 001199 unchanged.",
+  "expected_effect": "Combine the best CatBoost correction with a stronger variance-reduced neural core.",
+  "risk": "n_ens32 may improve CV but not public, so the blend can overfit local validation.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 5,
+    "original_label": "H05",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "001199 with four-seed RealMLP core",
+  "summary": "Replace the two-seed RealMLP core in 001199 with a four-seed equal average.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Train four RealMLP seeds with the same parameters and average their predictions to form the RealMLP core. Keep the existing CatBoost correction weight and all validation rules unchanged.",
+  "expected_effect": "Reduce neural variance further before applying the confirmed CatBoost correction.",
+  "risk": "Additional seeds may have diminishing returns and high GPU cost.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 12,
+    "original_label": "H12",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

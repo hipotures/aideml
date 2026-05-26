@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Blend 001199 and 001198 equal average",
+  "summary": "Average the best CatBoost-corrected parent with sibling 001198 using equal probability weights.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199 behavior. Produce predictions for the 001199 and 001198 concepts, or load matching saved OOF/test predictions if the code already has a safe local mechanism. Set final predictions to 0.50 * pred_001199 + 0.50 * pred_001198. Keep the existing validation folds and output artifacts.",
+  "expected_effect": "Stabilize two public-positive CatBoost-corrected variants and possibly improve leaderboard robustness.",
+  "risk": "The two predictions may be too correlated, making the equal average neutral or slightly worse.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 1,
+    "original_label": "H01",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

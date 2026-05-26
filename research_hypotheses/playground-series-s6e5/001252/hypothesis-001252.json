@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RaceProgress bin count 200 to 300",
+  "summary": "Increase RaceProgress discretization from 200 bins to 300 bins.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Change only the RaceProgress binning resolution from 200 to 300 where that block exists. Keep every other feature and model setting unchanged.",
+  "expected_effect": "Test whether finer race-progress timing improves pit-stop ranking.",
+  "risk": "Finer bins may create sparse categories and overfit.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 50,
+    "original_label": "H50",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

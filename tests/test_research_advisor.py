@@ -632,6 +632,47 @@ def test_forced_child_queue_skips_already_materialized_child(tmp_path):
     )
 
 
+def test_select_hypothesis_for_node_uses_forced_disabled_child_queue_for_nonroot_parent(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "001172")
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "001189")
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "001193",
+        enabled=False,
+    )
+    research.write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis="001189",
+        children=("001193",),
+    )
+    journal = Journal()
+    root = _node(0.95, code="print('root')", plan="root")
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["001172"]
+    journal.append(root)
+    branch_parent = _node(0.954, code="print('branch')", plan="branch")
+    branch_parent.parent = root
+    root.children.add(branch_parent)
+    branch_parent.research_mode = "hypothesis"
+    branch_parent.research_hypotheses_offered = ["001189"]
+    journal.append(branch_parent)
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=branch_parent,
+        completed_steps=2,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["001193"]
+
+
 def test_hypothesis_root_pool_respects_configured_root_limit(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

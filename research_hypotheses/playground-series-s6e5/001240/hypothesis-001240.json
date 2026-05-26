@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost correction on raw features only",
+  "summary": "Train the CatBoost correction on raw/original features while leaving RealMLP unchanged.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep RealMLP features exactly as parent. For CatBoost only, use raw columns and original categorical handling, excluding generated floor categories, bins, count encodings, and target encodings. Blend CatBoost lightly with RealMLP core.",
+  "expected_effect": "Let CatBoost exploit raw categorical and threshold structure independently from RealMLP FE.",
+  "risk": "Raw-only CatBoost may be weaker and too different from the validated parent feature set.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 38,
+    "original_label": "H38",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Logit average 001199 and 001198",
+  "summary": "Average logits of 001199 and 001198 predictions before applying sigmoid.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Obtain pred_001199 and pred_001198, clip them to [1e-6, 1-1e-6], average their logits with equal weights, and apply sigmoid. Keep all folds and artifacts unchanged.",
+  "expected_effect": "Blend confidence more naturally than plain probability averaging.",
+  "risk": "If the models are miscalibrated in different ways, logit averaging can amplify bad confidence.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 8,
+    "original_label": "H08",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

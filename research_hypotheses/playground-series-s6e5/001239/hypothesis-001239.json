@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost lower learning rate longer training",
+  "summary": "Lower CatBoost learning rate while increasing iterations with early stopping unchanged.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. For CatBoost only, reduce learning_rate and increase iterations proportionally while preserving early stopping and validation folds. Keep the RealMLP core and final blend weight unchanged.",
+  "expected_effect": "Improve CatBoost correction smoothness without changing its role.",
+  "risk": "Longer training may cost time and still not improve ranking.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 37,
+    "original_label": "H37",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

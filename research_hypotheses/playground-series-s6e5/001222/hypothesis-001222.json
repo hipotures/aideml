@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP expert with full original data in every fold",
+  "summary": "Train an added RealMLP expert using all original rows in every competition fold.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. For an additional RealMLP expert only, train on competition training fold plus all original rows, and validate only on the held-out competition fold. Blend this expert lightly with the existing parent prediction.",
+  "expected_effect": "Use all available original data for training while preserving competition-only validation.",
+  "risk": "Full original data can shift the learned distribution and hurt public ranking.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 20,
+    "original_label": "H20",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

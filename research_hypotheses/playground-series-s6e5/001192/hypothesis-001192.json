@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 TabPFN standalone or meta-signal",
+  "summary": "Test TabPFN from the simple legacy-001 root as an experimental standalone expert or as one additional meta-signal.",
+  "rationale": "TabPFN is a tabular foundation model and may provide a different inductive bias from RealMLP and GBDT. It should be tested as a separate root-level research branch because its preprocessing assumptions and scale limits differ from the current engineered-feature pipeline.",
+  "implementation_hint": "Start from legacy-001.py, but keep the TabPFN path isolated. Prefer a standalone OOF TabPFN benchmark on an appropriate compact feature subset or a single TabPFN OOF prediction used as an additional signal. Do not replace the parent RealMLP pipeline, do not one-hot or scale specifically for TabPFN unless required by the implementation, and document any row/feature subsampling used for feasibility.",
+  "expected_effect": "Expose whether a foundation-model tabular signal adds anything beyond the RealMLP root.",
+  "risk": "TabPFN may be limited by dataset size, licensing constraints, runtime, or incompatible preprocessing assumptions.",
+  "sources": [
+    "https://github.com/PriorLabs/TabPFN"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 10,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP diversity expert with batch size 512",
+  "summary": "Add a RealMLP expert trained with batch_size=512 for different optimization dynamics.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one extra RealMLP expert with batch_size=512 and otherwise unchanged parameters. Blend lightly; do not replace the parent core.",
+  "expected_effect": "Test whether different batch dynamics add useful prediction diversity.",
+  "risk": "The larger batch may reduce generalization or simply duplicate the parent.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 25,
+    "original_label": "H25",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

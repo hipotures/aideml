@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost correction without original data",
+  "summary": "Train the CatBoost correction only on competition rows.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep the RealMLP core unchanged. For CatBoost only, train each fold on competition train rows without auxiliary original rows, validate on competition validation rows, then blend the CatBoost prediction lightly.",
+  "expected_effect": "Reduce possible distribution shift in the CatBoost correction while keeping the strong RealMLP core.",
+  "risk": "Removing original data may weaken CatBoost too much.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 39,
+    "original_label": "H39",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

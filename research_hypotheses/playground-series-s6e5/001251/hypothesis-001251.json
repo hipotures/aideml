@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RaceProgress bin count 200 to 100",
+  "summary": "Reduce RaceProgress discretization from 200 bins to 100 bins.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Change only the RaceProgress binning resolution from 200 to 100 where that block exists. Keep floor categories, count encoding, target encoding, models, and blend weights unchanged.",
+  "expected_effect": "Regularize the confirmed binning block with a coarser discretization.",
+  "risk": "Coarser bins may lose useful strategic timing detail.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 49,
+    "original_label": "H49",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

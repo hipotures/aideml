@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost stability repeat beside two-seed RealMLP",
+  "summary": "Repeat the CatBoost-only expert test with a different CatBoost seed or minimally changed CatBoost parameters while preserving the two-seed RealMLP parent.",
+  "rationale": "CatBoost was positive in the clean root-level test, but it should be repeated to separate a stable signal from a lucky seed. The goal is stability evidence, not a broader model stack.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Add a CatBoost expert on the same folds and features with a different CatBoost random seed or one minimal regularization change. Report CatBoost OOF AUC, its correlation with the RealMLP core, and a low-weight blend. Do not add XGBoost, LightGBM, stacking, calibration, or feature engineering.",
+  "expected_effect": "Confirm CatBoost as a reliable complementary expert if the repeat remains positive or improves the low-weight blend.",
+  "risk": "The earlier CatBoost gain may not reproduce and the extra model may add only noise.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 7,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

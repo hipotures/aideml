@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Single degradation over tyre-life ratio feature",
+  "summary": "Add only Cumulative_Degradation divided by TyreLife as an isolated domain feature.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one robust ratio feature Cumulative_Degradation / (TyreLife + eps), with clipping or finite-value handling. Do not add the rest of the 001173 domain feature family.",
+  "expected_effect": "Identify whether the weakly positive domain-feature family was driven by degradation ratio.",
+  "risk": "The feature may duplicate existing interactions and add no signal.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 48,
+    "original_label": "H48",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

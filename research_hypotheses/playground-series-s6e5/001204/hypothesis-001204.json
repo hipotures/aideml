@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Blend 001199 and 001198 with 001199 dominance",
+  "summary": "Use a 70/30 blend that keeps 001199 dominant while adding signal from 001198.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199 behavior. Recreate or safely load the 001198-style prediction stream. Set final predictions to 0.70 * pred_001199 + 0.30 * pred_001198. Do not change feature engineering, folds, or model families beyond what is required for the sibling prediction.",
+  "expected_effect": "Retain most of the strongest parent while adding a confirmed nearby CatBoost-corrected signal.",
+  "risk": "If 001198 adds no independent ranking signal, the blend will dilute the better parent.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 2,
+    "original_label": "H02",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 RealMLP ensemble 20 to 32",
+  "summary": "Increase the RealMLP internal ensemble size in legacy-001 from 20 to 32 while changing nothing else.",
+  "rationale": "If the root RealMLP benefits from variance reduction, a larger internal ensemble may improve AUC without adding a separate second model or a new model family. This is a single-parameter test of RealMLP stability.",
+  "implementation_hint": "Start from legacy-001.py. Change only the RealMLP ensemble size, expected n_ens=20, to 32. Keep the same features, folds, epochs, architecture, preprocessing, target encoding, outputs, and validation protocol.",
+  "expected_effect": "Improve OOF AUC if the current RealMLP ensemble is still variance-limited.",
+  "risk": "Runtime and GPU memory usage increase, and the extra ensemble members may not add enough diversity.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 6,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

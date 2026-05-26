@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 RealMLP second seed average",
+  "summary": "Add a second RealMLP seed to the legacy-001 root and average the two probability predictions.",
+  "rationale": "The simplest ensemble test is another RealMLP with the same pipeline and a different seed. This isolates neural seed variance before introducing CatBoost, XGBoost, LightGBM, stacking, or calibration.",
+  "implementation_hint": "Start from legacy-001.py. Train the existing RealMLP configuration twice on the same folds with two different seeds, such as the original seed and 829. Average OOF/test probabilities 0.5/0.5. Preserve all features, target encoding, fold definitions, outputs, and validation reporting.",
+  "expected_effect": "Improve OOF AUC if the RealMLP root has useful seed-level prediction variance.",
+  "risk": "Training time roughly doubles and the two seeds may be too correlated for meaningful gain.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 7,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP expert with shifted original-data fold",
+  "summary": "Pair competition fold k with original-data fold k+1 for diversity.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add an extra RealMLP expert whose competition fold split is unchanged, but whose original auxiliary rows are selected from the next fold index. Validation remains competition-only. Blend the expert lightly.",
+  "expected_effect": "Create a slightly different auxiliary-data training distribution without changing competition validation.",
+  "risk": "The shifted fold design may be arbitrary and add noise.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 21,
+    "original_label": "H21",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

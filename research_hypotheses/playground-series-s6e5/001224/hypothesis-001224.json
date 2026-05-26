@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP expert with alternate CV split seed",
+  "summary": "Add a RealMLP expert trained using a different StratifiedKFold random seed.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one extra RealMLP prediction stream trained with the same features and parameters but a different CV split random_state. Ensure all OOF predictions remain true OOF for their own split before blending lightly.",
+  "expected_effect": "Increase test prediction diversity through a different fold partition.",
+  "risk": "OOF comparisons across different folds can become harder to interpret if implemented carelessly.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 22,
+    "original_label": "H22",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

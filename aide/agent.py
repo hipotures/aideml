@@ -236,17 +236,22 @@ def _hypothesis_root_node(node: Node) -> Node:
     return node
 
 
+def _has_hypothesis_ancestor(node: Node, hypothesis_id: str) -> bool:
+    while node is not None:
+        if hypothesis_id_for_node(node) == hypothesis_id:
+            return True
+        node = node.parent
+    return False
+
+
 def _is_in_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool:
     if forced_root is None:
         return True
-    root = _hypothesis_root_node(node)
-    return hypothesis_id_for_node(root) == forced_root
+    return _has_hypothesis_ancestor(node, forced_root)
 
 
 def _find_forced_hypothesis_root(journal: Journal, forced_root: str) -> Node | None:
     for node in journal.nodes:
-        if node.parent is not None:
-            continue
         if hypothesis_id_for_node(node) == forced_root:
             return node
     return None
@@ -713,7 +718,10 @@ class Agent:
             return finish(None, "open_hypothesis_root")
 
         # initial drafting
-        if len(self.journal.draft_nodes) < search_cfg.num_drafts:
+        if (
+            forced_hypothesis_root is None
+            and len(self.journal.draft_nodes) < search_cfg.num_drafts
+        ):
             logger.debug("[search policy] drafting new node (not enough drafts)")
             return finish(None, "not_enough_drafts")
 

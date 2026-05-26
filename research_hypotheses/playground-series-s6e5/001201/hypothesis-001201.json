@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Count-encoding refinement for confirmed legacy block",
+  "summary": "Refine the confirmed useful count-encoding block with a compact transformed count feature.",
+  "rationale": "Removing count encoding hurt performance, so frequency information matters. A small refinement can test whether log-counts or normalized frequencies are better behaved than raw counts.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Keep the existing count-encoding block and add or replace exactly one count variant such as log1p(count), count / n_rows, or both raw count and log1p(count) for the same categorical columns. Do not add target encoding, new combo features, model-family changes, stacking, or calibration.",
+  "expected_effect": "Improve OOF AUC if transformed frequency features provide a smoother signal than raw counts alone.",
+  "risk": "Extra count variants may duplicate existing information and add noise.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 9,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

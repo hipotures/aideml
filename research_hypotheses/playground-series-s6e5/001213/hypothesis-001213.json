@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "001199 with n_ens32 for both RealMLP seeds",
+  "summary": "Apply n_ens=32 to both RealMLP seeds inside the 001199 CatBoost-corrected system.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep the same two RealMLP seeds and CatBoost correction, but set n_ens=32 for both RealMLP experts. Do not change CatBoost weight, folds, features, or calibration behavior unless required by runtime.",
+  "expected_effect": "Combine two confirmed signals: RealMLP variance reduction and low-weight CatBoost correction.",
+  "risk": "Runtime increases and n_ens32 may overfit local CV relative to public.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 11,
+    "original_label": "H11",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

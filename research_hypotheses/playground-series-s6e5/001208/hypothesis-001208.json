@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Blend 001199 with 001196 four-seed RealMLP",
+  "summary": "Use the four-seed RealMLP average as a light stabilizing component for 001199.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Recreate the 001196 four-seed RealMLP core prediction. Set final predictions to 0.85 * pred_001199 + 0.15 * pred_001196. Do not introduce stacking or calibration.",
+  "expected_effect": "Inject pure neural variance reduction without adding more CatBoost bias.",
+  "risk": "The four-seed component may be costly and may not add public signal.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 6,
+    "original_label": "H06",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

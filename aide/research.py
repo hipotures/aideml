@@ -687,7 +687,7 @@ def _forced_child_candidates_for_node_from_library(
     parent_node: Node | None,
     library: ManualHypothesisLibrary,
 ) -> list[ManualHypothesis]:
-    if parent_node is None or parent_node.parent is not None or parent_node.is_buggy:
+    if parent_node is None or parent_node.is_buggy:
         return []
     parent_id = hypothesis_id_for_node(parent_node)
     if parent_id is None:

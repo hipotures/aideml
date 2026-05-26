@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Three-seed RealMLP equal average",
+  "summary": "Extend the two-seed RealMLP parent to a three-seed equal-weight average without changing model parameters.",
+  "rationale": "The two-seed average is a confirmed positive signal. The next clean scaling test is whether adding a third independent RealMLP seed continues to reduce variance enough to improve AUC.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Add exactly one additional RealMLP expert with the same configuration, features, folds, and preprocessing but a new random seed. Average all three OOF/test probability vectors equally. Do not change n_ens, epochs, features, or add any non-RealMLP expert.",
+  "expected_effect": "Improve OOF AUC if a third seed contributes independent useful variance.",
+  "risk": "The third seed may be highly correlated with the existing two seeds and only increase runtime.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 3,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

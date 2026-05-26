@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regularized logistic stacker on two raw probabilities",
+  "summary": "Use only RealMLP core probability and CatBoost probability in a strongly regularized stacker.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Build a LogisticRegression stacker with C=0.05 using exactly two OOF features: p_realmlp_core and p_catboost. Train stacker only on true OOF predictions and apply to test prediction columns. Do not add rank features or calibration.",
+  "expected_effect": "Learn a simple correction curve while avoiding a large meta-model.",
+  "risk": "Even a two-column stacker can overfit OOF and hurt public.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 42,
+    "original_label": "H42",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

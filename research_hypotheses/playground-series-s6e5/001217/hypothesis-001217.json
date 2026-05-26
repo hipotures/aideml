@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "001199 with n_ens24 for both RealMLP seeds",
+  "summary": "Use an intermediate n_ens=24 for both RealMLP seeds in 001199.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Change only the RealMLP n_ens value from 20 to 24 for both seeds. Keep CatBoost correction, folds, features, and outputs unchanged.",
+  "expected_effect": "Find a lower-cost sweet spot between n_ens20 and n_ens32.",
+  "risk": "The change may be too small to exceed noise.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 15,
+    "original_label": "H15",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

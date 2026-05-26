@@ -659,6 +659,36 @@ def test_hypothesis_forced_root_scope_disables_opening_new_roots(
     assert selected is root
 
 
+def test_hypothesis_forced_root_scope_ignores_num_drafts(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 5
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.forced_root = "000365"
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.90), "000365")
+    journal.append(root)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda _cfg, *, journal, parent_nodes, **_kwargs: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is root
+    assert agent.last_search_decision["reason"] != "not_enough_drafts"
+
+
 def test_hypothesis_forced_root_scope_selects_only_descendants(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = True
@@ -759,6 +789,49 @@ def test_hypothesis_search_prioritizes_forced_child_queue_root(
 
     assert selected is root
     assert agent.last_search_decision["reason"] == "forced_child_hypothesis_queue"
+
+
+def test_hypothesis_search_prioritizes_forced_child_queue_nonroot_parent(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.num_drafts = 0
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.forced_root = "001189"
+    write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis="001189",
+        children=("001193",),
+    )
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.950), "001172")
+    branch_parent = _hypothesis_node(_good_node(0.954, parent=root), "001189")
+    sibling = _hypothesis_node(_good_node(0.960, parent=root), "000806")
+    journal.append(root)
+    journal.append(branch_parent)
+    journal.append(sibling)
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.forced_child_hypothesis_ids_for_node",
+        lambda _cfg, _journal, node, **_kwargs: (
+            ["001193"] if node is branch_parent else []
+        ),
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is branch_parent
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["reason"] == "forced_child_hypothesis_queue"
+    assert trace["forced_hypothesis_root"] == "001189"
 
 
 def test_hypothesis_forced_root_scope_debugs_only_descendants(tmp_path, monkeypatch):

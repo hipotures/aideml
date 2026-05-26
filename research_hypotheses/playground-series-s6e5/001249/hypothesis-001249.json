@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Single LapTime minus Race median feature",
+  "summary": "Add only LapTime minus per-Race median as a small feature test.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one covariate-only feature: LapTime (s) minus the median LapTime within Race. Do not add other race-relative features. Preserve all models and blend weights.",
+  "expected_effect": "Test a minimal local-context speed feature without broad FE churn.",
+  "risk": "Median-based covariate context may not improve beyond existing features.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 47,
+    "original_label": "H47",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

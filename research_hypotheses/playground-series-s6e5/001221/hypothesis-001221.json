@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Competition-only RealMLP diversity expert",
+  "summary": "Add a small-weight RealMLP expert trained without the original auxiliary data.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep the parent core unchanged, but add an extra RealMLP expert trained only on competition train folds, with validation still on competition folds. Blend it with a small fixed weight into the final prediction.",
+  "expected_effect": "Add a less distribution-shifted neural expert that may improve public despite weaker solo CV.",
+  "risk": "The competition-only expert may be dominated by the stronger auxiliary-trained core.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 19,
+    "original_label": "H19",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

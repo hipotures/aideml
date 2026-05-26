@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "OOF grid search RealMLP core versus CatBoost weight",
+  "summary": "Select the CatBoost correction weight by a small OOF grid instead of a fixed prior.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep RealMLP core and CatBoost predictions fixed. Evaluate a predefined grid of CatBoost weights from 0.02 to 0.15 on OOF AUC, select the best OOF weight, and apply that same fixed weight to test predictions. Report the selected weight.",
+  "expected_effect": "Find the best correction strength with minimal additional modeling complexity.",
+  "risk": "Weight search on OOF can overfit small CV differences.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 41,
+    "original_label": "H41",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

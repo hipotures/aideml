@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Rank average 001199 and 001198",
+  "summary": "Average percentile ranks from 001199 and 001198 instead of their raw probabilities.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Obtain both prediction streams. Convert OOF and test predictions separately to percentile ranks, average the ranks, and use the averaged ranks as final probabilities after clipping to valid bounds. Preserve true OOF validation.",
+  "expected_effect": "Improve AUC by blending ordering information while ignoring probability calibration differences.",
+  "risk": "Rank averaging may hurt if probability scale contains useful information for public scoring tie behavior.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 7,
+    "original_label": "H07",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

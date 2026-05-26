@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 ablate numeric floor categories",
+  "summary": "Remove the automatic floor-derived categorical copies of numeric columns from legacy-001 while preserving the rest of the pipeline.",
+  "rationale": "The root code creates many categorical features by flooring numeric columns. This may help RealMLP learn threshold-like effects, but it can also add noisy high-cardinality categorical artifacts. A direct ablation establishes whether this feature block is actually carrying signal.",
+  "implementation_hint": "Start from legacy-001.py. Remove or disable only the block that creates floor-based categorical variants of numeric columns. Keep raw numeric features, existing manual interactions, count encoding, current combo target encoding, RealMLP parameters, folds, and artifacts unchanged.",
+  "expected_effect": "Improve or clarify OOF AUC if floor-categorical features are mostly noise or overfit.",
+  "risk": "The current root may rely on these categorical threshold features, so removing them can reduce performance.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 2,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

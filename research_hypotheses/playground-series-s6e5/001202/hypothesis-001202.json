@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Combo frequency counts without target encoding",
+  "summary": "Add frequency counts for selected strategy combo categories instead of extending target encoding.",
+  "rationale": "Expanded combo target encoding was strongly negative, but count encoding and floor categories are useful. Combo frequency counts may capture strategy structure without target-mean leakage or sparse target overfit.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Add one or two combo count features such as count(Race, Compound, TyreLife_cat_) or count(Race, Compound, PitStop_cat_) using train/test covariates only and no target. Keep the existing target encoding list unchanged. Do not add target-mean encodings, new model families, stacking, or calibration.",
+  "expected_effect": "Improve OOF AUC if combo occurrence frequencies capture useful race-strategy context more safely than combo target means.",
+  "risk": "Sparse combo counts may be unstable or redundant with existing count features.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 10,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

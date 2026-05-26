@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regularized logistic stacker on logits",
+  "summary": "Use logits of RealMLP core and CatBoost probabilities in a two-feature logistic stacker.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Clip probabilities, transform p_realmlp_core and p_catboost to logits, and train a strongly regularized LogisticRegression stacker on true OOF rows. Apply the same transform to test predictions.",
+  "expected_effect": "Let the stacker combine confidence on a more linear scale than raw probabilities.",
+  "risk": "Logit transform can amplify calibration issues near 0 or 1.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 43,
+    "original_label": "H43",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

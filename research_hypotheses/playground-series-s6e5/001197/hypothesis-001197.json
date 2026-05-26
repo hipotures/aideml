@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two-seed RealMLP weighted average",
+  "summary": "Replace the equal two-seed average with a tiny OOF-selected weighted average over the existing two seed predictions.",
+  "rationale": "The two RealMLP seeds may not contribute exactly equal quality or diversity. A small weight grid tests whether a slightly asymmetric blend improves AUC without introducing a meta-model or stacker.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Keep both RealMLP experts unchanged. Evaluate a small OOF-only weight grid such as 0.40/0.60, 0.45/0.55, 0.50/0.50, 0.55/0.45, and 0.60/0.40. Select the best OOF AUC weight and apply it to test predictions. Do not add any new model or feature.",
+  "expected_effect": "Slightly improve OOF AUC if one seed is consistently stronger while the second still adds diversity.",
+  "risk": "OOF-selected weights can overfit small validation noise.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 5,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

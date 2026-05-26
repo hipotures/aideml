@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Per-regime CatBoost blend weights without calibration",
+  "summary": "Use different fixed CatBoost weights for simple race regimes, without beta/isotonic calibration.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Define simple regimes using existing non-target covariates such as slick/wet and early/mid/late race progress. Learn or grid-select CatBoost blend weights per regime on OOF, then apply to test rows. Do not add probability calibration.",
+  "expected_effect": "Capture cases where CatBoost helps more in specific race conditions while avoiding a full calibration system.",
+  "risk": "Regime-specific weights can overfit small segments and complicate interpretation.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 45,
+    "original_label": "H45",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

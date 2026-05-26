@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 extended combo target encoding",
+  "summary": "Add a small controlled set of additional combo target encodings to the legacy-001 root.",
+  "rationale": "The root uses target encoding only for Race-Compound and Race-Year combinations. A narrow extension can test whether tyre-life, pit-stop count, compound, and progress interactions contain target-regularized signal without turning the experiment into broad feature expansion.",
+  "implementation_hint": "Start from legacy-001.py. Add only a small number of extra combo columns to the existing TargetEncoder path, such as Compound with TyreLife_cat_, Race-Compound-TyreLife_cat_, Race-Compound-PitStop_cat_, or Year-Compound-RaceProgress bin. Use the existing fold-safe TargetEncoder configuration. Do not change model family, folds, manual feature blocks, or artifact names.",
+  "expected_effect": "Improve OOF AUC if the target-encoded combo categories capture pit-stop strategy interactions missed by the current two combos.",
+  "risk": "Extra target encoding can overfit OOF, especially for sparse combinations, even with cross-fold encoding and smoothing.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 4,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

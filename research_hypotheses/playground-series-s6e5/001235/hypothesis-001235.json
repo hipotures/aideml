@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "CatBoost seed selected by low correlation",
+  "summary": "Choose a CatBoost seed by balancing OOF AUC and low correlation with the RealMLP core.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Train a small set of CatBoost seeds, compute each seed OOF AUC and correlation to the RealMLP core OOF, select a seed with good AUC and lower correlation, then use it as the CatBoost correction. Keep selection logic explicit in the code.",
+  "expected_effect": "Improve complementary correction rather than maximizing CatBoost solo AUC.",
+  "risk": "OOF-based seed selection may overfit and increase runtime.",
+  "sources": [
+    "https://catboost.ai/docs/en/features/training-on-gpu"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 33,
+    "original_label": "H33",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

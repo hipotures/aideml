@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Shrink 001199 toward simpler 001189 two-seed RealMLP",
+  "summary": "Blend a very small amount of the simpler two-seed RealMLP parent into 001199.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Recreate the 001189 two-seed RealMLP core prediction without CatBoost correction. Set final predictions to 0.95 * pred_001199 + 0.05 * pred_001189. Do not add new models or calibration.",
+  "expected_effect": "Reduce possible CatBoost overfit while preserving nearly all of the best parent ranking.",
+  "risk": "The simpler parent may not improve public ranking and may only reduce CV.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 4,
+    "original_label": "H04",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

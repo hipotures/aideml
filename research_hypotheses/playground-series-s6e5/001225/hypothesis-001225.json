@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP diversity expert without target encoding",
+  "summary": "Add a small-weight RealMLP expert that disables target encoding while keeping the parent intact.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Keep the existing parent prediction unchanged. Add a RealMLP expert trained on the same folds and features except target-encoded columns are omitted or TE is disabled. Blend with a small fixed weight.",
+  "expected_effect": "Provide a less leakage-prone and less correlated neural prediction stream.",
+  "risk": "Prior TE blocks are useful, so removing them may produce too weak an expert.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 23,
+    "original_label": "H23",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

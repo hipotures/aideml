@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Legacy001 RealMLP epochs 5 to 8",
+  "summary": "Increase RealMLP training epochs in legacy-001 from 5 to 8 as a single-parameter micro-sweep.",
+  "rationale": "The root RealMLP may be slightly undertrained. Testing a modest epoch increase isolates whether longer neural training improves the same feature pipeline before adding seeds, extra experts, or stacking.",
+  "implementation_hint": "Start from legacy-001.py. Change only the RealMLP epoch count from the parent value, expected to be 5, to 8. Preserve all features, folds, random seeds, ensemble size, architecture, outputs, and validation protocol.",
+  "expected_effect": "Improve OOF AUC if the root RealMLP is underfit at the current epoch count.",
+  "risk": "Longer training can overfit or just increase runtime without useful gain.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001172",
+    "intended_parent_code": "legacy-001.py",
+    "recommended_order": 5,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

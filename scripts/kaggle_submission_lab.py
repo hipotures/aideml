@@ -109,6 +109,26 @@ def backfill_legacy_source_manifests(run_dir: Path) -> int:
     return written
 
 
+def journal_hypothesis_lookup(run_dir: Path) -> dict[tuple[str, Any], str]:
+    journal_path = run_dir / "journal.json"
+    if not journal_path.exists():
+        return {}
+    try:
+        journal = serialize.load_json(journal_path, Journal)
+    except Exception:
+        return {}
+
+    lookup: dict[tuple[str, Any], str] = {}
+    for node in journal.nodes:
+        offered = getattr(node, "research_hypotheses_offered", []) or []
+        if len(offered) != 1 or not isinstance(offered[0], str):
+            continue
+        hypothesis_id = offered[0]
+        lookup[("node_id", getattr(node, "id", None))] = hypothesis_id
+        lookup[("step", getattr(node, "step", None))] = hypothesis_id
+    return lookup
+
+
 def parse_autogluon_config(code: str) -> dict[str, Any] | None:
     match = re.search(r"AIDE_AG_CONFIG\s*=\s*(\{.*?\})\nRESULT_MARKER", code, re.S)
     if match is None:
@@ -232,9 +252,11 @@ def build_manifest_records(
     competition: str,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
-    artifacts_dir = logs_dir / run / "artifacts"
+    run_dir = logs_dir / run
+    artifacts_dir = run_dir / "artifacts"
     if not artifacts_dir.exists():
         return records
+    hypothesis_lookup = journal_hypothesis_lookup(run_dir)
     for manifest_path in sorted(artifacts_dir.glob(f"*/{RESULT_MANIFEST_NAME}")):
         artifact_dir = manifest_path.parent
         timestamp = artifact_dir.name
@@ -250,10 +272,17 @@ def build_manifest_records(
         )
         metric = node.get("metric") or {}
         status = str(manifest.get("status") or node.get("status") or "unknown")
+        hypothesis_id = (
+            node.get("hypothesis_id")
+            or manifest.get("hypothesis_id")
+            or hypothesis_lookup.get(("node_id", node.get("id")))
+            or hypothesis_lookup.get(("step", node.get("step")))
+        )
         records.append(
             {
                 **base,
                 "kind": manifest.get("kind") or "source_node",
+                "hypothesis_id": hypothesis_id,
                 "step": node.get("step"),
                 "node_id": node.get("id"),
                 "parent_node_id": node.get("parent_id"),
@@ -337,6 +366,7 @@ def refresh_index(
     logs_dir: Path = DEFAULT_LOGS_DIR,
     index_path: Path = DEFAULT_INDEX_PATH,
     competition: str = DEFAULT_COMPETITION,
+    runs: list[str] | None = None,
     reindex: bool = False,
     progress: Any | None = None,
 ) -> dict[str, Any]:
@@ -349,12 +379,22 @@ def refresh_index(
         records_by_run.setdefault(record.get("run"), []).append(record)
 
     run_signatures: dict[str, Any] = dict(cached_runs)
-    run_dirs = [
+    all_run_dirs = [
         run_dir
         for run_dir in sorted(logs_dir.iterdir())
         if run_dir.is_dir()
         and (run_dir / "artifacts").exists()
     ]
+    if runs:
+        run_lookup = {run_dir.name: run_dir for run_dir in all_run_dirs}
+        missing_runs = [run for run in runs if run not in run_lookup]
+        if missing_runs:
+            raise ValueError(
+                "No AIDE log run matches --run: " + ", ".join(missing_runs)
+            )
+        run_dirs = [run_lookup[run] for run in runs]
+    else:
+        run_dirs = all_run_dirs
     task_id = None
     if progress is not None:
         task_id = progress.add_task("Indexing AIDE runs", total=len(run_dirs))
@@ -362,11 +402,15 @@ def refresh_index(
         run = run_dir.name
         try:
             backfilled = backfill_legacy_source_manifests(run_dir)
+            needs_hypothesis_backfill = any(
+                "hypothesis_id" not in record
+                for record in records_by_run.get(run, [])
+            )
             if not reindex and _run_is_unchanged(
                 run=run,
                 run_dir=run_dir,
                 cached_runs=cached_runs,
-            ) and backfilled == 0:
+            ) and backfilled == 0 and not needs_hypothesis_backfill:
                 continue
             records, run_meta = build_run_records(
                 logs_dir=logs_dir,
@@ -407,6 +451,36 @@ def _record_is_submit_ready(record: dict[str, Any]) -> bool:
 
 def parse_sha256_filters(values: list[str] | None) -> list[str]:
     return smart.parse_sha256_filters(values)
+
+
+def parse_run_filters(values: list[str] | None) -> list[str]:
+    selected: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        for part in str(value).split(","):
+            run = part.strip()
+            if not run:
+                continue
+            if "/" in run or "\\" in run:
+                raise ValueError(f"Invalid run id: {run!r}")
+            if run not in seen:
+                selected.append(run)
+                seen.add(run)
+    return selected
+
+
+def filter_records_by_run(
+    records: list[dict[str, Any]],
+    run_filters: list[str],
+) -> list[dict[str, Any]]:
+    if not run_filters:
+        return records
+    selected_runs = set(run_filters)
+    return [
+        record
+        for record in records
+        if str(record.get("run") or "") in selected_runs
+    ]
 
 
 def filter_records_by_sha256(
@@ -526,6 +600,7 @@ def render_table(
         table.add_column("prof", no_wrap=True)
     table.add_column("m", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
+    table.add_column("hyp", no_wrap=True)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
@@ -548,6 +623,7 @@ def render_table(
             [
                 models,
                 _short_run(record.get("run")),
+                str(record.get("hypothesis_id") or "-"),
                 _format_algo(record),
                 _format_step(record.get("step")),
                 _timestamp_date(record.get("timestamp")),
@@ -632,6 +708,7 @@ def _remote_display_rows(
         if record_lookup is not None:
             row["algo"] = row.get("algo") or _registry_entry_algo(row, record_lookup)
             row["artifact_dir"] = _registry_entry_artifact_dir(row, record_lookup)
+            row["hypothesis_id"] = _registry_entry_hypothesis_id(row, record_lookup)
         rows.append(row)
     return rows
 
@@ -657,6 +734,7 @@ def _registry_record_lookup(
             "algo": _format_algo(record),
             "artifact_dir": record.get("artifact_dir"),
             "submission_path": record.get("submission_path"),
+            "hypothesis_id": record.get("hypothesis_id"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -730,12 +808,27 @@ def _registry_entry_artifact_dir(
     return "-"
 
 
+def _registry_entry_hypothesis_id(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("hypothesis_id")
+    if explicit:
+        return str(explicit)
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None and record.get("hypothesis_id"):
+        return str(record.get("hypothesis_id"))
+    return None
+
+
 def render_registry_table(
     console: Console,
     registry: smart.SubmissionRegistry,
     remote_submissions: list[Any] | None = None,
     records: list[dict[str, Any]] | None = None,
     full_view: bool = False,
+    limit: int | None = 20,
+    run_filters: list[str] | None = None,
 ) -> None:
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
@@ -743,6 +836,7 @@ def render_registry_table(
     table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
+    table.add_column("hyp", no_wrap=True)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
@@ -757,6 +851,7 @@ def render_registry_table(
             "public_score": entry.get("public_score"),
             "remote_status": entry.get("remote_status"),
             "algo": _registry_entry_algo(entry, record_lookup),
+            "hypothesis_id": _registry_entry_hypothesis_id(entry, record_lookup),
             "artifact_dir": _registry_entry_artifact_dir(entry, record_lookup),
             "run": entry.get("run"),
             "step": entry.get("step"),
@@ -766,9 +861,20 @@ def render_registry_table(
         for entry in registry.entries
     ]
     rows.extend(_remote_display_rows(registry, remote_submissions, record_lookup))
+    if run_filters:
+        selected_runs = set(run_filters)
+        rows = [
+            row
+            for row in rows
+            if str(row.get("run") or "") in selected_runs
+        ]
+
+    sorted_rows = sorted(rows, key=_registry_display_sort_key, reverse=True)
+    if limit is not None and limit > 0:
+        sorted_rows = sorted_rows[:limit]
 
     complete_rank = 0
-    for entry in sorted(rows, key=_registry_display_sort_key, reverse=True):
+    for entry in sorted_rows:
         remote_status = str(entry.get("remote_status") or "")
         if remote_status.upper() == "COMPLETE":
             complete_rank += 1
@@ -781,6 +887,7 @@ def render_registry_table(
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
+            str(entry.get("hypothesis_id") or "-"),
         ]
         row.extend(
             [
@@ -874,9 +981,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument(
+        "--registry-limit",
+        type=int,
+        default=20,
+        help="Maximum rows shown in Submission registry. Use 0 for no limit.",
+    )
     parser.add_argument("--reindex", action="store_true")
     parser.add_argument("--submit", action="store_true")
     parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    parser.add_argument(
+        "--run",
+        action="append",
+        default=[],
+        metavar="RUN_ID",
+        help="Restrict indexing and candidate selection to one run. Can be repeated or comma-separated.",
+    )
     parser.add_argument("--full-view", action="store_true")
     parser.add_argument(
         "--no-remote",
@@ -891,8 +1011,12 @@ def main(argv: list[str] | None = None) -> int:
     console = Console()
     try:
         sha_filters = parse_sha256_filters(args.sha256)
+        run_filters = parse_run_filters(args.run)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
+        return 2
+    if args.registry_limit < 0:
+        console.print("[red]--registry-limit must be greater than or equal to 0.[/red]")
         return 2
 
     registry = smart.SubmissionRegistry.load(args.registry)
@@ -905,15 +1029,20 @@ def main(argv: list[str] | None = None) -> int:
             competition=args.competition,
         )
     with _build_progress(console) as progress:
-        index = refresh_index(
-            logs_dir=args.logs_dir,
-            index_path=args.index,
-            competition=args.competition,
-            reindex=args.reindex,
-            progress=progress,
-        )
+        try:
+            index = refresh_index(
+                logs_dir=args.logs_dir,
+                index_path=args.index,
+                competition=args.competition,
+                runs=run_filters,
+                reindex=args.reindex,
+                progress=progress,
+            )
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
 
-    records = list(index.get("records", []))
+    records = filter_records_by_run(list(index.get("records", [])), run_filters)
     try:
         if sha_filters:
             selected = filter_records_by_sha256(records, sha_filters)
@@ -961,6 +1090,8 @@ def main(argv: list[str] | None = None) -> int:
             remote_submissions,
             records=records,
             full_view=args.full_view,
+            limit=None if args.registry_limit == 0 else args.registry_limit,
+            run_filters=run_filters,
         )
         if remote_submissions is not None:
             console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")

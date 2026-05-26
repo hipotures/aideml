@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Four-seed RealMLP equal average",
+  "summary": "Test a four-seed RealMLP equal average as a separate cost-versus-score branch from the two-seed parent.",
+  "rationale": "If three seeds improve, four may improve further; if not, this branch gives a direct read on the saturation curve. It should remain a separate branch so its cost and benefit are measured cleanly.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Add two additional RealMLP experts with the same parameters and folds but different seeds, then average all four probability vectors equally. Do not change features, n_ens, epochs, add CatBoost, or add stacking.",
+  "expected_effect": "Improve OOF AUC if RealMLP seed averaging has not saturated by two seeds.",
+  "risk": "Runtime roughly doubles relative to the two-seed parent and marginal gain may be below noise.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 4,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "001199 with three-seed RealMLP core",
+  "summary": "Use a three-seed equal-average RealMLP core with the same CatBoost correction as 001199.",
+  "rationale": "The current best parent is 001199 with CV 0.9544491320 and public 0.95409. This hypothesis is an atomic child patch intended to exploit the confirmed two-seed RealMLP core plus low-weight CatBoost correction direction.",
+  "implementation_hint": "Start from 001199. Add one extra RealMLP seed to the existing two-seed core and average all three RealMLP prediction streams before the CatBoost blend. Keep CatBoost settings and folds stable.",
+  "expected_effect": "Capture most of the multi-seed benefit at lower cost than four seeds.",
+  "risk": "The third seed may be too correlated and add little beyond runtime.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001199",
+    "intended_parent_code": "generated",
+    "recommended_order": 13,
+    "original_label": "H13",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9544491320021344,
+    "parent_public_score": 0.95409
+  }
+}

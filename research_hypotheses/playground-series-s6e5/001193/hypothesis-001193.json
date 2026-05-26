@@ -1,0 +1,24 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Two-seed RealMLP with n_ens32 for both seeds",
+  "summary": "Combine the two confirmed RealMLP variance-reduction signals by using two RealMLP seeds and n_ens=32 for both seeds.",
+  "rationale": "Both increasing RealMLP internal ensemble size and averaging a second seed improved the root independently. This patch tests whether the two mechanisms are additive when applied to the clean two-seed RealMLP core.",
+  "implementation_hint": "Start from the parent two-seed RealMLP average code. Keep the same feature pipeline, folds, seeds, validation protocol, and artifacts. Change both RealMLP experts to use n_ens=32, then average their OOF/test probabilities. Do not add CatBoost, XGBoost, LightGBM, stacking, calibration, or new feature engineering.",
+  "expected_effect": "Improve OOF AUC if internal ensemble variance reduction and inter-seed averaging provide complementary stability.",
+  "risk": "GPU runtime and memory cost increase, and the larger ensembles may have diminishing returns.",
+  "sources": [
+    "https://arxiv.org/abs/2407.04491"
+  ],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001189",
+    "intended_parent_code": "generated",
+    "recommended_order": 1,
+    "intended_usage": [
+      "branch_child"
+    ]
+  }
+}
