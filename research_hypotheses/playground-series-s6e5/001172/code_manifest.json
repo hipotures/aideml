@@ -23,16 +23,16 @@
         "file": "legacy-002.py",
         "buggy": false,
         "status": "ok",
-        "node_id": "manual-realmlp-lgbm-xgb-catboost-stack",
-        "score": 0.9542517447976857,
-        "created_at": "2026-05-26T03:25:00",
+        "node_id": "manual-realmlp-seed-stack-lgbm-cpu",
+        "score": 0.9542506093277433,
+        "created_at": "2026-05-26T04:05:00",
         "aux": false,
         "source_agent_mode": "legacy",
-        "source_score": 0.9542517447976857,
+        "source_score": 0.9542506093277433,
         "source_aux": false,
         "source_kernel": "yekenot/ps-s6-e5-realmlp-pytabkit",
-        "source_artifact_dir": "experiments/000787-realmlp-lgbm-xgb-catboost",
-        "source_notes": "Extends the RealMLP/PyTabKit root with fold-wise LightGBM OpenCL GPU, XGBoost, and CatBoost experts plus logistic OOF stacking and regime calibration."
+        "source_artifact_dir": "experiments/000787-realmlp-regime-calibration",
+        "source_notes": "Extends the RealMLP/PyTabKit root with a second RealMLP seed expert, CPU-only LightGBM, logistic OOF stacking, and regime calibration."
       }
     ]
   }

@@ -3372,15 +3372,15 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
         for line in gpu_guidelines
     )
     assert any(
-        'device_type="gpu"' in line
-        and 'device="gpu"' in line
-        and "OpenCL GPU backend" in line
-        and "gpu_platform_id=0" in line
-        and "gpu_device_id=0" in line
+        "For LightGBM" in line
+        and "keep LightGBM on CPU" in line
+        and "do not set" in line
         for line in gpu_guidelines
     )
     assert any(
-        'device_type="cuda"' in line and "Do not use the native CUDA backend" in line
+        'device_type="gpu"' in line
+        and 'device_type="cuda"' in line
+        and "native aborts" in line
         for line in gpu_guidelines
     )
 

@@ -455,157 +455,8 @@ def train_lightgbm_and_predict(
 
         return oof_preds, test_preds
 
-    lgbm_device = os.environ.get("AIDE_LGBM_DEVICE", "gpu").strip().lower()
-    if lgbm_device == "gpu":
-        return run_with_params(
-            {
-                "device_type": "gpu",
-                "gpu_platform_id": int(os.environ.get("AIDE_LGBM_GPU_PLATFORM_ID", "0")),
-                "gpu_device_id": int(os.environ.get("AIDE_LGBM_GPU_DEVICE_ID", "0")),
-            }
-        )
-    if lgbm_device == "cuda":
-        return run_with_params({"device_type": "cuda"})
-    print("LightGBM expert using CPU because AIDE_LGBM_DEVICE is not gpu/cuda.")
+    print("LightGBM expert using CPU; GPU backends are disabled for this task.")
     return run_with_params({})
-
-
-def train_xgboost_and_predict(
-    X: pd.DataFrame,
-    y: pd.Series,
-    X_test: pd.DataFrame,
-    orig: pd.DataFrame,
-    y_orig: pd.Series,
-) -> tuple[np.ndarray, np.ndarray]:
-    from xgboost import XGBClassifier
-
-    X_xgb, X_test_xgb, orig_xgb, _cat_cols = align_lgbm_categoricals(X, X_test, orig)
-    y_arr = y.astype(int).to_numpy()
-    y_orig_arr = y_orig.astype(int).to_numpy()
-    pos = float(y_arr.sum() + y_orig_arr.sum())
-    total = float(len(y_arr) + len(y_orig_arr))
-    pos_weight = (total - pos) / max(pos, 1.0)
-
-    skf = StratifiedKFold(n_splits=CFG.FOLDS, shuffle=True, random_state=CFG.SEED)
-    oof_preds = np.zeros(len(X_xgb), dtype=np.float64)
-    test_preds = np.zeros(len(X_test_xgb), dtype=np.float64)
-
-    for fold, ((tr_idx, val_idx), (or_tr_idx, _or_val_idx)) in enumerate(
-        zip(skf.split(X_xgb, y_arr), skf.split(orig_xgb, y_orig_arr)),
-        1,
-    ):
-        X_tr = pd.concat(
-            [X_xgb.iloc[tr_idx], orig_xgb.iloc[or_tr_idx]],
-            axis=0,
-        ).reset_index(drop=True)
-        y_tr = np.concatenate([y_arr[tr_idx], y_orig_arr[or_tr_idx]])
-        X_val = X_xgb.iloc[val_idx]
-        y_val = y_arr[val_idx]
-
-        model = XGBClassifier(
-            objective="binary:logistic",
-            eval_metric="auc",
-            tree_method="hist",
-            device=os.environ.get("AIDE_XGB_DEVICE", "cuda"),
-            enable_categorical=True,
-            n_estimators=900,
-            learning_rate=0.035,
-            max_depth=7,
-            min_child_weight=8,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            reg_alpha=0.1,
-            reg_lambda=6.0,
-            scale_pos_weight=pos_weight,
-            random_state=CFG.SEED + 2000 + fold,
-            n_jobs=max(1, min(16, os.cpu_count() or 1)),
-        )
-        model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
-        oof_preds[val_idx] = model.predict_proba(X_val)[:, 1]
-        test_preds += model.predict_proba(X_test_xgb)[:, 1] / CFG.FOLDS
-        print(
-            f"xgboost fold {fold} | AUC Score: "
-            f"{roc_auc_score(y_val, oof_preds[val_idx]):.5f}"
-        )
-
-    return oof_preds, test_preds
-
-
-def train_catboost_and_predict(
-    X: pd.DataFrame,
-    y: pd.Series,
-    X_test: pd.DataFrame,
-    orig: pd.DataFrame,
-    y_orig: pd.Series,
-) -> tuple[np.ndarray, np.ndarray]:
-    from catboost import CatBoostClassifier, Pool
-
-    X_cat = X.copy()
-    X_test_cat = X_test.copy()
-    orig_cat = orig.copy()
-    cat_cols = X_cat.select_dtypes(include=["object", "category"]).columns.tolist()
-    for frame in [X_cat, X_test_cat, orig_cat]:
-        for col in cat_cols:
-            frame[col] = (
-                frame[col]
-                .astype("object")
-                .where(frame[col].notna(), "__missing__")
-                .astype(str)
-            )
-
-    y_arr = y.astype(int).to_numpy()
-    y_orig_arr = y_orig.astype(int).to_numpy()
-    pos = float(y_arr.sum() + y_orig_arr.sum())
-    total = float(len(y_arr) + len(y_orig_arr))
-    pos_weight = (total - pos) / max(pos, 1.0)
-
-    skf = StratifiedKFold(n_splits=CFG.FOLDS, shuffle=True, random_state=CFG.SEED)
-    oof_preds = np.zeros(len(X_cat), dtype=np.float64)
-    test_preds = np.zeros(len(X_test_cat), dtype=np.float64)
-
-    for fold, ((tr_idx, val_idx), (or_tr_idx, _or_val_idx)) in enumerate(
-        zip(skf.split(X_cat, y_arr), skf.split(orig_cat, y_orig_arr)),
-        1,
-    ):
-        X_tr = pd.concat(
-            [X_cat.iloc[tr_idx], orig_cat.iloc[or_tr_idx]],
-            axis=0,
-        ).reset_index(drop=True)
-        y_tr = np.concatenate([y_arr[tr_idx], y_orig_arr[or_tr_idx]])
-        X_val = X_cat.iloc[val_idx]
-        y_val = y_arr[val_idx]
-
-        model = CatBoostClassifier(
-            loss_function="Logloss",
-            eval_metric="AUC",
-            iterations=1200,
-            learning_rate=0.035,
-            depth=7,
-            l2_leaf_reg=6.0,
-            random_seed=CFG.SEED + 3000 + fold,
-            class_weights=[1.0, pos_weight],
-            task_type=os.environ.get("AIDE_CATBOOST_TASK_TYPE", "GPU"),
-            devices=os.environ.get("AIDE_CATBOOST_DEVICES", "0"),
-            allow_writing_files=False,
-            verbose=False,
-        )
-        train_pool = Pool(X_tr, y_tr, cat_features=cat_cols)
-        valid_pool = Pool(X_val, y_val, cat_features=cat_cols)
-        test_pool = Pool(X_test_cat, cat_features=cat_cols)
-        model.fit(
-            train_pool,
-            eval_set=valid_pool,
-            early_stopping_rounds=80,
-            use_best_model=True,
-        )
-        oof_preds[val_idx] = model.predict_proba(valid_pool)[:, 1]
-        test_preds += model.predict_proba(test_pool)[:, 1] / CFG.FOLDS
-        print(
-            f"catboost fold {fold} | AUC Score: "
-            f"{roc_auc_score(y_val, oof_preds[val_idx]):.5f}"
-        )
-
-    return oof_preds, test_preds
 
 
 def pct_rank_train(a: np.ndarray) -> np.ndarray:
@@ -968,42 +819,27 @@ def main() -> None:
     base_oof["realmlp"] = realmlp_oof
     base_test["realmlp"] = realmlp_test
 
+    seed_787_params = dict(PARAMS)
+    seed_787_params["random_state"] = CFG.SEED + 787
+    realmlp_seed_oof, realmlp_seed_test = train_and_predict(
+        X,
+        y,
+        X_test,
+        orig,
+        y_orig,
+        combo_names,
+        params=seed_787_params,
+        expert_name="realmlp_seed_787",
+    )
+    base_oof["realmlp_seed_787"] = realmlp_seed_oof
+    base_test["realmlp_seed_787"] = realmlp_seed_test
+
     try:
         lgb_oof, lgb_test = train_lightgbm_and_predict(X, y, X_test, orig, y_orig)
         base_oof["lightgbm"] = lgb_oof
         base_test["lightgbm"] = lgb_test
     except Exception as exc:
         print(f"LightGBM expert skipped: {exc}")
-
-    try:
-        xgb_oof, xgb_test = train_xgboost_and_predict(X, y, X_test, orig, y_orig)
-        base_oof["xgboost"] = xgb_oof
-        base_test["xgboost"] = xgb_test
-    except Exception as exc:
-        print(f"XGBoost expert skipped: {exc}")
-
-    try:
-        cat_oof, cat_test = train_catboost_and_predict(X, y, X_test, orig, y_orig)
-        base_oof["catboost"] = cat_oof
-        base_test["catboost"] = cat_test
-    except Exception as exc:
-        print(f"CatBoost expert skipped: {exc}")
-
-    if len(base_oof) < 2:
-        fallback_params = dict(PARAMS)
-        fallback_params["random_state"] = CFG.SEED + 787
-        fallback_oof, fallback_test = train_and_predict(
-            X,
-            y,
-            X_test,
-            orig,
-            y_orig,
-            combo_names,
-            params=fallback_params,
-            expert_name="realmlp_seed_787",
-        )
-        base_oof["realmlp_seed_787"] = fallback_oof
-        base_test["realmlp_seed_787"] = fallback_test
 
     y_np = y.astype(int).to_numpy()
     stack_oof, stack_test, blend_report = blend_experts(base_oof, base_test, y_np)
@@ -1061,7 +897,7 @@ def main() -> None:
         + json.dumps(
             {
                 "is_bug": False,
-                "summary": "RealMLP, LightGBM, XGBoost, and CatBoost OOF expert stacking with regime-specific calibration completed successfully.",
+                "summary": "RealMLP plus OOF expert stacking with regime-specific calibration completed successfully.",
                 "metric": float(oof_score),
                 "lower_is_better": False,
                 "validity_warning": None,
