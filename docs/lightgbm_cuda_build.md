@@ -15,7 +15,7 @@ LightGBM source/configuration before compilation on this machine.
 - LightGBM version: `4.6.0`
 - AutoGluon version: `1.5.0`
 
-## Why the OpenCL GPU build failed
+## Why the original OpenCL GPU build failed
 
 LightGBM has two different GPU backends:
 
@@ -51,6 +51,183 @@ Root cause:
 
 So the OpenCL path is blocked by a LightGBM/CMake/Boost compatibility issue,
 not by the NVIDIA driver or OpenCL headers.
+
+## Successful OpenCL GPU build for `device_type = gpu`
+
+LightGBM's `device_type = gpu` is the OpenCL backend. It is separate from the
+native CUDA backend used by `device_type = cuda`.
+
+This backend was later rebuilt successfully from current LightGBM master on the
+same Arch-style system. It does not require installing an older CUDA toolkit,
+but it does require working OpenCL packages:
+
+```bash
+pacman -Q opencl-nvidia ocl-icd opencl-headers boost boost-libs gcc14
+```
+
+The observed installed packages were:
+
+```text
+opencl-nvidia
+ocl-icd
+opencl-headers
+boost
+boost-libs
+gcc14
+```
+
+The system OpenCL library must exist:
+
+```bash
+test -f /usr/lib/libOpenCL.so && echo ok
+```
+
+Clone or reuse LightGBM master and initialize submodules:
+
+```bash
+git clone https://github.com/lightgbm-org/LightGBM /tmp/lightgbm-master-aide-debug
+git -C /tmp/lightgbm-master-aide-debug submodule update --init --recursive
+```
+
+On current Arch / Boost `1.91`, two local source patches were needed.
+
+First, LightGBM's CMake still asks for the removed `boost_system` component
+when `USE_GPU=ON`. In `CMakeLists.txt`, change:
+
+```cmake
+find_package(Boost 1.56.0 COMPONENTS filesystem system REQUIRED)
+```
+
+to:
+
+```cmake
+find_package(Boost 1.56.0 COMPONENTS filesystem REQUIRED)
+```
+
+Second, vendored Boost.Compute expects the older Boost SHA1 digest type. In
+`external_libs/compute/include/boost/compute/detail/sha1.hpp`, replace the
+digest block in `operator std::string()` with a Boost-version-compatible
+branch:
+
+```cpp
+#if BOOST_VERSION >= 109100
+            unsigned char digest[20];
+            h.get_digest(digest);
+
+            std::ostringstream buf;
+            for(int i = 0; i < 20; ++i)
+                buf << std::hex << std::setfill('0') << std::setw(2) << static_cast<unsigned int>(digest[i]);
+#else
+            unsigned int digest[5];
+            h.get_digest(digest);
+
+            std::ostringstream buf;
+            for(int i = 0; i < 5; ++i)
+                buf << std::hex << std::setfill('0') << std::setw(8) << digest[i];
+#endif
+```
+
+Build the wheel with the OpenCL backend:
+
+```bash
+rm -rf /tmp/lgbm-opencl-build
+uv venv /tmp/lgbm-opencl-build --python 3.12
+uv pip install --python /tmp/lgbm-opencl-build/bin/python pip
+
+cd /tmp/lightgbm-master-aide-debug
+PATH=/tmp/lgbm-opencl-build/bin:$PATH \
+CC=/usr/bin/gcc-14 \
+CXX=/usr/bin/g++-14 \
+  /bin/sh ./build-python.sh bdist_wheel --gpu
+```
+
+The resulting wheel is:
+
+```text
+/tmp/lightgbm-master-aide-debug/dist/lightgbm-4.6.0.99-py3-none-linux_x86_64.whl
+```
+
+Install it into AIDE's normal virtualenv without dependency changes:
+
+```bash
+cd /home/xai/DEV/aideml
+uv pip install --reinstall --no-deps \
+  /tmp/lightgbm-master-aide-debug/dist/lightgbm-4.6.0.99-py3-none-linux_x86_64.whl
+```
+
+Use `--no-deps`. Without it, `uv` may upgrade packages such as `numpy` and
+`scipy`, which can break ABI compatibility with the already-installed pandas /
+scikit-learn stack.
+
+Verify versions:
+
+```bash
+uv run python - <<'PY'
+import numpy, scipy, pandas, sklearn, lightgbm
+print("numpy", numpy.__version__)
+print("scipy", scipy.__version__)
+print("pandas", pandas.__version__)
+print("sklearn", sklearn.__version__)
+print("lightgbm", lightgbm.__version__, lightgbm.__file__)
+PY
+```
+
+Verify OpenCL GPU training:
+
+```bash
+uv run python - <<'PY'
+import numpy as np
+import lightgbm as lgb
+
+rng = np.random.default_rng(42)
+X = rng.normal(size=(3000, 24)).astype(np.float32)
+y = (X[:, 0] + 0.25 * X[:, 1] + rng.normal(size=3000) * 0.2 > 0).astype(int)
+train = lgb.Dataset(X, label=y)
+
+params = {
+    "objective": "binary",
+    "metric": "auc",
+    "device_type": "gpu",
+    "gpu_platform_id": 0,
+    "gpu_device_id": 0,
+    "num_leaves": 31,
+    "learning_rate": 0.05,
+    "verbose": 1,
+    "seed": 42,
+}
+
+lgb.train(params, train, num_boost_round=3)
+print("uv_opencl_gpu_train_ok")
+PY
+```
+
+Expected output includes:
+
+```text
+This is the GPU trainer!!
+Using GPU Device: NVIDIA GeForce RTX 4070 Ti, Vendor: NVIDIA Corporation
+uv_opencl_gpu_train_ok
+```
+
+In AIDE experiments, use:
+
+```bash
+AIDE_LGBM_DEVICE=gpu ./run.sh
+```
+
+The experiment code maps this to:
+
+```python
+{
+    "device_type": "gpu",
+    "gpu_platform_id": 0,
+    "gpu_device_id": 0,
+}
+```
+
+Keep `device_type = cuda` disabled for this F1 dataset unless revalidated,
+because the native CUDA backend has repeatedly aborted with illegal memory
+access in `cuda_best_split_finder.cu`.
 
 ## Why the first CUDA build failed
 
