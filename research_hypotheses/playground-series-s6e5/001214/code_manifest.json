@@ -1,0 +1,26 @@
+{
+  "active": {
+    "legacy": "legacy-001.py"
+  },
+  "versions": {
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "e54f0ce4fa13b4a8e8463c1875197f8d38af0cf5ef44900efef414b4d3bad911",
+        "score": 0.9545020438408371,
+        "created_at": "2026-05-27T02:21:35",
+        "aux": false,
+        "source_agent_mode": "legacy",
+        "source_score": 0.9545020438408371,
+        "source_public_score": 0.9541,
+        "source_aux": false,
+        "source_run_id": "2-bald-spectral-leech",
+        "source_artifact_dir": "logs/2-bald-spectral-leech/artifacts/20260527T022135-98dbcfdf",
+        "source_sha256": "e54f0ce4fa13b4a8e8463c1875197f8d38af0cf5ef44900efef414b4d3bad911",
+        "source_notes": "Best submitted public parent at the time of seeding; used as the code parent for AutoGluon-inspired local feature patches."
+      }
+    ]
+  }
+}

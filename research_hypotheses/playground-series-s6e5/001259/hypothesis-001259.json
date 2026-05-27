@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Testing-domain normalization",
+  "summary": "Normalize key race-state signals separately for pre-season testing versus ordinary race contexts.",
+  "rationale": "Pre-season testing can have different lap-time and pit-stop dynamics. This patch models this as a year-by-testing-domain normalization block rather than mixing testing rows with race rows.",
+  "implementation_hint": "Start from 001214 exactly. Add only the testing-domain normalization block using the formulas below: define `testing_domain = is_testing`, `year_domain_key = Year.astype(str) + '_' + is_testing.astype(str)`. Compute year medians and year-domain medians for `LapTime_Delta`, `LapTime (s)`, `Cumulative_Degradation`, `TyreLife`, `wear_pressure`, and `best_stop_now_advantage`, falling back from year-domain median to year median to global median. Add `lapdelta_vs_year_domain_median = lap_delta_pos / abs(yd_median_lap_delta).clip(lower=eps)`, `laptime_vs_year_domain_median = lap_time / yd_median_lap_time.clip(lower=eps)`, `cumdeg_vs_year_domain_median = cum_deg / abs(yd_median_cum_deg).clip(lower=eps)`, `tyrelife_vs_year_domain_median = tyre_life / yd_median_tyre_life.clip(lower=1)`, `wear_pressure_vs_year_domain_median = wear_pressure / abs(yd_median_wear_pressure).clip(lower=eps)`, `stop_advantage_vs_year_domain_median = best_stop_now_advantage - yd_median_stop_adv`. Add testing gaps: `(yd_median_lap_delta - year_median_lap_delta)*is_testing`, same for lap time, wear pressure, and stop advantage. Do not add unrelated testing-domain changes.",
+  "expected_effect": "Improve handling of pre-season testing rows without changing the model family or validation protocol.",
+  "risk": "If testing rows are few or not leaderboard-relevant, these domain ratios can be neutral or noisy.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 7,
+    "original_label": "AGF07",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

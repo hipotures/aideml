@@ -13,7 +13,6 @@ from typing import Iterable
 from aide.journal import Journal, Node
 from aide.research import (
     FORCED_CHILD_QUEUE_FILE,
-    _compatible_manual_hypotheses,
     load_manual_hypothesis_library,
     write_forced_child_hypothesis_queue,
 )
@@ -24,10 +23,20 @@ from aide.utils.config import (
     prep_cfg,
     save_run,
 )
+from aide.utils import serialize
 from aide.utils.metric import MetricValue
 
 @dataclass(frozen=True)
 class SeedGeneratedBranchResult:
+    run_id: str
+    log_dir: Path
+    workspace_dir: Path
+    root_hypothesis: str
+    children: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class QueueExistingRunResult:
     run_id: str
     log_dir: Path
     workspace_dir: Path
@@ -151,6 +160,126 @@ def _child_hypothesis_ids_for_mode(
     }
 
 
+def _cfg_for_hypothesis_queue(
+    *,
+    task: str,
+    agent_mode: str,
+    data_dir: Path,
+    desc_file: Path,
+    logs_dir: Path,
+    workspaces_dir: Path,
+) -> object:
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(data_dir)
+    cfg.desc_file = str(desc_file)
+    cfg.log_dir = str(logs_dir)
+    cfg.workspace_dir = str(workspaces_dir)
+    cfg.agent.mode = agent_mode
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.copy_data = False
+    cfg.preprocess_data = False
+    return prep_cfg(cfg)
+
+
+def _journal_contains_hypothesis(journal: Journal, hypothesis_id: str) -> bool:
+    return any(
+        hypothesis_id in (getattr(node, "research_hypotheses_offered", None) or [])
+        for node in journal.nodes
+    )
+
+
+def queue_for_existing_run(
+    *,
+    task: str,
+    agent_mode: str,
+    root_hypothesis: str,
+    children: tuple[str, ...],
+    run_id: str,
+    data_dir: Path | None = None,
+    desc_file: Path | None = None,
+    logs_dir: Path = Path("logs"),
+    workspaces_dir: Path = Path("workspaces"),
+    repo_root: Path = Path("."),
+    replace_queue: bool = False,
+) -> QueueExistingRunResult:
+    repo_root = repo_root.resolve()
+    logs_dir = logs_dir.resolve()
+    workspaces_dir = workspaces_dir.resolve()
+    _validate_run_id(run_id)
+
+    data_dir = (data_dir or _default_data_dir(repo_root, task)).resolve()
+    desc_file = (desc_file or _default_desc_file(repo_root, task)).resolve()
+
+    cfg = _cfg_for_hypothesis_queue(
+        task=task,
+        agent_mode=agent_mode,
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=logs_dir,
+        workspaces_dir=workspaces_dir,
+    )
+    cfg.exp_name = run_id
+    cfg.log_dir = logs_dir / run_id
+    cfg.workspace_dir = workspaces_dir / run_id
+
+    if not Path(cfg.log_dir).exists():
+        raise FileNotFoundError(f"Existing run log directory not found: {cfg.log_dir}")
+    journal_path = Path(cfg.log_dir) / "journal.json"
+    if not journal_path.exists():
+        raise FileNotFoundError(f"Existing run journal not found: {journal_path}")
+
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    compatible_ids = _child_hypothesis_ids_for_mode(cfg=cfg, library=library)
+    _require_hypotheses(
+        root_ids=compatible_ids,
+        child_ids=compatible_ids,
+        root_hypothesis=root_hypothesis,
+        children=children,
+    )
+
+    journal = serialize.load_json(journal_path, Journal)
+    if not _journal_contains_hypothesis(journal, root_hypothesis):
+        raise ValueError(
+            f"Root hypothesis {root_hypothesis} was not found in existing run journal: "
+            f"{journal_path}"
+        )
+
+    queue_path = Path(cfg.log_dir) / FORCED_CHILD_QUEUE_FILE
+    existing_children: list[str] = []
+    if queue_path.exists() and not replace_queue:
+        payload = json.loads(queue_path.read_text(encoding="utf-8"))
+        queued_root = payload.get("root_hypothesis") if isinstance(payload, dict) else None
+        if queued_root != root_hypothesis:
+            raise ValueError(
+                f"Existing forced child queue is for root {queued_root!r}, "
+                f"not {root_hypothesis!r}. Use --replace-queue to overwrite it."
+            )
+        raw_children = payload.get("children")
+        if isinstance(raw_children, list):
+            existing_children = [
+                child_id for child_id in raw_children if isinstance(child_id, str)
+            ]
+
+    merged_children = list(existing_children)
+    for child_id in children:
+        if child_id not in merged_children:
+            merged_children.append(child_id)
+
+    write_forced_child_hypothesis_queue(
+        cfg,
+        root_hypothesis=root_hypothesis,
+        children=merged_children,
+    )
+    return QueueExistingRunResult(
+        run_id=run_id,
+        log_dir=Path(cfg.log_dir),
+        workspace_dir=Path(cfg.workspace_dir),
+        root_hypothesis=root_hypothesis,
+        children=tuple(merged_children),
+    )
+
+
 def seed_generated_branch(
     *,
     task: str,
@@ -174,17 +303,14 @@ def seed_generated_branch(
     data_dir = (data_dir or _default_data_dir(repo_root, task)).resolve()
     desc_file = (desc_file or _default_desc_file(repo_root, task)).resolve()
 
-    cfg = _load_cfg(use_cli_args=False)
-    cfg.data_dir = str(data_dir)
-    cfg.desc_file = str(desc_file)
-    cfg.log_dir = str(logs_dir)
-    cfg.workspace_dir = str(workspaces_dir)
-    cfg.agent.mode = agent_mode
-    cfg.research.enabled = True
-    cfg.research.mode = "hypothesis"
-    cfg.copy_data = False
-    cfg.preprocess_data = False
-    cfg = prep_cfg(cfg)
+    cfg = _cfg_for_hypothesis_queue(
+        task=task,
+        agent_mode=agent_mode,
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=logs_dir,
+        workspaces_dir=workspaces_dir,
+    )
 
     if run_id is not None:
         cfg.exp_name = run_id
@@ -197,9 +323,7 @@ def seed_generated_branch(
         raise FileExistsError(f"Run workspace directory already exists: {cfg.workspace_dir}")
 
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
-    compatible_root_ids = {
-        hypothesis.id for hypothesis in _compatible_manual_hypotheses(cfg, library)
-    }
+    compatible_root_ids = _child_hypothesis_ids_for_mode(cfg=cfg, library=library)
     compatible_child_ids = _child_hypothesis_ids_for_mode(cfg=cfg, library=library)
     _require_hypotheses(
         root_ids=compatible_root_ids,
@@ -264,9 +388,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task", required=True)
     parser.add_argument("--agent-mode", required=True, choices=["legacy", "autogluon"])
     parser.add_argument("--root-hypothesis", required=True)
-    parser.add_argument("--root-code", required=True)
+    parser.add_argument(
+        "--root-code",
+        help="Root code file to seed into a new run. Required unless --existing-run is used.",
+    )
     parser.add_argument("--children", nargs="+", required=True)
-    parser.add_argument("--run-id")
+    parser.add_argument("--run-id", help="Run id to create for a new seeded run.")
+    parser.add_argument(
+        "--existing-run",
+        help="Append or replace the forced child queue in an existing run.",
+    )
+    parser.add_argument(
+        "--replace-queue",
+        action="store_true",
+        help="Replace an existing forced child queue instead of appending to it.",
+    )
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--desc-file", type=Path)
     parser.add_argument("--logs-dir", type=Path, default=Path("logs"))
@@ -282,6 +418,33 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.existing_run:
+        if args.run_id:
+            raise SystemExit("--run-id and --existing-run are mutually exclusive.")
+        result = queue_for_existing_run(
+            task=args.task,
+            agent_mode=args.agent_mode,
+            root_hypothesis=args.root_hypothesis,
+            children=tuple(args.children),
+            run_id=args.existing_run,
+            data_dir=args.data_dir,
+            desc_file=args.desc_file,
+            logs_dir=args.logs_dir,
+            workspaces_dir=args.workspaces_dir,
+            repo_root=args.repo_root,
+            replace_queue=args.replace_queue,
+        )
+        print(f"Updated existing generated branch run: {result.run_id}")
+        print(f"Log directory: {result.log_dir}")
+        print(
+            "Queued first-layer children: "
+            f"{result.root_hypothesis} -> {', '.join(result.children)}"
+        )
+        return
+
+    if not args.root_code:
+        raise SystemExit("--root-code is required when creating a new seeded run.")
+
     result = seed_generated_branch(
         task=args.task,
         agent_mode=args.agent_mode,

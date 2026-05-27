@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Service-window pit urgency proxies",
+  "summary": "Add a compact pit-service urgency feature family to the current 001214 code without changing model seeds, folds, CatBoost weight, or artifact format.",
+  "rationale": "This patch explicitly encodes pit-stop pressure from tyre age, compound service windows, finishability, and fresh-tyre suppression. This tests that domain block locally on the current best public parent without copying a broad preprocess.",
+  "implementation_hint": "Start from 001214 exactly. Add only this feature family in the existing feature-engineering path. Use these target-free formulas directly: map service_window_template by Compound {SOFT:14, MEDIUM:20, HARD:26, INTERMEDIATE:18, WET:16}, then `service_window_template = min(service_window_template, conservative_compound_life - 2).clip(lower=6)`, `Service_Age_Distance = TyreLife - service_window_template`, `Service_Window_Pressure = (Service_Age_Distance / service_window_template.clip(lower=1)).clip(-2, 3)`, `Service_Window_Overage = Service_Age_Distance.clip(lower=0)`, `TyreAge_At_Finish_Est = TyreLife + remaining_laps_est`, `Finish_Stop_Pressure = ((-current_tyre_finish_margin_signed) / conservative_compound_life.clip(lower=1)).clip(0, 3)`, `Fresh_Tyre_Suppression = 1 / (1 + TyreLife)`, `Just_Pitted_Fresh_Tyre = (TyreLife <= 2)`, and `Monotone_Pit_Urgency_Proxy = 0.40*positive(Service_Window_Pressure) + 0.85*Finish_Stop_Pressure + 0.25*positive(deg_per_tyre_lap) + 0.20*remaining_dry_compound_debt - 0.75*Fresh_Tyre_Suppression - 0.35*Just_Pitted_Fresh_Tyre`. If any helper such as `remaining_laps_est`, `conservative_compound_life`, `current_tyre_finish_margin_signed`, or `deg_per_tyre_lap` is absent in 001214, define the smallest local equivalent using only row covariates. Do not add unrelated regime-gate or rarity features.",
+  "expected_effect": "Improve ranking around the pit-window boundary by exposing a monotone urgency signal that the current ensemble may not reconstruct cleanly.",
+  "risk": "The existing RealMLP and CatBoost correction may already infer this from raw tyre-life and progress columns; extra proxies can add redundant noise.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 1,
+    "original_label": "AGF01",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Identifier support and rarity features",
+  "summary": "Add frequency and rare-context support features for Driver, Race, Race_Year, and Driver_RaceYear without changing categories in 001214.",
+  "rationale": "This patch uses ID support counts to regularize brittle memorization. This patch tests the numeric support signal only, avoiding rare-token replacement as a separate confound.",
+  "implementation_hint": "Start from 001214 exactly. Add only these support-count numeric features: for `Driver` threshold 8, `Race_Year` threshold 12, and `Race` threshold 12, compute `freq = value_counts[col]`, add `{col}_freq = freq`, `{col}_log_freq = log1p(freq)`, `{col}_is_rare = freq <= threshold`. Also compute `Driver_RaceYear = Driver + '__' + Race_Year`, `Driver_RaceYear_freq = value_counts[Driver_RaceYear]`, `Driver_RaceYear_log_freq = log1p(Driver_RaceYear_freq)`, `Driver_RaceYear_is_rare = Driver_RaceYear_freq <= 3`. Important: do not replace `Driver`, `Race`, or `Race_Year` with `RARE_*` tokens in this patch; only add numeric/count features. Do not add deployment-likeness, service-window, or class-aware margin features.",
+  "expected_effect": "Improve robustness in sparse driver/race contexts while preserving the parent model's existing category handling.",
+  "risk": "Counts computed within each preprocessed split may encode fold composition; if the parent already has count encodings, this can be redundant.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 5,
+    "original_label": "AGF05",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

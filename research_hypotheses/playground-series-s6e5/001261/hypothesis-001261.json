@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Regime expert gates",
+  "summary": "Add regime-gating features only, without adding new models or full stacking.",
+  "rationale": "The current best code already benefits from controlled ensembling. This patch encodes expert-style route gates for dry, wet, testing, pit-window, late-stint, and early-race regimes as features, which may give the parent model similar regime awareness without changing architecture.",
+  "implementation_hint": "Start from 001214 exactly. Add only the regime-gate feature block using the formulas below. Reuse existing or locally computed `dry_mask`, `wet_mask`, `test_mask`, `service_window_pressure`, `remaining_laps_est`, `race_progress`, `Monotone_Pit_Urgency_Proxy`, and `best_stop_now_advantage`. Define `pit_window_gate = service_window_pressure >= -0.35` (or the exact parent-equivalent threshold if already present), `late_stint_gate = remaining_laps_est <= 18 or race_progress >= 0.70`, `early_race_gate = race_progress <= 0.35`. Add `Expert_Dry_Gate_RegimeGate = dry_mask`, `Expert_WetInter_Gate_RegimeGate = wet_mask`, `Expert_Testing_Gate_RegimeGate = test_mask`, `Expert_PitWindow_Gate_RegimeGate = pit_window_gate`, `Expert_LateStint_Gate_RegimeGate = late_stint_gate`, `Expert_EarlyRace_Gate_RegimeGate = early_race_gate`, and categorical `Expert_Route_RegimeGate = select(testing, wet_late_stint, wet_general, dry_late_stint, dry_pit_window, dry_early, dry_general, other)`. Add interactions `Dry_Expert_Urgency_RegimeGate = Monotone_Pit_Urgency_Proxy*dry_gate`, `WetInter_Expert_Urgency_RegimeGate = Monotone_Pit_Urgency_Proxy*wet_gate`, `LateStint_Expert_Urgency_RegimeGate = Monotone_Pit_Urgency_Proxy*late_stint_gate`, `PitWindow_Expert_StopAdv_RegimeGate = best_stop_now_advantage*pit_window_gate`, `DryPitWindow_Expert_Interaction_RegimeGate = dry_gate*pit_window_gate`, `WetLateStint_Expert_Interaction_RegimeGate = wet_gate*late_stint_gate`. Do not add CatBoost/XGBoost/stacker changes.",
+  "expected_effect": "Let the existing models specialize implicitly by race regime while keeping a single code-local feature patch.",
+  "risk": "If the required urgency helpers are absent, adding them can accidentally pull in too much of the service-window block; keep helper definitions minimal.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 9,
+    "original_label": "AGF09",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

@@ -398,6 +398,98 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     assert "20260504" in output
 
 
+def test_parse_args_defaults_to_rich_output_format():
+    args = kaggle_submission_lab.parse_args([])
+
+    assert args.output_format == "rich"
+
+
+def test_render_text_table_uses_plain_rows_without_box_frames():
+    console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
+    records = [
+        {
+            "kind": "source_node",
+            "run": "2-text-run",
+            "step": 7,
+            "timestamp": "20260504T134159",
+            "local_score": 0.95026,
+            "sha256": "13bc36ab26abcdef",
+            "algo": "Leg",
+            "hypothesis_id": "001234",
+        }
+    ]
+
+    kaggle_submission_lab.render_text_table(
+        console,
+        "Plain candidates",
+        *kaggle_submission_lab.candidate_display_table(records),
+    )
+
+    output = console.export_text()
+    assert "Plain candidates" in output
+    assert "2-text-run" in output
+    assert "001234" in output
+    assert "┏" not in output
+    assert "└" not in output
+    assert "┃" not in output
+
+
+def test_build_json_output_payload_includes_selected_and_registry_rows(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            }
+        ],
+    )
+    selected = [
+        {
+            "kind": "source_node",
+            "competition": "playground-series-s6e5",
+            "run": "run-a",
+            "step": 1,
+            "timestamp": "20260504T100000",
+            "local_score": 0.95,
+            "metric_maximize": True,
+            "is_buggy": False,
+            "submission_path": str(tmp_path / "submission.csv"),
+            "sha256": "aaaabbbbcccc",
+            "hypothesis_id": "001234",
+        }
+    ]
+
+    payload = kaggle_submission_lab.build_output_payload(
+        selected=selected,
+        registry=registry,
+        remote_submissions=None,
+        records=selected,
+        full_view=False,
+        registry_limit=20,
+        run_filters=None,
+    )
+
+    assert payload["selected"][0]["hypothesis_id"] == "001234"
+    assert payload["selected"][0]["sha256"] == "aaaabbbbcccc"
+    assert payload["registry"][0]["run"] == "run-a"
+    assert payload["registry"][0]["public_score"] == "0.90123"
+
+
+def test_json_safe_serializes_datetime_values():
+    value = dt.datetime(2026, 5, 27, 13, 40, 1)
+
+    assert kaggle_submission_lab._json_safe({"when": value}) == {
+        "when": "2026-05-27T13:40:01"
+    }
+
+
 def test_render_table_derives_legacy_algo_for_old_index_records(tmp_path):
     console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
     records = [

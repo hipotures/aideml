@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fresh slick final-stop window",
+  "summary": "Add the one-lap entry-into-final-stop-window features as a small local patch on 001214.",
+  "rationale": "A pit stop becomes strategically viable when a fresh slick compound can newly reach the finish. This patch encodes that boundary crossing directly as local, target-free features.",
+  "implementation_hint": "Start from 001214 exactly. Add only the fresh-slick final-window block using the formulas below: compute `remaining_after_1 = (remaining_laps_est - 1).clip(lower=0)`, `soft_margin_now = 17 - remaining_laps_est`, `medium_margin_now = 24 - remaining_laps_est`, `hard_margin_now = 31 - remaining_laps_est`, `soft_margin_next = 17 - remaining_after_1`, `medium_margin_next = 24 - remaining_after_1`, `hard_margin_next = 31 - remaining_after_1`. With `dry_mask = Compound in {SOFT, MEDIUM, HARD} and not testing`, define `fresh_soft_newly_viable_next_lap = (soft_margin_now < 0) & (soft_margin_next >= 0) & dry_mask`, same for medium and hard, `fresh_slick_newly_viable_next_lap_any = any of the three`, `fresh_slick_newly_viable_next_lap_count = soft + medium + hard`, `softest_newly_viable_slick = select 1 for soft, 2 for medium, 3 for hard, 0 otherwise`, and `fresh_slick_nearest_final_window_margin = min(abs(soft_margin_now), abs(medium_margin_now), abs(hard_margin_now))` or the equivalent boundary-margin logic described below. Do not add broader finishability, deployment-likeness, or service-window features in this patch.",
+  "expected_effect": "Capture the discrete strategic transition where pitting now or next lap first becomes viable for a final dry stint.",
+  "risk": "The fixed 17/24/31 lap templates may be too crude or already subsumed by the current multi-seed RealMLP core.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 3,
+    "original_label": "AGF03",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

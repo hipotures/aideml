@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Online dry-tyre legality state",
+  "summary": "Add an online driver-race dry-compound legality state feature block to 001214.",
+  "rationale": "Dry F1 races impose compound-use constraints. This patch models whether a driver has already used enough dry compounds, whether the current compound is reused, and whether a stop debt remains. This is a real domain mechanism not directly visible from row-local features.",
+  "implementation_hint": "Start from 001214 exactly. Add only the online legality block using the formulas below. Sort rows by `Driver, Race, Year, LapNumber, original_row_order` with stable mergesort. Within each group, define `is_soft`, `is_medium`, `is_hard`, `is_dry_now`, `is_wet_now`; compute cumulative seen flags `soft_seen_to_date`, `medium_seen_to_date`, `hard_seen_to_date`, `wet_seen_to_date` using groupby cumsum up to the current row only. Compute `prior_soft = cumsum(is_soft) - is_soft` etc.; `current_compound_already_used = current dry compound prior count > 0`; `distinct_dry_used = soft_seen_to_date + medium_seen_to_date + hard_seen_to_date`; `used_dry_set` from dry-set code `soft + 2*medium + 4*hard`; `wet_exemption_flag = wet_seen_to_date`; `remaining_required_dry_count = 0 if wet_exemption_flag else clip(2 - distinct_dry_used, 0, 2)`; `stop_debt_if_dry = is_dry_now & !wet_exemption_flag & remaining_required_dry_count > 0 & remaining_laps_est > 0`; `laps_remaining_when_still_illegal = remaining_laps_est * stop_debt_if_dry`; `dry_legality_pressure = stop_debt_if_dry * remaining_laps_est / (remaining_required_dry_count + 1)`; `illegal_on_reused_dry = stop_debt_if_dry * current_compound_already_used`; `dry_legality_x_finishable = stop_debt_if_dry * can_finish_current_tyre`. Do not use future rows, target values, OOF predictions, or public score.",
+  "expected_effect": "Expose regulation-driven pit pressure in dry races and improve late-race ranking for drivers still owing a legal compound change.",
+  "risk": "The online state is sensitive to row ordering and synthetic data semantics; any accidental future leakage would invalidate CV.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 4,
+    "original_label": "AGF04",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

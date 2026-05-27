@@ -591,7 +591,8 @@ def render_table(
     *,
     full_view: bool = False,
 ) -> None:
-    show_source = any(record.get("kind") == "profile_eval" for record in records)
+    columns, rows = candidate_display_table(records, full_view=full_view)
+    show_source = "src_sha" in columns
     table = Table(title="Top unsent submit-ready candidates", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
@@ -607,6 +608,25 @@ def render_table(
     table.add_column("sha", no_wrap=True)
     if show_source:
         table.add_column("src_sha", no_wrap=True)
+    for row in rows:
+        table.add_row(*row)
+    console.print(table)
+
+
+def candidate_display_table(
+    records: list[dict[str, Any]],
+    *,
+    full_view: bool = False,
+) -> tuple[list[str], list[list[str]]]:
+    show_source = any(record.get("kind") == "profile_eval" for record in records)
+    columns = ["#", "cv", "k"]
+    if full_view:
+        columns.append("prof")
+    columns.extend(["m", "run", "hyp", "Algo", "step", "date", "sha"])
+    if show_source:
+        columns.append("src_sha")
+
+    rows: list[list[str]] = []
     for rank, record in enumerate(records, start=1):
         models = _short_models(record.get("included_model_types"))
         source_sha = ""
@@ -632,8 +652,21 @@ def render_table(
         )
         if show_source:
             row.append(source_sha)
-        table.add_row(*row)
-    console.print(table)
+        rows.append(row)
+    return columns, rows
+
+
+def render_text_table(
+    console: Console,
+    title: str,
+    columns: list[str],
+    rows: list[list[str]],
+) -> None:
+    console.print(title)
+    console.print("\t".join(columns))
+    for row in rows:
+        console.print("\t".join(row))
+    console.print()
 
 
 def _remote_identity(remote: Any) -> tuple[Any, str, str]:
@@ -830,6 +863,13 @@ def render_registry_table(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
 ) -> None:
+    sorted_rows = registry_display_rows(
+        registry,
+        remote_submissions,
+        records=records,
+        limit=limit,
+        run_filters=run_filters,
+    )
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
@@ -843,35 +883,6 @@ def render_registry_table(
     table.add_column("sha", no_wrap=True)
     if full_view:
         table.add_column("artifact", no_wrap=True, overflow="fold")
-
-    record_lookup = _registry_record_lookup(records)
-    rows = [
-        {
-            "local_score": entry.get("local_score"),
-            "public_score": entry.get("public_score"),
-            "remote_status": entry.get("remote_status"),
-            "algo": _registry_entry_algo(entry, record_lookup),
-            "hypothesis_id": _registry_entry_hypothesis_id(entry, record_lookup),
-            "artifact_dir": _registry_entry_artifact_dir(entry, record_lookup),
-            "run": entry.get("run"),
-            "step": entry.get("step"),
-            "date": entry.get("timestamp"),
-            "sha256": entry.get("sha256"),
-        }
-        for entry in registry.entries
-    ]
-    rows.extend(_remote_display_rows(registry, remote_submissions, record_lookup))
-    if run_filters:
-        selected_runs = set(run_filters)
-        rows = [
-            row
-            for row in rows
-            if str(row.get("run") or "") in selected_runs
-        ]
-
-    sorted_rows = sorted(rows, key=_registry_display_sort_key, reverse=True)
-    if limit is not None and limit > 0:
-        sorted_rows = sorted_rows[:limit]
 
     complete_rank = 0
     for entry in sorted_rows:
@@ -901,6 +912,128 @@ def render_registry_table(
             row.append(str(entry.get("artifact_dir") or "-"))
         table.add_row(*row)
     console.print(table)
+
+
+def registry_display_rows(
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None = None,
+    records: list[dict[str, Any]] | None = None,
+    limit: int | None = 20,
+    run_filters: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    record_lookup = _registry_record_lookup(records)
+    rows = [
+        {
+            "local_score": entry.get("local_score"),
+            "public_score": entry.get("public_score"),
+            "remote_status": entry.get("remote_status"),
+            "algo": _registry_entry_algo(entry, record_lookup),
+            "hypothesis_id": _registry_entry_hypothesis_id(entry, record_lookup),
+            "artifact_dir": _registry_entry_artifact_dir(entry, record_lookup),
+            "run": entry.get("run"),
+            "step": entry.get("step"),
+            "date": entry.get("timestamp"),
+            "sha256": entry.get("sha256"),
+        }
+        for entry in registry.entries
+    ]
+    rows.extend(_remote_display_rows(registry, remote_submissions, record_lookup))
+    if run_filters:
+        selected_runs = set(run_filters)
+        rows = [
+            row
+            for row in rows
+            if str(row.get("run") or "") in selected_runs
+        ]
+
+    sorted_rows = sorted(rows, key=_registry_display_sort_key, reverse=True)
+    if limit is not None and limit > 0:
+        sorted_rows = sorted_rows[:limit]
+    return sorted_rows
+
+
+def registry_display_table(
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None = None,
+    records: list[dict[str, Any]] | None = None,
+    full_view: bool = False,
+    limit: int | None = 20,
+    run_filters: list[str] | None = None,
+) -> tuple[list[str], list[list[str]]]:
+    columns = ["#", "cv", "public", "status", "run", "hyp", "Algo", "step", "date", "sha"]
+    if full_view:
+        columns.append("artifact")
+
+    rows = []
+    complete_rank = 0
+    for entry in registry_display_rows(
+        registry,
+        remote_submissions,
+        records=records,
+        limit=limit,
+        run_filters=run_filters,
+    ):
+        remote_status = str(entry.get("remote_status") or "")
+        if remote_status.upper() == "COMPLETE":
+            complete_rank += 1
+            display_rank = str(complete_rank)
+        else:
+            display_rank = "-"
+        row = [
+            display_rank,
+            _format_score(entry.get("local_score")),
+            _format_public_score(entry.get("public_score")),
+            remote_status or "-",
+            str(entry.get("run") or "-"),
+            str(entry.get("hypothesis_id") or "-"),
+            _format_algo(entry, unknown_if_missing=True),
+            _format_step(entry.get("step")),
+            _display_date(entry.get("date")),
+            str(entry.get("sha256") or "")[:10] or "-",
+        ]
+        if full_view:
+            row.append(str(entry.get("artifact_dir") or "-"))
+        rows.append(row)
+    return columns, rows
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, (dt.datetime, dt.date)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+def build_output_payload(
+    *,
+    selected: list[dict[str, Any]],
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None,
+    records: list[dict[str, Any]],
+    full_view: bool,
+    registry_limit: int | None,
+    run_filters: list[str] | None,
+) -> dict[str, Any]:
+    return {
+        "selected": _json_safe(selected),
+        "registry": _json_safe(
+            registry_display_rows(
+                registry,
+                remote_submissions,
+                records=records,
+                limit=registry_limit,
+                run_filters=run_filters,
+            )
+        ),
+        "remote_visible": None if remote_submissions is None else len(remote_submissions),
+        "full_view": full_view,
+        "run_filters": run_filters or [],
+    }
 
 
 def sync_registry_from_kaggle(
@@ -982,6 +1115,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument(
+        "--output-format",
+        choices=["rich", "json", "txt"],
+        default="rich",
+        help="Output format for the candidate and registry views.",
+    )
+    parser.add_argument(
         "--registry-limit",
         type=int,
         default=20,
@@ -1008,7 +1147,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    console = Console()
+    console = Console(stderr=args.output_format in {"json", "txt"})
+    output_console = Console(soft_wrap=True)
     try:
         sha_filters = parse_sha256_filters(args.sha256)
         run_filters = parse_run_filters(args.run)
@@ -1083,18 +1223,58 @@ def main(argv: list[str] | None = None) -> int:
         )
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
-        render_table(console, selected, full_view=args.full_view)
-        render_registry_table(
-            console,
-            registry,
-            remote_submissions,
-            records=records,
-            full_view=args.full_view,
-            limit=None if args.registry_limit == 0 else args.registry_limit,
-            run_filters=run_filters,
-        )
-        if remote_submissions is not None:
-            console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
+        registry_limit = None if args.registry_limit == 0 else args.registry_limit
+        if args.output_format == "rich":
+            render_table(console, selected, full_view=args.full_view)
+            render_registry_table(
+                console,
+                registry,
+                remote_submissions,
+                records=records,
+                full_view=args.full_view,
+                limit=registry_limit,
+                run_filters=run_filters,
+            )
+            if remote_submissions is not None:
+                console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
+        elif args.output_format == "txt":
+            render_text_table(
+                output_console,
+                "Top unsent submit-ready candidates",
+                *candidate_display_table(selected, full_view=args.full_view),
+            )
+            render_text_table(
+                output_console,
+                "Submission registry",
+                *registry_display_table(
+                    registry,
+                    remote_submissions,
+                    records=records,
+                    full_view=args.full_view,
+                    limit=registry_limit,
+                    run_filters=run_filters,
+                ),
+            )
+            if remote_submissions is not None:
+                output_console.print(
+                    f"Remote Kaggle submissions visible: {len(remote_submissions)}"
+                )
+        else:
+            print(
+                json.dumps(
+                    build_output_payload(
+                        selected=selected,
+                        registry=registry,
+                        remote_submissions=remote_submissions,
+                        records=records,
+                        full_view=args.full_view,
+                        registry_limit=registry_limit,
+                        run_filters=run_filters,
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
     return 0
 
 

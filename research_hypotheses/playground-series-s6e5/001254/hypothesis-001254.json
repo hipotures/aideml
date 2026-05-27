@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Current-tyre finishability margins",
+  "summary": "Add only current-tyre finishability and stop-debt pressure features to 001214.",
+  "rationale": "Pit-next-lap is strongly tied to whether the current tyre can survive to the finish and whether the driver still owes a dry-compound stop. This patch encodes that state explicitly as local, target-free features.",
+  "implementation_hint": "Start from 001214 exactly. Add a compact finishability block using formulas using the formulas below: estimate `total_laps_est = (LapNumber.clip(lower=1) / RaceProgress.clip(1e-3, 0.999)).clip(lower=LapNumber, upper=120)`, `remaining_laps_est = (total_laps_est - LapNumber).clip(lower=0)`, `base_life_template = Compound.map({SOFT:18, MEDIUM:26, HARD:34, INTERMEDIATE:24, WET:22}).fillna(24)`, `deg_penalty = 1 + 0.55*positive(deg_per_tyre_lap)`, `est_total_tyre_life = (base_life_template / deg_penalty).clip(8,45)`, `tyre_laps_left_est = (est_total_tyre_life - TyreLife).clip(-5,45)`, `finish_margin_current_tyre = tyre_laps_left_est - remaining_laps_est`, `can_finish_current_tyre = finish_margin_current_tyre >= 0 and remaining_laps_est > 0`. Also add conservative formulas from the same source: `conservative_compound_life = Compound.map({SOFT:17, MEDIUM:24, HARD:31, INTERMEDIATE:22, WET:20}).fillna(22)`, `current_tyre_age_to_finish = TyreLife + remaining_laps_est`, `current_tyre_finish_margin_signed = conservative_compound_life - current_tyre_age_to_finish`, `current_tyre_finish_pressure = (current_tyre_age_to_finish / conservative_compound_life.clip(lower=1) - 1).clip(-2,3)`, `current_tyre_cannot_finish = current_tyre_finish_margin_signed < 0 and remaining_laps_est > 0`. If 001214 already has some of these names, reuse them and only add missing columns. Do not add service-window urgency, rarity, legality online state, or model changes.",
+  "expected_effect": "Help the model isolate late-race rows where a pit stop is driven by inability to finish on the current tyre.",
+  "risk": "The heuristic tyre-life templates may be miscalibrated for some synthetic/generated rows and can overfit CV.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 2,
+    "original_label": "AGF02",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

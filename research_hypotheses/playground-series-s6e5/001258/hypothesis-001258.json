@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Deployment-likeness rarity proxy",
+  "summary": "Add a covariate-shift rarity proxy built from race, driver, and compound-context frequencies.",
+  "rationale": "This patch builds an adversarial-validation-like proxy without training a separate model: rare race/driver/context combinations received higher deployment-likeness scores. This tests whether that signal helps the current 001214 parent handle public-distribution shift.",
+  "implementation_hint": "Start from 001214 exactly. Add only the deployment-likeness proxy using the formulas below: create `driver_race = Driver + '_' + Race`, `driver_year = Driver + '_' + Year_str`, `compound_race_year = Compound + '_' + Race_Year`. Compute frequencies for `Race_Year`, `Driver`, `Race`, `driver_race`, `driver_year`, `compound_race_year`; define rarities `race_year_rarity = 1/sqrt(race_year_frequency.clip(lower=1))`, `driver_rarity`, `race_rarity`, `driver_race_rarity`, `driver_year_rarity`, `compound_race_year_rarity` analogously. Add `deployment_likeness_score = 0.24*race_year_rarity + 0.12*race_rarity + 0.16*driver_rarity + 0.22*driver_race_rarity + 0.14*driver_year_rarity + 0.12*compound_race_year_rarity`. Add interactions `deployment_likeness_x_testing = score*is_testing`, `deployment_likeness_x_wet = score*is_wet_compound`, `deployment_likeness_x_remaining_laps = score*remaining_laps_est`, `deployment_likeness_x_stop_advantage = score*best_stop_now_advantage`, and `high_shift_context = score >= median(score)`. Do not add fresh-slick final-window features in this patch.",
+  "expected_effect": "Help the ensemble treat rare or shifted race contexts differently, potentially improving public leaderboard robustness.",
+  "risk": "A rarity proxy can overfit fold structure or distract the model from stronger race-state signals.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 6,
+    "original_label": "AGF06",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

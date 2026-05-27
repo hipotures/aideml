@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Class-aware next-stop finish margin",
+  "summary": "Add slick-versus-wet-weather next-stop finish-margin features to 001214.",
+  "rationale": "This patch separates whether a fresh slick or wet-weather tyre could reach the finish after the next stop. This is a small domain block close to pit-stop strategy and less invasive than full finishability or legality state.",
+  "implementation_hint": "Start from 001214 exactly. Add only the class-aware next-stop margin block using the formulas below: define `Is_Slick = Compound in {SOFT, MEDIUM, HARD}`, `Is_WetWeather = Compound in {INTERMEDIATE, WET}`, `fresh_slick_life = 31.0`, `fresh_wetweather_life = 22.0`, `slick_next_stop_finish_margin = fresh_slick_life - remaining_laps_est`, `wetweather_next_stop_finish_margin = fresh_wetweather_life - remaining_laps_est`. Add `class_aware_next_stop_finish_margin = select(Is_Slick, slick_margin; Is_WetWeather, wetweather_margin; default=max(slick_margin, wetweather_margin))`, `class_aware_next_stop_can_finish = class_aware_margin >= 0 and remaining_laps_est > 0`, `mixed_class_switch_to_wetweather = Is_Slick & wetweather_margin >= 0 & remaining_laps_est > 0`, `mixed_class_switch_to_slick = Is_WetWeather & slick_margin >= 0 & remaining_laps_est > 0`, `mixed_class_switch_margin = select(Is_Slick, wetweather_margin; Is_WetWeather, slick_margin; default=0)`, `current_class_next_stop_margin = select(Is_Slick, slick_margin; Is_WetWeather, wetweather_margin; default=0)`, and `current_class_next_stop_can_finish = current_class_next_stop_margin >= 0 and remaining_laps_est > 0`. Do not add ID rarity in this patch.",
+  "expected_effect": "Improve rows where pit urgency depends on whether the next tyre class can finish the race.",
+  "risk": "The fixed 31/22 lap class-life assumptions may be too coarse and can conflict with more detailed compound features already in 001214.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 10,
+    "original_label": "AGF10",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}

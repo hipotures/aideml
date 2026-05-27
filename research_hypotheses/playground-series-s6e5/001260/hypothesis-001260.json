@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Undercut-overcut regime proxy",
+  "summary": "Add a race-year undercut/overcut regime proxy based on observable warm-up, degradation ramp, and fresh-outlap variance.",
+  "rationale": "Pit timing depends on whether a race rewards undercut or overcut behavior. This patch estimates this using only covariates from tyre warm-up and degradation patterns, then gates stop-advantage features by the inferred regime.",
+  "implementation_hint": "Start from 001214 exactly. Add only the undercut/overcut block using the formulas below: define `recent_stop_mask = Stint >= 2`, `fresh_mask = recent_stop_mask & TyreLife <= 1`, `warmed_mask = recent_stop_mask & TyreLife between 3 and 5`, `early_mask = TyreLife between 1 and 2`, `later_mask = TyreLife between 5 and 8`. Compute race-year medians with race/global fallback: `race_year_fresh_delta`, `race_year_warmed_delta`, `race_year_early_delta`, `race_year_later_delta`; compute `race_year_deg_spread = std(deg_per_tyre_lap) by Race_Year` and `race_year_fresh_var = std(fresh_outlap_delta) by Race_Year`. Then `warmup_penalty = (race_year_fresh_delta - race_year_warmed_delta).clip(-10,10)`, `early_stint_deg_ramp = (race_year_later_delta - race_year_early_delta).clip(-10,10)`. Define robust z-score with median/MAD and `undercut_score = 1.15*z(early_stint_deg_ramp) + 0.85*z(race_year_deg_spread) - 1.00*z(warmup_penalty) - 0.55*z(race_year_fresh_var)`, `undercut_regime_prob = sigmoid(undercut_score)`, `overcut_regime_prob = 1 - undercut_regime_prob`. Add interactions `undercut_x_stop_advantage = undercut_prob*best_stop_now_advantage`, `undercut_x_wear_pressure = undercut_prob*wear_pressure`, `overcut_x_wait_regret = overcut_prob*regret_if_wait_1lap`, `overcut_x_yellow_option = overcut_prob*yellow_flag_option_value_proxy`, `undercut_x_finish_pressure = undercut_prob*current_tyre_finish_pressure`. Do not change CatBoost/RealMLP weights or add unrelated features.",
+  "expected_effect": "Improve strategic ordering in races where early pit timing is driven by undercut or overcut conditions rather than absolute tyre age alone.",
+  "risk": "The regime score is heuristic and may be unstable when Race_Year groups are small.",
+  "sources": [],
+  "origin": {
+    "kind": "branch_patch_seed",
+    "intended_parent_hypothesis": "001214",
+    "intended_parent_code": "generated",
+    "recommended_order": 8,
+    "original_label": "AGF08",
+    "intended_usage": [
+      "branch_child"
+    ],
+    "parent_cv_score": 0.9545020438408371,
+    "parent_public_score": 0.9541
+  }
+}
