@@ -334,7 +334,11 @@ def _is_base_root(node: Node) -> bool:
 
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
-    return f"·{hypothesis_id}" if hypothesis_id is not None else ""
+    if hypothesis_id is not None:
+        return f"·{hypothesis_id}"
+    if node.step is not None:
+        return f"·{node.step}"
+    return ""
 
 
 def _is_timeout_node(node: Node) -> bool:
