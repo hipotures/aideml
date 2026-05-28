@@ -96,6 +96,33 @@ def _manifest_entry_for_code(hypothesis_dir: Path, agent_mode: str, code_file: s
     return {}
 
 
+def _source_node_metadata(manifest_entry: dict) -> dict:
+    raw_artifact_dir = manifest_entry.get("source_artifact_dir")
+    if not isinstance(raw_artifact_dir, str) or not raw_artifact_dir:
+        return {}
+    artifact_dir = Path(raw_artifact_dir)
+    result_path = artifact_dir / "aide_result.json"
+    if not result_path.exists():
+        return {}
+    try:
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    node = payload.get("node")
+    result: dict = {}
+    if isinstance(node, dict):
+        for key in ("plan", "analysis", "validity_warning"):
+            value = node.get(key)
+            if isinstance(value, str) and value.strip():
+                result[key] = value
+    run_stats = payload.get("run_stats")
+    if isinstance(run_stats, dict):
+        result["run_stats"] = run_stats
+    return result
+
+
 def _seeded_root_node(
     *,
     code: str,
@@ -103,6 +130,7 @@ def _seeded_root_node(
     hypothesis_id: str,
     source_hash: str,
     manifest_entry: dict,
+    source_metadata: dict,
 ) -> Node:
     node = _generated_node(
         code=code,
@@ -111,15 +139,29 @@ def _seeded_root_node(
         source_hash=source_hash,
     )
     if manifest_entry.get("buggy") is False and manifest_entry.get("score") is not None:
+        if not source_metadata.get("plan"):
+            raise ValueError(
+                f"Cannot seed scored root {hypothesis_id}: source metadata has no plan."
+            )
+        if not source_metadata.get("analysis"):
+            raise ValueError(
+                f"Cannot seed scored root {hypothesis_id}: source metadata has no analysis."
+            )
         node.status = "ok"
         node.metric = MetricValue(manifest_entry["score"], maximize=True)
         node.is_buggy = False
-        node.analysis = (
-            "Seeded from an existing executed hypothesis manifest; execution skipped."
-        )
+        node.exec_time = 0.0
+        node.plan = source_metadata["plan"]
+        node._term_out = [
+            "Seeded from code_manifest.json; "
+            f"source score={manifest_entry['score']}.\n"
+        ]
+        node.analysis = source_metadata.get("analysis")
+        node.validity_warning = source_metadata.get("validity_warning")
         node.run_stats = {
             "seeded_from_manifest": True,
             "source_score": manifest_entry["score"],
+            "source_node_run_stats": source_metadata.get("run_stats", {}),
         }
     return node
 
@@ -340,6 +382,7 @@ def seed_generated_branch(
         agent_mode,
         root_code_file,
     )
+    source_metadata = _source_node_metadata(manifest_entry)
 
     journal = Journal()
     root_node = _seeded_root_node(
@@ -351,6 +394,7 @@ def seed_generated_branch(
         hypothesis_id=root_hypothesis,
         source_hash=library.source_hash,
         manifest_entry=manifest_entry,
+        source_metadata=source_metadata,
     )
     journal.append(root_node)
 
@@ -360,11 +404,12 @@ def seed_generated_branch(
         (cfg.workspace_dir / "input").mkdir(parents=True, exist_ok=True)
         (cfg.workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
-    write_forced_child_hypothesis_queue(
-        cfg,
-        root_hypothesis=root_hypothesis,
-        children=children,
-    )
+    if children:
+        write_forced_child_hypothesis_queue(
+            cfg,
+            root_hypothesis=root_hypothesis,
+            children=children,
+        )
 
     save_run(cfg, journal)
     return SeedGeneratedBranchResult(
@@ -380,9 +425,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Create a resumable AIDE run whose journal contains a generated "
-            "root node from an explicit code file plus a queue of first-layer "
-            "child hypotheses. The child code is generated later by normal "
-            "AIDE resume using that run's agent.code.model."
+            "root node from an explicit code file and, optionally, a queue of "
+            "first-layer child hypotheses. The child code is generated later "
+            "by normal AIDE resume using that run's agent.code.model."
         )
     )
     parser.add_argument("--task", required=True)
@@ -392,7 +437,15 @@ def parse_args() -> argparse.Namespace:
         "--root-code",
         help="Root code file to seed into a new run. Required unless --existing-run is used.",
     )
-    parser.add_argument("--children", nargs="+", required=True)
+    parser.add_argument(
+        "--children",
+        nargs="*",
+        default=(),
+        help=(
+            "Optional first-layer child hypotheses to force after the seeded "
+            "root. Required when --existing-run is used."
+        ),
+    )
     parser.add_argument("--run-id", help="Run id to create for a new seeded run.")
     parser.add_argument(
         "--existing-run",
@@ -421,6 +474,8 @@ def main() -> None:
     if args.existing_run:
         if args.run_id:
             raise SystemExit("--run-id and --existing-run are mutually exclusive.")
+        if not args.children:
+            raise SystemExit("--existing-run requires at least one --children id.")
         result = queue_for_existing_run(
             task=args.task,
             agent_mode=args.agent_mode,
@@ -462,10 +517,13 @@ def main() -> None:
     print(f"Created generated branch run: {result.run_id}")
     print(f"Log directory: {result.log_dir}")
     print(f"Workspace directory: {result.workspace_dir}")
-    print(
-        "Queued first-layer children: "
-        f"{result.root_hypothesis} -> {', '.join(result.children)}"
-    )
+    if result.children:
+        print(
+            "Queued first-layer children: "
+            f"{result.root_hypothesis} -> {', '.join(result.children)}"
+        )
+    else:
+        print(f"Seeded root hypothesis only: {result.root_hypothesis}")
 
 
 if __name__ == "__main__":

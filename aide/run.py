@@ -378,6 +378,8 @@ def _is_seeded_scored_root_node(node: Node) -> bool:
         return False
     if node.artifact_dir_name is not None:
         return False
+    if isinstance(node.run_stats, dict) and node.run_stats.get("seeded_from_manifest"):
+        return True
     plan = str(node.plan or "")
     if not plan.startswith("Seeded scored ROOT hypothesis "):
         return False

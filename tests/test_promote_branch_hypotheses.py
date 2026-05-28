@@ -3,8 +3,10 @@ from pathlib import Path
 
 from scripts.promote_branch_hypotheses import (
     apply_promotion_plan,
+    main,
     plan_branch_hypothesis_promotion,
     plan_branch_hypothesis_promotion_from_logs,
+    plan_node_promotion,
 )
 
 
@@ -26,6 +28,9 @@ def _write_run(
                 "parent": None,
                 "research_mode": "hypothesis",
                 "research_hypotheses_offered": ["000101"],
+                "plan": "Root A source plan.",
+                "analysis": "Root A source analysis.",
+                "validity_warning": "",
                 "code": "print('root a')\n",
                 "is_buggy": False,
                 "metric": {"value": 0.90, "maximize": True},
@@ -37,6 +42,9 @@ def _write_run(
                 "parent": None,
                 "research_mode": "hypothesis",
                 "research_hypotheses_offered": ["000201"],
+                "plan": "Branch A source plan.",
+                "analysis": "Branch A source analysis.",
+                "validity_warning": "",
                 "code": "print('branch a')\n",
                 "is_buggy": False,
                 "metric": {"value": branch_a_score, "maximize": True},
@@ -48,6 +56,9 @@ def _write_run(
                 "parent": None,
                 "research_mode": "hypothesis",
                 "research_hypotheses_offered": ["000202"],
+                "plan": "Branch B source plan.",
+                "analysis": "Branch B source analysis.",
+                "validity_warning": "",
                 "code": "print('branch b')\n",
                 "is_buggy": False,
                 "metric": {"value": branch_b_score, "maximize": True},
@@ -59,6 +70,9 @@ def _write_run(
                 "parent": None,
                 "research_mode": "hypothesis",
                 "research_hypotheses_offered": ["000203"],
+                "plan": "Branch C source plan.",
+                "analysis": "Branch C source analysis.",
+                "validity_warning": "",
                 "code": "print('branch c')\n",
                 "is_buggy": False,
                 "metric": {"value": branch_c_score, "maximize": True},
@@ -158,6 +172,120 @@ def test_promotion_can_override_agent_mode(tmp_path):
     assert (hypothesis_dir / "legacy-001.py").exists()
     manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
     assert manifest["active"]["legacy"] == "legacy-001.py"
+
+
+def test_promotes_classic_node_by_step_to_root_hypothesis(tmp_path):
+    task = "playground-series-s6e5"
+    run_dir = tmp_path / "logs" / "classic-run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "config.yaml").write_text("agent:\n  mode: legacy\n", encoding="utf-8")
+    journal = {
+        "nodes": [
+            {
+                "id": "node-root",
+                "parent": None,
+                "step": 0,
+                "code": "print('root')\n",
+                "is_buggy": False,
+                "metric": {"value": 0.90, "maximize": True},
+                "ctime": 1000.0,
+            },
+            {
+                "id": "node-113",
+                "parent": "node-root",
+                "step": 113,
+                "plan": "Keep the RealMLP core and add nested fold-bagged blend configurations.",
+                "analysis": "Nested meta-OOF blend selection completed successfully.",
+                "validity_warning": "Nested blend warning.",
+                "code": "print('classic top')\n",
+                "is_buggy": False,
+                "metric": {"value": 0.95467, "maximize": True},
+                "artifact_dir_name": "classic-artifact",
+                "ctime": 1001.0,
+            },
+        ],
+        "node2parent": {"node-113": "node-root"},
+    }
+    journal_path = run_dir / "journal.json"
+    journal_path.write_text(json.dumps(journal), encoding="utf-8")
+
+    plan = plan_node_promotion(
+        root=tmp_path,
+        task=task,
+        journal_path=journal_path,
+        step=113,
+        node_id=None,
+        agent_mode=None,
+    )
+
+    assert not plan.conflicts
+    assert [entry.source_node_id for entry in plan.created] == ["node-113"]
+    assert plan.created[0].source_step == 113
+    assert plan.created[0].source_kind == "promoted_classic_node"
+
+    apply_promotion_plan(plan, dry_run=False)
+
+    hypothesis_dir = tmp_path / "research_hypotheses" / task / "000001"
+    hypothesis = json.loads((hypothesis_dir / "hypothesis-000001.json").read_text())
+    manifest = json.loads((hypothesis_dir / "code_manifest.json").read_text())
+
+    assert hypothesis["origin"]["kind"] == "promoted_classic_node"
+    assert hypothesis["title"] == "Nested meta-OOF blend selection completed successfully."
+    assert hypothesis["summary"] == (
+        "Nested meta-OOF blend selection completed successfully."
+    )
+    assert hypothesis["rationale"] == (
+        "Keep the RealMLP core and add nested fold-bagged blend configurations."
+    )
+    assert hypothesis["implementation_hint"] == hypothesis["rationale"]
+    assert "source classic node" not in hypothesis["rationale"]
+    assert hypothesis["risk"] == "Nested blend warning."
+    assert hypothesis["origin"]["source_step"] == 113
+    assert hypothesis["origin"]["source_node_id"] == "node-113"
+    assert (hypothesis_dir / "legacy-001.py").read_text() == "print('classic top')\n"
+    assert manifest["versions"]["legacy"][0]["source_step"] == 113
+
+
+def test_cli_promotes_classic_node_by_run_and_step(tmp_path):
+    task = "playground-series-s6e5"
+    run_dir = tmp_path / "logs" / "classic-run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "config.yaml").write_text("agent:\n  mode: legacy\n", encoding="utf-8")
+    journal = {
+        "nodes": [
+            {
+                "id": "node-113",
+                "parent": None,
+                "step": 113,
+                "plan": "Classic CLI source plan.",
+                "analysis": "Classic CLI source analysis.",
+                "validity_warning": "",
+                "code": "print('classic cli')\n",
+                "is_buggy": False,
+                "metric": {"value": 0.95467, "maximize": True},
+                "ctime": 1001.0,
+            },
+        ],
+        "node2parent": {},
+    }
+    (run_dir / "journal.json").write_text(json.dumps(journal), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(tmp_path),
+            "--task",
+            task,
+            "--run",
+            "classic-run",
+            "--step",
+            "113",
+        ]
+    )
+
+    assert exit_code == 0
+    hypothesis_dir = tmp_path / "research_hypotheses" / task / "000001"
+    assert (hypothesis_dir / "legacy-001.py").read_text() == "print('classic cli')\n"
 
 
 def test_promotion_without_journal_uses_all_run_journals(tmp_path):

@@ -1,0 +1,32 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "RealMLP/PyTabKit two-seed n_ens=40 5-fold OOF validation completed with alternate-CV RealMLP, CatBoost, nested OOF-se...",
+  "summary": "RealMLP/PyTabKit two-seed n_ens=40 5-fold OOF validation completed with alternate-CV RealMLP, CatBoost, nested OOF-selected raw/logit/rankit blending, and nested fold-bagged test blend configurations.",
+  "rationale": "I will keep the trained RealMLP core, alternate-CV RealMLP stream, CatBoost expert, feature engineering, folds, target encoding, and model hyperparameters unchanged. The single improvement is to make the final test-time blend mirror the nested validation procedure by bagging the blend configurations selected inside each meta fold. This avoids depending on one full-OOF-selected blend for the submission, which was the main remaining overfit risk in the previous solution. The printed primary metric remains the nested meta-OOF ROC AUC, while diagnostics still report the full-OOF-selected blend for comparison.",
+  "implementation_hint": "I will keep the trained RealMLP core, alternate-CV RealMLP stream, CatBoost expert, feature engineering, folds, target encoding, and model hyperparameters unchanged. The single improvement is to make the final test-time blend mirror the nested validation procedure by bagging the blend configurations selected inside each meta fold. This avoids depending on one full-OOF-selected blend for the submission, which was the main remaining overfit risk in the previous solution. The printed primary metric remains the nested meta-OOF ROC AUC, while diagnostics still report the full-OOF-selected blend for comparison.",
+  "expected_effect": "RealMLP/PyTabKit two-seed n_ens=40 5-fold OOF validation completed with alternate-CV RealMLP, CatBoost, nested OOF-selected raw/logit/rankit blending, and nested fold-bagged test blend configurations.",
+  "risk": "The reported primary AUC uses nested meta-OOF blend selection; submission predictions average the nested fold-selected blend configurations instead of relying on a single full-OOF-selected test blend.",
+  "sources": [
+    "aide://2-bald-spectral-leech/journal.json#171c4f627d884edf83c79d9a04ae9ac3",
+    "logs/2-bald-spectral-leech/artifacts/20260528T022905-f81caa94/aide_result.json"
+  ],
+  "origin": {
+    "kind": "promoted_classic_node",
+    "source_run_id": "2-bald-spectral-leech",
+    "source_node_id": "171c4f627d884edf83c79d9a04ae9ac3",
+    "source_step": 124,
+    "source_agent_mode": "legacy",
+    "source_score": 0.9546741357121429,
+    "source_aux": false,
+    "source_branch_path": [
+      "001172",
+      "001189",
+      "001199",
+      "001224"
+    ],
+    "source_artifact_dir": "logs/2-bald-spectral-leech/artifacts/20260528T022905-f81caa94"
+  }
+}

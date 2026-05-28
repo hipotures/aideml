@@ -19,11 +19,16 @@ class PromotionEntry:
     hypothesis_id: str
     source_run_id: str
     source_node_id: str
+    source_step: int | None
+    source_kind: str
     source_agent_mode: str
     source_score: float
     source_aux: bool
     source_branch_path: tuple[str, ...]
     source_artifact_dir: str | None
+    source_plan: str | None
+    source_analysis: str | None
+    source_validity_warning: str | None
     code: str
     created_at: str
     destination_dir: Path
@@ -208,6 +213,24 @@ def _node_timestamp(node: dict[str, Any]) -> str:
     return dt.datetime.now().isoformat(timespec="seconds")
 
 
+def _node_step(node: dict[str, Any]) -> int | None:
+    step = node.get("step")
+    if isinstance(step, bool):
+        return None
+    if isinstance(step, int):
+        return step
+    if isinstance(step, float) and step.is_integer():
+        return int(step)
+    return None
+
+
+def _node_text(node: dict[str, Any], key: str) -> str | None:
+    value = node.get(key)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
 def _promotion_entry(
     *,
     hypothesis_id: str,
@@ -219,16 +242,22 @@ def _promotion_entry(
     branch_path: tuple[str, ...],
     artifact_dir: str | None,
     destination_dir: Path,
+    source_kind: str = "promoted_branch",
 ) -> PromotionEntry:
     return PromotionEntry(
         hypothesis_id=hypothesis_id,
         source_run_id=source_run_id,
         source_node_id=str(node.get("id") or ""),
+        source_step=_node_step(node),
+        source_kind=source_kind,
         source_agent_mode=source_agent_mode,
         source_score=score,
         source_aux=source_aux,
         source_branch_path=branch_path,
         source_artifact_dir=artifact_dir,
+        source_plan=_node_text(node, "plan"),
+        source_analysis=_node_text(node, "analysis"),
+        source_validity_warning=_node_text(node, "validity_warning"),
         code=str(node["code"]),
         created_at=_node_timestamp(node),
         destination_dir=destination_dir,
@@ -287,6 +316,14 @@ def _branch_candidates_from_journal(
     return candidates
 
 
+def _promotion_kind_for_node(node: dict[str, Any]) -> str:
+    return (
+        "promoted_branch"
+        if _hypothesis_id_for_node(node) is not None
+        else "promoted_classic_node"
+    )
+
+
 def _plan_from_candidates(
     *,
     root: Path,
@@ -326,6 +363,7 @@ def _plan_from_candidates(
                     branch_path=candidate.branch_path,
                     artifact_dir=candidate.artifact_dir,
                     destination_dir=task_dir / existing_id,
+                    source_kind=_promotion_kind_for_node(candidate.node),
                 )
             )
             continue
@@ -344,6 +382,7 @@ def _plan_from_candidates(
                 branch_path=candidate.branch_path,
                 artifact_dir=candidate.artifact_dir,
                 destination_dir=task_dir / hypothesis_id,
+                source_kind=_promotion_kind_for_node(candidate.node),
             )
         )
 
@@ -383,6 +422,108 @@ def plan_branch_hypothesis_promotion(
         candidates=candidates,
         top_n=top_n,
         skipped=skipped,
+    )
+
+
+def plan_node_promotion(
+    *,
+    root: Path,
+    task: str,
+    journal_path: Path,
+    step: int | None,
+    node_id: str | None,
+    agent_mode: str | None = None,
+) -> PromotionPlan:
+    if step is None and not node_id:
+        raise ValueError("Either step or node_id must be provided.")
+
+    root = Path(root)
+    source_run_id = journal_path.parent.name
+    source_agent_mode = _normalize_agent_mode(
+        agent_mode or _read_run_agent_mode(journal_path.parent)
+    )
+    source_aux = _read_run_aux(journal_path.parent)
+    nodes, parent_by_id = _load_journal(journal_path)
+    nodes_by_id = {str(node.get("id") or ""): node for node in nodes}
+
+    selected: dict[str, Any] | None = None
+    for node in nodes:
+        current_node_id = str(node.get("id") or "")
+        if node_id and current_node_id != node_id:
+            continue
+        if step is not None and _node_step(node) != step:
+            continue
+        selected = node
+        break
+
+    if selected is None:
+        label = f"node_id={node_id!r}" if node_id else f"step={step!r}"
+        raise ValueError(f"No node matching {label} found in {journal_path}.")
+    if selected.get("is_buggy") is True:
+        raise ValueError("Refusing to promote a buggy node.")
+    code = selected.get("code")
+    if not isinstance(code, str) or not code.strip():
+        raise ValueError("Refusing to promote a node with empty code.")
+    score = _node_score(selected)
+    if score is None:
+        raise ValueError("Refusing to promote a node without a numeric score.")
+
+    task_dir = root / "research_hypotheses" / task
+    source_node_id = str(selected.get("id") or "")
+    existing_id = _existing_promotions(task_dir).get((source_run_id, source_node_id))
+    branch_path = _branch_path(
+        selected,
+        nodes_by_id=nodes_by_id,
+        parent_by_id=parent_by_id,
+    )
+    artifact_dir = _source_artifact_dir(journal_path, selected)
+    source_kind = _promotion_kind_for_node(selected)
+    existing: tuple[PromotionEntry, ...] = ()
+    created: tuple[PromotionEntry, ...] = ()
+
+    if existing_id is not None:
+        existing = (
+            _promotion_entry(
+                hypothesis_id=existing_id,
+                source_run_id=source_run_id,
+                source_agent_mode=source_agent_mode,
+                source_aux=source_aux,
+                node=selected,
+                score=score[0],
+                branch_path=branch_path,
+                artifact_dir=artifact_dir,
+                destination_dir=task_dir / existing_id,
+                source_kind=source_kind,
+            ),
+        )
+    else:
+        next_id = _next_hypothesis_number(task_dir)
+        while (task_dir / f"{next_id:06d}").exists():
+            next_id += 1
+        hypothesis_id = f"{next_id:06d}"
+        created = (
+            _promotion_entry(
+                hypothesis_id=hypothesis_id,
+                source_run_id=source_run_id,
+                source_agent_mode=source_agent_mode,
+                source_aux=source_aux,
+                node=selected,
+                score=score[0],
+                branch_path=branch_path,
+                artifact_dir=artifact_dir,
+                destination_dir=task_dir / hypothesis_id,
+                source_kind=source_kind,
+            ),
+        )
+
+    return PromotionPlan(
+        root=root,
+        task=task,
+        journal_path=journal_path,
+        created=created,
+        existing=existing,
+        conflicts=(),
+        skipped=(),
     )
 
 
@@ -443,35 +584,82 @@ def plan_branch_hypothesis_promotion_from_logs(
     )
 
 
+def _first_sentence(text: str | None) -> str | None:
+    if not text:
+        return None
+    cleaned = " ".join(text.split())
+    match = re.match(r"(.+?[.!?])(?:\s|$)", cleaned)
+    return match.group(1) if match else cleaned
+
+
+def _truncate_text(text: str, *, limit: int = 120) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
+def _promotion_title(entry: PromotionEntry, source_label: str) -> str:
+    if not entry.source_analysis:
+        raise ValueError(
+            f"Cannot promote {entry.source_run_id}:{entry.source_node_id}: "
+            "source node has no analysis."
+        )
+    return _truncate_text(_first_sentence(entry.source_analysis) or entry.source_analysis)
+
+
+def _promotion_summary(entry: PromotionEntry) -> str:
+    if not entry.source_analysis:
+        raise ValueError(
+            f"Cannot promote {entry.source_run_id}:{entry.source_node_id}: "
+            "source node has no analysis."
+        )
+    return entry.source_analysis
+
+
+def _promotion_rationale(entry: PromotionEntry) -> str:
+    if not entry.source_plan:
+        raise ValueError(
+            f"Cannot promote {entry.source_run_id}:{entry.source_node_id}: "
+            "source node has no plan."
+        )
+    return entry.source_plan
+
+
+def _promotion_implementation_hint(entry: PromotionEntry) -> str:
+    if not entry.source_plan:
+        raise ValueError(
+            f"Cannot promote {entry.source_run_id}:{entry.source_node_id}: "
+            "source node has no plan."
+        )
+    return entry.source_plan
+
+
+def _promotion_sources(entry: PromotionEntry) -> list[str]:
+    sources = [f"aide://{entry.source_run_id}/journal.json#{entry.source_node_id}"]
+    if entry.source_artifact_dir:
+        sources.append(f"{entry.source_artifact_dir}/aide_result.json")
+    return sources
+
+
 def _hypothesis_payload(entry: PromotionEntry) -> dict[str, Any]:
     mode = entry.source_agent_mode
+    is_classic = entry.source_kind == "promoted_classic_node"
+    source_label = "classic node" if is_classic else "branch"
     return {
         "enabled": True,
         "agent_modes": [mode],
-        "title": f"Promoted branch {entry.source_node_id[:8]}",
-        "summary": (
-            "Promoted high-scoring branch solution so it can be evaluated as a "
-            "root hypothesis."
-        ),
-        "rationale": (
-            "The source branch produced a strong validation score and should be "
-            "re-tested independently from a root position."
-        ),
-        "implementation_hint": (
-            "Use the promoted root code exactly as the starting implementation."
-        ),
-        "expected_effect": (
-            "Preserve the source branch behavior while allowing normal root "
-            "selection and aux-data evaluation."
-        ),
-        "risk": "The promoted branch may overfit the original run context.",
-        "sources": [
-            f"aide://{entry.source_run_id}/journal.json#{entry.source_node_id}"
-        ],
+        "title": _promotion_title(entry, source_label),
+        "summary": _promotion_summary(entry),
+        "rationale": _promotion_rationale(entry),
+        "implementation_hint": _promotion_implementation_hint(entry),
+        "expected_effect": _promotion_summary(entry),
+        "risk": entry.source_validity_warning or "",
+        "sources": _promotion_sources(entry),
         "origin": {
-            "kind": "promoted_branch",
+            "kind": entry.source_kind,
             "source_run_id": entry.source_run_id,
             "source_node_id": entry.source_node_id,
+            "source_step": entry.source_step,
             "source_agent_mode": entry.source_agent_mode,
             "source_score": entry.source_score,
             "source_aux": entry.source_aux,
@@ -494,6 +682,8 @@ def _manifest_payload(entry: PromotionEntry) -> dict[str, Any]:
         "aux": entry.source_aux,
         "source_run_id": entry.source_run_id,
         "source_node_id": entry.source_node_id,
+        "source_step": entry.source_step,
+        "source_kind": entry.source_kind,
         "source_agent_mode": entry.source_agent_mode,
         "source_score": entry.source_score,
         "source_aux": entry.source_aux,
@@ -563,6 +753,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Promote top scored branch hypothesis nodes to new ROOT hypotheses.",
     )
     parser.add_argument("journal", type=Path, nargs="?")
+    parser.add_argument(
+        "--run",
+        default=None,
+        help="Run id under --logs-dir. Useful with --step or --node-id.",
+    )
     parser.add_argument("--task", default="playground-series-s6e5")
     parser.add_argument("--repo-root", type=Path, default=repo_root())
     parser.add_argument(
@@ -571,7 +766,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Directory containing AIDE run logs. Used when no journal is provided.",
     )
-    parser.add_argument("--top-n", type=int, required=True)
+    parser.add_argument("--top-n", type=int, default=None)
+    parser.add_argument("--step", type=int, default=None)
+    parser.add_argument("--node-id", default=None)
     parser.add_argument(
         "--agent-mode",
         choices=["legacy", "autogluon", "autogluon_preprocess"],
@@ -585,8 +782,24 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         root = args.repo_root.resolve()
-        if args.journal is None:
-            logs_dir = args.logs_dir or root / "logs"
+        logs_dir = args.logs_dir or root / "logs"
+        journal = args.journal
+        if journal is None and args.run:
+            journal = logs_dir / args.run / "journal.json"
+        if args.step is not None or args.node_id is not None:
+            if journal is None:
+                raise ValueError("--step/--node-id requires a journal path or --run.")
+            plan = plan_node_promotion(
+                root=root,
+                task=args.task,
+                journal_path=journal,
+                step=args.step,
+                node_id=args.node_id,
+                agent_mode=args.agent_mode,
+            )
+        elif journal is None:
+            if args.top_n is None:
+                raise ValueError("--top-n is required unless --step or --node-id is set.")
             plan = plan_branch_hypothesis_promotion_from_logs(
                 root=root,
                 task=args.task,
@@ -596,10 +809,12 @@ def main(argv: list[str] | None = None) -> int:
                 show_progress=True,
             )
         else:
+            if args.top_n is None:
+                raise ValueError("--top-n is required unless --step or --node-id is set.")
             plan = plan_branch_hypothesis_promotion(
                 root=root,
                 task=args.task,
-                journal_path=args.journal,
+                journal_path=journal,
                 top_n=args.top_n,
                 agent_mode=args.agent_mode,
             )

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from aide.journal import Journal, Node
+from aide.run import load_resume_state
 from aide.utils import serialize
 from scripts.seed_generated_branch import (
     FORCED_CHILD_QUEUE_FILE,
@@ -40,6 +41,20 @@ def _write_hypothesis(
     if code is not None:
         (hypothesis_dir / "legacy-001.py").write_text(code, encoding="utf-8")
     if score is not None:
+        artifact_dir = root / "logs" / "source-run" / "artifacts" / hypothesis_id
+        artifact_dir.mkdir(parents=True)
+        (artifact_dir / "aide_result.json").write_text(
+            json.dumps(
+                {
+                    "node": {
+                        "plan": f"Source plan for {hypothesis_id}.",
+                        "analysis": f"Source analysis for {hypothesis_id}.",
+                    },
+                    "run_stats": {"cv_score": score},
+                }
+            ),
+            encoding="utf-8",
+        )
         (hypothesis_dir / "code_manifest.json").write_text(
             json.dumps(
                 {
@@ -51,6 +66,7 @@ def _write_hypothesis(
                                 "buggy": False,
                                 "status": "ok",
                                 "score": score,
+                                "source_artifact_dir": str(artifact_dir),
                             }
                         ]
                     },
@@ -110,6 +126,176 @@ def test_seed_generated_branch_writes_root_and_child_queue_without_generating(tm
         "root_hypothesis": "001172",
         "children": ["000806", "000530"],
     }
+
+
+def test_seed_generated_branch_allows_root_only_without_child_queue(tmp_path):
+    task = "playground-series-s6e5"
+    repo_root = tmp_path / "repo"
+    data_dir = tmp_path / task
+    data_dir.mkdir()
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task", encoding="utf-8")
+
+    _write_hypothesis(
+        repo_root,
+        task,
+        "001263",
+        code="print('root only code')\n",
+        score=0.95467,
+    )
+
+    result = seed_generated_branch(
+        task=task,
+        agent_mode="legacy",
+        root_hypothesis="001263",
+        root_code_file="legacy-001.py",
+        children=(),
+        run_id="2-root-only-generated-branch-test",
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=tmp_path / "logs",
+        workspaces_dir=tmp_path / "workspaces",
+        repo_root=repo_root,
+        prepare_workspace=False,
+    )
+
+    journal = serialize.load_json(result.log_dir / "journal.json", Journal)
+
+    assert result.children == ()
+    assert [node.research_hypotheses_offered[0] for node in journal.nodes] == [
+        "001263",
+    ]
+    assert journal.nodes[0].status == "ok"
+    assert journal.nodes[0].code == "print('root only code')\n"
+    assert journal.nodes[0].metric.value == 0.95467
+    assert not (result.log_dir / FORCED_CHILD_QUEUE_FILE).exists()
+
+
+def test_seed_generated_scored_root_is_not_submission_validated_on_resume(tmp_path):
+    task = "playground-series-s6e5"
+    repo_root = tmp_path / "repo"
+    data_dir = tmp_path / task
+    data_dir.mkdir()
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task", encoding="utf-8")
+
+    _write_hypothesis(
+        repo_root,
+        task,
+        "001263",
+        code="print('root only code')\n",
+        score=0.95467,
+    )
+
+    result = seed_generated_branch(
+        task=task,
+        agent_mode="legacy",
+        root_hypothesis="001263",
+        root_code_file="legacy-001.py",
+        children=(),
+        run_id="2-root-only-generated-branch-test",
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=tmp_path / "logs",
+        workspaces_dir=tmp_path / "workspaces",
+        repo_root=repo_root,
+        prepare_workspace=False,
+    )
+    (result.workspace_dir / "input" / "sample_submission.csv").write_text(
+        "id,PitNextLap\n1,0.0\n",
+        encoding="utf-8",
+    )
+
+    _cfg, loaded = load_resume_state(
+        run_id=result.run_id,
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+    persisted = serialize.load_json(result.log_dir / "journal.json", Journal)
+
+    assert loaded.nodes[0].status == "ok"
+    assert loaded.nodes[0].is_buggy is False
+    assert loaded.nodes[0].exc_type is None
+    assert loaded.nodes[0].metric.value == 0.95467
+    assert persisted.nodes[0].status == "ok"
+    assert persisted.nodes[0].is_buggy is False
+    assert persisted.nodes[0].exc_type is None
+    assert persisted.nodes[0].metric.value == 0.95467
+
+
+def test_seed_generated_branch_uses_source_node_prompt_summary(tmp_path):
+    task = "playground-series-s6e5"
+    repo_root = tmp_path / "repo"
+    data_dir = tmp_path / task
+    data_dir.mkdir()
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task", encoding="utf-8")
+    artifact_dir = tmp_path / "logs" / "2-source-run" / "artifacts" / "source-artifact"
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "node": {
+                    "plan": "Keep the RealMLP core and add nested fold-bagged blend configurations.",
+                    "analysis": "Nested meta-OOF blend selection completed successfully.",
+                    "validity_warning": "Nested blend warning.",
+                },
+                "run_stats": {
+                    "cv_score": 0.95467,
+                    "realmlp_n_ens": 40,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_hypothesis(
+        repo_root,
+        task,
+        "001263",
+        code="print('root only code')\n",
+        score=0.95467,
+    )
+    manifest_path = (
+        repo_root
+        / "research_hypotheses"
+        / task
+        / "001263"
+        / "code_manifest.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["versions"]["legacy"][0]["source_artifact_dir"] = str(artifact_dir)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = seed_generated_branch(
+        task=task,
+        agent_mode="legacy",
+        root_hypothesis="001263",
+        root_code_file="legacy-001.py",
+        children=(),
+        run_id="2-root-only-generated-branch-test",
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=tmp_path / "logs",
+        workspaces_dir=tmp_path / "workspaces",
+        repo_root=repo_root,
+        prepare_workspace=False,
+    )
+
+    journal = serialize.load_json(result.log_dir / "journal.json", Journal)
+    summary = journal.generate_summary()
+
+    assert journal.nodes[0].plan == (
+        "Keep the RealMLP core and add nested fold-bagged blend configurations."
+    )
+    assert journal.nodes[0].analysis == (
+        "Nested meta-OOF blend selection completed successfully."
+    )
+    assert journal.nodes[0].validity_warning == "Nested blend warning."
+    assert journal.nodes[0].run_stats["source_node_run_stats"]["realmlp_n_ens"] == 40
+    assert "Seeded scored ROOT hypothesis" not in summary
+    assert "execution skipped" not in summary
+    assert "Keep the RealMLP core" in summary
 
 
 def test_seed_generated_branch_queue_accepts_disabled_child_without_code(tmp_path):
