@@ -508,6 +508,77 @@ def _branch_candidate_rejection_reason(
     return "accepted"
 
 
+def _compact_attempt_text(text: str | None, *, max_chars: int = 220) -> str:
+    compact = " ".join(str(text or "").split())
+    if len(compact) <= max_chars:
+        return compact
+    return compact[: max_chars - 3].rstrip() + "..."
+
+
+def _format_metric_value(node: Node) -> str:
+    if node.metric is None or node.metric.value is None:
+        return "metric=n/a"
+    return f"metric={float(node.metric.value):.6f}"
+
+
+def _format_previous_child_attempts(
+    parent_node: Node,
+    *,
+    epsilon: float,
+    limit: int = 10,
+) -> str | None:
+    attempts = [
+        child
+        for child in parent_node.children
+        if not child.is_terminal_failure
+    ]
+    if not attempts:
+        return None
+    attempts = sorted(
+        attempts,
+        key=lambda child: (-1 if child.step is None else child.step),
+    )[-limit:]
+    parent_value = (
+        float(parent_node.metric.value)
+        if parent_node.metric is not None and parent_node.metric.value is not None
+        else None
+    )
+    lines = [
+        (
+            "These direct children already tried changes on the same parent. "
+            "Do not repeat these attempted changes; your new improvement must be "
+            "materially different from every listed attempt."
+        ),
+        "",
+    ]
+    for child in attempts:
+        if child.is_buggy:
+            status = "bug"
+        elif _node_improves_parent(child, parent_node, epsilon=epsilon):
+            status = "improved"
+        else:
+            status = "did_not_improve"
+        child_value = (
+            float(child.metric.value)
+            if child.metric is not None and child.metric.value is not None
+            else None
+        )
+        delta = (
+            f", delta={child_value - parent_value:+.6f}"
+            if child_value is not None and parent_value is not None
+            else ""
+        )
+        step = "?" if child.step is None else str(child.step)
+        summary = _compact_attempt_text(child.plan) or _compact_attempt_text(
+            child.analysis
+        )
+        lines.append(
+            f"- step {step}: {status}, {_format_metric_value(child)}{delta}; "
+            f"attempt={summary}"
+        )
+    return "\n".join(lines)
+
+
 class Agent:
     def __init__(
         self,
@@ -1402,6 +1473,9 @@ class Agent:
         if is_autogluon_preprocess_mode(self.cfg):
             return self._improve_autogluon_preprocess(parent_node)
 
+        improvement_epsilon = float(
+            getattr(self.acfg.search, "hypothesis_min_improvement_epsilon", 0.0)
+        )
         prompt: Any = {
             "Introduction": (
                 "You are a Kaggle grandmaster attending a competition. You are provided with a previously developed "
@@ -1416,6 +1490,12 @@ class Agent:
         prompt["Previous solution"] = {
             "Code": wrap_code(parent_node.code),
         }
+        previous_attempts = _format_previous_child_attempts(
+            parent_node,
+            epsilon=improvement_epsilon,
+        )
+        if previous_attempts is not None:
+            prompt["Previous attempts from this parent"] = previous_attempts
 
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
@@ -1445,6 +1525,9 @@ class Agent:
         )
 
     def _improve_autogluon_preprocess(self, parent_node: Node) -> Node:
+        improvement_epsilon = float(
+            getattr(self.acfg.search, "hypothesis_min_improvement_epsilon", 0.0)
+        )
         prompt: Any = {
             "Introduction": (
                 "You are improving only the feature preprocessing function for a "
@@ -1458,6 +1541,12 @@ class Agent:
             "Instructions": {},
         }
         self._add_memory_or_branch_context(prompt, parent_node=parent_node)
+        previous_attempts = _format_previous_child_attempts(
+            parent_node,
+            epsilon=improvement_epsilon,
+        )
+        if previous_attempts is not None:
+            prompt["Previous attempts from this parent"] = previous_attempts
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Preprocessing improvement sketch guideline": [

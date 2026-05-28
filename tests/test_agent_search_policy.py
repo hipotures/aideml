@@ -262,6 +262,33 @@ def test_hypothesis_search_skips_parent_after_non_improving_child_limit(
     assert selected is fallback
 
 
+def test_standard_search_keeps_best_parent_after_non_improving_child_limit(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_max_non_improving_children_per_parent = 2
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
+
+    journal = Journal()
+    saturated = _good_node(0.95100)
+    fallback = _good_node(0.95000)
+    near_equal = _good_node(0.95099, parent=saturated)
+    worse = _good_node(0.95090, parent=saturated)
+    for node in [saturated, fallback, near_equal, worse]:
+        journal.append(node)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is saturated
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert saturated.id not in trace["rejections"]
+
+
 def test_hypothesis_search_keeps_parent_with_improving_child_available(
     tmp_path,
     monkeypatch,

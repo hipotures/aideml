@@ -3698,3 +3698,76 @@ def test_agent_includes_data_overview_in_improve_prompt(tmp_path):
 
     assert "Data Overview" in captured["prompt"]
     assert "Position" in captured["prompt"]["Data Overview"]
+
+
+def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(
+        0.954674,
+        code="print('strong parent')",
+        plan="two-seed RealMLP plus CatBoost parent",
+    )
+    near_copy = Node(
+        code="print('rank blend')",
+        plan="Add rank blend mode to the existing blend candidates.",
+        parent=parent,
+    )
+    near_copy.metric = MetricValue(0.954672, maximize=True)
+    near_copy.is_buggy = False
+    near_copy.analysis = "rank blend did not improve"
+    worse = Node(
+        code="print('remove features')",
+        plan="Remove count encoding features.",
+        parent=parent,
+    )
+    worse.metric = MetricValue(0.953900, maximize=True)
+    worse.is_buggy = False
+    worse.analysis = "feature removal hurt validation"
+    journal = Journal()
+    for node in [parent, near_copy, worse]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "These direct children already tried changes on the same parent" in attempts
+    assert "Do not repeat these attempted changes" in attempts
+    assert "Add rank blend mode" in attempts
+    assert "Remove count encoding features" in attempts
+    assert "0.954672" in attempts
+    assert "did_not_improve" in attempts
+
+
+def test_standard_improve_prompt_omits_prior_child_attempts_without_children(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    journal = Journal()
+    journal.append(parent)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    assert "Previous attempts from this parent" not in captured["prompt"]
