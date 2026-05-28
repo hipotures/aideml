@@ -2909,13 +2909,25 @@ def build_agent_mode_summary(
         "true" if bool(getattr(cfg.agent, "aux", False)) else "false",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
+    gpu_line = Text()
+    gpu_line.append("▶ gpu       ", style=TUI_ROW_LABEL_STYLE)
+    gpu_line.append(
+        "true" if bool(getattr(cfg.agent, "gpu", False)) else "false",
+        style=TUI_NEUTRAL_VALUE_STYLE,
+    )
     run_line = Text()
     run_line.append("▶ run       ", style=TUI_ROW_LABEL_STYLE)
     run_line.append(
         "generate-only" if skip_execution else "execute",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
-    lines = [Text("Agent", style=TUI_ROW_LABEL_STYLE), mode_line, aux_line, run_line]
+    lines = [
+        Text("Agent", style=TUI_ROW_LABEL_STYLE),
+        mode_line,
+        aux_line,
+        gpu_line,
+        run_line,
+    ]
     if skip_execution:
         workers_line = Text()
         workers_line.append("▶ workers   ", style=TUI_ROW_LABEL_STYLE)

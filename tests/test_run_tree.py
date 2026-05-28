@@ -2019,6 +2019,7 @@ def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.agent.mode = "legacy"
     cfg.agent.aux = True
+    cfg.agent.gpu = True
 
     output = _render_text(
         build_run_data(
@@ -2039,6 +2040,7 @@ def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
     assert "legacy" in output
     assert "aux" in output
     assert "true" in output
+    assert "gpu" in output
     assert "run" in output
     assert "generate-only" in output
     assert output.index("Agent") < output.index("Base path")
