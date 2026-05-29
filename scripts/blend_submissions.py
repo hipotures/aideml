@@ -29,6 +29,7 @@ DEFAULT_DATA_DIR = Path("aide/example_tasks") / DEFAULT_TASK
 DEFAULT_LOGS_DIR = Path("logs")
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY_PATH = smart.DEFAULT_REGISTRY
+DEFAULT_OUTPUT_RUN = "blended"
 
 
 def sha256_file(path: Path) -> str:
@@ -269,6 +270,74 @@ def make_unique_labels(records: list[dict[str, Any]]) -> list[str]:
     return labels
 
 
+def _record_node_key(record: dict[str, Any]) -> tuple[str, str] | None:
+    run = str(record.get("run") or "")
+    node_id = str(record.get("node_id") or "")
+    if not run or not node_id:
+        return None
+    return run, node_id
+
+
+def _record_score(record: dict[str, Any]) -> float | None:
+    score = record.get("local_score")
+    if score is None:
+        return None
+    try:
+        return float(score)
+    except (TypeError, ValueError):
+        return None
+
+
+def _score_within_epsilon(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    *,
+    epsilon: float,
+) -> bool:
+    left_score = _record_score(left)
+    right_score = _record_score(right)
+    if left_score is None or right_score is None:
+        return False
+    return abs(left_score - right_score) <= epsilon
+
+
+def hide_near_duplicate_family_descendants(
+    records: list[dict[str, Any]],
+    *,
+    epsilon: float,
+    max_depth: int,
+) -> list[dict[str, Any]]:
+    if epsilon < 0 or max_depth <= 0:
+        return records
+
+    by_node: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in records:
+        key = _record_node_key(record)
+        if key is not None:
+            by_node[key] = record
+
+    visible = []
+    for record in records:
+        run = str(record.get("run") or "")
+        parent_id = str(record.get("parent_node_id") or "")
+        hide = False
+        for _depth in range(max_depth):
+            if not parent_id:
+                break
+            ancestor = by_node.get((run, parent_id))
+            if ancestor is not None and _score_within_epsilon(
+                record,
+                ancestor,
+                epsilon=epsilon,
+            ):
+                hide = True
+                break
+            parent_id = str((ancestor or {}).get("parent_node_id") or "")
+        if not hide:
+            visible.append(record)
+    return visible
+
+
 def select_records(
     *,
     index: dict[str, Any],
@@ -279,6 +348,9 @@ def select_records(
     include_blends: bool,
     weighting: str,
     competition: str,
+    family_dedupe: bool,
+    family_dedupe_epsilon: float,
+    family_dedupe_depth: int,
 ) -> list[dict[str, Any]]:
     records = lab.filter_records_by_run(list(index.get("records", [])), run_filters)
     ready = [record for record in records if lab._record_is_submit_ready(record)]
@@ -290,6 +362,12 @@ def select_records(
         selected_pool = ready if include_blends else [
             record for record in ready if not is_blend_record(record)
         ]
+        if family_dedupe:
+            selected_pool = hide_near_duplicate_family_descendants(
+                selected_pool,
+                epsilon=family_dedupe_epsilon,
+                max_depth=family_dedupe_depth,
+            )
         if weighting == "public":
             selected_pool = [
                 record for record in selected_pool
@@ -682,6 +760,9 @@ def interactive_candidate_records(
     run_filters: list[str],
     competition: str,
     include_blends: bool,
+    family_dedupe: bool,
+    family_dedupe_epsilon: float,
+    family_dedupe_depth: int,
 ) -> list[dict[str, Any]]:
     records = lab.filter_records_by_run(list(index.get("records", [])), run_filters)
     ready = [
@@ -692,6 +773,12 @@ def interactive_candidate_records(
     ]
     if not include_blends:
         ready = [record for record in ready if not is_blend_record(record)]
+    if family_dedupe:
+        ready = hide_near_duplicate_family_descendants(
+            ready,
+            epsilon=family_dedupe_epsilon,
+            max_depth=family_dedupe_depth,
+        )
     return sorted(
         lab.deduplicate_records_by_sha256(ready),
         key=lambda record: _interactive_candidate_sort_key(record, registry),
@@ -705,6 +792,7 @@ def render_interactive_candidate_table(
     *,
     registry: smart.SubmissionRegistry,
     limit: int,
+    selected_indices: set[int] | None = None,
 ) -> int:
     table = Table(title="Blend source candidates", padding=(0, 1))
     headers = ["#", "cv", "public", "run", "hyp", "step", "sha", "artifact"]
@@ -733,8 +821,11 @@ def render_interactive_candidate_table(
             header,
             justify="right" if header in {"#", "cv", "public", "step"} else "left",
         )
+    selected_indices = selected_indices or set()
     for row in rows:
-        table.add_row(*row)
+        row_index = int(row[0])
+        style = "reverse bold" if row_index in selected_indices else None
+        table.add_row(*row, style=style)
     console.print(table)
     return table_width
 
@@ -797,6 +888,9 @@ def configure_interactive(args: argparse.Namespace, console: Console) -> None:
         run_filters=run_filters,
         competition=args.competition,
         include_blends=args.include_blends,
+        family_dedupe=not args.no_family_dedupe,
+        family_dedupe_epsilon=args.family_dedupe_epsilon,
+        family_dedupe_depth=args.family_dedupe_depth,
     )
     if not candidates:
         raise ValueError("No submit-ready candidates found")
@@ -824,16 +918,8 @@ def configure_interactive(args: argparse.Namespace, console: Console) -> None:
             console.print(f"[red]{exc}[/red]")
 
     labels = make_unique_labels(selected)
-    default_output_run = (
-        str(selected[0].get("run"))
-        if len({str(record.get("run")) for record in selected}) == 1
-        else ""
-    )
     if args.output_run is None:
-        args.output_run = Prompt.ask(
-            "Output run",
-            default=default_output_run or str(selected[0].get("run") or "manual-blends"),
-        )
+        args.output_run = DEFAULT_OUTPUT_RUN
 
     weights_text = Prompt.ask(
         "Weights, comma-separated; empty means uniform",
@@ -898,6 +984,9 @@ class InteractiveBlender:
             run_filters=self.run_filters,
             competition=self.args.competition,
             include_blends=self.include_blends,
+            family_dedupe=not self.args.no_family_dedupe,
+            family_dedupe_epsilon=self.args.family_dedupe_epsilon,
+            family_dedupe_depth=self.args.family_dedupe_depth,
         )
 
     def _selected(self) -> list[dict[str, Any]]:
@@ -942,6 +1031,7 @@ class InteractiveBlender:
             self.candidates,
             registry=self.registry,
             limit=self.display_count,
+            selected_indices=self.selected_indices,
         )
         command_text = """[1-9] select top N    [0] top 10    [1,3,5] select IDs/sha
 [A] include/exclude blend artifacts  [W] weighting strategy  [B] blend mode
@@ -959,7 +1049,10 @@ class InteractiveBlender:
                 f"Components: {len(selected)}\n"
                 f"Strategy: {self.strategy}\n"
                 f"Blend mode: {self.mode}\n"
-                f"Include prior blends: {self.include_blends}",
+                f"Include prior blends: {self.include_blends}\n"
+                f"Family dedupe: {not self.args.no_family_dedupe} "
+                f"(eps={self.args.family_dedupe_epsilon:g}, "
+                f"depth={self.args.family_dedupe_depth})",
                 title="Current config",
                 box=box.ROUNDED,
                 width=table_width,
@@ -1050,8 +1143,7 @@ class InteractiveBlender:
         weights = self._weights(selected)
         output_run = self.args.output_run
         if output_run is None:
-            runs = {str(record.get("run") or "") for record in selected}
-            output_run = next(iter(runs)) if len(runs) == 1 else Prompt.ask("Output run")
+            output_run = DEFAULT_OUTPUT_RUN
         default_label = f"blend-{self.strategy}-{self.mode}-" + "-".join(label[:8] for label in labels)
         if label_suffix:
             default_label = f"{default_label}-{label_suffix}"
@@ -1102,8 +1194,7 @@ class InteractiveBlender:
         modes = ["raw", "rank", "logit"]
         output_run = self.args.output_run
         if output_run is None:
-            runs = {str(record.get("run") or "") for record in selected}
-            output_run = next(iter(runs)) if len(runs) == 1 else Prompt.ask("Output run")
+            output_run = DEFAULT_OUTPUT_RUN
         write = Confirm.ask(
             f"Create {len(strategy_specs) * len(modes)} queued blend artifacts?",
             default=False,
@@ -1213,10 +1304,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY_PATH)
     parser.add_argument("--run", action="append", help="Source run filter; may be repeated.")
-    parser.add_argument("--output-run", help="Run directory where the blend artifact is written.")
+    parser.add_argument(
+        "--output-run",
+        default=DEFAULT_OUTPUT_RUN,
+        help="Run directory where the blend artifact is written.",
+    )
     parser.add_argument("--sha256", action="append", help="Component sha256 prefix; may be repeated.")
     parser.add_argument("--top-n", type=int, help="Use top-N indexed records when --sha256 is omitted.")
     parser.add_argument("--include-blends", action="store_true", help="Allow existing blend artifacts in top-N selection.")
+    parser.add_argument("--no-family-dedupe", action="store_true", help="Do not hide near-duplicate descendants from the same run family.")
+    parser.add_argument("--family-dedupe-epsilon", type=float, default=0.00003, help="Hide descendants within this local-score delta.")
+    parser.add_argument("--family-dedupe-depth", type=int, default=3, help="Maximum parent-chain distance for near-duplicate hiding.")
     parser.add_argument("--weighting", choices=["manual", "uniform", "local", "public", "rank", "power", "softmax", "offset"], default="manual")
     parser.add_argument("--weights", help="Comma-separated manual weights, e.g. 0.7,0.3")
     parser.add_argument("--power", type=float, default=2.0)
@@ -1241,11 +1339,6 @@ def main() -> None:
     run_filters = lab.parse_run_filters(args.run)
     sha_filters = lab.parse_sha256_filters(args.sha256)
     output_run = args.output_run
-    if output_run is None:
-        if len(run_filters) == 1:
-            output_run = run_filters[0]
-        else:
-            raise ValueError("--output-run is required unless exactly one --run is given")
 
     index = lab.refresh_index(
         logs_dir=args.logs_dir,
@@ -1264,6 +1357,9 @@ def main() -> None:
         include_blends=args.include_blends,
         weighting=args.weighting,
         competition=args.competition,
+        family_dedupe=not args.no_family_dedupe,
+        family_dedupe_epsilon=args.family_dedupe_epsilon,
+        family_dedupe_depth=args.family_dedupe_depth,
     )
 
     labels = make_unique_labels(selected)
