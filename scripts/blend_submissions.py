@@ -7,6 +7,7 @@ import json
 import math
 import re
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -38,6 +39,20 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_dataframe_csv(frame: pd.DataFrame) -> str:
+    with tempfile.NamedTemporaryFile("w+b", suffix=".csv") as handle:
+        frame.to_csv(handle.name, index=False)
+        return sha256_file(Path(handle.name))
+
+
+def existing_submission_sha256(index: dict[str, Any]) -> set[str]:
+    return {
+        str(record.get("sha256") or "")
+        for record in index.get("records", [])
+        if record.get("sha256")
+    }
 
 
 def file_payload(path: Path, *, relative_to: Path | None = None) -> dict[str, Any]:
@@ -196,6 +211,7 @@ def blend_oof_files(
         raise ValueError(f"{paths[0]} must contain {sorted(required)}")
     base_rows = base["row"].copy()
     base_target = base["target"].copy()
+    base_target_values = pd.to_numeric(base_target, errors="raise").to_numpy()
     blended = np.zeros(len(base), dtype=float)
 
     for path, weight in zip(paths, weights, strict=True):
@@ -208,7 +224,8 @@ def blend_oof_files(
             aligned = frame.set_index("row").reindex(base_rows).reset_index()
             if aligned["prediction"].isna().any() or aligned["target"].isna().any():
                 raise ValueError(f"Cannot align OOF file {path} by 'row'")
-        if not aligned["target"].equals(base_target):
+        aligned_target_values = pd.to_numeric(aligned["target"], errors="raise").to_numpy()
+        if not np.array_equal(aligned_target_values, base_target_values):
             raise ValueError(f"OOF target mismatch in {path}")
         blended += weight * transform_predictions(aligned, "prediction", mode)
 
@@ -268,6 +285,19 @@ def make_unique_labels(records: list[dict[str, Any]]) -> list[str]:
         seen[base] = count + 1
         labels.append(base if count == 0 else f"{base}-{count + 1}")
     return labels
+
+
+def make_indexed_labels(
+    records: list[dict[str, Any]],
+    selected_indices: set[int],
+) -> list[str]:
+    labels = make_unique_labels(records)
+    if len(labels) != len(selected_indices):
+        return labels
+    return [
+        f"#{idx}:{label}"
+        for idx, label in zip(sorted(selected_indices), labels, strict=True)
+    ]
 
 
 def _record_node_key(record: dict[str, Any]) -> tuple[str, str] | None:
@@ -668,7 +698,10 @@ def create_blend_artifact(
     dry_run: bool,
     index: dict[str, Any],
     allow_submission_only: bool | None = None,
-) -> tuple[float, str | None]:
+    known_submission_sha256: set[str] | None = None,
+    step_override: int | None = None,
+    refresh_index_after_write: bool = True,
+) -> tuple[float, str | None, bool]:
     public_scores = [
         public_score_for_record(record, smart.SubmissionRegistry.load(args.registry))
         for record in selected
@@ -717,14 +750,19 @@ def create_blend_artifact(
         mode=mode,
     )
     submission = test_predictions[["id", "PitNextLap"]].copy()
+    submission_sha256 = sha256_dataframe_csv(submission)
 
     if cv_score is None:
         console.print("Blend CV ROC AUC: n/a (submission-only)")
     else:
         console.print(f"Blend CV ROC AUC: {cv_score:.10f}")
+    duplicate_pool = known_submission_sha256 or existing_submission_sha256(index)
+    if submission_sha256 in duplicate_pool:
+        console.print(f"SKIP duplicate submission sha: {submission_sha256[:10]}")
+        return cv_score or float("nan"), None, True
     if dry_run:
         console.print("Dry run: artifact not written.")
-        return cv_score or float("nan"), None
+        return cv_score or float("nan"), None, False
 
     created_at = dt.datetime.now(dt.timezone.utc)
     safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "-", label or "-".join(labels)).strip("-")
@@ -747,7 +785,10 @@ def create_blend_artifact(
         submission_only=submission_only,
     )
 
-    step = args.step if args.step is not None else next_step_for_run(index, output_run)
+    if step_override is not None:
+        step = step_override
+    else:
+        step = args.step if args.step is not None else next_step_for_run(index, output_run)
     node_id = hashlib.md5(f"{timestamp}:{safe_label}:{cv_score}".encode()).hexdigest()
     sample_path = sample_submission_path(args.data_dir)
     validation_error = validate_submission_file(
@@ -780,20 +821,23 @@ def create_blend_artifact(
         sha256=manifest["sha256"],
         score=cv_score,
     )
-    lab.refresh_index(
-        logs_dir=args.logs_dir,
-        index_path=args.index,
-        competition=args.competition,
-        runs=[output_run],
-        reindex=True,
-    )
+    if refresh_index_after_write:
+        lab.refresh_index(
+            logs_dir=args.logs_dir,
+            index_path=args.index,
+            competition=args.competition,
+            runs=[output_run],
+            reindex=True,
+        )
 
     console.print(f"Wrote artifact: {artifact_dir}")
     console.print(f"Upload copy: {upload_path.name}")
     console.print(f"sha256: {manifest['sha256'][:10]}")
     if validation_error:
         console.print(f"Validation error: {validation_error}")
-    return cv_score or float("nan"), str(artifact_dir)
+    if known_submission_sha256 is not None:
+        known_submission_sha256.add(str(manifest["sha256"]))
+    return cv_score or float("nan"), str(artifact_dir), False
 
 
 def _interactive_candidate_sort_key(
@@ -851,15 +895,17 @@ def render_interactive_candidate_table(
     selected_indices: set[int] | None = None,
 ) -> int:
     table = Table(title="Blend source candidates", padding=(0, 1))
-    headers = ["#", "cv", "public", "run", "hyp", "step", "sha", "artifact"]
+    headers = ["#", "cv", "public", "oof", "run", "hyp", "step", "sha", "artifact"]
     rows: list[list[str]] = []
     for idx, record in enumerate(records[:limit], start=1):
         public = public_score_for_record(record, registry)
+        has_oof = record_oof_path(record).exists()
         rows.append(
             [
                 str(idx),
                 "-" if record.get("local_score") is None else f"{float(record['local_score']):.5f}",
                 "-" if public is None else f"{public:.5f}",
+                "✓" if has_oof else "x",
                 str(record.get("run") or "-"),
                 str(record.get("hypothesis_id") or "-"),
                 str(record.get("step") if record.get("step") is not None else "-"),
@@ -875,7 +921,7 @@ def render_interactive_candidate_table(
     for header in headers:
         table.add_column(
             header,
-            justify="right" if header in {"#", "cv", "public", "step"} else "left",
+            justify="right" if header in {"#", "cv", "public", "step"} else "center" if header == "oof" else "left",
         )
     selected_indices = selected_indices or set()
     for row in rows:
@@ -1195,7 +1241,7 @@ class InteractiveBlender:
             self.console.print("[red]Select at least two components.[/red]")
             Prompt.ask("Press Enter")
             return
-        labels = make_unique_labels(selected)
+        labels = make_indexed_labels(selected, self.selected_indices)
         weights = self._weights(selected)
         output_run = self.args.output_run
         if output_run is None:
@@ -1208,7 +1254,7 @@ class InteractiveBlender:
         if dry_run is None:
             write_dry_run = Confirm.ask("Dry run only", default=False)
         try:
-            cv, artifact = create_blend_artifact(
+            cv, artifact, skipped_duplicate = create_blend_artifact(
                 args=self.args,
                 console=self.console,
                 selected=selected,
@@ -1220,6 +1266,7 @@ class InteractiveBlender:
                 dry_run=write_dry_run,
                 index=self.index,
                 allow_submission_only=None,
+                refresh_index_after_write=False,
             )
         except FileNotFoundError as exc:
             self.console.print(f"[red]{exc}[/red]")
@@ -1235,6 +1282,9 @@ class InteractiveBlender:
         )
         if artifact:
             self.index = self._refresh_index()
+        self.console.print(
+            f"Queued: {1 if artifact else 0}; duplicate skipped: {1 if skipped_duplicate else 0}"
+        )
         Prompt.ask("Press Enter")
 
     def multi_strategy_batch(self) -> None:
@@ -1266,7 +1316,11 @@ class InteractiveBlender:
         original_strategy = self.strategy
         original_mode = self.mode
         original_params = dict(self.strategy_params)
-        labels = make_unique_labels(selected)
+        labels = make_indexed_labels(selected, self.selected_indices)
+        known_sha256 = existing_submission_sha256(self.index)
+        next_step = next_step_for_run(self.index, output_run)
+        written_count = 0
+        duplicate_count = 0
         for strategy, params, suffix in strategy_specs:
             self.strategy = strategy
             self.strategy_params.update(params)
@@ -1274,7 +1328,7 @@ class InteractiveBlender:
                 self.mode = mode
                 weights = self._weights(selected)
                 try:
-                    cv, artifact = create_blend_artifact(
+                    cv, artifact, skipped_duplicate = create_blend_artifact(
                         args=self.args,
                         console=self.console,
                         selected=selected,
@@ -1286,11 +1340,20 @@ class InteractiveBlender:
                         dry_run=False,
                         index=self.index,
                         allow_submission_only=None,
+                        known_submission_sha256=known_sha256,
+                        step_override=next_step,
+                        refresh_index_after_write=False,
                     )
                 except FileNotFoundError as exc:
                     self.console.print(f"[red]{exc}[/red]")
                     Prompt.ask("Press Enter")
                     return
+                if skipped_duplicate:
+                    duplicate_count += 1
+                    continue
+                if artifact:
+                    written_count += 1
+                    next_step += 1
                 self.history.append(
                     {
                         "cv": cv,
@@ -1299,10 +1362,12 @@ class InteractiveBlender:
                         "artifact": Path(artifact).name if artifact else None,
                     }
                 )
-                self.index = self._refresh_index()
+        if written_count:
+            self.index = self._refresh_index()
         self.strategy = original_strategy
         self.mode = original_mode
         self.strategy_params = original_params
+        self.console.print(f"Queued: {written_count}; duplicate skipped: {duplicate_count}")
         Prompt.ask("Press Enter")
 
     def fetch_scores(self) -> None:
