@@ -9,14 +9,14 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
 
-DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e5")
+DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e6")
 TARGET = "PitNextLap"
 ID_COL = "id"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Standalone AutoGluon baseline for playground-series-s6e5."
+        description="Standalone AutoGluon baseline for playground-series-s6e6."
     )
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--output", type=Path, default=Path("submission_autogluon.csv"))

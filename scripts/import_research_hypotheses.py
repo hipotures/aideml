@@ -191,7 +191,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("input_path", type=Path)
     parser.add_argument(
         "--task",
-        default="playground-series-s6e5",
+        default="playground-series-s6e6",
         help="Task slug under research_hypotheses/<task>.",
     )
     parser.add_argument(

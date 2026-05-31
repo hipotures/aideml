@@ -46,7 +46,7 @@ from aide.autogluon_preprocess import extract_preprocess_source
 from scripts import kaggle_submission_lab as lab
 
 
-DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e5")
+DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e6")
 DEFAULT_OUTPUT_DIR = Path("logs/lazypredict")
 DEFAULT_TUNE_TOP_K = 5
 DEFAULT_TUNE_TRIALS = 50

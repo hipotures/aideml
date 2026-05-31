@@ -38,7 +38,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--task",
-        default="playground-series-s6e5",
+        default="playground-series-s6e6",
         help=(
             "Task slug used to find research_hypotheses/<task>/prompt_values.json "
             "when --prompt-values is not provided."

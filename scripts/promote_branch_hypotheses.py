@@ -758,7 +758,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Run id under --logs-dir. Useful with --step or --node-id.",
     )
-    parser.add_argument("--task", default="playground-series-s6e5")
+    parser.add_argument("--task", default="playground-series-s6e6")
     parser.add_argument("--repo-root", type=Path, default=repo_root())
     parser.add_argument(
         "--logs-dir",

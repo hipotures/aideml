@@ -33,7 +33,7 @@ from rich.progress import (
 from rich.table import Table
 
 
-DEFAULT_COMPETITION = "playground-series-s6e5"
+DEFAULT_COMPETITION = "playground-series-s6e6"
 DEFAULT_LOGS_DIR = Path("logs")
 DEFAULT_REGISTRY = Path("logs/submission_registry.json")
 

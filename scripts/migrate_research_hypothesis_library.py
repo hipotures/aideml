@@ -373,7 +373,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Migrate research hypotheses to flat per-id directories and export root code.",
     )
-    parser.add_argument("--task", default="playground-series-s6e5")
+    parser.add_argument("--task", default="playground-series-s6e6")
     parser.add_argument("--repo-root", type=Path, default=repo_root())
     parser.add_argument("--dry-run", action="store_true")
     subparsers = parser.add_subparsers(dest="command", required=True)
