@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 import aide.agent as agent_module
 import aide.research as research
 from aide.agent import Agent
@@ -899,6 +901,46 @@ def test_reserve_hypothesis_roots_uses_forced_ids_and_ignores_root_limit(tmp_pat
         "000001",
     ]
     assert [reservation.completed_steps for reservation in reservations] == [0, 1]
+
+
+def test_reserve_hypothesis_roots_uses_forced_disabled_ids(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        enabled=False,
+        agent_modes=["legacy"],
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        enabled=False,
+        agent_modes=["autogluon"],
+    )
+
+    reservations = research.reserve_hypothesis_roots(
+        cfg,
+        journal=Journal(),
+        count=2,
+        completed_steps=0,
+        forced_hypothesis_ids=("000001",),
+        repo_root=tmp_path,
+    )
+
+    assert [reservation.hypothesis_id for reservation in reservations] == ["000001"]
+
+    with pytest.raises(ValueError, match="000002"):
+        research.reserve_hypothesis_roots(
+            cfg,
+            journal=Journal(),
+            count=2,
+            completed_steps=0,
+            forced_hypothesis_ids=("000002",),
+            repo_root=tmp_path,
+        )
 
 
 def test_reserve_hypothesis_roots_retries_failed_generation_first(tmp_path):
