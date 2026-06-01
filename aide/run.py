@@ -81,6 +81,8 @@ from .utils.config import (
     _resolve_all_model_configs,
     _normalize_model_effort_cli_overrides,
     _validate_cli_model_effort_conflicts,
+    aux_file_name,
+    aux_mode,
     load_task_desc,
     prep_agent_workspace,
     save_run,
@@ -2912,10 +2914,9 @@ def build_agent_mode_summary(
     mode_line.append(mode, style=TUI_NEUTRAL_VALUE_STYLE)
     aux_line = Text()
     aux_line.append("▶ aux       ", style=TUI_ROW_LABEL_STYLE)
-    aux_line.append(
-        "true" if bool(getattr(cfg.agent, "aux", False)) else "false",
-        style=TUI_NEUTRAL_VALUE_STYLE,
-    )
+    mode_value = aux_mode(cfg)
+    aux_value = aux_file_name(cfg) if mode_value == "file" else mode_value
+    aux_line.append(aux_value or "false", style=TUI_NEUTRAL_VALUE_STYLE)
     gpu_line = Text()
     gpu_line.append("▶ gpu       ", style=TUI_ROW_LABEL_STYLE)
     gpu_line.append(
