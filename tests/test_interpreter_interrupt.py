@@ -180,6 +180,38 @@ def test_missing_eof_marker_returns_execution_error(tmp_path):
     assert "REPL output stream ended before EOF marker" in "".join(result.term_out)
 
 
+def test_timeout_interrupt_tolerates_process_exiting_before_signal(
+    tmp_path,
+    monkeypatch,
+):
+    interpreter = _interpreter_with_queues(
+        tmp_path,
+        [
+            ("state:ready",),
+            queue.Empty(),
+            ("state:finished", "TimeoutError", None, None),
+        ],
+    )
+    interpreter.timeout = 60
+
+    times = iter([0.0, 61.0, 61.5, 61.5])
+    monkeypatch.setattr("aide.interpreter.time.time", lambda: next(times, 61.5))
+    monkeypatch.setattr("aide.interpreter.os.getpgid", lambda pid: pid)
+    monkeypatch.setattr(
+        "aide.interpreter.os.killpg",
+        lambda _pgid, _sig: (_ for _ in ()).throw(OSError("process group gone")),
+    )
+    monkeypatch.setattr(
+        "aide.interpreter.os.kill",
+        lambda _pid, _sig: (_ for _ in ()).throw(ProcessLookupError()),
+    )
+
+    result = interpreter.run("print('slow')", reset_session=False)
+
+    assert result.exc_type == "TimeoutError"
+    assert "Execution exceeded the time limit" in "".join(result.term_out)
+
+
 def test_second_keyboard_interrupt_cleans_up_and_exits_cleanly(tmp_path, monkeypatch):
     interpreter = _interpreter_with_queues(
         tmp_path,

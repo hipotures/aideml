@@ -390,7 +390,7 @@ class Interpreter:
                 running_time = time.time() - start_time
                 if running_time > self.timeout:
                     logger.warning(f"Execution exceeded timeout of {self.timeout}s")
-                    os.kill(self.process.pid, signal.SIGINT)
+                    self._signal_process(signal.SIGINT)
                     child_in_overtime = True
 
                     # terminate if we're overtime by more than 5 seconds
