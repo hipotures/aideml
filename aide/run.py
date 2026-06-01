@@ -1,5 +1,7 @@
 import atexit
+import base64
 import datetime as dt
+import io
 import json
 import logging
 import os
@@ -1916,6 +1918,9 @@ class ArrowKeyReader:
         b"F": "follow",
         b"v": "view",
         b"V": "view",
+        b"1": "copy_aide_panel",
+        b"2": "copy_run_data_panel",
+        b"3": "copy_logs_panel",
     }
 
     def __init__(self):
@@ -1962,6 +1967,8 @@ class ArrowKeyReader:
                 key = self.KEY_MAP.get(bytes(data))
                 if key is not None:
                     return key
+            if bytes(data) == b"\x1b":
+                return "dismiss_overlay"
             return self.KEY_MAP.get(bytes(data[:3]))
         except (OSError, termios.error):
             return None
@@ -2948,6 +2955,96 @@ def build_operator_notice_summary(notice: str | None) -> Group | None:
     )
 
 
+def _sanitize_panel_copy_name(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip()).strip("-")
+    return cleaned or "panel"
+
+
+def panel_copy_path(panel_name: str, run_id: str, *, tmp_dir: Path = Path("/tmp")) -> Path:
+    name = _sanitize_panel_copy_name(panel_name).lower()
+    run = _sanitize_panel_copy_name(run_id)
+    return tmp_dir / f"panel-{name}-{run}.txt"
+
+
+def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
+    buffer = io.StringIO()
+    console = Console(
+        file=buffer,
+        force_terminal=False,
+        color_system=None,
+        width=max(20, int(width)),
+        record=True,
+    )
+    console.print(renderable)
+    body = console.export_text(styles=False).rstrip()
+    title = title.strip()
+    if body:
+        return f"# {title}\n\n{body}\n"
+    return f"# {title}\n"
+
+
+def osc52_clipboard_sequence(text: str, *, tmux: bool = False) -> str:
+    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    sequence = f"\x1b]52;c;{encoded}\x07"
+    if tmux:
+        return f"\x1bPtmux;\x1b{sequence}\x1b\\"
+    return sequence
+
+
+def copy_text_to_clipboard_osc52(
+    text: str,
+    *,
+    tty_path: Path | str = "/dev/tty",
+    tmux: bool | None = None,
+) -> bool:
+    sequence = osc52_clipboard_sequence(
+        text,
+        tmux=("TMUX" in os.environ if tmux is None else tmux),
+    )
+    try:
+        with open(tty_path, "w", encoding="utf-8") as tty:
+            tty.write(sequence)
+            tty.flush()
+        return True
+    except OSError:
+        try:
+            sys.stdout.write(sequence)
+            sys.stdout.flush()
+            return True
+        except OSError:
+            return False
+
+
+def save_panel_copy(
+    panel_name: str,
+    run_id: str,
+    text: str,
+    *,
+    tmp_dir: Path = Path("/tmp"),
+) -> Path:
+    path = panel_copy_path(panel_name, run_id, tmp_dir=tmp_dir)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def build_panel_copy_notice(
+    *,
+    panel_title: str,
+    path: Path,
+    osc52_sent: bool,
+) -> Panel:
+    status = "Sent to clipboard using OSC 52." if osc52_sent else "OSC 52 unavailable."
+    return Panel(
+        Group(
+            Text(status, style=TUI_NEUTRAL_VALUE_STYLE),
+            Text("Fallback file:", style=TUI_ROW_LABEL_STYLE),
+            Text(str(path), style="yellow"),
+        ),
+        title=f"[b]Copied {panel_title}",
+        border_style="green" if osc52_sent else "yellow",
+    )
+
+
 def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
     settings: list[ModelSetting] = [
         ("code", cfg.agent.code.model, cfg.agent.code.reasoning_effort),
@@ -3709,6 +3806,9 @@ def run(argv: list[str] | None = None):
     focused_table_item_index = 0
     table_scroll_top = 0
     key_reader: ArrowKeyReader | None = None
+    pending_copy_action: str | None = None
+    copy_notice: Panel | None = None
+    copy_notice_until: float | None = None
     pending_artifact_dir: Path | None = None
     display_node: Node | None = None
     active_root_generations: list[ActiveRootGeneration] = []
@@ -3814,10 +3914,24 @@ def run(argv: list[str] | None = None):
         right_margin = 2
         return max(0, content_width - fixed_width_before_spark - right_margin)
 
+    def is_panel_copy_key(key: str | None) -> bool:
+        return key in {
+            "copy_aide_panel",
+            "copy_run_data_panel",
+            "copy_logs_panel",
+        }
+
+    def dismiss_overlays() -> None:
+        nonlocal copy_notice, copy_notice_until, search_debug_visible
+        copy_notice = None
+        copy_notice_until = None
+        search_debug_visible = False
+
     def drain_left_panel_navigation(view: TreeView) -> None:
         nonlocal focused_tree_item_id, focused_tree_item_index, tree_scroll_top
         nonlocal focused_table_item_id, focused_table_item_index, table_scroll_top
         nonlocal tree_follow_mode, left_panel_view, search_debug_visible
+        nonlocal pending_copy_action
         if left_panel_view != "tree":
             if focused_table_item_id not in view.index_by_id:
                 focused_table_item_id = recover_tree_focus_by_index(
@@ -3828,6 +3942,12 @@ def run(argv: list[str] | None = None):
                 key = key_reader.read_key()
                 if key is None:
                     break
+                if is_panel_copy_key(key):
+                    pending_copy_action = key
+                    return
+                if key == "dismiss_overlay":
+                    dismiss_overlays()
+                    return
                 if key == "view":
                     left_panel_view = next_left_panel_view(left_panel_view)
                     focused_table_item_id = "header"
@@ -3871,6 +3991,12 @@ def run(argv: list[str] | None = None):
             key = key_reader.read_key()
             if key is None:
                 break
+            if is_panel_copy_key(key):
+                pending_copy_action = key
+                return
+            if key == "dismiss_overlay":
+                dismiss_overlays()
+                return
             if key == "view":
                 left_panel_view = next_left_panel_view(left_panel_view)
                 focused_table_item_id = "header"
@@ -3983,7 +4109,50 @@ def run(argv: list[str] | None = None):
             return build_all_hypotheses_view(journal)
         return build_best_branch_view(journal)
 
+    def handle_pending_panel_copy(
+        *,
+        left_panel_content,
+        data_panel_content,
+        log_panel_content,
+        left_width: int,
+        right_width: int,
+    ) -> None:
+        nonlocal pending_copy_action, copy_notice, copy_notice_until
+        if pending_copy_action is None:
+            return
+
+        action = pending_copy_action
+        pending_copy_action = None
+        if action == "copy_aide_panel":
+            panel_name = "aide"
+            panel_title = f'AIDE: "{cfg.exp_name}"'
+            renderable = left_panel_content
+            width = left_width
+        elif action == "copy_run_data_panel":
+            panel_name = "run-data"
+            panel_title = "Run data"
+            renderable = data_panel_content
+            width = right_width
+        elif action == "copy_logs_panel":
+            panel_name = "logs"
+            panel_title = "Logs"
+            renderable = log_panel_content
+            width = right_width
+        else:
+            return
+
+        text = render_panel_copy_text(panel_title, renderable, width=width)
+        path = save_panel_copy(panel_name, cfg.exp_name, text)
+        osc52_sent = copy_text_to_clipboard_osc52(text)
+        copy_notice = build_panel_copy_notice(
+            panel_title=panel_title,
+            path=path,
+            osc52_sent=osc52_sent,
+        )
+        copy_notice_until = time.monotonic() + 6.0
+
     def generate_live():
+        nonlocal copy_notice, copy_notice_until
         blink_on = int(time.monotonic() * 2) % 2 == 0
         rendered_panel_view = left_panel_view
         left_view = current_left_panel_view(blink_on=blink_on)
@@ -4024,6 +4193,59 @@ def run(argv: list[str] | None = None):
                 active_hypothesis_ids=active_root_hypothesis_ids_for_display(),
             )
         )
+        terminal_size = shutil.get_terminal_size((120, 40))
+        left_copy_width = max(20, int(terminal_size.columns * 3 / 5) - 4)
+        right_copy_width = max(20, int(terminal_size.columns * 2 / 5) - 4)
+        data_panel_content = Padding(
+            build_run_data(
+                progress=prog,
+                status=status,
+                research_status=(
+                    research_advisor.status_text() if cfg.research.enabled else None
+                ),
+                synthesis_status=(
+                    synthesis_advisor.status_text()
+                    if cfg.synthesis.enabled
+                    else None
+                ),
+                journal=journal,
+                log_dir=cfg.log_dir,
+                workspace_dir=cfg.workspace_dir,
+                resource_history=resource_history,
+                resource_active=resource_active,
+                resource_graph_width=resource_graph_width(),
+                model_settings=model_settings_for_run(cfg),
+                active_artifact_dir=active_artifact_dir,
+                cfg=cfg,
+                operator_notice=operator_notice,
+                include_generated_hypothesis_roots=runtime_options.skip_execution,
+                skip_execution=runtime_options.skip_execution,
+                hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+                selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
+            ),
+            (0, 1, 0, 1),
+        )
+        log_line_count, log_width = run_log_dimensions()
+        log_panel_content = Padding(
+            build_run_log_summary(
+                active_artifact_dir,
+                max_lines=log_line_count,
+                max_width=log_width,
+                missing_log_hint=(
+                    agent.active_research_hypothesis_log_hint
+                    if agent.active_stage == "generating"
+                    else None
+                ),
+            ),
+            (0, 1, 0, 1),
+        )
+        handle_pending_panel_copy(
+            left_panel_content=left_panel_content,
+            data_panel_content=data_panel_content,
+            log_panel_content=log_panel_content,
+            left_width=left_copy_width,
+            right_width=right_copy_width,
+        )
 
         tree_panel = Panel(
             Padding(left_panel_content, (0, 1, 0, 1)),
@@ -4031,56 +4253,16 @@ def run(argv: list[str] | None = None):
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
                 f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
-                f"d debug:{'on' if search_debug_visible else 'off'}  Ctrl+C stop"
+                f"d debug:{'on' if search_debug_visible else 'off'}  "
+                "1 copy AIDE  2 Run data  3 Logs  Ctrl+C stop"
             ),
         )
         data_panel = Panel(
-            Padding(
-                build_run_data(
-                    progress=prog,
-                    status=status,
-                    research_status=(
-                        research_advisor.status_text() if cfg.research.enabled else None
-                    ),
-                    synthesis_status=(
-                        synthesis_advisor.status_text()
-                        if cfg.synthesis.enabled
-                        else None
-                    ),
-                    journal=journal,
-                    log_dir=cfg.log_dir,
-                    workspace_dir=cfg.workspace_dir,
-                    resource_history=resource_history,
-                    resource_active=resource_active,
-                    resource_graph_width=resource_graph_width(),
-                    model_settings=model_settings_for_run(cfg),
-                    active_artifact_dir=active_artifact_dir,
-                    cfg=cfg,
-                    operator_notice=operator_notice,
-                    include_generated_hypothesis_roots=runtime_options.skip_execution,
-                    skip_execution=runtime_options.skip_execution,
-                    hypothesis_root_generate_workers=hypothesis_root_generate_workers,
-                    selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
-                ),
-                (0, 1, 0, 1),
-            ),
+            data_panel_content,
             title="[b]Run data",
         )
-        log_line_count, log_width = run_log_dimensions()
         log_panel = Panel(
-            Padding(
-                build_run_log_summary(
-                    active_artifact_dir,
-                    max_lines=log_line_count,
-                    max_width=log_width,
-                    missing_log_hint=(
-                        agent.active_research_hypothesis_log_hint
-                        if agent.active_stage == "generating"
-                        else None
-                    ),
-                ),
-                (0, 1, 0, 1),
-            ),
+            log_panel_content,
             title="[b]Logs",
         )
 
@@ -4094,24 +4276,39 @@ def run(argv: list[str] | None = None):
             Layout(tree_panel, name="tree", ratio=3),
             data_layout,
         )
-        if not search_debug_visible:
-            return layout
+        renderable = layout
 
-        terminal_size = shutil.get_terminal_size((120, 40))
-        overlay_width = min(max(80, terminal_size.columns - 8), terminal_size.columns)
-        debug_panel = Panel(
-            Padding(build_search_decision_debug_view(agent.last_search_decision), (0, 1)),
-            title="[b]Search decision debug",
-            subtitle=f"{Path(cfg.log_dir) / 'search_decisions.jsonl'}",
-            border_style="yellow",
-        )
-        return _Overlay(
-            layout,
-            debug_panel,
-            overlay_width=overlay_width,
-            edge_margin=3,
-            dim=True,
-        )
+        if search_debug_visible:
+            overlay_width = min(max(80, terminal_size.columns - 8), terminal_size.columns)
+            debug_panel = Panel(
+                Padding(build_search_decision_debug_view(agent.last_search_decision), (0, 1)),
+                title="[b]Search decision debug",
+                subtitle=f"{Path(cfg.log_dir) / 'search_decisions.jsonl'}",
+                border_style="yellow",
+            )
+            renderable = _Overlay(
+                renderable,
+                debug_panel,
+                overlay_width=overlay_width,
+                edge_margin=3,
+                dim=True,
+            )
+
+        if copy_notice is not None and copy_notice_until is not None:
+            if time.monotonic() >= copy_notice_until:
+                copy_notice = None
+                copy_notice_until = None
+            else:
+                notice_width = min(max(72, terminal_size.columns - 16), terminal_size.columns)
+                renderable = _Overlay(
+                    renderable,
+                    copy_notice,
+                    overlay_width=notice_width,
+                    edge_margin=3,
+                    dim=True,
+                )
+
+        return renderable
 
     def parallel_root_workers_enabled() -> bool:
         return (

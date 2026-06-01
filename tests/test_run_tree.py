@@ -1,10 +1,12 @@
 import builtins
 import datetime as dt
 import json
+import os
 from pathlib import Path
 
 import pytest
 from rich.console import Console
+from rich.text import Text
 
 from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
@@ -16,6 +18,7 @@ from aide.run import (
     build_best_branch_view,
     build_path_summary,
     build_model_summary,
+    build_panel_copy_notice,
     build_resource_summary,
     build_run_log_summary,
     build_run_data,
@@ -26,6 +29,8 @@ from aide.run import (
     build_final_tree_renderable,
     emit_completion_bell,
     model_settings_for_run,
+    osc52_clipboard_sequence,
+    panel_copy_path,
     ResourceSnapshot,
     ArrowKeyReader,
     _overlay_top,
@@ -42,7 +47,9 @@ from aide.run import (
     next_left_panel_view,
     recover_tree_focus_by_index,
     render_tree_view,
+    render_panel_copy_text,
     run_with_live_refresh,
+    save_panel_copy,
     stage_status_message,
     synthesis_injected_node_ids,
 )
@@ -895,6 +902,27 @@ def test_keyboard_reader_maps_v_to_view_toggle():
     assert ArrowKeyReader.CHAR_KEY_MAP[b"V"] == "view"
 
 
+def test_keyboard_reader_maps_number_keys_to_panel_copy_actions():
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"1"] == "copy_aide_panel"
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"2"] == "copy_run_data_panel"
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"3"] == "copy_logs_panel"
+
+
+def test_keyboard_reader_maps_bare_escape_to_dismiss_overlay():
+    read_fd, write_fd = os.pipe()
+    try:
+        reader = ArrowKeyReader()
+        reader.enabled = True
+        reader.fd = read_fd
+
+        os.write(write_fd, b"\x1b")
+
+        assert reader.read_key() == "dismiss_overlay"
+    finally:
+        os.close(read_fd)
+        os.close(write_fd)
+
+
 def test_next_left_panel_view_cycles_in_declared_order():
     assert next_left_panel_view("tree") == "root"
     assert next_left_panel_view("root") == "all"
@@ -1482,6 +1510,71 @@ def test_operator_notice_summary_uses_notice_color():
     )
 
     assert "\x1b[33mCtrl+C received" in ansi
+
+
+def test_panel_copy_path_sanitizes_panel_name_and_run_id(tmp_path):
+    path = panel_copy_path(
+        "Run data",
+        '2/dashing "comical" potoo',
+        tmp_dir=tmp_path,
+    )
+
+    assert path == tmp_path / "panel-run-data-2-dashing-comical-potoo.txt"
+
+
+def test_render_panel_copy_text_exports_plain_text_without_ansi():
+    text = render_panel_copy_text(
+        "Logs",
+        Text("Training AutoGluon...", style="bold magenta"),
+        width=40,
+    )
+
+    assert text.startswith("# Logs\n\n")
+    assert "Training AutoGluon..." in text
+    assert "\x1b[" not in text
+
+
+def test_osc52_clipboard_sequence_encodes_text_for_terminal_clipboard():
+    sequence = osc52_clipboard_sequence("hello", tmux=False)
+
+    assert sequence == "\x1b]52;c;aGVsbG8=\x07"
+
+
+def test_osc52_clipboard_sequence_wraps_for_tmux_passthrough():
+    sequence = osc52_clipboard_sequence("hello", tmux=True)
+
+    assert sequence.startswith("\x1bPtmux;\x1b\x1b]52;c;")
+    assert sequence.endswith("\x07\x1b\\")
+    assert "aGVsbG8=" in sequence
+
+
+def test_save_panel_copy_writes_fallback_file(tmp_path):
+    path = save_panel_copy(
+        "logs",
+        "2-dashing-comical-potoo",
+        "# Logs\n\nline\n",
+        tmp_dir=tmp_path,
+    )
+
+    assert path == tmp_path / "panel-logs-2-dashing-comical-potoo.txt"
+    assert path.read_text(encoding="utf-8") == "# Logs\n\nline\n"
+
+
+def test_panel_copy_notice_shows_fallback_path(tmp_path):
+    path = tmp_path / "panel-logs-2-dashing-comical-potoo.txt"
+    console = Console(record=True, width=200, color_system=None)
+    console.print(
+        build_panel_copy_notice(
+            panel_title="Logs",
+            path=path,
+            osc52_sent=True,
+        )
+    )
+    output = console.export_text()
+
+    assert "Copied Logs" in output
+    assert "Sent to clipboard using OSC 52." in output
+    assert str(path) in output
 
 
 def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
