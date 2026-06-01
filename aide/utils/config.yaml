@@ -195,7 +195,7 @@ agent:
       s6e6_boost_gpu:
         included_model_types: [XGB, GBM, CAT]
         presets: medium_quality
-        time_limit: 3600
+        time_limit: 600
         use_gpu: true
         validation_strategy: holdout
         eval_metric: balanced_accuracy
@@ -218,6 +218,33 @@ agent:
         fit_args:
           save_space: true
           fit_weighted_ensemble: false
+          auto_stack: false
+      s6e6_boost_gpu_ens:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: true
+        validation_strategy: holdout
+        eval_metric: balanced_accuracy
+        hyperparameters:
+          GBM:
+            - ag_args_fit:
+                num_gpus: 0
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args_fit:
+                num_gpus: 1
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: true
           auto_stack: false
       full_boost_gpu_ens:
         included_model_types: [XGB, GBM, CAT]
