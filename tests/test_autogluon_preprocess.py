@@ -158,7 +158,7 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "TabularPredictor" in code
     assert "def preprocess(df):" in code
     assert "AIDE_RESULT_JSON:" in code
-    assert "'time_limit': 3600" in code
+    assert "'time_limit': 600" in code
     assert "'preprocess_timeout': 180" in code
     assert "train_features = train_df.drop(columns=[target_col, id_col]" in code
     assert "_make_combined_frame(train_features, test_features)" in code
