@@ -2,6 +2,7 @@ import gzip
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from aide.utils.config import _load_cfg, load_task_desc, prep_agent_workspace, prep_cfg
 
@@ -85,6 +86,29 @@ def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path)
     ]
 
 
+def test_agent_aux_merged_string_uses_existing_merged_flow(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(
+        data_dir / "train-aux.csv.gz",
+        "id,x,target\n1,2,0\n2,3,1\n",
+    )
+    _write_csv_gz(data_dir / "test-aux.csv.gz", "id,x\n10,4\n")
+    _write_csv_gz(data_dir / "sample_submission.csv.gz", "id,target\n10,0\n")
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "merged"
+
+    prep_agent_workspace(cfg)
+
+    input_dir = Path(cfg.workspace_dir) / "input"
+    assert sorted(path.name for path in input_dir.iterdir()) == [
+        "sample_submission.csv.gz",
+        "test.csv.gz",
+        "train.csv.gz",
+    ]
+    assert pd.read_csv(input_dir / "train.csv.gz").shape == (2, 3)
+
+
 def test_agent_aux_false_keeps_competition_train_and_original_dataset_only(tmp_path):
     data_dir = tmp_path / "data" / "playground-series-s6e5"
     _write_csv_gz(
@@ -115,6 +139,104 @@ def test_agent_aux_false_keeps_competition_train_and_original_dataset_only(tmp_p
     assert (input_dir / "f1_strategy_dataset_v4.csv").exists()
     assert not (input_dir / "train-aux.csv.gz").exists()
     assert not (input_dir / "test-aux.csv.gz").exists()
+
+
+def test_agent_aux_file_copies_single_raw_dataset_flat_without_merging(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(data_dir / "train.csv.gz", "id,x,target\n1,2,0\n")
+    _write_csv_gz(data_dir / "test.csv.gz", "id,x\n10,4\n")
+    _write_csv_gz(data_dir / "sample_submission.csv.gz", "id,target\n10,0\n")
+    nested_dir = data_dir / "original"
+    nested_dir.mkdir(parents=True)
+    (nested_dir / "external.csv").write_text(
+        "x,target,source_col\n5,1,a\n6,0,b\n",
+        encoding="utf-8",
+    )
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "external.csv"
+
+    prep_agent_workspace(cfg)
+
+    input_dir = Path(cfg.workspace_dir) / "input"
+    assert (input_dir / "external.csv").exists()
+    assert not (input_dir / "original" / "external.csv").exists()
+    assert pd.read_csv(input_dir / "train.csv.gz").shape == (1, 3)
+    assert pd.read_csv(input_dir / "external.csv").shape == (2, 3)
+
+
+def test_agent_aux_file_is_copied_even_when_copy_data_false(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(data_dir / "train.csv.gz", "id,x,target\n1,2,0\n")
+    _write_csv_gz(data_dir / "test.csv.gz", "id,x\n10,4\n")
+    _write_csv_gz(data_dir / "sample_submission.csv.gz", "id,target\n10,0\n")
+    nested_dir = data_dir / "original"
+    nested_dir.mkdir(parents=True)
+    (nested_dir / "external.csv").write_text("x,target\n5,1\n", encoding="utf-8")
+
+    cfg = _cfg(tmp_path)
+    cfg.copy_data = False
+    cfg.agent.aux = "external.csv"
+
+    prep_agent_workspace(cfg)
+
+    aux_link = Path(cfg.workspace_dir) / "input" / "external.csv"
+    assert not aux_link.is_symlink()
+    assert pd.read_csv(aux_link).shape == (1, 2)
+
+
+def test_agent_aux_file_appends_txt_description_from_source_directory(tmp_path):
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task\n", encoding="utf-8")
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    source_dir = data_dir / "original"
+    source_dir.mkdir(parents=True)
+    (source_dir / "external.csv").write_text("x,target\n5,1\n", encoding="utf-8")
+    (source_dir / "external.md").write_text("markdown description\n", encoding="utf-8")
+    (source_dir / "external.txt").write_text("text description\n", encoding="utf-8")
+
+    cfg = _cfg(tmp_path)
+    cfg.desc_file = desc_file
+    cfg.agent.aux = "external.csv"
+
+    task_desc = load_task_desc(cfg)
+
+    assert "Additional auxiliary data description for `external.csv`" in task_desc
+    assert "text description" in task_desc
+    assert "markdown description" not in task_desc
+
+
+def test_agent_aux_file_uses_md_description_when_txt_missing(tmp_path):
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task\n", encoding="utf-8")
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    source_dir = data_dir / "original"
+    source_dir.mkdir(parents=True)
+    (source_dir / "external.csv.gz").write_text("not actually read here\n", encoding="utf-8")
+    (source_dir / "external.md").write_text("markdown description\n", encoding="utf-8")
+
+    cfg = _cfg(tmp_path)
+    cfg.desc_file = desc_file
+    cfg.agent.aux = "external.csv.gz"
+
+    task_desc = load_task_desc(cfg)
+
+    assert "Additional auxiliary data description for `external.csv.gz`" in task_desc
+    assert "markdown description" in task_desc
+
+
+def test_agent_aux_file_without_description_adds_no_aux_description(tmp_path):
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("task\n", encoding="utf-8")
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    (data_dir / "external.csv").parent.mkdir(parents=True, exist_ok=True)
+    (data_dir / "external.csv").write_text("x,target\n5,1\n", encoding="utf-8")
+
+    cfg = _cfg(tmp_path)
+    cfg.desc_file = desc_file
+    cfg.agent.aux = "external.csv"
+
+    assert load_task_desc(cfg) == "task\n"
 
 
 def test_agent_aux_appends_merged_external_data_note_to_task_desc(tmp_path):
@@ -148,3 +270,52 @@ def test_agent_aux_false_does_not_append_external_data_note(tmp_path):
 
     assert "original/external F1 strategy dataset" not in task_desc
     assert "source_is_aux" not in task_desc
+
+
+@pytest.mark.parametrize(
+    "aux_value",
+    [
+        "[a.csv,b.csv]",
+        "a.csv,b.csv",
+        "foo.parquet",
+        "dir/file.csv",
+        "../file.csv",
+        "train.csv",
+    ],
+)
+def test_agent_aux_file_rejects_invalid_values(tmp_path, aux_value):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(data_dir / "train.csv.gz", "id,x,target\n1,2,0\n")
+    _write_csv_gz(data_dir / "test.csv.gz", "id,x\n10,4\n")
+    _write_csv_gz(data_dir / "sample_submission.csv.gz", "id,target\n10,0\n")
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = aux_value
+
+    with pytest.raises(ValueError):
+        prep_agent_workspace(cfg)
+
+
+def test_agent_aux_file_rejects_missing_file(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(data_dir / "train.csv.gz", "id,x,target\n1,2,0\n")
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "external.csv"
+
+    with pytest.raises(FileNotFoundError):
+        prep_agent_workspace(cfg)
+
+
+def test_agent_aux_file_rejects_ambiguous_filename(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    _write_csv_gz(data_dir / "train.csv.gz", "id,x,target\n1,2,0\n")
+    for parent in (data_dir / "a", data_dir / "b"):
+        parent.mkdir(parents=True)
+        (parent / "external.csv").write_text("x,target\n5,1\n", encoding="utf-8")
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "external.csv"
+
+    with pytest.raises(ValueError, match="matched multiple files"):
+        prep_agent_workspace(cfg)

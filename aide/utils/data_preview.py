@@ -132,12 +132,14 @@ def generate(
     include_file_details=True,
     simple=False,
     include_file_tree=True,
+    detailed_files=None,
 ):
     """
     Generate a textual preview of a directory, including an overview of the directory
     structure and previews of individual files
     """
     out = []
+    detailed_files = set(detailed_files or [])
     if include_file_tree:
         out.append(f"```\n{file_tree(base_path)}```")
 
@@ -146,7 +148,13 @@ def generate(
             file_name = str(fn.relative_to(base_path))
 
             if is_csv_file(fn):
-                out.append(preview_csv(fn, file_name, simple=simple))
+                out.append(
+                    preview_csv(
+                        fn,
+                        file_name,
+                        simple=False if file_name in detailed_files else simple,
+                    )
+                )
             elif fn.suffix == ".json":
                 out.append(preview_json(fn, file_name))
             elif fn.suffix in plaintext_files:
@@ -166,6 +174,7 @@ def generate(
             include_file_details=include_file_details,
             simple=True,
             include_file_tree=include_file_tree,
+            detailed_files=detailed_files,
         )
 
     return result

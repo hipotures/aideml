@@ -2,12 +2,13 @@
 
 import gzip
 import json
+import os
 import shutil
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Hashable, cast
+from typing import Callable, Hashable, Literal, cast
 
 import coolname
 import rich
@@ -113,7 +114,7 @@ class SearchConfig:
     debug_prob: float
     num_drafts: int
     exploration_weight: float = 0.0
-    best_score_min_children_before_exploration: int = 3
+    best_score_min_children_before_exploration: int = 5
     disable_oom_saturated_parents: bool = False
     hypothesis_child_order: str = "root_score"
     forced_root: str | None = None
@@ -151,7 +152,7 @@ class AgentConfig:
 
     search: SearchConfig
     gpu: bool = False
-    aux: bool = False
+    aux: bool | str | None = False
     mode: str = "legacy"
     autogluon: AutoGluonConfig = field(default_factory=AutoGluonConfig)
 
@@ -468,9 +469,130 @@ def load_task_desc(cfg: Config):
     return _with_aux_task_desc_note(task_desc, cfg)
 
 
+AuxMode = Literal["off", "merged", "file"]
+RESERVED_AUX_INPUT_NAMES = {
+    "train.csv",
+    "train.csv.gz",
+    "test.csv",
+    "test.csv.gz",
+    "sample_submission.csv",
+    "sample_submission.csv.gz",
+}
+
+
+def aux_mode(cfg: Config) -> AuxMode:
+    raw = getattr(cfg.agent, "aux", False)
+    if raw is None or raw is False:
+        return "off"
+    if raw is True:
+        return "merged"
+    if not isinstance(raw, str):
+        raise ValueError(
+            "agent.aux must be false, true, 'merged', 'merge', or a single "
+            ".csv/.csv.gz filename."
+        )
+
+    value = raw.strip()
+    lowered = value.lower()
+    if lowered in {"", "false", "off", "none", "null", "~"}:
+        return "off"
+    if lowered in {"true", "merged", "merge"}:
+        return "merged"
+    _validate_aux_filename(value)
+    return "file"
+
+
+def aux_file_name(cfg: Config) -> str | None:
+    if aux_mode(cfg) != "file":
+        return None
+    return str(getattr(cfg.agent, "aux")).strip()
+
+
+def _validate_aux_filename(value: str) -> None:
+    if "," in value or value.startswith("[") or value.endswith("]"):
+        raise ValueError("agent.aux accepts only one auxiliary CSV file per run.")
+    candidate = Path(value)
+    if candidate.is_absolute() or candidate.name != value or ".." in candidate.parts:
+        raise ValueError(
+            "agent.aux file mode accepts a filename only, not a path: "
+            f"{value!r}"
+        )
+    if not (value.endswith(".csv") or value.endswith(".csv.gz")):
+        raise ValueError(
+            "agent.aux file mode requires a .csv or .csv.gz filename: "
+            f"{value!r}"
+        )
+    if value in RESERVED_AUX_INPUT_NAMES:
+        raise ValueError(f"agent.aux cannot overwrite competition input file {value!r}.")
+
+
+def resolve_aux_source_file(cfg: Config) -> Path | None:
+    name = aux_file_name(cfg)
+    if name is None:
+        return None
+
+    direct = cfg.data_dir / name
+    if direct.exists() and direct.is_file():
+        return direct
+
+    matches = sorted(path for path in cfg.data_dir.rglob(name) if path.is_file())
+    if not matches:
+        raise FileNotFoundError(
+            f"agent.aux={name!r} did not match any file under {cfg.data_dir}"
+        )
+    if len(matches) > 1:
+        formatted = ", ".join(str(path.relative_to(cfg.data_dir)) for path in matches)
+        raise ValueError(
+            f"agent.aux={name!r} matched multiple files under {cfg.data_dir}: "
+            f"{formatted}"
+        )
+    return matches[0]
+
+
+def _aux_description_stem(source: Path) -> str:
+    name = source.name
+    if name.endswith(".csv.gz"):
+        return name[: -len(".csv.gz")]
+    return source.stem
+
+
+def resolve_aux_description_file(cfg: Config) -> Path | None:
+    source = resolve_aux_source_file(cfg)
+    if source is None:
+        return None
+    stem = _aux_description_stem(source)
+    for suffix in (".txt", ".md"):
+        candidate = source.with_name(f"{stem}{suffix}")
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
+def _append_task_desc_note(task_desc, title: str, body: str):
+    if isinstance(task_desc, str):
+        return f"{task_desc.rstrip()}\n\n{title}\n\n{body.rstrip()}\n"
+
+    task_desc = dict(task_desc)
+    task_desc[title.rstrip(":")] = body.rstrip()
+    return task_desc
+
+
 def _with_aux_task_desc_note(task_desc, cfg: Config):
-    if not getattr(cfg.agent, "aux", False):
+    mode = aux_mode(cfg)
+    if mode == "off":
         return task_desc
+
+    if mode == "file":
+        description_path = resolve_aux_description_file(cfg)
+        if description_path is None:
+            return task_desc
+        name = aux_file_name(cfg)
+        body = description_path.read_text(encoding="utf-8")
+        return _append_task_desc_note(
+            task_desc,
+            f"Additional auxiliary data description for `{name}`:",
+            body,
+        )
 
     note = (
         "Additional data note: In this run, `train.csv.gz` has been prebuilt by "
@@ -484,12 +606,7 @@ def _with_aux_task_desc_note(task_desc, cfg: Config):
         "competition test file."
     )
 
-    if isinstance(task_desc, str):
-        return f"{task_desc.rstrip()}\n\n{note}\n"
-
-    task_desc = dict(task_desc)
-    task_desc["Additional data note"] = note
-    return task_desc
+    return _append_task_desc_note(task_desc, "Additional data note:", note)
 
 
 def prep_agent_workspace(cfg: Config):
@@ -497,11 +614,14 @@ def prep_agent_workspace(cfg: Config):
     (cfg.workspace_dir / "input").mkdir(parents=True, exist_ok=True)
     (cfg.workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
-    if getattr(cfg.agent, "aux", False):
+    mode = aux_mode(cfg)
+    if mode == "merged":
         copy_aux_input(cfg)
     else:
         copytree(cfg.data_dir, cfg.workspace_dir / "input", use_symlinks=not cfg.copy_data)
         hide_aux_input(cfg.workspace_dir / "input")
+        if mode == "file":
+            copy_aux_file_input(cfg)
     if cfg.preprocess_data:
         preproc_data(cfg.workspace_dir / "input")
 
@@ -512,7 +632,7 @@ def _copy_or_symlink_file(source: Path, destination: Path, *, copy_data: bool) -
     if copy_data:
         shutil.copyfile(source, destination)
     else:
-        destination.symlink_to(source)
+        destination.symlink_to(os.path.relpath(source, start=destination.parent))
 
 
 def copy_aux_input(cfg: Config) -> None:
@@ -548,6 +668,25 @@ def copy_aux_input(cfg: Config) -> None:
         copy_data=bool(cfg.copy_data),
     )
     validate_aux_workspace_input(input_dir)
+
+
+def copy_aux_file_input(cfg: Config) -> None:
+    source = resolve_aux_source_file(cfg)
+    if source is None:
+        return
+    input_dir = cfg.workspace_dir / "input"
+    destination = input_dir / source.name
+
+    _copy_or_symlink_file(source, destination, copy_data=True)
+
+    source_rel = source.relative_to(cfg.data_dir)
+    if len(source_rel.parts) > 1:
+        copied_top_level = input_dir / source_rel.parts[0]
+        if copied_top_level.exists() or copied_top_level.is_symlink():
+            if copied_top_level.is_symlink() or copied_top_level.is_file():
+                copied_top_level.unlink()
+            else:
+                shutil.rmtree(copied_top_level)
 
 
 def validate_aux_workspace_input(input_dir: Path) -> None:

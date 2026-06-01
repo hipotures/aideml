@@ -45,7 +45,7 @@ from .research import (
 )
 from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
-from .utils.config import Config
+from .utils.config import Config, aux_file_name
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.node_artifacts import node_artifact_dir as artifact_dir_for_node
 from .utils.response import (
@@ -1668,9 +1668,14 @@ class Agent:
         workspace_input_dir = Path(self.cfg.workspace_dir) / "input"
         data_dir = workspace_input_dir if workspace_input_dir.exists() else Path(self.cfg.data_dir)
         if data_dir.exists():
+            detailed_files = []
+            aux_name = aux_file_name(self.cfg)
+            if aux_name is not None:
+                detailed_files.append(aux_name)
             self.data_preview = data_preview.generate(
                 data_dir,
                 include_file_tree=False,
+                detailed_files=detailed_files,
             )
         else:
             self.data_preview = build_data_overview(self.cfg)

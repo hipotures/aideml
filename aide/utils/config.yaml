@@ -96,7 +96,10 @@ agent:
   data_preview: True
   # whether legacy full-script prompts should prefer CUDA/GPU-capable tabular models
   gpu: false
-  # whether workspace/input should use the merged competition + auxiliary train data
+  # auxiliary data mode:
+  # false/off = normal competition files
+  # true/merged/merge = use prebuilt train-aux/test-aux files as train/test
+  # <file.csv|file.csv.gz> = expose one raw auxiliary CSV flat in workspace/input
   aux: false
 
   # LLM settings for coding
@@ -117,7 +120,7 @@ agent:
     debug_prob: 0.5
     num_drafts: 5
     exploration_weight: 0.0
-    best_score_min_children_before_exploration: 3
+    best_score_min_children_before_exploration: 5
     disable_oom_saturated_parents: false
     hypothesis_child_order: root_score
     # Hypothesis mode only: when set to a root hypothesis id, search only expands

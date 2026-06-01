@@ -1,9 +1,15 @@
 import logging
+import os
 import shutil
 import zipfile
 from pathlib import Path
 
 logger = logging.getLogger("aide")
+
+
+def _relative_symlink_to(source: Path, destination: Path) -> None:
+    target = os.path.relpath(source, start=destination.parent)
+    destination.symlink_to(target)
 
 
 def copytree(src: Path, dst: Path, use_symlinks=True):
@@ -21,7 +27,7 @@ def copytree(src: Path, dst: Path, use_symlinks=True):
         dest_f = dst / src.name
         assert not dest_f.exists(), dest_f
         if use_symlinks:
-            (dest_f).symlink_to(src)
+            _relative_symlink_to(src, dest_f)
         else:
             shutil.copyfile(src, dest_f)
         return
@@ -30,7 +36,7 @@ def copytree(src: Path, dst: Path, use_symlinks=True):
         dest_f = dst / f.name
         assert not dest_f.exists(), dest_f
         if use_symlinks:
-            (dest_f).symlink_to(f)
+            _relative_symlink_to(f, dest_f)
         elif f.is_dir():
             shutil.copytree(f, dest_f)
         else:
