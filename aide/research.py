@@ -964,6 +964,15 @@ def _compatible_manual_hypotheses(
     ]
 
 
+def _matches_manual_hypothesis_agent_mode(
+    cfg: Config,
+    hypothesis: ManualHypothesis,
+) -> bool:
+    if getattr(cfg.research, "ignore_hypothesis_agent_modes", False):
+        return True
+    return _manual_agent_mode_key(cfg) in hypothesis.agent_modes
+
+
 def hypothesis_id_for_node(node: Node) -> str | None:
     if getattr(node, "research_mode", None) != "hypothesis":
         return None
@@ -1480,11 +1489,16 @@ def reserve_hypothesis_roots(
     }
 
     if forced_hypothesis_ids:
+        forced_by_id = {
+            hypothesis.id: hypothesis
+            for hypothesis in library.hypotheses
+            if _matches_manual_hypothesis_agent_mode(cfg, hypothesis)
+        }
         ordered_forced_ids = list(dict.fromkeys(forced_hypothesis_ids))
         missing_ids = [
             hypothesis_id
             for hypothesis_id in ordered_forced_ids
-            if hypothesis_id not in compatible_by_id
+            if hypothesis_id not in forced_by_id
         ]
         if missing_ids:
             raise ValueError(
@@ -1500,7 +1514,7 @@ def reserve_hypothesis_roots(
                 continue
             if len(reservations) >= count:
                 break
-            hypothesis = compatible_by_id[hypothesis_id]
+            hypothesis = forced_by_id[hypothesis_id]
             step = completed_steps + len(reservations)
             created_at = dt.datetime.now().isoformat(timespec="seconds")
             _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
