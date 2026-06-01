@@ -158,7 +158,7 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "TabularPredictor" in code
     assert "def preprocess(df):" in code
     assert "AIDE_RESULT_JSON:" in code
-    assert "'time_limit': 600" in code
+    assert "'time_limit': 3600" in code
     assert "'preprocess_timeout': 180" in code
     assert "train_features = train_df.drop(columns=[target_col, id_col]" in code
     assert "_make_combined_frame(train_features, test_features)" in code
@@ -203,6 +203,20 @@ def test_build_autogluon_wrapper_emits_run_stats_collection(tmp_path):
     assert "training_time = time.time() - training_started_at" in code
     assert "leaderboard = predictor.leaderboard(silent=True)" in code
     assert '"run_stats": run_stats' in code
+
+
+def test_autogluon_wrapper_balanced_accuracy_uses_class_predictions(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.eval_metric = "balanced_accuracy"
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    compile(code, "<generated_autogluon_wrapper>", "exec")
+    assert "'eval_metric': 'balanced_accuracy'" in code
+    assert "def _predict_values" in code
+    assert "pred = predictor.predict(data, model=model)" in code
+    assert "test_pred = _predict_values(" in code
+    assert "eval_metric=eval_metric" in code
 
 
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):

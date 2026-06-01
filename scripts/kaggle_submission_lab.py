@@ -692,20 +692,26 @@ def _remote_display_rows(
     registry: smart.SubmissionRegistry,
     remote_submissions: list[Any] | None,
     record_lookup: dict[tuple[str, str], dict[str, Any]] | None = None,
+    competition: str | None = None,
 ) -> list[dict[str, Any]]:
     if remote_submissions is None:
         return []
 
-    known_refs = {smart._entry_ref(entry) for entry in registry.entries}
-    known_timestamps = {str(entry.get("timestamp") or "") for entry in registry.entries}
+    registry_entries = [
+        entry
+        for entry in registry.entries
+        if competition is None or entry.get("competition") == competition
+    ]
+    known_refs = {smart._entry_ref(entry) for entry in registry_entries}
+    known_timestamps = {str(entry.get("timestamp") or "") for entry in registry_entries}
     known_hashes = [
         str(entry.get("sha256") or "")
-        for entry in registry.entries
+        for entry in registry_entries
         if entry.get("sha256")
     ]
     known_files = {
         str(entry.get("remote_filename") or "")
-        for entry in registry.entries
+        for entry in registry_entries
         if entry.get("remote_filename")
     }
     rows = []
@@ -862,6 +868,7 @@ def render_registry_table(
     full_view: bool = False,
     limit: int | None = 20,
     run_filters: list[str] | None = None,
+    competition: str | None = None,
 ) -> None:
     sorted_rows = registry_display_rows(
         registry,
@@ -869,6 +876,7 @@ def render_registry_table(
         records=records,
         limit=limit,
         run_filters=run_filters,
+        competition=competition,
     )
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
@@ -920,6 +928,7 @@ def registry_display_rows(
     records: list[dict[str, Any]] | None = None,
     limit: int | None = 20,
     run_filters: list[str] | None = None,
+    competition: str | None = None,
 ) -> list[dict[str, Any]]:
     record_lookup = _registry_record_lookup(records)
     rows = [
@@ -936,8 +945,16 @@ def registry_display_rows(
             "sha256": entry.get("sha256"),
         }
         for entry in registry.entries
+        if competition is None or entry.get("competition") == competition
     ]
-    rows.extend(_remote_display_rows(registry, remote_submissions, record_lookup))
+    rows.extend(
+        _remote_display_rows(
+            registry,
+            remote_submissions,
+            record_lookup,
+            competition=competition,
+        )
+    )
     if run_filters:
         selected_runs = set(run_filters)
         rows = [
@@ -959,6 +976,7 @@ def registry_display_table(
     full_view: bool = False,
     limit: int | None = 20,
     run_filters: list[str] | None = None,
+    competition: str | None = None,
 ) -> tuple[list[str], list[list[str]]]:
     columns = ["#", "cv", "public", "status", "run", "hyp", "Algo", "step", "date", "sha"]
     if full_view:
@@ -972,6 +990,7 @@ def registry_display_table(
         records=records,
         limit=limit,
         run_filters=run_filters,
+        competition=competition,
     ):
         remote_status = str(entry.get("remote_status") or "")
         if remote_status.upper() == "COMPLETE":
@@ -1018,6 +1037,7 @@ def build_output_payload(
     full_view: bool,
     registry_limit: int | None,
     run_filters: list[str] | None,
+    competition: str | None = None,
 ) -> dict[str, Any]:
     return {
         "selected": _json_safe(selected),
@@ -1028,6 +1048,7 @@ def build_output_payload(
                 records=records,
                 limit=registry_limit,
                 run_filters=run_filters,
+                competition=competition,
             )
         ),
         "remote_visible": None if remote_submissions is None else len(remote_submissions),
@@ -1234,6 +1255,7 @@ def main(argv: list[str] | None = None) -> int:
                 full_view=args.full_view,
                 limit=registry_limit,
                 run_filters=run_filters,
+                competition=args.competition,
             )
             if remote_submissions is not None:
                 console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
@@ -1253,6 +1275,7 @@ def main(argv: list[str] | None = None) -> int:
                     full_view=args.full_view,
                     limit=registry_limit,
                     run_filters=run_filters,
+                    competition=args.competition,
                 ),
             )
             if remote_submissions is not None:
@@ -1270,6 +1293,7 @@ def main(argv: list[str] | None = None) -> int:
                         full_view=args.full_view,
                         registry_limit=registry_limit,
                         run_filters=run_filters,
+                        competition=args.competition,
                     ),
                     indent=2,
                     sort_keys=True,

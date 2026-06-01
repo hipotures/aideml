@@ -29,6 +29,7 @@ class SampleSubmissionContract:
     columns: tuple[str, ...]
     id_col: str
     target_col: str
+    target_is_numeric: bool
     row_count: int
     ids: frozenset[str]
 
@@ -52,6 +53,10 @@ def _is_numeric_submission_value(value: str) -> bool:
     except ValueError:
         return False
     return not math.isnan(number)
+
+
+def _is_categorical_submission_value(value: str) -> bool:
+    return str(value).strip() != ""
 
 
 def _row_value(row: list[str], index: int) -> str:
@@ -79,16 +84,21 @@ def _sample_contract_cached(
         id_col = columns[0]
         target_col = columns[1]
         id_index = 0
+        target_index = 1
         ids: set[str] = set()
         row_count = 0
+        target_is_numeric = True
         for row in reader:
             row_count += 1
             ids.add(_normalize_id(_row_value(row, id_index)))
+            if not _is_numeric_submission_value(_row_value(row, target_index)):
+                target_is_numeric = False
 
     return SampleSubmissionContract(
         columns=columns,
         id_col=id_col,
         target_col=target_col,
+        target_is_numeric=target_is_numeric,
         row_count=row_count,
         ids=frozenset(ids),
     )
@@ -141,7 +151,12 @@ def validate_submission_file(
                     seen_ids.add(row_id)
                 if row_id not in sample_contract.ids:
                     extra_ids += 1
-                if not _is_numeric_submission_value(_row_value(row, target_index)):
+                target_value = _row_value(row, target_index)
+                if sample_contract.target_is_numeric:
+                    valid_prediction = _is_numeric_submission_value(target_value)
+                else:
+                    valid_prediction = _is_categorical_submission_value(target_value)
+                if not valid_prediction:
                     invalid_prediction = True
     except Exception as exc:
         return f"cannot read submission/sample: {type(exc).__name__}: {exc}"
@@ -157,7 +172,9 @@ def validate_submission_file(
         return f"id mismatch: missing={missing_ids}, extra={extra_ids}"
 
     if invalid_prediction:
-        return f"{sample_contract.target_col} contains non-numeric or null values"
+        if sample_contract.target_is_numeric:
+            return f"{sample_contract.target_col} contains non-numeric or null values"
+        return f"{sample_contract.target_col} contains empty or null class labels"
 
     return None
 

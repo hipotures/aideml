@@ -346,6 +346,31 @@ def _positive_probability_from_proba(proba) -> pd.Series:
     return proba.iloc[:, -1].reset_index(drop=True)
 
 
+def _prediction_from_proba(proba) -> pd.Series:
+    if isinstance(proba, pd.Series):
+        return proba.reset_index(drop=True)
+    return proba.idxmax(axis=1).reset_index(drop=True)
+
+
+def _values_from_proba(proba, *, eval_metric: str) -> pd.Series:
+    if eval_metric == "roc_auc":
+        return _positive_probability_from_proba(proba)
+    return _prediction_from_proba(proba)
+
+
+def _predict_values(
+    predictor: TabularPredictor,
+    data: pd.DataFrame,
+    *,
+    eval_metric: str,
+    model: str | None = None,
+) -> pd.Series:
+    if eval_metric == "roc_auc":
+        return _positive_probability(predictor, data, model=model)
+    pred = predictor.predict(data, model=model)
+    return pd.Series(pred).reset_index(drop=True)
+
+
 def _make_combined_frame(train_df: pd.DataFrame, test_df: pd.DataFrame) -> pd.DataFrame:
     train_part = train_df.copy()
     test_part = test_df.copy()
@@ -388,7 +413,12 @@ def _validate_preprocessed_frame(
 def _infer_metric(target: pd.Series) -> tuple[str, str | None]:
     configured = AIDE_AG_CONFIG.get("eval_metric", "auto")
     if configured != "auto":
-        return configured, "binary" if target.nunique(dropna=True) == 2 else None
+        unique_count = target.nunique(dropna=True)
+        if unique_count == 2:
+            return configured, "binary"
+        if pd.api.types.is_object_dtype(target) or pd.api.types.is_categorical_dtype(target):
+            return configured, "multiclass"
+        return configured, None
     if target.nunique(dropna=True) == 2:
         return "roc_auc", "binary"
     return "accuracy", None
@@ -485,6 +515,7 @@ def _save_autogluon_prediction_artifacts(
     test_model: pd.DataFrame,
     test_ids: pd.Series,
     test_pred: pd.Series,
+    eval_metric: str,
     working_dir: Path,
     id_col: str,
     target_col: str,
@@ -512,7 +543,10 @@ def _save_autogluon_prediction_artifacts(
                     transformed=False,
                     as_multiclass=True,
                 )
-                model_oof_pred = _positive_probability_from_proba(model_oof_proba)
+                model_oof_pred = _values_from_proba(
+                    model_oof_proba,
+                    eval_metric=eval_metric,
+                )
                 if len(model_oof_pred) != len(train_target):
                     raise ValueError(
                         f"OOF row count {{len(model_oof_pred)}} != train rows {{len(train_target)}}"
@@ -529,7 +563,12 @@ def _save_autogluon_prediction_artifacts(
                     working_dir,
                     f"model_predictions/{{safe_model_name}}-oof.csv",
                 )
-                model_test_pred = _positive_probability(predictor, test_model, model=model_name)
+                model_test_pred = _predict_values(
+                    predictor,
+                    test_model,
+                    eval_metric=eval_metric,
+                    model=model_name,
+                )
                 model_test_frame = pd.DataFrame({{
                     id_col: pd.Series(test_ids).reset_index(drop=True),
                     target_col: pd.Series(model_test_pred).reset_index(drop=True),
@@ -559,7 +598,7 @@ def _save_autogluon_prediction_artifacts(
             transformed=False,
             as_multiclass=True,
         )
-        oof_pred = _positive_probability_from_proba(oof_proba)
+        oof_pred = _values_from_proba(oof_proba, eval_metric=eval_metric)
         if len(oof_pred) != len(train_target):
             raise ValueError(f"OOF row count {{len(oof_pred)}} != train rows {{len(train_target)}}")
         oof_frame = pd.DataFrame({{
@@ -781,7 +820,11 @@ def main() -> None:
             flush=True,
         )
     elif AIDE_AG_CONFIG.get("validation_strategy") == "holdout":
-        stratify = train_model[target_col] if problem_type == "binary" else None
+        stratify = (
+            train_model[target_col]
+            if problem_type in ("binary", "multiclass")
+            else None
+        )
         train_data, valid_data = train_test_split(
             train_model,
             test_size=AIDE_AG_CONFIG.get("validation_fraction", 0.2),
@@ -841,17 +884,27 @@ def main() -> None:
             metric_value = float(roc_auc_score(valid_data[target_col], valid_pred))
             lower_is_better = False
         else:
+            valid_pred = _predict_values(
+                predictor,
+                valid_data.drop(columns=[target_col]),
+                eval_metric=eval_metric,
+            )
             scores = predictor.evaluate(valid_data, silent=True)
             metric_value = float(scores.get(eval_metric))
             lower_is_better = False
 
-        test_pred = _positive_probability(predictor, test_model)
+        test_pred = _predict_values(
+            predictor,
+            test_model,
+            eval_metric=eval_metric,
+        )
         prediction_artifacts = _save_autogluon_prediction_artifacts(
             predictor,
             train_target=y_train,
             test_model=test_model,
             test_ids=test_df[id_col],
             test_pred=test_pred,
+            eval_metric=eval_metric,
             working_dir=working_dir,
             id_col=id_col,
             target_col=target_col,

@@ -175,3 +175,6 @@ experiments/
 node_modules/
 package.json
 package-lock.json
+
+# Local Kaggle competition data
+aide/example_tasks/playground-series-s6e6/

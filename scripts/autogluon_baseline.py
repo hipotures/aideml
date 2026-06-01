@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pandas as pd
 from autogluon.tabular import TabularPredictor
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
 
 
 DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e6")
-TARGET = "PitNextLap"
+TARGET = "class"
 ID_COL = "id"
 
 
@@ -35,14 +35,6 @@ def read_csv(data_dir: Path, name: str) -> pd.DataFrame:
     return pd.read_csv(csv_path)
 
 
-def positive_probability(predictor: TabularPredictor, data: pd.DataFrame) -> pd.Series:
-    proba = predictor.predict_proba(data)
-    for positive_class in (1, 1.0, "1", "1.0", True):
-        if positive_class in proba.columns:
-            return proba[positive_class]
-    return proba.iloc[:, -1]
-
-
 def main() -> None:
     args = parse_args()
     train = read_csv(args.data_dir, "train")
@@ -61,8 +53,8 @@ def main() -> None:
 
     predictor = TabularPredictor(
         label=TARGET,
-        problem_type="binary",
-        eval_metric="roc_auc",
+        problem_type="multiclass",
+        eval_metric="balanced_accuracy",
         path=str(args.model_dir),
         verbosity=2,
     ).fit(
@@ -72,14 +64,11 @@ def main() -> None:
         time_limit=args.time_limit,
     )
 
-    valid_pred = positive_probability(
-        predictor,
-        valid_data.drop(columns=[TARGET]),
-    )
-    auc = roc_auc_score(valid_data[TARGET], valid_pred)
-    print(f"Validation ROC AUC: {auc:.5f}")
+    valid_pred = predictor.predict(valid_data.drop(columns=[TARGET]))
+    score = balanced_accuracy_score(valid_data[TARGET], valid_pred)
+    print(f"Validation balanced accuracy: {score:.5f}")
 
-    test_pred = positive_probability(predictor, test_features)
+    test_pred = predictor.predict(test_features)
     submission = sample_submission.copy()
     submission[TARGET] = test_pred.to_numpy()
     submission.to_csv(args.output, index=False)

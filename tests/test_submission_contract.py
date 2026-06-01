@@ -7,6 +7,7 @@ from aide.journal import Journal, Node
 import aide.run as run_module
 import aide.utils.submission_validation as submission_validation
 from aide.run import enforce_journal_submission_contract, enforce_submission_contract
+from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
 from aide.utils.metric import MetricValue
 from aide.utils.submission_validation import validate_workspace_submission
 
@@ -46,6 +47,33 @@ def test_validate_workspace_submission_streams_without_pandas(tmp_path):
 
     assert not hasattr(submission_validation, "pd")
     assert validate_workspace_submission(workspace_dir) is None
+
+
+def test_validate_workspace_submission_accepts_categorical_labels(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    input_dir = workspace_dir / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "sample_submission.csv").write_text(
+        "id,class\n1,GALAXY\n2,GALAXY\n"
+    )
+    _write_submission(workspace_dir, "id,class\n1,STAR\n2,QSO\n")
+
+    assert validate_workspace_submission(workspace_dir) is None
+
+
+def test_validate_workspace_submission_rejects_empty_categorical_labels(tmp_path):
+    workspace_dir = tmp_path / "workspace"
+    input_dir = workspace_dir / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "sample_submission.csv").write_text(
+        "id,class\n1,GALAXY\n2,GALAXY\n"
+    )
+    _write_submission(workspace_dir, "id,class\n1,STAR\n2,\n")
+
+    assert (
+        validate_workspace_submission(workspace_dir)
+        == "class contains empty or null class labels"
+    )
 
 
 def test_validate_workspace_submission_supports_gzipped_sample(tmp_path):
@@ -137,7 +165,7 @@ def test_enforce_journal_submission_contract_marks_saved_invalid_artifact(tmp_pa
     node.analysis = "ran successfully"
     journal = Journal()
     journal.append(node)
-    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir = log_dir / "artifacts" / artifact_timestamp_from_ctime(node.ctime)
     artifact_dir.mkdir(parents=True)
     (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n1,0.9\n")
 
@@ -165,7 +193,7 @@ def test_enforce_journal_submission_contract_caches_valid_artifact(tmp_path, mon
     node.analysis = "ran successfully"
     journal = Journal()
     journal.append(node)
-    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir = log_dir / "artifacts" / artifact_timestamp_from_ctime(node.ctime)
     artifact_dir.mkdir(parents=True)
     (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n2,0.9\n")
     cfg = DummyConfig(workspace_dir=workspace_dir, log_dir=log_dir)
@@ -206,7 +234,7 @@ def test_force_recheck_can_restore_fixed_submission_validation_error(tmp_path):
     }
     journal = Journal()
     journal.append(node)
-    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir = log_dir / "artifacts" / artifact_timestamp_from_ctime(node.ctime)
     artifact_dir.mkdir(parents=True)
     (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n2,0.9\n")
 
