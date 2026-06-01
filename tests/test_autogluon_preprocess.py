@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from aide.interpreter import RedirectQueue
@@ -101,10 +102,29 @@ def test_validate_preprocess_source_rejects_row_id_reference():
 
 
 def test_validate_preprocess_source_rejects_parent_composition_signature():
-    with pytest.raises(ValueError, match="exactly one argument"):
+    with pytest.raises(ValueError, match="second argument must be named `aux`"):
         validate_preprocess_source(
             "def preprocess(df, _base_preprocess=globals().get('preprocess')):\n"
             "    return _base_preprocess(df) if _base_preprocess else df\n",
+            target_col="PitNextLap",
+        )
+
+
+def test_validate_preprocess_source_accepts_optional_aux_argument():
+    validate_preprocess_source(
+        "def preprocess(df, aux):\n"
+        "    out = df.copy()\n"
+        "    out['aux_rows'] = len(aux)\n"
+        "    return out\n",
+        target_col="PitNextLap",
+    )
+
+
+def test_validate_preprocess_source_rejects_misnamed_aux_argument():
+    with pytest.raises(ValueError, match="second argument must be named `aux`"):
+        validate_preprocess_source(
+            "def preprocess(df, external):\n"
+            "    return df\n",
             target_col="PitNextLap",
         )
 
@@ -167,6 +187,7 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "verbosity=2" in code
     assert "import sys" in code
     assert "import signal" in code
+    assert "import inspect" in code
     assert 'os.environ.get("AIDE_NODE_ARTIFACT_DIR"' in code
     assert "def _preprocess_timeout" in code
     assert "AIDE AutoGluon preprocess exceeded the dedicated timeout" in code
@@ -189,6 +210,54 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert 'print("AIDE AutoGluon: starting fit", flush=True)' in code
     assert 'if __name__ == "__main__"' not in code
     assert code.rstrip().endswith("main()")
+
+
+def test_autogluon_wrapper_passes_aux_when_preprocess_accepts_it(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "external.csv"
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df, aux):\n"
+        "    out = df.copy()\n"
+        "    out['aux_rows'] = len(aux)\n"
+        "    return out\n",
+        cfg,
+    )
+    namespace: dict[str, object] = {}
+    exec(code.rsplit("\nmain()", 1)[0], namespace)
+
+    result = namespace["_run_preprocess"](
+        pd.DataFrame({"x": [1, 2]}),
+        pd.DataFrame({"x": [10, 11, 12]}),
+    )
+
+    assert "'aux_file': 'external.csv'" in code
+    assert "def _read_aux_csv" in code
+    assert "AIDE AutoGluon: loaded aux file " in code
+    assert "passed_to_preprocess=" in code
+    assert result["aux_rows"].to_list() == [3, 3]
+
+
+def test_autogluon_wrapper_keeps_single_argument_preprocess_with_aux_file(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.aux = "external.csv"
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df):\n"
+        "    out = df.copy()\n"
+        "    out['used_aux'] = 0\n"
+        "    return out\n",
+        cfg,
+    )
+    namespace: dict[str, object] = {}
+    exec(code.rsplit("\nmain()", 1)[0], namespace)
+
+    result = namespace["_run_preprocess"](
+        pd.DataFrame({"x": [1]}),
+        pd.DataFrame({"x": [10, 11, 12]}),
+    )
+
+    assert result["used_aux"].to_list() == [0]
 
 
 def test_build_autogluon_wrapper_emits_run_stats_collection(tmp_path):
@@ -238,6 +307,28 @@ def test_autogluon_preprocess_prompt_mentions_row_preserving_outlier_fix(tmp_pat
     ]
 
     assert any("outlier filtering" in item for item in contract)
+
+
+def test_autogluon_preprocess_prompt_describes_aux_argument_and_file(tmp_path):
+    cfg = _cfg(tmp_path)
+    Path(cfg.data_dir, "external.csv").write_text("x,target\n5,1\n", encoding="utf-8")
+    Path(cfg.data_dir, "external.txt").write_text("external description\n", encoding="utf-8")
+    cfg.agent.aux = "external.csv"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    contract = agent._prompt_autogluon_preprocess_guideline[
+        "AutoGluon preprocess mode contract"
+    ]
+    prompt: dict[str, object] = {}
+    agent._add_autogluon_context(prompt)
+
+    contract_text = "\n".join(contract)
+    assert "def preprocess(df: pd.DataFrame, aux: pd.DataFrame)" in contract_text
+    assert "./input/external.csv" in contract_text
+    assert "Do not read files" in contract_text
+    assert "ignore `aux`" in contract_text
+    assert "Auxiliary data description for external.csv" in prompt
+    assert prompt["Auxiliary data description for external.csv"] == "external description"
     assert any("clipped/winsorized value" in item for item in contract)
 
 

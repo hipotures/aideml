@@ -45,7 +45,7 @@ from .research import (
 )
 from .telegram_notifications import append_node_with_best_score_notification
 from .utils import data_preview
-from .utils.config import Config, aux_file_name
+from .utils.config import Config, aux_file_name, resolve_aux_description_file
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.node_artifacts import node_artifact_dir as artifact_dir_for_node
 from .utils.response import (
@@ -1132,13 +1132,29 @@ class Agent:
 
     @property
     def _prompt_autogluon_preprocess_guideline(self):
-        return {
-            "AutoGluon preprocess mode contract": [
-                "You are writing only the feature preprocessing function for a fixed AutoGluon training wrapper.",
-                "Return a single markdown code block containing exactly one top-level function: def preprocess(df: pd.DataFrame) -> pd.DataFrame.",
-                "The df argument contains concatenated train features followed by Kaggle prediction/test features, with only model feature columns present.",
+        aux_name = aux_file_name(self.cfg)
+        signature = (
+            "def preprocess(df: pd.DataFrame, aux: pd.DataFrame) -> pd.DataFrame"
+            if aux_name is not None
+            else "def preprocess(df: pd.DataFrame) -> pd.DataFrame"
+        )
+        contract = [
+            "You are writing only the feature preprocessing function for a fixed AutoGluon training wrapper.",
+            f"Return a single markdown code block containing exactly one top-level function: {signature}.",
+            "The df argument contains concatenated train features followed by Kaggle prediction/test features, with only model feature columns present.",
+        ]
+        if aux_name is not None:
+            contract.extend(
+                [
+                    f"The wrapper has already loaded auxiliary data from `./input/{aux_name}` and will pass it as the `aux` DataFrame.",
+                    "Use `aux` only if it enables deterministic, leakage-safe reference features or statistics; it is valid to ignore `aux` when it is not useful.",
+                    "Do not concatenate auxiliary rows into df, do not train on auxiliary rows, and do not change the number or order of rows in df.",
+                ]
+            )
+        contract.extend(
+            [
                 "Your returned preprocess function must replace the previous preprocess function. It is not composed with the previous function automatically.",
-                "Do not call `globals().get(\"preprocess\")`, do not add extra preprocess arguments, and do not assume any previous preprocess function is callable at runtime.",
+                "Do not call `globals().get(\"preprocess\")`, do not add extra preprocess arguments beyond optional `aux`, and do not assume any previous preprocess function is callable at runtime.",
                 "Columns created by a previous preprocess function are not present in df at entry. If your new feature needs previous derived columns, preserve or recompute the code that creates them inside the returned function.",
                 "Use only columns visible in the sanitized feature overview or in previous preprocess functions.",
                 "Do not add defensive cleanup for hidden wrapper columns or columns that are not present in preprocess(df).",
@@ -1151,7 +1167,8 @@ class Agent:
                 f"preprocess(df) has a dedicated timeout of {int(getattr(self.cfg.agent.autogluon, 'preprocess_timeout', 180))} seconds before AutoGluon training starts.",
                 "Avoid expensive Python callbacks over rows, groups, or rolling windows, especially `groupby.apply`, `rolling.apply`, and `np.polyfit` on full train+test data. Prefer bounded vectorized `groupby().transform`, `shift`, `rolling().mean/std/min/max`, and simple arithmetic features.",
             ]
-        }
+        )
+        return {"AutoGluon preprocess mode contract": contract}
 
     def _add_research_hints(
         self,
@@ -1299,12 +1316,32 @@ class Agent:
         )
 
     def _add_autogluon_context(self, prompt: dict[str, Any]) -> None:
+        aux_name = aux_file_name(self.cfg)
+        if aux_name is None:
+            prompt["Fixed AutoGluon wrapper context"] = (
+                "The fixed wrapper passes only model feature columns to preprocess(df). "
+                "Use only columns visible in the sanitized feature overview or in "
+                "previous preprocess functions. Do not add defensive cleanup for "
+                "columns that are not present in preprocess(df)."
+            )
+            return
+
         prompt["Fixed AutoGluon wrapper context"] = (
-            "The fixed wrapper passes only model feature columns to preprocess(df). "
-            "Use only columns visible in the sanitized feature overview or in "
-            "previous preprocess functions. Do not add defensive cleanup for "
-            "columns that are not present in preprocess(df)."
+            "The fixed wrapper passes only model feature columns to preprocess(df, aux). "
+            f"It also loads `./input/{aux_name}` once and passes that raw auxiliary "
+            "dataset as the `aux` DataFrame. Use only columns visible in the sanitized "
+            "feature overview, the auxiliary data overview, or previous preprocess "
+            "functions. Do not add defensive cleanup for columns that are not present "
+            "in preprocess(df, aux)."
         )
+        try:
+            description_path = resolve_aux_description_file(self.cfg)
+        except (FileNotFoundError, ValueError):
+            description_path = None
+        if description_path is not None:
+            prompt[f"Auxiliary data description for {aux_name}"] = (
+                description_path.read_text(encoding="utf-8").strip()
+            )
 
     def _wrap_autogluon_preprocess_node(
         self,

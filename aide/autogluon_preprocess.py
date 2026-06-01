@@ -9,7 +9,7 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from .utils.config import Config
+from .utils.config import Config, aux_file_name
 
 AGENT_MODE = "autogluon_preprocess"
 RESULT_MARKER = "AIDE_RESULT_JSON:"
@@ -105,12 +105,14 @@ def validate_preprocess_source(source: str, *, target_col: str | None = None) ->
     if not func.args.args or func.args.args[0].arg != "df":
         raise ValueError("`preprocess` must accept `df` as its first argument.")
     if (
-        len(func.args.args) != 1
+        len(func.args.args) not in {1, 2}
         or func.args.vararg is not None
         or func.args.kwarg is not None
         or func.args.kwonlyargs
     ):
-        raise ValueError("`preprocess` must accept exactly one argument: `df`.")
+        raise ValueError("`preprocess` must accept `df`, optionally followed by `aux`.")
+    if len(func.args.args) == 2 and func.args.args[1].arg != "aux":
+        raise ValueError("`preprocess` second argument must be named `aux`.")
 
     reasons: list[str] = []
     lowered = source.lower()
@@ -261,6 +263,9 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     eval_metric = settings.get("eval_metric")
     if eval_metric and eval_metric != "auto":
         visible["eval_metric"] = eval_metric
+    aux_name = aux_file_name(cfg)
+    if aux_name is not None:
+        visible["aux_file"] = aux_name
     visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
     return visible
 
@@ -284,6 +289,7 @@ import json
 import shutil
 import warnings
 import contextlib
+import inspect
 import logging
 import os
 import signal
@@ -325,6 +331,29 @@ def _read_csv(data_dir: Path, stem: str) -> pd.DataFrame:
     if gz_path.exists():
         return pd.read_csv(gz_path)
     return pd.read_csv(csv_path)
+
+
+def _read_aux_csv(input_dir: Path) -> pd.DataFrame | None:
+    aux_file = AIDE_AG_CONFIG.get("aux_file")
+    if not aux_file:
+        return None
+    aux_path = input_dir / str(aux_file)
+    if not aux_path.exists():
+        raise FileNotFoundError(f"Configured aux file not found: {aux_path}")
+    return pd.read_csv(aux_path)
+
+
+def _preprocess_accepts_aux() -> bool:
+    signature = inspect.signature(preprocess)
+    return len(signature.parameters) == 2
+
+
+def _run_preprocess(combined: pd.DataFrame, aux_df: pd.DataFrame | None) -> pd.DataFrame:
+    if _preprocess_accepts_aux():
+        if aux_df is None:
+            aux_df = pd.DataFrame()
+        return preprocess(combined.copy(), aux_df.copy())
+    return preprocess(combined.copy())
 
 
 def _positive_probability(
@@ -775,6 +804,7 @@ def main() -> None:
     train_df = _read_csv(input_dir, "train")
     test_df = _read_csv(input_dir, "test")
     sample_submission = _read_csv(input_dir, "sample_submission")
+    aux_df = _read_aux_csv(input_dir)
     id_col = sample_submission.columns[0]
     target_col = sample_submission.columns[1]
     if target_col not in train_df.columns:
@@ -784,10 +814,18 @@ def main() -> None:
     train_features = train_df.drop(columns=[target_col, id_col], errors="ignore")
     test_features = test_df.drop(columns=[id_col], errors="ignore")
     combined = _make_combined_frame(train_features, test_features)
+    if aux_df is not None:
+        print(
+            "AIDE AutoGluon: loaded aux file "
+            f"{{AIDE_AG_CONFIG.get('aux_file')}} rows={{len(aux_df)}} "
+            f"cols={{len(aux_df.columns)}} "
+            f"passed_to_preprocess={{_preprocess_accepts_aux()}}",
+            flush=True,
+        )
     print("AIDE AutoGluon: starting preprocess", flush=True)
     preprocess_started_at = time.time()
     with _preprocess_timeout(int(AIDE_AG_CONFIG.get("preprocess_timeout", 180))):
-        preprocessed = preprocess(combined.copy())
+        preprocessed = _run_preprocess(combined, aux_df)
     preprocess_time = time.time() - preprocess_started_at
     feature_count = int(len(preprocessed.columns))
     print(
