@@ -4249,21 +4249,21 @@ def run(argv: list[str] | None = None):
 
         tree_panel = Panel(
             Padding(left_panel_content, (0, 1, 0, 1)),
-            title=f'[b]AIDE: [bold green]"{cfg.exp_name}[/b]"',
+            title=f'[b]AIDE (1): [bold green]"{cfg.exp_name}[/b]"',
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
                 f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
                 f"d debug:{'on' if search_debug_visible else 'off'}  "
-                "1 copy AIDE  2 Run data  3 Logs  Ctrl+C stop"
+                "1/2/3 copy  Ctrl+C stop"
             ),
         )
         data_panel = Panel(
             data_panel_content,
-            title="[b]Run data",
+            title="[b]Run data (2)",
         )
         log_panel = Panel(
             log_panel_content,
-            title="[b]Logs",
+            title="[b]Logs (3)",
         )
 
         layout = Layout()
