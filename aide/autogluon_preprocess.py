@@ -246,6 +246,7 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
         "validation_fraction",
         "seed",
         "fit_args",
+        "class_balance",
     ):
         if key not in profile_settings:
             continue
@@ -309,6 +310,7 @@ AIDE_AG_CONFIG = {constants_literal}
 RESULT_MARKER = {RESULT_MARKER!r}
 FORBIDDEN_SPLIT_MARKER = {FORBIDDEN_SPLIT_MARKER!r}
 FORBIDDEN_ROW_ID = {FORBIDDEN_ROW_ID!r}
+CLASS_WEIGHT_COL = "__aide_class_weight__"
 
 
 {preprocess_source.strip()}
@@ -339,7 +341,7 @@ def _read_aux_csv(input_dir: Path) -> pd.DataFrame | None:
         return None
     aux_path = input_dir / str(aux_file)
     if not aux_path.exists():
-        raise FileNotFoundError(f"Configured aux file not found: {aux_path}")
+        raise FileNotFoundError(f"Configured aux file not found: {{aux_path}}")
     return pd.read_csv(aux_path)
 
 
@@ -354,6 +356,15 @@ def _run_preprocess(combined: pd.DataFrame, aux_df: pd.DataFrame | None) -> pd.D
             aux_df = pd.DataFrame()
         return preprocess(combined.copy(), aux_df.copy())
     return preprocess(combined.copy())
+
+
+def _balanced_sample_weight(labels: pd.Series) -> np.ndarray:
+    labels = pd.Series(labels).reset_index(drop=True)
+    counts = labels.value_counts(dropna=False)
+    if counts.empty:
+        raise ValueError("Cannot compute class weights for empty labels")
+    weights_by_class = len(labels) / (len(counts) * counts.astype(float))
+    return labels.map(weights_by_class).astype(float).to_numpy()
 
 
 def _positive_probability(
@@ -430,6 +441,8 @@ def _validate_preprocessed_frame(
         raise ValueError(f"preprocess created forbidden split marker column: {{FORBIDDEN_SPLIT_MARKER}}")
     if FORBIDDEN_ROW_ID in after.columns:
         raise ValueError(f"preprocess created forbidden row id column: {{FORBIDDEN_ROW_ID}}")
+    if CLASS_WEIGHT_COL in after.columns:
+        raise ValueError(f"preprocess created forbidden class weight column: {{CLASS_WEIGHT_COL}}")
 
     ordered = after.reset_index(drop=True)
     if len(ordered.iloc[:train_rows]) != train_rows:
@@ -844,6 +857,8 @@ def main() -> None:
     test_fe = preprocessed.iloc[len(train_df):].copy()
     train_model = train_fe.copy()
     train_model[target_col] = y_train.to_numpy()
+    if AIDE_AG_CONFIG.get("class_balance") == "balanced":
+        train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)
     test_model = test_fe.copy()
 
     eval_metric, problem_type = _infer_metric(train_model[target_col])
@@ -892,13 +907,17 @@ def main() -> None:
     training_started_at = time.time()
     with _quiet_model_output(working_dir):
         print("AIDE AutoGluon: starting fit", flush=True)
-        predictor = TabularPredictor(
-            label=target_col,
-            problem_type=problem_type,
-            eval_metric=eval_metric,
-            path=str(model_dir),
-            verbosity=2,
-        )
+        predictor_kwargs = {{
+            "label": target_col,
+            "problem_type": problem_type,
+            "eval_metric": eval_metric,
+            "path": str(model_dir),
+            "verbosity": 2,
+        }}
+        if AIDE_AG_CONFIG.get("class_balance") == "balanced":
+            predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL
+            predictor_kwargs["weight_evaluation"] = False
+        predictor = TabularPredictor(**predictor_kwargs)
         predictor.fit(**fit_kwargs)
         print("AIDE AutoGluon: finished fit", flush=True)
     training_time = time.time() - training_started_at
@@ -917,14 +936,14 @@ def main() -> None:
         elif eval_metric == "roc_auc":
             valid_pred = _positive_probability(
                 predictor,
-                valid_data.drop(columns=[target_col]),
+                valid_data.drop(columns=[target_col, CLASS_WEIGHT_COL], errors="ignore"),
             )
             metric_value = float(roc_auc_score(valid_data[target_col], valid_pred))
             lower_is_better = False
         else:
             valid_pred = _predict_values(
                 predictor,
-                valid_data.drop(columns=[target_col]),
+                valid_data.drop(columns=[target_col, CLASS_WEIGHT_COL], errors="ignore"),
                 eval_metric=eval_metric,
             )
             scores = predictor.evaluate(valid_data, silent=True)

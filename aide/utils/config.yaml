@@ -229,6 +229,7 @@ agent:
         use_gpu: true
         validation_strategy: holdout
         eval_metric: balanced_accuracy
+        class_balance: balanced
         hyperparameters:
           GBM:
             - ag_args_fit:

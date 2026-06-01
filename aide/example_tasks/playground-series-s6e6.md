@@ -7,6 +7,16 @@ For each row in `test.csv`, predict the `class` label. The target column in
 ## Evaluation
 Submissions are evaluated using balanced accuracy. Higher is better.
 
+Competition-specific modeling hint: if using CatBoost for this multiclass task,
+include `auto_class_weights="Balanced"` unless explicitly testing a different
+class-weighting strategy; this has empirically improved local CV and public
+leaderboard score for this competition.
+Analogous balanced-class settings should be used for other multiclass tree
+models unless explicitly testing a different class-weighting strategy: for
+LightGBM use `class_weight="balanced"`, and for XGBoost pass fold-specific
+`sample_weight=compute_sample_weight(class_weight="balanced", y=y_train)` to
+`.fit()`.
+
 The submission file must contain a header and exactly these columns:
 
 ```csv

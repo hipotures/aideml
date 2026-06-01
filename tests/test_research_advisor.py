@@ -3565,7 +3565,7 @@ def test_agent_prompt_only_lists_importable_packages(tmp_path, monkeypatch):
     assert "all packages are already installed" not in installed
 
 
-def test_legacy_agent_prompt_parallelizes_expensive_blend_search(tmp_path):
+def test_legacy_agent_prompt_omits_auc_blend_guideline(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False
     captured = {}
@@ -3580,11 +3580,8 @@ def test_legacy_agent_prompt_parallelizes_expensive_blend_search(tmp_path):
     agent._draft()
 
     guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
-    assert any("blend-weight search" in line for line in guidelines)
-    assert any("joblib.Parallel" in line for line in guidelines)
-    assert any("n_jobs=min(16, os.cpu_count() or 1)" in line for line in guidelines)
-    assert any("prefer=\"threads\"" in line for line in guidelines)
-    assert any("Evaluating N blend candidates with M workers" in line for line in guidelines)
+    assert not any("roc_auc_score" in line for line in guidelines)
+    assert not any("AUC/ROC-AUC" in line for line in guidelines)
 
 
 def test_legacy_agent_prompt_prefers_behavior_preserving_optimization(tmp_path):

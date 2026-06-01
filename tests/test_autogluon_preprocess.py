@@ -184,7 +184,7 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "_make_combined_frame(train_features, test_features)" in code
     assert "df[HELPER_ROW_ID]" not in code
     assert "FORBIDDEN_ROW_ID in after.columns" in code
-    assert "verbosity=2" in code
+    assert '"verbosity": 2' in code
     assert "import sys" in code
     assert "import signal" in code
     assert "import inspect" in code
@@ -286,6 +286,26 @@ def test_autogluon_wrapper_balanced_accuracy_uses_class_predictions(tmp_path):
     assert "pred = predictor.predict(data, model=model)" in code
     assert "test_pred = _predict_values(" in code
     assert "eval_metric=eval_metric" in code
+
+
+def test_autogluon_wrapper_can_enable_balanced_sample_weights(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["balanced_test"] = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "class_balance": "balanced",
+    }
+    cfg.agent.autogluon.profile = "balanced_test"
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    compile(code, "<generated_autogluon_wrapper>", "exec")
+    assert "'class_balance': 'balanced'" in code
+    assert "CLASS_WEIGHT_COL = \"__aide_class_weight__\"" in code
+    assert "def _balanced_sample_weight" in code
+    assert "train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)" in code
+    assert 'predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL' in code
+    assert 'predictor_kwargs["weight_evaluation"] = False' in code
+    assert 'valid_data.drop(columns=[target_col, CLASS_WEIGHT_COL], errors="ignore")' in code
 
 
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
