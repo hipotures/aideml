@@ -39,6 +39,20 @@ def _cfg(tmp_path: Path):
     return cfg
 
 
+def _assert_cpu_boost_hyperparameters(settings):
+    assert settings["use_gpu"] is False
+    assert settings["included_model_types"][0] == "XGB"
+    assert settings["hyperparameters"]["XGB"][0] == {
+        "device": "cpu",
+        "tree_method": "hist",
+        "ag_args": {"priority": 999},
+        "ag_args_fit": {"num_gpus": 0},
+    }
+    assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 0}
+    if "CAT" in settings["included_model_types"]:
+        assert settings["hyperparameters"]["CAT"][0]["ag_args_fit"] == {"num_gpus": 0}
+
+
 def test_extract_preprocess_source_from_markdown_code_block():
     source = extract_preprocess_source(
         "plan\n```python\n"
@@ -480,8 +494,8 @@ def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
     assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert settings["presets"] == "medium_quality"
     assert settings["time_limit"] == 600
-    assert settings["use_gpu"] is False
     assert settings["validation_strategy"] == "holdout"
+    _assert_cpu_boost_hyperparameters(settings)
     assert settings["fit_args"] == {
         "save_space": True,
         "fit_weighted_ensemble": False,
@@ -492,9 +506,11 @@ def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
     assert "fit_kwargs[\"num_gpus\"] = 1 if AIDE_AG_CONFIG[\"use_gpu\"] else 0" in code
     assert "fit_args = dict(AIDE_AG_CONFIG.get(\"fit_args\", {}) or {})" in code
     assert "fit_kwargs.update(fit_args)" in code
+    assert "'device': 'cpu'" in code
+    assert "'ag_args': {'priority': 999}" in code
 
 
-def test_autogluon_best_profile_uses_only_models_presets_and_time_limit(tmp_path):
+def test_autogluon_best_profile_forces_cpu_xgb_settings(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profile = "full_best_30m"
     cfg.agent.autogluon.included_model_types = None
@@ -504,13 +520,14 @@ def test_autogluon_best_profile_uses_only_models_presets_and_time_limit(tmp_path
     assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert settings["presets"] == "best_quality"
     assert settings["time_limit"] == 1800
-    assert "use_gpu" not in settings
+    _assert_cpu_boost_hyperparameters(settings)
     assert "validation_strategy" not in settings
-    assert "hyperparameters" not in settings
     assert "fit_args" not in settings
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
     assert "'presets': 'best_quality'" in code
     assert "'time_limit': 1800" in code
+    assert "'use_gpu': False" in code
+    assert "'device': 'cpu'" in code
     assert "'validation_strategy'" not in code.split("RESULT_MARKER", 1)[0]
     assert "'validation_fraction'" not in code.split("RESULT_MARKER", 1)[0]
     assert "'fit_args'" not in code.split("RESULT_MARKER", 1)[0]
@@ -532,10 +549,9 @@ def test_autogluon_best_boost_cpu_profiles_only_add_save_space(tmp_path):
         assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
         assert settings["presets"] == "best"
         assert settings["time_limit"] == time_limit
-        assert settings["use_gpu"] is False
+        _assert_cpu_boost_hyperparameters(settings)
         assert settings["fit_args"] == {"save_space": True}
         assert "validation_strategy" not in settings
-        assert "hyperparameters" not in settings
 
 
 def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path):

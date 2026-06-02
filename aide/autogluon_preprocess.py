@@ -167,6 +167,54 @@ def _prioritize_xgboost_hyperparameters(settings: dict[str, Any]) -> None:
             ag_args["priority"] = 999
 
 
+def _force_cpu_boost_hyperparameters(settings: dict[str, Any]) -> None:
+    if settings.get("use_gpu") is True:
+        return
+
+    included = settings.get("included_model_types") or []
+    if "XGB" not in included:
+        return
+
+    settings["included_model_types"] = ["XGB"] + [
+        model_type for model_type in included if model_type != "XGB"
+    ]
+    settings["use_gpu"] = False
+    hyperparameters = settings.setdefault("hyperparameters", {})
+    if not isinstance(hyperparameters, dict):
+        return
+
+    xgb_configs = hyperparameters.get("XGB") or [{}]
+    if not isinstance(xgb_configs, list):
+        xgb_configs = [xgb_configs]
+    hyperparameters["XGB"] = xgb_configs
+
+    for model_cfg in xgb_configs:
+        if not isinstance(model_cfg, dict):
+            continue
+        model_cfg["device"] = "cpu"
+        model_cfg["tree_method"] = "hist"
+        ag_args = model_cfg.setdefault("ag_args", {})
+        if isinstance(ag_args, dict):
+            ag_args["priority"] = 999
+        ag_args_fit = model_cfg.setdefault("ag_args_fit", {})
+        if isinstance(ag_args_fit, dict):
+            ag_args_fit["num_gpus"] = 0
+
+    for model_type in ("GBM", "CAT"):
+        if model_type not in included:
+            continue
+        model_configs = hyperparameters.get(model_type) or [{}]
+        if not isinstance(model_configs, list):
+            model_configs = [model_configs]
+        hyperparameters[model_type] = model_configs
+        for model_cfg in model_configs:
+            if not isinstance(model_cfg, dict):
+                continue
+            ag_args_fit = model_cfg.setdefault("ag_args_fit", {})
+            if isinstance(ag_args_fit, dict):
+                ag_args_fit["num_gpus"] = 0
+
+
 def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     ag = cfg.agent.autogluon
     profiles = dict(_container(getattr(ag, "profiles", {})) or {})
@@ -213,6 +261,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
 
     if settings["included_model_types"] is not None:
         settings["included_model_types"] = list(settings["included_model_types"])
+    _force_cpu_boost_hyperparameters(settings)
     settings["time_limit"] = int(settings["time_limit"])
     settings["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
     settings["validation_fraction"] = float(settings["validation_fraction"])
@@ -279,6 +328,15 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     explicit_included = _container(cfg.agent.autogluon.included_model_types)
     if explicit_included is not None:
         visible["included_model_types"] = list(explicit_included)
+
+    included = settings.get("included_model_types") or []
+    if (
+        settings.get("use_gpu") is False
+        and "XGB" in included
+        and isinstance(settings.get("hyperparameters"), dict)
+    ):
+        visible["use_gpu"] = False
+        visible["hyperparameters"] = settings["hyperparameters"]
 
     eval_metric = settings.get("eval_metric")
     if eval_metric and eval_metric != "auto":

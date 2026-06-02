@@ -85,6 +85,11 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
         assert "'included_model_types': ['XGB', 'GBM', 'CAT']" in code
         assert "'time_limit': 600" in code
         assert "'presets': 'best_quality'" in code
+        assert "'use_gpu': False" in code
+        assert "'XGB': [{" in code
+        assert "'device': 'cpu'" in code
+        assert "'ag_args': {'priority': 999}" in code
+        assert "'ag_args_fit': {'num_gpus': 0}" in code
         assert "'fit_args'" not in code.split("RESULT_MARKER", 1)[0]
         artifact_dir.mkdir(parents=True, exist_ok=True)
         (artifact_dir / "submission.csv").write_text("id,target\n1,0.9\n")
