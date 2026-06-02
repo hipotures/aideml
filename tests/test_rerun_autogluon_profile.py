@@ -154,6 +154,36 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
     assert source_record["sha256"][:10] in output
 
 
+def test_s6e6_autogluon_defaults_are_competition_scoped():
+    source_record = {"solution_path": "unused.py"}
+
+    s6e6_cfg = rerun_autogluon_profile.build_profile_config(
+        source_record=source_record,
+        profile="best_boost_2h",
+        competition="playground-series-s6e6",
+        presets=None,
+        time_limit=None,
+        fit_args=None,
+    )
+    s6e6_settings = rerun_autogluon_profile.resolve_autogluon_settings(s6e6_cfg)
+
+    assert s6e6_settings["eval_metric"] == "balanced_accuracy"
+    assert s6e6_settings["class_balance"] == "balanced"
+
+    other_cfg = rerun_autogluon_profile.build_profile_config(
+        source_record=source_record,
+        profile="best_boost_2h",
+        competition="playground-series-s6e5",
+        presets=None,
+        time_limit=None,
+        fit_args=None,
+    )
+    other_settings = rerun_autogluon_profile.resolve_autogluon_settings(other_cfg)
+
+    assert "eval_metric" not in other_settings or other_settings["eval_metric"] == "auto"
+    assert "class_balance" not in other_settings
+
+
 def test_parse_fit_args_json_requires_object():
     assert rerun_autogluon_profile.parse_fit_args_json("{}") == {}
     try:

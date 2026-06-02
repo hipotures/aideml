@@ -42,6 +42,13 @@ from scripts import kaggle_submission_lab as lab
 
 
 DEFAULT_PROFILE = "full_boost"
+
+COMPETITION_AUTOGLUON_DEFAULTS: dict[str, dict[str, Any]] = {
+    "playground-series-s6e6": {
+        "eval_metric": "balanced_accuracy",
+        "class_balance": "balanced",
+    },
+}
 DEFAULT_PROCESS_TIMEOUT_MARGIN = 900
 
 
@@ -148,6 +155,7 @@ def build_profile_config(
     *,
     source_record: dict[str, Any],
     profile: str,
+    competition: str,
     presets: str | None,
     time_limit: int | None,
     fit_args: dict[str, Any] | None,
@@ -168,6 +176,9 @@ def build_profile_config(
     else:
         profile_settings = dict(profile_settings)
 
+    for key, value in COMPETITION_AUTOGLUON_DEFAULTS.get(competition, {}).items():
+        profile_settings.setdefault(key, value)
+
     if presets is not None:
         profile_settings["presets"] = presets
     if time_limit is not None:
@@ -183,6 +194,7 @@ def build_profile_code(
     *,
     source_record: dict[str, Any],
     profile: str,
+    competition: str,
     presets: str | None,
     time_limit: int | None,
     fit_args: dict[str, Any] | None,
@@ -192,6 +204,7 @@ def build_profile_code(
     cfg = build_profile_config(
         source_record=source_record,
         profile=profile,
+        competition=competition,
         presets=presets,
         time_limit=time_limit,
         fit_args=fit_args,
@@ -360,6 +373,7 @@ def run_profile_eval(
     code, included_model_types, resolved_time_limit, autogluon_presets = build_profile_code(
         source_record=source_record,
         profile=profile,
+        competition=competition,
         presets=presets,
         time_limit=time_limit,
         fit_args=fit_args,

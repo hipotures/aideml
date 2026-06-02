@@ -550,7 +550,12 @@ def test_autogluon_best_boost_cpu_profiles_only_add_save_space(tmp_path):
         assert settings["presets"] == "best"
         assert settings["time_limit"] == time_limit
         _assert_cpu_boost_hyperparameters(settings)
-        assert settings["fit_args"] == {"save_space": True}
+        if "fit_args" in cfg.agent.autogluon.profiles[profile]:
+            assert settings["fit_args"] == {"save_space": True}
+        else:
+            assert "fit_args" not in settings
+        assert "eval_metric" not in settings or settings["eval_metric"] == "auto"
+        assert "class_balance" not in settings
         assert "validation_strategy" not in settings
 
 
