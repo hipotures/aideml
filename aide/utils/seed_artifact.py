@@ -14,12 +14,14 @@ from .artifact_manifest import (
     SEEDED_BASE_PLAN_PREFIX,
     artifact_timestamp_from_ctime,
     autogluon_payload,
+    directory_file_entries,
     file_entry,
     load_json,
     metric_payload,
     node_origin,
     node_status,
     parse_autogluon_config,
+    prediction_file_entry,
     write_json,
 )
 from .metric import MetricValue
@@ -65,6 +67,13 @@ class SeedArtifactSource:
             return None
 
 
+@dataclass(frozen=True)
+class SeededArtifactNode:
+    source: SeedArtifactSource
+    node: Node
+    artifact_dir: Path
+
+
 def _manifest_hashes(manifest: dict[str, Any]) -> dict[str, str]:
     hashes: dict[str, str] = {}
     submission_hash = manifest.get("sha256")
@@ -79,6 +88,28 @@ def _manifest_hashes(manifest: dict[str, Any]) -> dict[str, str]:
             if isinstance(solution_hash, str) and solution_hash:
                 hashes["solution"] = solution_hash.lower()
     return hashes
+
+
+def seed_artifact_source_from_manifest(
+    manifest_path: Path,
+    *,
+    matched_kind: str = "node",
+    matched_sha256: str | None = None,
+) -> SeedArtifactSource:
+    manifest = load_json(manifest_path)
+    if manifest.get("kind") not in SEEDABLE_MANIFEST_KINDS:
+        raise ValueError(f"Unsupported seed artifact manifest kind: {manifest_path}")
+    artifact_dir = manifest_path.parent
+    if matched_sha256 is None:
+        hashes = _manifest_hashes(manifest)
+        matched_sha256 = hashes.get("solution") or hashes.get("submission") or ""
+    return SeedArtifactSource(
+        manifest=manifest,
+        manifest_path=manifest_path,
+        artifact_dir=artifact_dir,
+        matched_sha256=matched_sha256,
+        matched_kind=matched_kind,
+    )
 
 
 def _candidate_sort_key(source: SeedArtifactSource) -> tuple[float, str, float]:
@@ -240,6 +271,9 @@ def _rewrite_manifest(
     manifest = dict(source.manifest)
     solution_path = artifact_dir / "solution.py"
     submission_path = artifact_dir / "submission.csv"
+    oof_predictions_path = artifact_dir / "oof_predictions.csv"
+    test_predictions_path = artifact_dir / "test_predictions.csv"
+    validation_predictions_path = artifact_dir / "validation_predictions.csv"
     error_path = artifact_dir / "error.txt"
     code = solution_path.read_text(encoding="utf-8") if solution_path.exists() else node.code
     metric = metric_payload(node)
@@ -265,6 +299,22 @@ def _rewrite_manifest(
             "files": {
                 "solution": file_entry(solution_path, base_dir=artifact_dir),
                 "submission": submission,
+                "oof_predictions": prediction_file_entry(
+                    oof_predictions_path,
+                    base_dir=artifact_dir,
+                ),
+                "test_predictions": prediction_file_entry(
+                    test_predictions_path,
+                    base_dir=artifact_dir,
+                ),
+                "validation_predictions": prediction_file_entry(
+                    validation_predictions_path,
+                    base_dir=artifact_dir,
+                ),
+                "model_predictions": directory_file_entries(
+                    artifact_dir / "model_predictions",
+                    base_dir=artifact_dir,
+                ),
                 "error": error,
             },
             "node": {
@@ -308,19 +358,58 @@ def seed_journal_from_artifact(
     *,
     ctime: float | None = None,
 ) -> tuple[Journal, Node, Path]:
+    journal, seeded = seed_journal_from_artifacts(cfg, [source], ctime=ctime)
+    first = seeded[0]
+    return journal, first.node, first.artifact_dir
+
+
+def seed_journal_from_artifacts(
+    cfg: Any,
+    sources: list[SeedArtifactSource],
+    *,
+    ctime: float | None = None,
+) -> tuple[Journal, list[SeededArtifactNode]]:
+    if not sources:
+        raise ValueError("At least one seed artifact source is required.")
+
     log_dir = Path(cfg.log_dir)
-    artifact_dir, node_ctime = _target_artifact_dir(log_dir, time.time() if ctime is None else ctime)
-    shutil.copytree(source.artifact_dir, artifact_dir)
-
-    node = _seed_node_from_source(source, ctime=node_ctime)
+    next_ctime = time.time() if ctime is None else ctime
     journal = Journal()
-    journal.append(node)
-    _rewrite_manifest(cfg=cfg, node=node, source=source, artifact_dir=artifact_dir)
+    seeded: list[SeededArtifactNode] = []
 
-    submission_path = artifact_dir / "submission.csv"
-    if submission_path.exists():
+    for source in sources:
+        artifact_dir, node_ctime = _target_artifact_dir(log_dir, next_ctime)
+        next_ctime = node_ctime + 1.0
+        shutil.copytree(source.artifact_dir, artifact_dir)
+
+        node = _seed_node_from_source(source, ctime=node_ctime)
+        node.artifact_dir_name = artifact_dir.name
+        journal.append(node)
+        _rewrite_manifest(cfg=cfg, node=node, source=source, artifact_dir=artifact_dir)
+
+        seeded.append(
+            SeededArtifactNode(
+                source=source,
+                node=node,
+                artifact_dir=artifact_dir,
+            )
+        )
+
+        submission_path = artifact_dir / "submission.csv"
+        if submission_path.exists():
+            working_dir = Path(cfg.workspace_dir) / "working"
+            working_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(submission_path, working_dir / "submission.csv")
+
+    if len(seeded) > 1:
         working_dir = Path(cfg.workspace_dir) / "working"
         working_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(submission_path, working_dir / "submission.csv")
+        for item in seeded:
+            submission_path = item.artifact_dir / "submission.csv"
+            if submission_path.exists():
+                shutil.copy2(
+                    submission_path,
+                    working_dir / f"seed_step_{item.node.step}_submission.csv",
+                )
 
-    return journal, node, artifact_dir
+    return journal, seeded
