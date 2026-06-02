@@ -83,6 +83,7 @@ from .utils.config import (
     _validate_cli_model_effort_conflicts,
     aux_file_name,
     aux_mode,
+    copy_aux_file_input,
     load_task_desc,
     prep_agent_workspace,
     save_run,
@@ -710,6 +711,8 @@ def load_resume_state(
     cfg = OmegaConf.merge(cfg_schema, cfg)
     _normalize_agent_mode_aliases(cfg)
     _resolve_all_model_configs(cfg)
+    if aux_mode(cfg) == "file":
+        copy_aux_file_input(cfg)
     journal = serialize.load_json(journal_path, Journal)
     if enforce_journal_submission_contract(
         cfg,

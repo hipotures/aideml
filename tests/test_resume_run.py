@@ -582,6 +582,41 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert journal.nodes[0].metric.value == 0.9
 
 
+def test_load_resume_state_materializes_aux_file_override(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    data_dir = tmp_path / "data"
+    source_dir = data_dir / "original_sdss17"
+    source_dir.mkdir(parents=True)
+    (source_dir / "star_classification.csv").write_text(
+        "alpha,class\n1.0,STAR\n",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.data_dir = data_dir
+    OmegaConf.save(cfg_data, config_path)
+    workspace_input = tmp_path / "workspaces" / "2-existing-run" / "input"
+    workspace_source_dir = workspace_input / "original_sdss17"
+    workspace_source_dir.mkdir()
+    (workspace_source_dir / "star_classification.csv").write_text(
+        "alpha,class\n1.0,STAR\n",
+        encoding="utf-8",
+    )
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.aux=star_classification.csv"],
+    )
+
+    assert cfg.agent.aux == "star_classification.csv"
+    assert (workspace_input / "star_classification.csv").read_text(
+        encoding="utf-8"
+    ) == "alpha,class\n1.0,STAR\n"
+    assert not workspace_source_dir.exists()
+
+
 def test_load_resume_state_clears_saved_forced_root_without_cli_override(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
