@@ -176,6 +176,12 @@ agent:
         use_gpu: true
         validation_strategy: holdout
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -183,12 +189,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -203,6 +203,12 @@ agent:
         validation_strategy: holdout
         eval_metric: balanced_accuracy
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -210,12 +216,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -231,6 +231,12 @@ agent:
         eval_metric: balanced_accuracy
         class_balance: balanced
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -238,12 +244,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -257,6 +257,12 @@ agent:
         use_gpu: true
         validation_strategy: holdout
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -264,12 +270,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -282,6 +282,12 @@ agent:
         time_limit: 1800
         use_gpu: true
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -289,12 +295,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -306,6 +306,12 @@ agent:
         time_limit: 3600
         use_gpu: true
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -313,12 +319,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
         fit_args:
@@ -349,6 +349,12 @@ agent:
         time_limit: 1800
         use_gpu: true
         hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              n_jobs: 8
+              ag_args_fit:
+                num_gpus: 1
           GBM:
             - ag_args_fit:
                 num_gpus: 0
@@ -356,12 +362,6 @@ agent:
             - task_type: GPU
               devices: "0"
               gpu_ram_part: 0.8
-              ag_args_fit:
-                num_gpus: 1
-          XGB:
-            - device: cuda
-              tree_method: hist
-              n_jobs: 8
               ag_args_fit:
                 num_gpus: 1
     # Fallback values used only if a profile does not define a field.
