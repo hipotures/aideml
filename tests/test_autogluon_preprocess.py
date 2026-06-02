@@ -556,6 +556,29 @@ def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path)
     assert "validation_strategy" not in settings
 
 
+def test_autogluon_gpu_profile_backfills_xgb_priority_for_saved_configs(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "stale_gpu"
+    cfg.agent.autogluon.included_model_types = None
+    cfg.agent.autogluon.profiles["stale_gpu"] = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit": 600,
+        "use_gpu": True,
+        "hyperparameters": {
+            "GBM": [{"ag_args_fit": {"num_gpus": 0}}],
+            "CAT": [{"task_type": "GPU", "devices": "0", "ag_args_fit": {"num_gpus": 1}}],
+            "XGB": [{"device": "cuda", "tree_method": "hist", "ag_args_fit": {"num_gpus": 1}}],
+        },
+    }
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["hyperparameters"]["XGB"][0]["ag_args"] == {"priority": 999}
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    assert "'ag_args': {'priority': 999}" in code
+
+
 def test_autogluon_profiles_are_not_restored_from_python_schema(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)

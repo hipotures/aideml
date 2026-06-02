@@ -149,6 +149,24 @@ def _container(value: Any) -> Any:
     return OmegaConf.to_container(value, resolve=True) if OmegaConf.is_config(value) else value
 
 
+def _prioritize_xgboost_hyperparameters(settings: dict[str, Any]) -> None:
+    hyperparameters = settings.get("hyperparameters")
+    if not isinstance(hyperparameters, dict) or "XGB" not in hyperparameters:
+        return
+
+    xgb_configs = hyperparameters["XGB"]
+    if not isinstance(xgb_configs, list):
+        xgb_configs = [xgb_configs]
+        hyperparameters["XGB"] = xgb_configs
+
+    for model_cfg in xgb_configs:
+        if not isinstance(model_cfg, dict):
+            continue
+        ag_args = model_cfg.setdefault("ag_args", {})
+        if isinstance(ag_args, dict):
+            ag_args["priority"] = 999
+
+
 def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     ag = cfg.agent.autogluon
     profiles = dict(_container(getattr(ag, "profiles", {})) or {})
@@ -205,6 +223,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         settings["validation_strategy"] = str(settings["validation_strategy"])
     if "hyperparameters" in settings:
         settings["hyperparameters"] = dict(settings.get("hyperparameters") or {})
+        _prioritize_xgboost_hyperparameters(settings)
     if "fit_args" in settings:
         settings["fit_args"] = dict(settings.get("fit_args") or {})
     if settings.get("validation_strategy") not in {None, "holdout", "autogluon"}:
