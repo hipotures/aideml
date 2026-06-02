@@ -360,8 +360,6 @@ agent:
         presets: best
         time_limit: 7200
         use_gpu: false
-        fit_args:
-          save_space: true
 
       full_best_30m:
         included_model_types: [XGB, GBM, CAT]
