@@ -617,6 +617,66 @@ def test_load_resume_state_materializes_aux_file_override(tmp_path):
     assert not workspace_source_dir.exists()
 
 
+def test_load_resume_state_rebases_remote_repo_data_dir_for_aux_file(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    data_dir = tmp_path / "aide" / "example_tasks" / "playground-series-s6e6"
+    source_dir = data_dir / "original_sdss17"
+    source_dir.mkdir(parents=True)
+    (source_dir / "star_classification.csv").write_text(
+        "alpha,class\n1.0,STAR\n",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.data_dir = Path(
+        "/home/user/DEV/aideml/aide/example_tasks/playground-series-s6e6"
+    )
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.aux=star_classification.csv"],
+    )
+
+    assert Path(cfg.data_dir) == data_dir
+    assert (
+        tmp_path
+        / "workspaces"
+        / "2-existing-run"
+        / "input"
+        / "star_classification.csv"
+    ).read_text(encoding="utf-8") == "alpha,class\n1.0,STAR\n"
+
+
+def test_save_run_serializes_repo_paths_relative(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = Path.cwd() / "aide" / "example_tasks" / "house_prices"
+    cfg.desc_file = Path.cwd() / "aide" / "example_tasks" / "house_prices.md"
+    cfg.goal = None
+    cfg.log_dir = tmp_path / "logs" / "2-existing-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    cfg.exp_name = "2-existing-run"
+    cfg = prep_cfg(cfg)
+    cfg.exp_name = "2-existing-run"
+    cfg.log_dir = tmp_path / "logs" / "2-existing-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-existing-run"
+    journal = Journal()
+    node = Node(code="print('ok')", plan="ok")
+    node._term_out = ["ok"]
+    journal.append(node)
+
+    save_run(cfg, journal)
+
+    saved = (tmp_path / "logs" / "2-existing-run" / "config.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert str(Path.cwd() / "aide" / "example_tasks") not in saved
+    assert "aide/example_tasks/house_prices" in saved
+    assert "aide/example_tasks/house_prices.md" in saved
+
+
 def test_load_resume_state_clears_saved_forced_root_without_cli_override(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"

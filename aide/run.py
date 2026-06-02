@@ -655,6 +655,41 @@ def next_generated_only_node(
     return None
 
 
+def _rebase_resume_repo_path(value: Any, *, repo_root: Path) -> Path | Any:
+    if value is None:
+        return value
+    path = Path(value)
+    if not path.is_absolute():
+        return path
+
+    repo_markers = (
+        ("aide", "example_tasks"),
+        ("logs",),
+        ("workspaces",),
+        ("research_hypotheses",),
+        ("assets",),
+        ("scripts",),
+        ("reports",),
+    )
+    parts = path.parts
+    for marker in repo_markers:
+        marker_len = len(marker)
+        for index in range(0, len(parts) - marker_len + 1):
+            if parts[index : index + marker_len] != marker:
+                continue
+            rebased = repo_root / Path(*parts[index:])
+            if rebased.exists():
+                return rebased
+    return path
+
+
+def _rebase_resume_config_paths(cfg: Any, *, repo_root: Path) -> None:
+    if "data_dir" in cfg:
+        cfg.data_dir = _rebase_resume_repo_path(cfg.data_dir, repo_root=repo_root)
+    if "desc_file" in cfg and cfg.desc_file is not None:
+        cfg.desc_file = _rebase_resume_repo_path(cfg.desc_file, repo_root=repo_root)
+
+
 def load_resume_state(
     *,
     run_id: str,
@@ -703,6 +738,7 @@ def load_resume_state(
         cfg.agent.autogluon.included_model_types = None
     if cli_overrides:
         cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(cli_overrides))
+    _rebase_resume_config_paths(cfg, repo_root=top_log_dir.resolve().parent)
     cfg.exp_name = run_id
     cfg.log_dir = log_dir
     cfg.workspace_dir = workspace_dir

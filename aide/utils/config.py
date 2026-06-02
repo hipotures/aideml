@@ -31,6 +31,37 @@ logger = logging.getLogger("aide")
 logger.setLevel(logging.WARNING)
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _repo_relative_path(value):
+    if value is None:
+        return value
+    if isinstance(value, Path):
+        path = value
+    else:
+        return value
+    try:
+        return path.resolve().relative_to(_repo_root()).as_posix()
+    except ValueError:
+        return value
+
+
+def _portable_config_value(value):
+    value = _repo_relative_path(value)
+    if isinstance(value, dict):
+        return {key: _portable_config_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_portable_config_value(item) for item in value]
+    return value
+
+
+def _portable_config(cfg):
+    container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+    return OmegaConf.create(_portable_config_value(container))
+
+
 def _copy_prediction_artifact_gz(source: Path, destination: Path) -> None:
     if source.suffix == ".gz":
         shutil.copy2(source, destination)
@@ -350,11 +381,17 @@ def prep_cfg(cfg: Config):
             "You must provide either a description of the task goal (`goal=...`) or a path to a plaintext file containing the description (`desc_file=...`)."
         )
 
-    if cfg.data_dir.startswith("example_tasks/"):
-        cfg.data_dir = Path(__file__).parent.parent / cfg.data_dir
+    data_dir_value = str(cfg.data_dir)
+    if data_dir_value.startswith("example_tasks/"):
+        cfg.data_dir = Path(__file__).parent.parent / data_dir_value
+    elif data_dir_value.startswith("aide/example_tasks/"):
+        cfg.data_dir = _repo_root() / data_dir_value
     cfg.data_dir = Path(cfg.data_dir).resolve()
 
     if cfg.desc_file is not None:
+        desc_file_value = str(cfg.desc_file)
+        if desc_file_value.startswith("aide/example_tasks/"):
+            cfg.desc_file = _repo_root() / desc_file_value
         cfg.desc_file = Path(cfg.desc_file).resolve()
 
     top_log_dir = Path(cfg.log_dir).resolve()
@@ -798,7 +835,7 @@ def save_run(
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
     # save config
     notify("Saving config")
-    OmegaConf.save(config=cfg, f=cfg.log_dir / "config.yaml")
+    OmegaConf.save(config=_portable_config(cfg), f=cfg.log_dir / "config.yaml")
     # create the tree + code visualization
     notify("Rendering tree HTML")
     tree_export.generate(cfg, journal, cfg.log_dir / "tree_plot.html")
