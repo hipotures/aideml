@@ -570,10 +570,12 @@ def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path)
     assert settings["presets"] == "best"
     assert settings["time_limit"] == 3600
     assert settings["use_gpu"] is True
-    assert settings["fit_args"] == {"save_space": True}
+    assert "fit_args" not in settings
     assert settings["hyperparameters"]["CAT"][0]["gpu_ram_part"] == 0.8
     assert settings["hyperparameters"]["XGB"][0]["device"] == "cuda"
     assert settings["hyperparameters"]["XGB"][0]["ag_args"] == {"priority": 999}
+    assert settings["hyperparameters"]["GBM"][0]["device"] == "cuda"
+    assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
     assert "validation_strategy" not in settings
 
 
