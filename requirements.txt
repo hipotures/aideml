@@ -29,7 +29,8 @@ torchaudio
 torchtext
 torch-geometric
 
-lightgbm
+# CUDA-enabled LightGBM wheel built with USE_CUDA=ON for RTX 4070 Ti / sm_89.
+./logs/experiments/lightgbm-cuda-wheel/cuda89/lightgbm-4.6.0-py3-none-linux_x86_64.whl
 xgboost
 catboost
 autogluon
