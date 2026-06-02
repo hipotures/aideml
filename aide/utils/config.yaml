@@ -164,7 +164,6 @@ agent:
         time_limit: 600
         use_gpu: false
         validation_strategy: holdout
-        eval_metric: balanced_accuracy
         fit_args:
           save_space: true
           fit_weighted_ensemble: false
@@ -175,7 +174,6 @@ agent:
         time_limit: 600
         use_gpu: false
         validation_strategy: holdout
-        eval_metric: balanced_accuracy
         class_balance: balanced
         fit_args:
           save_space: true
@@ -215,7 +213,6 @@ agent:
         time_limit: 600
         use_gpu: true
         validation_strategy: holdout
-        eval_metric: balanced_accuracy
         hyperparameters:
           XGB:
             - device: cuda
@@ -244,7 +241,6 @@ agent:
         time_limit: 600
         use_gpu: true
         validation_strategy: holdout
-        eval_metric: balanced_accuracy
         class_balance: balanced
         hyperparameters:
           XGB:
@@ -326,6 +322,11 @@ agent:
         included_model_types: [XGB, GBM, CAT]
         presets: best
         time_limit: 3600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: autogluon
+        seed: 42
+        class_balance: balanced
         use_gpu: true
         hyperparameters:
           XGB:
@@ -346,6 +347,7 @@ agent:
               gpu_ram_part: 0.8
               ag_args_fit:
                 num_gpus: 1
+        fit_args: {}
       best_boost_1h:
         included_model_types: [XGB, GBM, CAT]
         presets: best
@@ -391,7 +393,6 @@ agent:
     time_limit: 600
     validation_fraction: 0.2
     seed: 42
-    eval_metric: auto
     included_model_types: null
     validation_strategy: null
     use_gpu: null

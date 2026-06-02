@@ -1,3 +1,4 @@
+import os
 import time
 from pathlib import Path
 
@@ -24,6 +25,8 @@ from aide.utils.metric import MetricValue
 
 
 def _cfg(tmp_path: Path):
+    os.environ.setdefault("AIDE_PROJECT_NAME", "test-project")
+    os.environ.setdefault("AIDE_PROJECT_METRIC", "balanced_accuracy")
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
     cfg.goal = "test goal"
@@ -37,6 +40,29 @@ def _cfg(tmp_path: Path):
     input_dir.mkdir(parents=True, exist_ok=True)
     (input_dir / "sample_submission.csv").write_text("id,PitNextLap\n10,0.0\n")
     return cfg
+
+
+def test_prep_cfg_reads_project_paths_from_env(tmp_path, monkeypatch):
+    data_dir = tmp_path / "project-data"
+    data_dir.mkdir()
+    desc_file = tmp_path / "project.md"
+    desc_file.write_text("project goal\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "AIDE_PROJECT_DATA_DIR=project-data\n"
+        "AIDE_PROJECT_DESC_FILE=project.md\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "env-path-test"
+
+    cfg = prep_cfg(cfg)
+
+    assert Path(cfg.data_dir) == data_dir.resolve()
+    assert Path(cfg.desc_file) == desc_file.resolve()
 
 
 def _assert_cpu_boost_hyperparameters(settings):
@@ -288,18 +314,35 @@ def test_build_autogluon_wrapper_emits_run_stats_collection(tmp_path):
     assert '"run_stats": run_stats' in code
 
 
-def test_autogluon_wrapper_balanced_accuracy_uses_class_predictions(tmp_path):
+def test_autogluon_wrapper_reads_metric_from_project_env(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
-    cfg.agent.autogluon.eval_metric = "balanced_accuracy"
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "AIDE_PROJECT_NAME=playground-series-s6e6\n"
+        "AIDE_PROJECT_METRIC=balanced_accuracy\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
 
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
 
     compile(code, "<generated_autogluon_wrapper>", "exec")
+    assert "'project_name': 'playground-series-s6e6'" in code
     assert "'eval_metric': 'balanced_accuracy'" in code
     assert "def _predict_values" in code
     assert "pred = predictor.predict(data, model=model)" in code
     assert "test_pred = _predict_values(" in code
     assert "eval_metric=eval_metric" in code
+
+
+def test_autogluon_wrapper_requires_project_env_metric(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("AIDE_PROJECT_NAME", "test-project")
+    monkeypatch.delenv("AIDE_PROJECT_METRIC", raising=False)
+
+    with pytest.raises(ValueError, match="AIDE_PROJECT_METRIC"):
+        build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
 
 
 def test_autogluon_wrapper_can_enable_balanced_sample_weights(tmp_path):
@@ -570,13 +613,13 @@ def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path)
     assert settings["presets"] == "best"
     assert settings["time_limit"] == 3600
     assert settings["use_gpu"] is True
-    assert "fit_args" not in settings
+    assert settings["fit_args"] == {}
     assert settings["hyperparameters"]["CAT"][0]["gpu_ram_part"] == 0.8
     assert settings["hyperparameters"]["XGB"][0]["device"] == "cuda"
     assert settings["hyperparameters"]["XGB"][0]["ag_args"] == {"priority": 999}
     assert settings["hyperparameters"]["GBM"][0]["device"] == "cuda"
     assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
-    assert "validation_strategy" not in settings
+    assert settings["validation_strategy"] == "autogluon"
 
 
 def test_autogluon_gpu_profile_backfills_xgb_priority_for_saved_configs(tmp_path):

@@ -12,6 +12,7 @@ from typing import Callable, Hashable, Literal, cast
 
 import coolname
 import rich
+from dotenv import load_dotenv
 from omegaconf import OmegaConf
 from rich.syntax import Syntax
 import shutup
@@ -96,7 +97,10 @@ class ResolvedModelConfig:
 
 VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
 AGENT_MODE_ALIASES = {"autogluon": "autogluon_preprocess"}
-DEPRECATED_CONFIG_KEYS = ("agent.search.seeded_base_max_children",)
+DEPRECATED_CONFIG_KEYS = (
+    "agent.search.seeded_base_max_children",
+    "agent.autogluon.eval_metric",
+)
 
 
 def _split_model_effort(model: str) -> tuple[str, str | None]:
@@ -163,7 +167,6 @@ class AutoGluonConfig:
     preprocess_timeout: int = 180
     validation_fraction: float = 0.2
     seed: int = 42
-    eval_metric: str = "auto"
     included_model_types: list[str] | None = None
     validation_strategy: str | None = None
     use_gpu: bool | None = None
@@ -297,6 +300,26 @@ def _is_nullish(value: str) -> bool:
     return value.strip().lower() in {"", "null", "none", "~"}
 
 
+def _is_missing_config_value(value) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return _is_nullish(value)
+    return False
+
+
+def _apply_project_env_defaults(cfg: Config) -> None:
+    load_dotenv(dotenv_path=Path(".env"), override=True)
+    if _is_missing_config_value(cfg.data_dir):
+        data_dir = os.getenv("AIDE_PROJECT_DATA_DIR", "").strip()
+        if data_dir:
+            cfg.data_dir = data_dir
+    if _is_missing_config_value(cfg.desc_file) and _is_missing_config_value(cfg.goal):
+        desc_file = os.getenv("AIDE_PROJECT_DESC_FILE", "").strip()
+        if desc_file:
+            cfg.desc_file = desc_file
+
+
 def _validate_cli_model_effort_conflicts(cli_args: Sequence[str]) -> None:
     values = dict(item for arg in cli_args if (item := _cli_value(arg)) is not None)
     for model_key in _model_config_keys():
@@ -373,6 +396,8 @@ def load_cfg(
 
 
 def prep_cfg(cfg: Config):
+    _apply_project_env_defaults(cfg)
+
     if cfg.data_dir is None:
         raise ValueError("`data_dir` must be provided.")
 

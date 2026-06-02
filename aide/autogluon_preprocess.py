@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import pprint
 import re
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from .utils.config import Config, aux_file_name
@@ -238,7 +240,6 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         "preprocess_timeout": int(getattr(ag, "preprocess_timeout", 180)),
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
-        "eval_metric": ag.eval_metric,
         "included_model_types": None,
     }
     validation_strategy = getattr(ag, "validation_strategy", None)
@@ -280,6 +281,20 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
             "AutoGluon validation_strategy must be one of: holdout, autogluon"
         )
     return settings
+
+
+def _load_project_env() -> dict[str, str]:
+    load_dotenv(dotenv_path=Path(".env"), override=True)
+    project_name = os.getenv("AIDE_PROJECT_NAME", "").strip()
+    eval_metric = os.getenv("AIDE_PROJECT_METRIC", "").strip()
+    if not project_name:
+        raise ValueError("AIDE_PROJECT_NAME must be set in .env for AutoGluon runs.")
+    if not eval_metric:
+        raise ValueError("AIDE_PROJECT_METRIC must be set in .env for AutoGluon runs.")
+    return {
+        "project_name": project_name,
+        "eval_metric": eval_metric,
+    }
 
 
 def resolve_autogluon_included_model_types(cfg: Config) -> list[str]:
@@ -338,9 +353,7 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
         visible["use_gpu"] = False
         visible["hyperparameters"] = settings["hyperparameters"]
 
-    eval_metric = settings.get("eval_metric")
-    if eval_metric and eval_metric != "auto":
-        visible["eval_metric"] = eval_metric
+    visible.update(_load_project_env())
     aux_name = aux_file_name(cfg)
     if aux_name is not None:
         visible["aux_file"] = aux_name
@@ -529,18 +542,17 @@ def _validate_preprocessed_frame(
     return ordered
 
 
-def _infer_metric(target: pd.Series) -> tuple[str, str | None]:
-    configured = AIDE_AG_CONFIG.get("eval_metric", "auto")
-    if configured != "auto":
-        unique_count = target.nunique(dropna=True)
-        if unique_count == 2:
-            return configured, "binary"
-        if pd.api.types.is_object_dtype(target) or pd.api.types.is_categorical_dtype(target):
-            return configured, "multiclass"
-        return configured, None
-    if target.nunique(dropna=True) == 2:
-        return "roc_auc", "binary"
-    return "accuracy", None
+def _configured_metric() -> str:
+    return AIDE_AG_CONFIG["eval_metric"]
+
+
+def _should_stratify_holdout(target: pd.Series) -> bool:
+    unique_count = target.nunique(dropna=True)
+    if unique_count == 2:
+        return True
+    if pd.api.types.is_object_dtype(target) or pd.api.types.is_categorical_dtype(target):
+        return True
+    return False
 
 
 def _json_safe_scalar(value):
@@ -938,7 +950,7 @@ def main() -> None:
         train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)
     test_model = test_fe.copy()
 
-    eval_metric, problem_type = _infer_metric(train_model[target_col])
+    eval_metric = _configured_metric()
     fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}) or {{}})
     bagged_mode = int(fit_args.get("num_bag_folds") or 0) > 0 or bool(fit_args.get("auto_stack"))
     defer_save_space = bool(bagged_mode and fit_args.pop("save_space", False))
@@ -950,11 +962,7 @@ def main() -> None:
             flush=True,
         )
     elif AIDE_AG_CONFIG.get("validation_strategy") == "holdout":
-        stratify = (
-            train_model[target_col]
-            if problem_type in ("binary", "multiclass")
-            else None
-        )
+        stratify = train_model[target_col] if _should_stratify_holdout(train_model[target_col]) else None
         train_data, valid_data = train_test_split(
             train_model,
             test_size=AIDE_AG_CONFIG.get("validation_fraction", 0.2),
@@ -986,7 +994,6 @@ def main() -> None:
         print("AIDE AutoGluon: starting fit", flush=True)
         predictor_kwargs = {{
             "label": target_col,
-            "problem_type": problem_type,
             "eval_metric": eval_metric,
             "path": str(model_dir),
             "verbosity": 2,
