@@ -552,6 +552,7 @@ def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path)
     assert settings["fit_args"] == {"save_space": True}
     assert settings["hyperparameters"]["CAT"][0]["gpu_ram_part"] == 0.8
     assert settings["hyperparameters"]["XGB"][0]["device"] == "cuda"
+    assert settings["hyperparameters"]["XGB"][0]["ag_args"] == {"priority": 999}
     assert "validation_strategy" not in settings
 
 
@@ -599,6 +600,7 @@ def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
                 "device": "cuda",
                 "tree_method": "hist",
                 "n_jobs": 8,
+                "ag_args": {"priority": 999},
                 "ag_args_fit": {"num_gpus": 1},
             }
         ],

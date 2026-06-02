@@ -180,6 +180,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -207,6 +209,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -235,6 +239,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -261,6 +267,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -286,6 +294,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -310,6 +320,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
@@ -353,6 +365,8 @@ agent:
             - device: cuda
               tree_method: hist
               n_jobs: 8
+              ag_args:
+                priority: 999
               ag_args_fit:
                 num_gpus: 1
           GBM:
