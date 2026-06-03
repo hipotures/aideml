@@ -1630,17 +1630,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--reindex", action="store_true")
     parser.add_argument(
-        "--submit",
-        nargs="?",
-        const=1,
-        type=int,
+        "--sha256",
+        "--sha",
+        dest="sha256",
+        action="append",
+        default=[],
+        metavar="PREFIX",
         help=(
-            "Submit the top N unsent candidates. Defaults to 1 when provided "
-            "without a value. Ignored for selection when --sha/--sha256 is used."
+            "Submit the matching sha prefix. Can be repeated. Without --sha, "
+            "the command only renders the candidate tree."
         ),
-    )
-    parser.add_argument(
-        "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
     )
     parser.add_argument(
         "--run",
@@ -1676,9 +1675,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.registry_limit < 0:
         console.print("[red]--registry-limit must be greater than or equal to 0.[/red]")
-        return 2
-    if args.submit is not None and args.submit < 1:
-        console.print("[red]--submit must be greater than or equal to 1.[/red]")
         return 2
 
     registry = smart.SubmissionRegistry.load(args.registry)
@@ -1728,13 +1724,13 @@ def main(argv: list[str] | None = None) -> int:
                 records,
                 registry=registry,
                 competition=args.competition,
-                limit=args.submit if args.submit is not None else args.limit,
+                limit=args.limit,
             )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         return 2
 
-    if args.submit is not None:
+    if sha_filters:
         if client is None:
             client = smart._build_kaggle_client()
         submitted = submit_records(
@@ -1754,7 +1750,7 @@ def main(argv: list[str] | None = None) -> int:
                 remote_submissions=remote_submissions,
                 records=records,
                 sort_by=args.tree_sort,
-                limit=registry_limit,
+                limit=args.limit,
                 run_filters=run_filters,
                 competition=args.competition,
             )
