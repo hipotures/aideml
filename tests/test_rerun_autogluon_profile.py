@@ -225,7 +225,88 @@ def test_find_existing_eval_ignores_failed_eval_without_submission(tmp_path):
     assert existing is None
 
 
-def test_main_reruns_same_source_even_when_successful_eval_exists(tmp_path, monkeypatch):
+def test_main_aborts_same_profile_eval_rerun_without_force_when_noninteractive(
+    tmp_path, monkeypatch, capsys
+):
+    source_submission = tmp_path / "source.csv"
+    source_submission.write_text("id,target\n1,0.8\n")
+    source_sha = kaggle_submission_lab.sha256_file(source_submission)
+    source_record = {
+        "kind": "source_node",
+        "status": "ok",
+        "run": "run-a",
+        "step": 1,
+        "timestamp": "20260504T100000",
+        "sha256": source_sha,
+        "submission_path": str(source_submission),
+    }
+    existing_eval = {
+        "kind": "profile_eval",
+        "status": "ok",
+        "profile": "full_best_30m_gpu",
+        "source_sha256": source_sha,
+        "sha256": "existing-eval-sha",
+        "submission_path": str(source_submission),
+    }
+    calls = []
+
+    index_path = tmp_path / "submission_index.json"
+    index_path.write_text(json.dumps({"records": [source_record, existing_eval]}))
+
+    def fail_refresh_index(**_kwargs):
+        raise AssertionError("rerun should not refresh index unless requested")
+
+    monkeypatch.setattr(rerun_autogluon_profile.lab, "refresh_index", fail_refresh_index)
+    monkeypatch.setattr(
+        rerun_autogluon_profile.lab,
+        "filter_records_by_sha256",
+        lambda _records, _filters: [source_record],
+    )
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    def fake_run_profile_eval(record, **kwargs):
+        calls.append((record, kwargs))
+        return {
+            "kind": "profile_eval",
+            "status": "ok",
+            "local_score": 0.9,
+            "profile": kwargs["profile"],
+            "run": "run-a",
+            "timestamp": "20260504T120000",
+            "source_step": 1,
+            "source_sha256": source_sha,
+            "sha256": "new-eval-sha",
+            "artifact_dir": str(tmp_path / "artifact"),
+        }
+
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "run_profile_eval",
+        fake_run_profile_eval,
+    )
+
+    exit_code = rerun_autogluon_profile.main(
+        [
+            "--execute",
+            "--profile",
+            "full_best_30m_gpu",
+            "--index",
+            str(index_path),
+            "--sha256",
+            source_sha[:10],
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 2
+    assert calls == []
+    assert "already has a successful profile evaluation" in output
+    assert source_sha[:10] in output
+    assert "existing-eval-sha"[:10] in output
+    assert "--force" in output
+
+
+def test_main_reruns_same_profile_eval_with_force(tmp_path, monkeypatch):
     source_submission = tmp_path / "source.csv"
     source_submission.write_text("id,target\n1,0.8\n")
     source_sha = kaggle_submission_lab.sha256_file(source_submission)
@@ -285,6 +366,7 @@ def test_main_reruns_same_source_even_when_successful_eval_exists(tmp_path, monk
     exit_code = rerun_autogluon_profile.main(
         [
             "--execute",
+            "--force",
             "--profile",
             "full_best_30m_gpu",
             "--index",
@@ -296,6 +378,80 @@ def test_main_reruns_same_source_even_when_successful_eval_exists(tmp_path, monk
 
     assert exit_code == 0
     assert len(calls) == 1
+
+
+def test_main_allows_same_source_with_different_profile_without_force(
+    tmp_path, monkeypatch, capsys
+):
+    source_submission = tmp_path / "source.csv"
+    source_submission.write_text("id,target\n1,0.8\n")
+    source_sha = kaggle_submission_lab.sha256_file(source_submission)
+    source_record = {
+        "kind": "source_node",
+        "status": "ok",
+        "run": "run-a",
+        "step": 1,
+        "timestamp": "20260504T100000",
+        "sha256": source_sha,
+        "submission_path": str(source_submission),
+    }
+    existing_eval = {
+        "kind": "profile_eval",
+        "status": "ok",
+        "profile": "full_best_30m_gpu",
+        "source_sha256": source_sha,
+        "sha256": "existing-eval-sha",
+        "submission_path": str(source_submission),
+    }
+    calls = []
+
+    index_path = tmp_path / "submission_index.json"
+    index_path.write_text(json.dumps({"records": [source_record, existing_eval]}))
+
+    monkeypatch.setattr(
+        rerun_autogluon_profile.lab,
+        "filter_records_by_sha256",
+        lambda _records, _filters: [source_record],
+    )
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    def fake_run_profile_eval(record, **kwargs):
+        calls.append((record, kwargs))
+        return {
+            "kind": "profile_eval",
+            "status": "ok",
+            "local_score": 0.9,
+            "profile": kwargs["profile"],
+            "run": "run-a",
+            "timestamp": "20260504T120000",
+            "source_step": 1,
+            "source_sha256": source_sha,
+            "sha256": "new-eval-sha",
+            "artifact_dir": str(tmp_path / "artifact"),
+        }
+
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "run_profile_eval",
+        fake_run_profile_eval,
+    )
+
+    exit_code = rerun_autogluon_profile.main(
+        [
+            "--execute",
+            "--profile",
+            "best_boost_gpu_1h",
+            "--index",
+            str(index_path),
+            "--sha256",
+            source_sha[:10],
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert "already has a successful profile evaluation" not in output
 
 
 def test_parse_args_treats_sha_as_sha256_alias():

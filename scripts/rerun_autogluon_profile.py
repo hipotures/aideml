@@ -24,6 +24,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.prompt import Confirm
 from rich.table import Table
 from omegaconf import OmegaConf
 
@@ -597,6 +598,83 @@ def _find_existing_eval(
     return None
 
 
+def _find_duplicate_profile_reruns(
+    records: list[dict[str, Any]],
+    planned: list[dict[str, Any]],
+    *,
+    profile: str,
+    presets: str | None,
+    time_limit: int | None,
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    duplicates = []
+    for record in planned:
+        source_sha256 = record.get("sha256")
+        if not source_sha256:
+            continue
+        existing = _find_existing_eval(
+            records,
+            source_sha256=source_sha256,
+            profile=profile,
+            presets=presets,
+            time_limit=time_limit,
+        )
+        if existing is not None:
+            duplicates.append((record, existing))
+    return duplicates
+
+
+def confirm_duplicate_profile_reruns(
+    console: Console,
+    duplicates: list[tuple[dict[str, Any], dict[str, Any]]],
+    *,
+    profile: str,
+) -> bool:
+    if not duplicates:
+        return True
+
+    if len(duplicates) == 1:
+        warning = (
+            "Warning: 1 selected source already has a successful profile evaluation "
+            f"for profile {profile!r}."
+        )
+    else:
+        warning = (
+            f"Warning: {len(duplicates)} selected sources already have successful "
+            f"profile evaluations for profile {profile!r}."
+        )
+    console.print(f"[yellow]{warning}[/yellow]")
+    table = Table(title="Existing matching profile evaluations", expand=False)
+    table.add_column("#", justify="right", no_wrap=True)
+    table.add_column("src_sha", no_wrap=True)
+    table.add_column("existing_sha", no_wrap=True)
+    table.add_column("run", no_wrap=True)
+    table.add_column("step", justify="right", no_wrap=True)
+    table.add_column("artifacts", no_wrap=True)
+    for rank, (source, existing) in enumerate(duplicates, start=1):
+        table.add_row(
+            str(rank),
+            str(source.get("sha256") or "")[:10] or "-",
+            str(existing.get("sha256") or "")[:10] or "-",
+            _shorten_middle(source.get("run") or "-", 28),
+            "" if source.get("step") is None else str(source.get("step")),
+            str(existing.get("artifact_dir") or "-"),
+        )
+    console.print(table)
+
+    if not sys.stdin.isatty():
+        console.print(
+            "[red]Refusing duplicate profile rerun in non-interactive mode. "
+            "Use --force to run it anyway.[/red]"
+        )
+        return False
+
+    return Confirm.ask(
+        "Continue and rerun the same source/profile combination?",
+        default=False,
+        console=console,
+    )
+
+
 def parse_fit_args_json(value: str | None) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -748,6 +826,21 @@ def main(argv: list[str] | None = None) -> int:
     if not args.execute:
         console.print(f"Would run {len(planned)} profile evaluation(s). Use --execute.")
         return 0
+
+    if not args.force:
+        duplicates = _find_duplicate_profile_reruns(
+            index.get("records", []),
+            planned,
+            profile=args.profile,
+            presets=args.presets,
+            time_limit=args.time_limit,
+        )
+        if not confirm_duplicate_profile_reruns(
+            console,
+            duplicates,
+            profile=args.profile,
+        ):
+            return 2
 
     results = []
     for record in planned:
