@@ -701,7 +701,7 @@ def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
     assert "validation_strategy" not in settings
     assert "fit_args" not in settings
     assert settings["hyperparameters"] == {
-        "GBM": [{"ag_args_fit": {"num_gpus": 0}}],
+        "GBM": [{"device": "cuda", "ag_args_fit": {"num_gpus": 1}}],
         "CAT": [
             {
                 "task_type": "GPU",
@@ -721,9 +721,26 @@ def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
     }
     assert "n_jobs" not in settings["hyperparameters"]["XGB"][0]
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
-    assert "'GBM': [{'ag_args_fit': {'num_gpus': 0}}]" in code
+    assert "'GBM': [{'ag_args_fit': {'num_gpus': 1}, 'device': 'cuda'}]" in code
     assert "'use_gpu': True" in code
     assert "fit_kwargs[\"hyperparameters\"] = AIDE_AG_CONFIG[\"hyperparameters\"]" in code
+
+
+def test_autogluon_gpu_profiles_use_cuda_gbm(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.included_model_types = None
+
+    for profile, profile_settings in cfg.agent.autogluon.profiles.items():
+        if not getattr(profile_settings, "use_gpu", False):
+            continue
+        if "GBM" not in list(getattr(profile_settings, "included_model_types", []) or []):
+            continue
+
+        cfg.agent.autogluon.profile = profile
+        settings = resolve_autogluon_settings(cfg)
+
+        assert settings["hyperparameters"]["GBM"][0]["device"] == "cuda"
+        assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
 
 
 def test_autogluon_unknown_profile_is_rejected(tmp_path):
