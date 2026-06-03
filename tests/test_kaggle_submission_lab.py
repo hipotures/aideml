@@ -839,6 +839,98 @@ def test_candidate_tree_ignores_manual_invalid_scores(tmp_path):
     assert invalid[columns.index("submit")] == "invalid"
 
 
+def test_tree_kind_profile_labels_seeded_source_node_as_source():
+    assert (
+        kaggle_submission_lab._tree_kind_profile(
+            {
+                "kind": "source_node",
+                "source_sha256": "source-parent-sha",
+                "profile": "full_boost",
+            }
+        )
+        == "source"
+    )
+    assert (
+        kaggle_submission_lab._tree_kind_profile(
+            {
+                "kind": "profile_eval",
+                "source_sha256": "source-parent-sha",
+                "profile": "full_boost",
+            }
+        )
+        == "full"
+    )
+
+
+def test_candidate_tree_hides_seed_copy_records_by_default(tmp_path):
+    seed_record = {
+        "competition": "playground-series-s6e5",
+        "kind": "source_node",
+        "run": "seed-copy",
+        "step": 0,
+        "timestamp": "20260504T110000",
+        "local_score": 0.96718,
+        "sha256": "seedclone11112222",
+        "source_sha256": "source-parent-sha",
+        "profile": "full_boost",
+        "status": "ok",
+    }
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+
+    _columns, rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[seed_record],
+        registry=registry,
+        records=[seed_record],
+        sort_by="public",
+        limit=None,
+    )
+    columns_with_seeds, rows_with_seeds = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[seed_record],
+        registry=registry,
+        records=[seed_record],
+        sort_by="public",
+        limit=None,
+        show_seeds=True,
+    )
+
+    assert rows == []
+    by_sha = {row[columns_with_seeds.index("sha")]: row for row in rows_with_seeds}
+    assert "seedclone1" in by_sha
+
+
+def test_select_top_records_excludes_seed_copy(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,class\n1,STAR\n")
+    seed_record = {
+        "competition": "playground-series-s6e5",
+        "kind": "source_node",
+        "run": "seed-copy",
+        "step": 0,
+        "timestamp": "20260504T110000",
+        "local_score": 0.96718,
+        "metric_maximize": True,
+        "sha256": "seedclone11112222",
+        "source_sha256": "source-parent-sha",
+        "submission_path": str(submission_path),
+        "status": "ok",
+    }
+
+    selected = kaggle_submission_lab.select_top_records(
+        [seed_record],
+        registry=kaggle_submission_lab.smart.SubmissionRegistry(
+            tmp_path / "registry.json",
+            entries=[],
+        ),
+        competition="playground-series-s6e5",
+        limit=5,
+    )
+
+    assert selected == []
+
+
 def test_registry_display_table_shows_metric_or_dash(tmp_path):
     registry = kaggle_submission_lab.smart.SubmissionRegistry(
         tmp_path / "registry.json",

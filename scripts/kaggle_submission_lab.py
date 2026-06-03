@@ -194,6 +194,13 @@ def _record_looks_autogluon(record: dict[str, Any]) -> bool:
     )
 
 
+def _record_is_seed_copy(record: dict[str, Any]) -> bool:
+    return (
+        record.get("kind") != "profile_eval"
+        and bool(record.get("source_sha256"))
+    )
+
+
 def _format_algo(record: dict[str, Any], *, unknown_if_missing: bool = False) -> str:
     explicit = record.get("algo")
     if isinstance(explicit, str):
@@ -216,7 +223,16 @@ def deduplicate_records_by_sha256(records: Iterable[dict[str, Any]]) -> list[dic
         if not sha:
             continue
         current = best_by_sha.get(str(sha))
-        if current is None or _record_sort_key(record) > _record_sort_key(current):
+        if current is not None and _record_is_seed_copy(record) and not _record_is_seed_copy(current):
+            continue
+        if (
+            current is None
+            or (
+                not _record_is_seed_copy(record)
+                and _record_is_seed_copy(current)
+            )
+            or _record_sort_key(record) > _record_sort_key(current)
+        ):
             best_by_sha[str(sha)] = record
     return sorted(best_by_sha.values(), key=_record_sort_key, reverse=True)
 
@@ -457,6 +473,7 @@ def refresh_index(
 def _record_is_submit_ready(record: dict[str, Any]) -> bool:
     return (
         record.get("status") == "ok"
+        and not _record_is_seed_copy(record)
         and not record.get("is_buggy")
         and record.get("local_score") is not None
         and record.get("sha256") is not None
@@ -1219,6 +1236,22 @@ def _merge_tree_artifact(
         existing[key] = value
 
 
+def _tree_row_is_profile_eval(row: dict[str, Any]) -> bool:
+    if row.get("kind") == "profile_eval":
+        return True
+    try:
+        step = int(row.get("step"))
+    except (TypeError, ValueError):
+        step = None
+    return bool(row.get("source_sha256")) and step is not None and step < 0
+
+
+def _tree_parent_sha(row: dict[str, Any]) -> str:
+    if not _tree_row_is_profile_eval(row):
+        return ""
+    return str(row.get("source_sha256") or "")
+
+
 def _tree_artifact_from_record(
     record: dict[str, Any],
     *,
@@ -1250,7 +1283,7 @@ def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "sha256": row.get("sha256"),
         "source_sha256": row.get("source_sha256"),
-        "kind": "profile_eval" if row.get("source_sha256") else "source_node",
+        "kind": "profile_eval" if _tree_row_is_profile_eval(row) else "source_node",
         "local_score": row.get("local_score"),
         "exec_time": row.get("exec_time"),
         "public_score": row.get("public_score"),
@@ -1311,7 +1344,7 @@ def _tree_state(row: dict[str, Any]) -> str:
 
 
 def _tree_kind_profile(row: dict[str, Any]) -> str:
-    if row.get("kind") == "profile_eval" or row.get("source_sha256"):
+    if _tree_row_is_profile_eval(row):
         return _short_profile(row.get("profile")) or "rerun"
     return "source"
 
@@ -1356,35 +1389,42 @@ def candidate_tree_display_table(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
+    show_seeds: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     if sort_by not in {"public", "cv"}:
         raise ValueError("sort_by must be 'public' or 'cv'")
 
     artifacts: dict[str, dict[str, Any]] = {}
     visible_root_shas: set[str] = set()
-    for record in records or []:
+    tree_records = [
+        record
+        for record in records or []
+        if show_seeds or not _record_is_seed_copy(record)
+    ]
+    for record in tree_records:
         _merge_tree_artifact(artifacts, _tree_artifact_from_record(record))
 
     for record in selected:
-        _merge_tree_artifact(
-            artifacts,
-            _tree_artifact_from_record(record, selected=True),
-        )
-        root_sha = str(record.get("source_sha256") or record.get("sha256") or "")
+        if not show_seeds and _record_is_seed_copy(record):
+            continue
+        artifact = _tree_artifact_from_record(record, selected=True)
+        _merge_tree_artifact(artifacts, artifact)
+        root_sha = _tree_parent_sha(artifact) or str(record.get("sha256") or "")
         if root_sha:
             visible_root_shas.add(root_sha)
 
     registry_rows = registry_display_rows(
         registry,
         remote_submissions,
-        records=records,
+        records=tree_records,
         limit=None,
         run_filters=run_filters,
         competition=competition,
     )
     for row in registry_rows:
-        _merge_tree_artifact(artifacts, _tree_artifact_from_registry_row(row))
-        root_sha = str(row.get("source_sha256") or row.get("sha256") or "")
+        artifact = _tree_artifact_from_registry_row(row)
+        _merge_tree_artifact(artifacts, artifact)
+        root_sha = _tree_parent_sha(artifact) or str(row.get("sha256") or "")
         if root_sha:
             visible_root_shas.add(root_sha)
 
@@ -1402,7 +1442,7 @@ def candidate_tree_display_table(
         children = [
             row
             for row in all_artifacts
-            if str(row.get("source_sha256") or "") == source_sha
+            if _tree_parent_sha(row) == source_sha
             and str(row.get("sha256") or "") != source_sha
         ]
         children.sort(key=lambda row: _tree_child_sort_key(row, sort_by=sort_by), reverse=True)
@@ -1533,6 +1573,7 @@ def render_candidate_tree_table(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
+    show_seeds: bool = False,
 ) -> None:
     columns, rows = candidate_tree_display_table(
         selected=selected,
@@ -1543,6 +1584,7 @@ def render_candidate_tree_table(
         limit=limit,
         run_filters=run_filters,
         competition=competition,
+        show_seeds=show_seeds,
     )
     table = Table(
         title=f"Submission candidate tree (sorted by {sort_by})",
@@ -1769,6 +1811,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Sort candidate tree families by best public score or best CV.",
     )
     parser.add_argument(
+        "--show-seeds",
+        action="store_true",
+        help="Show seeded clone artifacts in the candidate tree.",
+    )
+    parser.add_argument(
         "--no-remote",
         action="store_true",
         help="Do not fetch Kaggle submissions or synchronize public scores.",
@@ -1866,6 +1913,7 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 run_filters=run_filters,
                 competition=args.competition,
+                show_seeds=args.show_seeds,
             )
             if remote_submissions is not None:
                 console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
