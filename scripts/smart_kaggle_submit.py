@@ -816,6 +816,24 @@ def parse_submission_description(description: str | None) -> dict[str, str]:
     return parsed
 
 
+def _truthy_description_value(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _description_marks_local_invalid(parsed: dict[str, str]) -> bool:
+    status = str(
+        parsed.get("status")
+        or parsed.get("manual_status")
+        or parsed.get("local_status")
+        or ""
+    ).strip().lower()
+    return (
+        _truthy_description_value(parsed.get("ignore"))
+        or _truthy_description_value(parsed.get("invalid"))
+        or status in {"failed", "invalid", "ignore", "ignored", "failed_local_invalid"}
+    )
+
+
 def _entry_ref(entry: dict[str, Any]) -> int | None:
     ref = entry.get("kaggle_ref")
     if ref is None and isinstance(entry.get("response"), dict):
@@ -860,11 +878,13 @@ def _remote_matches_entry(
 
 
 def _remote_registry_fields(remote: Any) -> dict[str, Any]:
-    return {
+    description = _remote_attr(remote, "description")
+    parsed = parse_submission_description(description)
+    fields = {
         "kaggle_ref": _remote_ref(remote),
         "remote_filename": _remote_attr(remote, "file_name"),
         "remote_date": _date_to_string(_remote_attr(remote, "date")),
-        "remote_description": _remote_attr(remote, "description"),
+        "remote_description": description,
         "remote_status": _status_to_string(_remote_attr(remote, "status")),
         "public_score": _remote_attr(remote, "public_score"),
         "private_score": _remote_attr(remote, "private_score"),
@@ -872,6 +892,19 @@ def _remote_registry_fields(remote: Any) -> dict[str, Any]:
         "remote_total_bytes": _remote_attr(remote, "total_bytes"),
         "synced_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
+    if _description_marks_local_invalid(parsed):
+        reason = parsed.get("reason") or parsed.get("invalid_reason") or "marked ignored in Kaggle description"
+        fields.update(
+            {
+                "local_score": None,
+                "public_score": "",
+                "private_score": "",
+                "remote_status": "FAILED_LOCAL_INVALID",
+                "manual_status": "failed",
+                "manual_invalid_reason": reason,
+            }
+        )
+    return fields
 
 
 def sync_registry_from_remote(
@@ -897,6 +930,9 @@ def sync_registry_from_remote(
                 break
 
             fields = _remote_registry_fields(remote)
+            if fields.get("manual_status") == "failed":
+                entry.setdefault("original_local_score", entry.get("local_score"))
+                entry.setdefault("original_public_score", entry.get("public_score"))
             if any(entry.get(key) != value for key, value in fields.items()):
                 entry.update(fields)
                 changed += 1

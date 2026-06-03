@@ -720,12 +720,29 @@ def _remote_identity(remote: Any) -> tuple[Any, str, str]:
 
 
 def _registry_display_sort_key(row: dict[str, Any]) -> tuple[bool, float, str]:
-    public_score = smart._parse_public_score(row.get("public_score"))
+    public_score = (
+        None if _row_is_local_invalid(row) else smart._parse_public_score(row.get("public_score"))
+    )
     return (
         public_score is not None,
         public_score if public_score is not None else float("-inf"),
         str(row.get("date") or ""),
     )
+
+
+def _row_is_local_invalid(row: dict[str, Any]) -> bool:
+    remote_status = str(row.get("remote_status") or "").upper()
+    return (
+        str(row.get("manual_status") or "").lower() == "failed"
+        or remote_status == "FAILED_LOCAL_INVALID"
+        or bool(row.get("manual_invalid_reason"))
+    )
+
+
+def _row_display_status(row: dict[str, Any]) -> str:
+    if _row_is_local_invalid(row):
+        return "FAILED_LOCAL_INVALID"
+    return str(row.get("remote_status") or "")
 
 
 def _remote_display_rows(
@@ -785,6 +802,20 @@ def _remote_display_rows(
             "date": parsed.get("timestamp") or smart._remote_attr(remote, "date"),
             "sha256": remote_sha,
         }
+        if smart._description_marks_local_invalid(parsed):
+            row.update(
+                {
+                    "local_score": None,
+                    "public_score": "",
+                    "remote_status": "FAILED_LOCAL_INVALID",
+                    "manual_status": "failed",
+                    "manual_invalid_reason": (
+                        parsed.get("reason")
+                        or parsed.get("invalid_reason")
+                        or "marked ignored in Kaggle description"
+                    ),
+                }
+            )
         if record_lookup is not None:
             row["algo"] = row.get("algo") or _registry_entry_algo(row, record_lookup)
             row["eval_metric"] = row.get("eval_metric") or _registry_entry_eval_metric(
@@ -1011,7 +1042,8 @@ def render_registry_table(
     complete_rank = 0
     for entry in sorted_rows:
         remote_status = str(entry.get("remote_status") or "")
-        if remote_status.upper() == "COMPLETE":
+        display_status = _row_display_status(entry)
+        if remote_status.upper() == "COMPLETE" and not _row_is_local_invalid(entry):
             complete_rank += 1
             display_rank = str(complete_rank)
         else:
@@ -1022,7 +1054,7 @@ def render_registry_table(
             _format_public_score(entry.get("public_score")),
             _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
-            remote_status or "-",
+            display_status or "-",
             str(entry.get("run") or "-"),
         ]
         if show_hypothesis:
@@ -1058,6 +1090,8 @@ def registry_display_rows(
             "exec_time": _registry_entry_exec_time(entry, record_lookup),
             "public_score": entry.get("public_score"),
             "remote_status": entry.get("remote_status"),
+            "manual_status": entry.get("manual_status"),
+            "manual_invalid_reason": entry.get("manual_invalid_reason"),
             "eval_metric": _registry_entry_eval_metric(entry, record_lookup),
             "algo": _registry_entry_algo(entry, record_lookup),
             "hypothesis_id": _registry_entry_hypothesis_id(entry, record_lookup),
@@ -1138,7 +1172,8 @@ def registry_display_table(
     complete_rank = 0
     for entry in display_rows:
         remote_status = str(entry.get("remote_status") or "")
-        if remote_status.upper() == "COMPLETE":
+        display_status = _row_display_status(entry)
+        if remote_status.upper() == "COMPLETE" and not _row_is_local_invalid(entry):
             complete_rank += 1
             display_rank = str(complete_rank)
         else:
@@ -1149,7 +1184,7 @@ def registry_display_table(
             _format_public_score(entry.get("public_score")),
             _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
-            remote_status or "-",
+            display_status or "-",
             str(entry.get("run") or "-"),
         ]
         if show_hypothesis:
@@ -1198,6 +1233,8 @@ def _tree_artifact_from_record(
         "exec_time": record.get("exec_time"),
         "public_score": record.get("public_score"),
         "remote_status": record.get("remote_status"),
+        "manual_status": record.get("manual_status"),
+        "manual_invalid_reason": record.get("manual_invalid_reason"),
         "status": record.get("status"),
         "eval_metric": record.get("eval_metric"),
         "algo": record.get("algo"),
@@ -1218,6 +1255,8 @@ def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
         "exec_time": row.get("exec_time"),
         "public_score": row.get("public_score"),
         "remote_status": row.get("remote_status"),
+        "manual_status": row.get("manual_status"),
+        "manual_invalid_reason": row.get("manual_invalid_reason"),
         "eval_metric": row.get("eval_metric"),
         "algo": row.get("algo"),
         "run": row.get("run"),
@@ -1228,10 +1267,14 @@ def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _tree_public_score(row: dict[str, Any]) -> float | None:
+    if _row_is_local_invalid(row):
+        return None
     return smart._parse_public_score(row.get("public_score"))
 
 
 def _tree_cv_score(row: dict[str, Any]) -> float | None:
+    if _row_is_local_invalid(row):
+        return None
     value = row.get("local_score")
     if value is None or value == "":
         return None
@@ -1255,6 +1298,8 @@ def _rank_tree_artifacts(
 
 
 def _tree_state(row: dict[str, Any]) -> str:
+    if _row_is_local_invalid(row):
+        return "invalid"
     remote_status = str(row.get("remote_status") or "")
     if remote_status.upper() == "COMPLETE":
         return "submitted"

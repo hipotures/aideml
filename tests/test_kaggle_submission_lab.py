@@ -770,6 +770,75 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
     assert "ERROR" in output
 
 
+def test_registry_display_table_marks_manual_invalid_without_complete_rank(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": -1,
+                "timestamp": "20260504T100000",
+                "local_score": None,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.95893",
+                "manual_invalid_reason": "local CV used accuracy",
+            },
+        ],
+    )
+
+    columns, rows = kaggle_submission_lab.registry_display_table(registry)
+
+    assert rows[0][columns.index("#")] == "-"
+    assert rows[0][columns.index("status")] == "FAILED_LOCAL_INVALID"
+
+
+def test_candidate_tree_ignores_manual_invalid_scores(tmp_path):
+    root_sha = "bbbbaaaa11112222"
+    invalid_sha = "aaaabbbbccccdddd"
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-source",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.96704,
+                "sha256": root_sha,
+                "remote_status": "COMPLETE",
+                "public_score": "0.96701",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-source",
+                "step": -1,
+                "timestamp": "20260504T110000",
+                "local_score": None,
+                "sha256": invalid_sha,
+                "source_sha256": root_sha,
+                "remote_status": "COMPLETE",
+                "public_score": "0.95893",
+                "manual_invalid_reason": "local CV used accuracy",
+            },
+        ],
+    )
+
+    columns, rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[],
+        registry=registry,
+        sort_by="public",
+        limit=None,
+    )
+
+    by_sha = {row[columns.index("sha")]: row for row in rows}
+    invalid = by_sha[invalid_sha[:10]]
+    assert invalid[columns.index("CV#")] == "-"
+    assert invalid[columns.index("PUB#")] == "-"
+    assert invalid[columns.index("submit")] == "invalid"
+
+
 def test_registry_display_table_shows_metric_or_dash(tmp_path):
     registry = kaggle_submission_lab.smart.SubmissionRegistry(
         tmp_path / "registry.json",

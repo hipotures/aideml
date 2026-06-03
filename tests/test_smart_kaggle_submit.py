@@ -715,6 +715,47 @@ def test_sync_registry_from_remote_preserves_manually_failed_entry(tmp_path):
     assert registry.entries[0]["remote_status"] == "FAILED_LOCAL_INVALID"
 
 
+def test_sync_registry_from_remote_marks_ignored_description_failed(tmp_path):
+    registry = SubmissionRegistry(
+        tmp_path / "registry.json",
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "response": {"ref": 52271267},
+                "run": "run-a",
+                "step": -1,
+                "timestamp": "20260502T101000",
+                "sha256": "abc123",
+                "local_score": 0.96990,
+                "public_score": "0.95893",
+            }
+        ],
+    )
+
+    changed = sync_registry_from_remote(
+        registry=registry,
+        competition="playground-series-s6e5",
+        remote_submissions=[
+            FakeRemoteSubmission(
+                description=(
+                    "ignore=true|cv=0.96990 | run=run-a | step=-1 | "
+                    "aide_ts=20260502T101000 | node=profile- | sha=abc123"
+                ),
+                public_score="0.95893",
+            )
+        ],
+    )
+
+    assert changed == 1
+    entry = SubmissionRegistry.load(tmp_path / "registry.json").entries[0]
+    assert entry["remote_status"] == "FAILED_LOCAL_INVALID"
+    assert entry["manual_status"] == "failed"
+    assert entry["local_score"] is None
+    assert entry["public_score"] == ""
+    assert entry["original_local_score"] == 0.96990
+    assert entry["original_public_score"] == "0.95893"
+
+
 def test_sync_registry_from_remote_updates_public_score_by_timestamp_description(
     tmp_path,
 ):
