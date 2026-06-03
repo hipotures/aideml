@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable
 
+from rich import box
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -1169,6 +1170,398 @@ def registry_display_table(
     return columns, rows
 
 
+def _merge_tree_artifact(
+    artifacts: dict[str, dict[str, Any]],
+    payload: dict[str, Any],
+) -> None:
+    sha = str(payload.get("sha256") or "")
+    if not sha:
+        return
+    existing = artifacts.setdefault("sha:" + sha, {"sha256": sha})
+    for key, value in payload.items():
+        if value is None or value == "":
+            continue
+        existing[key] = value
+
+
+def _tree_artifact_from_record(
+    record: dict[str, Any],
+    *,
+    selected: bool = False,
+) -> dict[str, Any]:
+    return {
+        "sha256": record.get("sha256"),
+        "source_sha256": record.get("source_sha256"),
+        "kind": record.get("kind") or "source_node",
+        "profile": record.get("profile"),
+        "local_score": record.get("local_score"),
+        "exec_time": record.get("exec_time"),
+        "public_score": record.get("public_score"),
+        "remote_status": record.get("remote_status"),
+        "status": record.get("status"),
+        "eval_metric": record.get("eval_metric"),
+        "algo": record.get("algo"),
+        "run": record.get("run"),
+        "step": record.get("step"),
+        "timestamp": record.get("timestamp") or record.get("date"),
+        "artifact_dir": record.get("artifact_dir"),
+        "selected": selected,
+    }
+
+
+def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sha256": row.get("sha256"),
+        "source_sha256": row.get("source_sha256"),
+        "kind": "profile_eval" if row.get("source_sha256") else "source_node",
+        "local_score": row.get("local_score"),
+        "exec_time": row.get("exec_time"),
+        "public_score": row.get("public_score"),
+        "remote_status": row.get("remote_status"),
+        "eval_metric": row.get("eval_metric"),
+        "algo": row.get("algo"),
+        "run": row.get("run"),
+        "step": row.get("step"),
+        "timestamp": row.get("date"),
+        "artifact_dir": row.get("artifact_dir"),
+    }
+
+
+def _tree_public_score(row: dict[str, Any]) -> float | None:
+    return smart._parse_public_score(row.get("public_score"))
+
+
+def _tree_cv_score(row: dict[str, Any]) -> float | None:
+    value = row.get("local_score")
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _rank_tree_artifacts(
+    artifacts: list[dict[str, Any]],
+    score_fn,
+) -> dict[str, int]:
+    scored = [
+        (score, str(row.get("sha256") or ""))
+        for row in artifacts
+        if (score := score_fn(row)) is not None and row.get("sha256")
+    ]
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return {sha: rank for rank, (_score, sha) in enumerate(scored, start=1)}
+
+
+def _tree_state(row: dict[str, Any]) -> str:
+    remote_status = str(row.get("remote_status") or "")
+    if remote_status.upper() == "COMPLETE":
+        return "submitted"
+    if remote_status:
+        return remote_status.lower()
+    if row.get("selected") or str(row.get("status") or "").lower() == "ok":
+        return "ready"
+    return str(row.get("status") or "-")
+
+
+def _tree_kind_profile(row: dict[str, Any]) -> str:
+    if row.get("kind") == "profile_eval" or row.get("source_sha256"):
+        return _short_profile(row.get("profile")) or "rerun"
+    return "source"
+
+
+def _tree_family_sort_key(
+    family_rows: list[dict[str, Any]],
+    *,
+    sort_by: str,
+) -> tuple[float, float, str]:
+    public_scores = [
+        score for row in family_rows if (score := _tree_public_score(row)) is not None
+    ]
+    cv_scores = [
+        score for row in family_rows if (score := _tree_cv_score(row)) is not None
+    ]
+    best_public = max(public_scores) if public_scores else float("-inf")
+    best_cv = max(cv_scores) if cv_scores else float("-inf")
+    root_sha = str(family_rows[0].get("sha256") or "")
+    if sort_by == "cv":
+        return (best_cv, best_public, root_sha)
+    return (best_public, best_cv, root_sha)
+
+
+def _tree_child_sort_key(row: dict[str, Any], *, sort_by: str) -> tuple[float, float, str]:
+    public_score = _tree_public_score(row)
+    cv_score = _tree_cv_score(row)
+    public_value = public_score if public_score is not None else float("-inf")
+    cv_value = cv_score if cv_score is not None else float("-inf")
+    sha = str(row.get("sha256") or "")
+    if sort_by == "cv":
+        return (cv_value, public_value, sha)
+    return (public_value, cv_value, sha)
+
+
+def candidate_tree_display_table(
+    *,
+    selected: list[dict[str, Any]],
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None = None,
+    records: list[dict[str, Any]] | None = None,
+    sort_by: str = "public",
+    limit: int | None = 20,
+    run_filters: list[str] | None = None,
+    competition: str | None = None,
+) -> tuple[list[str], list[list[str]]]:
+    if sort_by not in {"public", "cv"}:
+        raise ValueError("sort_by must be 'public' or 'cv'")
+
+    artifacts: dict[str, dict[str, Any]] = {}
+    visible_root_shas: set[str] = set()
+    for record in records or []:
+        _merge_tree_artifact(artifacts, _tree_artifact_from_record(record))
+
+    for record in selected:
+        _merge_tree_artifact(
+            artifacts,
+            _tree_artifact_from_record(record, selected=True),
+        )
+        root_sha = str(record.get("source_sha256") or record.get("sha256") or "")
+        if root_sha:
+            visible_root_shas.add(root_sha)
+
+    registry_rows = registry_display_rows(
+        registry,
+        remote_submissions,
+        records=records,
+        limit=None,
+        run_filters=run_filters,
+        competition=competition,
+    )
+    for row in registry_rows:
+        _merge_tree_artifact(artifacts, _tree_artifact_from_registry_row(row))
+        root_sha = str(row.get("source_sha256") or row.get("sha256") or "")
+        if root_sha:
+            visible_root_shas.add(root_sha)
+
+    all_artifacts = list(artifacts.values())
+    for source_sha in visible_root_shas:
+        if not any(str(row.get("sha256") or "") == source_sha for row in all_artifacts):
+            synthesized = {"sha256": source_sha, "kind": "source_node"}
+            _merge_tree_artifact(artifacts, synthesized)
+            all_artifacts = list(artifacts.values())
+
+    by_sha = {str(row.get("sha256") or ""): row for row in all_artifacts}
+    families: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
+    for source_sha in visible_root_shas:
+        root = by_sha.get(source_sha, {"sha256": source_sha, "kind": "source_node"})
+        children = [
+            row
+            for row in all_artifacts
+            if str(row.get("source_sha256") or "") == source_sha
+            and str(row.get("sha256") or "") != source_sha
+        ]
+        children.sort(key=lambda row: _tree_child_sort_key(row, sort_by=sort_by), reverse=True)
+        families.append((root, children))
+
+    families.sort(
+        key=lambda family: _tree_family_sort_key(
+            [family[0], *family[1]],
+            sort_by=sort_by,
+        ),
+        reverse=True,
+    )
+    if limit is not None and limit > 0:
+        families = families[:limit]
+
+    displayed_artifacts = [row for root, children in families for row in [root, *children]]
+    cv_ranks = _rank_tree_artifacts(displayed_artifacts, _tree_cv_score)
+    public_ranks = _rank_tree_artifacts(displayed_artifacts, _tree_public_score)
+
+    columns = [
+        "#",
+        "CV#",
+        "PUB#",
+        "cv",
+        "public",
+        "submit",
+        "kind/profile",
+        "time",
+        "metric",
+        "run",
+        "step",
+        "date",
+        "sha",
+    ]
+    rows: list[list[str]] = []
+    for family_rank, (root, children) in enumerate(families, start=1):
+        for child_index, row in enumerate([root, *children]):
+            sha = str(row.get("sha256") or "")
+            marker = str(family_rank)
+            if child_index > 0:
+                marker = "└─" if child_index == len(children) else "├─"
+            rows.append(
+                [
+                    marker,
+                    str(cv_ranks.get(sha) or "-"),
+                    str(public_ranks.get(sha) or "-"),
+                    _format_score(row.get("local_score")),
+                    _format_public_score(row.get("public_score")),
+                    _tree_state(row),
+                    _tree_kind_profile(row),
+                    _format_duration(row.get("exec_time")),
+                    str(row.get("eval_metric") or "-"),
+                    str(row.get("run") or "-"),
+                    _format_step(row.get("step")),
+                    _timestamp_date(row.get("timestamp")),
+                    sha[:10] or "-",
+                ]
+            )
+    return columns, rows
+
+
+def ready_submit_commands(rows: list[list[str]], *, max_count: int = 5) -> list[str]:
+    commands: list[str] = []
+    for row in rows:
+        if len(row) < 13 or row[5] != "ready":
+            continue
+        sha = str(row[12] or "").strip()
+        if not sha or sha == "-":
+            continue
+        commands.append(
+            f"uv run python scripts/kaggle_submission_lab.py --sha {sha}"
+        )
+        if len(commands) >= max_count:
+            break
+    return commands
+
+
+def _tree_row_is_root(row: list[str]) -> bool:
+    return bool(row) and row[0].strip().isdigit()
+
+
+def rerun_profile_commands(
+    rows: list[list[str]],
+    *,
+    max_count: int = 5,
+    profile: str = "best_boost_gpu_1h",
+) -> list[str]:
+    commands: list[str] = []
+    index = 0
+    while index < len(rows):
+        root = rows[index]
+        if not _tree_row_is_root(root):
+            index += 1
+            continue
+        children: list[list[str]] = []
+        index += 1
+        while index < len(rows) and not _tree_row_is_root(rows[index]):
+            children.append(rows[index])
+            index += 1
+
+        if len(root) < 13:
+            continue
+        is_source = root[6] == "source"
+        has_public = bool(str(root[4] or "").strip())
+        has_rerun_child = any(len(child) > 6 and child[6] != "source" for child in children)
+        if not is_source or not has_public or has_rerun_child:
+            continue
+        sha = str(root[12] or "").strip()
+        if not sha or sha == "-":
+            continue
+        commands.append(
+            "uv run python scripts/rerun_autogluon_profile.py "
+            f"--sha {sha} --profile {profile} --execute"
+        )
+        if len(commands) >= max_count:
+            break
+    return commands
+
+
+def render_candidate_tree_table(
+    console: Console,
+    *,
+    selected: list[dict[str, Any]],
+    registry: smart.SubmissionRegistry,
+    remote_submissions: list[Any] | None = None,
+    records: list[dict[str, Any]] | None = None,
+    sort_by: str = "public",
+    limit: int | None = 20,
+    run_filters: list[str] | None = None,
+    competition: str | None = None,
+) -> None:
+    columns, rows = candidate_tree_display_table(
+        selected=selected,
+        registry=registry,
+        remote_submissions=remote_submissions,
+        records=records,
+        sort_by=sort_by,
+        limit=limit,
+        run_filters=run_filters,
+        competition=competition,
+    )
+    table = Table(
+        title=f"Submission candidate tree (sorted by {sort_by})",
+        box=box.SIMPLE,
+        show_edge=False,
+        padding=(0, 1),
+        expand=False,
+    )
+    for column in columns:
+        justify = (
+            "right"
+            if column in {"CV#", "PUB#", "cv", "public", "time", "step"}
+            else "left"
+        )
+        if column == "#":
+            table.add_column(column, justify=justify, no_wrap=True, min_width=3)
+        elif column == "run":
+            table.add_column(column, justify=justify, no_wrap=True, overflow="ellipsis", max_width=42)
+        elif column == "kind/profile":
+            table.add_column(
+                column,
+                justify=justify,
+                no_wrap=True,
+                overflow="ellipsis",
+                max_width=22,
+            )
+        else:
+            table.add_column(column, justify=justify, no_wrap=True)
+    current_family_style: str | None = None
+    for row in rows:
+        is_root_row = row[0].strip().isdigit()
+        if is_root_row:
+            family_rank = int(row[0].strip())
+            current_family_style = "on grey30" if family_rank % 2 == 1 else None
+        styled_row: list[str | Text] = list(row)
+        if is_root_row:
+            styled_row[0] = Text(row[0], style="bold")
+        if row[1] == "1":
+            styled_row[3] = Text(row[3], style="bold black on bright_green")
+        if row[2] == "1":
+            styled_row[4] = Text(row[4], style="bold black on bright_cyan")
+        if row[5] == "submitted":
+            styled_row[5] = Text(row[5], style="green")
+        elif row[5] == "ready":
+            styled_row[5] = Text(row[5], style="bold bright_yellow")
+        table.add_row(
+            *styled_row,
+            style=current_family_style,
+        )
+    console.print(table)
+    commands = ready_submit_commands(rows)
+    if commands:
+        console.print()
+        console.print("Ready submit commands:")
+        for command in commands:
+            console.print(command)
+    rerun_commands = rerun_profile_commands(rows)
+    if rerun_commands:
+        console.print()
+        console.print("Ready rerun commands:")
+        for command in rerun_commands:
+            console.print(command)
+
+
 def _json_safe(value: Any) -> Any:
     if isinstance(value, Path):
         return str(value)
@@ -1290,7 +1683,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
-    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--limit", type=int, default=20)
     parser.add_argument(
         "--output-format",
         choices=["rich", "json", "txt"],
@@ -1304,9 +1697,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Maximum rows shown in Submission registry. Use 0 for no limit.",
     )
     parser.add_argument("--reindex", action="store_true")
-    parser.add_argument("--submit", action="store_true")
     parser.add_argument(
-        "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
+        "--sha256",
+        "--sha",
+        dest="sha256",
+        action="append",
+        default=[],
+        metavar="PREFIX",
+        help=(
+            "Submit the matching sha prefix. Can be repeated. Without --sha, "
+            "the command only renders the candidate tree."
+        ),
     )
     parser.add_argument(
         "--run",
@@ -1316,6 +1717,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Restrict indexing and candidate selection to one run. Can be repeated or comma-separated.",
     )
     parser.add_argument("--full-view", action="store_true")
+    parser.add_argument(
+        "--tree-sort",
+        choices=["public", "cv"],
+        default="public",
+        help="Sort candidate tree families by best public score or best CV.",
+    )
     parser.add_argument(
         "--no-remote",
         action="store_true",
@@ -1391,7 +1798,7 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"[red]{exc}[/red]")
         return 2
 
-    if args.submit:
+    if sha_filters:
         if client is None:
             client = smart._build_kaggle_client()
         submitted = submit_records(
@@ -1404,14 +1811,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         registry_limit = None if args.registry_limit == 0 else args.registry_limit
         if args.output_format == "rich":
-            render_table(console, selected, full_view=args.full_view)
-            render_registry_table(
+            render_candidate_tree_table(
                 console,
-                registry,
-                remote_submissions,
+                selected=selected,
+                registry=registry,
+                remote_submissions=remote_submissions,
                 records=records,
-                full_view=args.full_view,
-                limit=registry_limit,
+                sort_by=args.tree_sort,
+                limit=args.limit,
                 run_filters=run_filters,
                 competition=args.competition,
             )
