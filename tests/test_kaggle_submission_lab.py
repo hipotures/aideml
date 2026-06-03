@@ -383,6 +383,7 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
             "step": 1,
             "timestamp": "20260504T134159",
             "local_score": 0.95026,
+            "exec_time": 142.4,
             "profile": "full_boost",
             "included_model_types": ["XGB", "GBM", "CAT"],
             "sha256": "13bc36ab26abcdef",
@@ -398,6 +399,8 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     assert "prof" not in output
     assert "Algo" in output
     assert "AG" in output
+    assert "time" in output
+    assert "2.4m" in output
     assert "hyp" in output
     assert "001234" in output
     assert "20260504" in output
@@ -618,6 +621,62 @@ def test_registry_display_table_shows_metric_or_dash(tmp_path):
     metric_index = columns.index("metric")
     assert rows[0][metric_index] == "balanced_accuracy"
     assert rows[1][metric_index] == "-"
+
+
+def test_registry_display_table_shows_exec_time_from_records_or_dash(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-b",
+                "step": 2,
+                "timestamp": "20260504T110000",
+                "local_score": 0.94,
+                "sha256": "dddd11112222",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90111",
+            },
+        ],
+    )
+    records = [
+        {
+            "kind": "source_node",
+            "run": "run-a",
+            "step": 1,
+            "timestamp": "20260504T100000",
+            "sha256": "aaaabbbbcccc",
+            "exec_time": 142.4,
+        },
+        {
+            "kind": "source_node",
+            "run": "seeded-run",
+            "step": 0,
+            "timestamp": "20260504T120000",
+            "sha256": "aaaabbbbcccc",
+            "artifact_dir": str(tmp_path / "seeded"),
+            "exec_time": 142.4,
+        }
+    ]
+
+    columns, rows = kaggle_submission_lab.registry_display_table(
+        registry,
+        records=records,
+    )
+
+    time_index = columns.index("time")
+    assert rows[0][time_index] == "2.4m"
+    assert rows[1][time_index] == "-"
 
 
 def test_render_registry_table_limits_rows_by_default(tmp_path):

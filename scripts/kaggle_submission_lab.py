@@ -588,6 +588,16 @@ def _short_models(models: list[Any] | None) -> str:
     return "".join(labels.get(str(model), str(model)[:1].lower()) for model in models or [])
 
 
+def _format_duration(value: Any) -> str:
+    if value is None or value == "":
+        return "-"
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    return f"{seconds / 60.0:.1f}m"
+
+
 def render_table(
     console: Console,
     records: list[dict[str, Any]],
@@ -599,6 +609,7 @@ def render_table(
     table = Table(title="Top unsent submit-ready candidates", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("time", justify="right", no_wrap=True)
     table.add_column("k", no_wrap=True)
     if full_view:
         table.add_column("prof", no_wrap=True)
@@ -622,7 +633,7 @@ def candidate_display_table(
     full_view: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
-    columns = ["#", "cv", "k"]
+    columns = ["#", "cv", "time", "k"]
     if full_view:
         columns.append("prof")
     columns.extend(["m", "run", "hyp", "Algo", "step", "date", "sha"])
@@ -638,6 +649,7 @@ def candidate_display_table(
         row = [
             str(rank),
             _format_score(record.get("local_score")),
+            _format_duration(record.get("exec_time")),
             "e" if record.get("kind") == "profile_eval" else "n",
         ]
         if full_view:
@@ -783,6 +795,7 @@ def _registry_record_lookup(
             "submission_path": record.get("submission_path"),
             "hypothesis_id": record.get("hypothesis_id"),
             "eval_metric": record.get("eval_metric"),
+            "exec_time": record.get("exec_time"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -803,7 +816,9 @@ def _registry_lookup_record(
 ) -> dict[str, Any] | None:
     sha = str(entry.get("sha256") or "")
     if sha and ("sha", sha) in lookup:
-        return lookup[("sha", sha)]
+        record = lookup[("sha", sha)]
+        if record:
+            return record
 
     run = str(entry.get("run") or "")
     step = str(entry.get("step") if entry.get("step") is not None else "")
@@ -882,6 +897,19 @@ def _registry_entry_eval_metric(
     return None
 
 
+def _registry_entry_exec_time(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> Any:
+    explicit = entry.get("exec_time")
+    if explicit is not None:
+        return explicit
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None:
+        return record.get("exec_time")
+    return None
+
+
 def render_registry_table(
     console: Console,
     registry: smart.SubmissionRegistry,
@@ -903,6 +931,7 @@ def render_registry_table(
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("time", justify="right", no_wrap=True)
     table.add_column("metric", no_wrap=True)
     table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
@@ -926,6 +955,7 @@ def render_registry_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
@@ -958,6 +988,7 @@ def registry_display_rows(
     rows = [
         {
             "local_score": entry.get("local_score"),
+            "exec_time": _registry_entry_exec_time(entry, record_lookup),
             "public_score": entry.get("public_score"),
             "remote_status": entry.get("remote_status"),
             "eval_metric": _registry_entry_eval_metric(entry, record_lookup),
@@ -1006,6 +1037,7 @@ def registry_display_table(
     columns = [
         "#",
         "cv",
+        "time",
         "metric",
         "public",
         "status",
@@ -1038,6 +1070,7 @@ def registry_display_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
