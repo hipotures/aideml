@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 
 LAB_PATH = Path(__file__).resolve().parents[1] / "scripts" / "kaggle_submission_lab.py"
 LAB_SPEC = importlib.util.spec_from_file_location("kaggle_submission_lab", LAB_PATH)
@@ -295,6 +296,22 @@ def test_main_reruns_same_source_even_when_successful_eval_exists(tmp_path, monk
 
     assert exit_code == 0
     assert len(calls) == 1
+
+
+def test_parse_args_treats_sha_as_sha256_alias():
+    args = rerun_autogluon_profile.parse_args(
+        ["--sha", "abc123", "--sha256", "def456"]
+    )
+
+    assert args.sha256 == ["abc123", "def456"]
+
+
+def test_parse_args_help_lists_sha_alias(capsys):
+    with pytest.raises(SystemExit):
+        rerun_autogluon_profile.parse_args(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert "--sha " in help_text
 
 
 def test_main_reports_unknown_profile_without_traceback(tmp_path, capsys):

@@ -1069,6 +1069,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sha256",
+        "--sha",
+        dest="sha256",
         action="append",
         default=[],
         metavar="PREFIX",

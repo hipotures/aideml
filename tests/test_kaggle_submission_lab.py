@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.metric import MetricValue
@@ -558,6 +559,20 @@ def test_parse_args_defaults_to_rich_output_format():
     args = kaggle_submission_lab.parse_args([])
 
     assert args.output_format == "rich"
+
+
+def test_parse_args_treats_sha_as_sha256_alias():
+    args = kaggle_submission_lab.parse_args(["--sha", "abc123", "--sha256", "def456"])
+
+    assert args.sha256 == ["abc123", "def456"]
+
+
+def test_parse_args_help_lists_sha_alias(capsys):
+    with pytest.raises(SystemExit):
+        kaggle_submission_lab.parse_args(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert "--sha " in help_text
 
 
 def test_render_text_table_uses_plain_rows_without_box_frames():

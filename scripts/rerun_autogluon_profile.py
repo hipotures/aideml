@@ -679,7 +679,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Process timeout in seconds. Defaults to profile time_limit plus 15 minutes.",
     )
     parser.add_argument("--memory-limit-gb", type=float, default=80.0)
-    parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    parser.add_argument(
+        "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
+    )
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--refresh-index", action="store_true")
@@ -706,7 +708,7 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"[red]{exc}[/red]")
         return 2
     if not sha_filters:
-        console.print("[red]At least one --sha256 prefix is required.[/red]")
+        console.print("[red]At least one --sha256/--sha prefix is required.[/red]")
         return 2
     try:
         fit_args = parse_fit_args_json(args.fit_args_json)

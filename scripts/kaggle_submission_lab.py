@@ -1232,7 +1232,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--reindex", action="store_true")
     parser.add_argument("--submit", action="store_true")
-    parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    parser.add_argument(
+        "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
+    )
     parser.add_argument(
         "--run",
         action="append",

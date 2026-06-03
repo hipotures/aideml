@@ -264,6 +264,20 @@ def test_parse_sha256_filters_supports_repeated_and_comma_values():
     ]
 
 
+def test_parse_args_treats_sha_as_sha256_alias():
+    args = smart_kaggle_submit.parse_args(["--sha", "abc123", "--sha256", "def456"])
+
+    assert args.sha256 == ["abc123", "def456"]
+
+
+def test_parse_args_help_lists_sha_alias(capsys):
+    with pytest.raises(SystemExit):
+        smart_kaggle_submit.parse_args(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert "--sha " in help_text
+
+
 def test_parse_sha256_filters_rejects_non_hex_values():
     with pytest.raises(ValueError, match="Invalid sha256 prefix"):
         parse_sha256_filters(["abc-not-hex"])

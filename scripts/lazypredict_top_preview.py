@@ -641,7 +641,7 @@ def compute_classifier_cv_metrics(
 
 
 def fit_one_model(model_item: tuple[str, Any]) -> dict[str, Any]:
-    from lazypredict.Supervised import build_preprocessor, prepare_dataframes
+    from lazypredict.Supervised import prepare_dataframes
 
     try:
         from threadpoolctl import threadpool_limits
@@ -1952,7 +1952,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--run", default="2-delectable-curvy-dolphin")
     parser.add_argument("--limit", type=int, default=10)
-    parser.add_argument("--sha256", action="append", default=[], metavar="PREFIX")
+    parser.add_argument(
+        "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
+    )
     parser.add_argument("--dedupe", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument(
         "--sample-train",

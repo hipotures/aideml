@@ -409,7 +409,7 @@ def select_records(
         selected = lab.filter_records_by_sha256(ready, sha_filters)
     else:
         if top_n is None:
-            raise ValueError("Provide --sha256 or --top-n")
+            raise ValueError("Provide --sha256/--sha or --top-n")
         selected_pool = ready if include_blends else [
             record for record in ready if not is_blend_record(record)
         ]
@@ -1442,8 +1442,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=DEFAULT_OUTPUT_RUN,
         help="Run directory where the blend artifact is written.",
     )
-    parser.add_argument("--sha256", action="append", help="Component sha256 prefix; may be repeated.")
-    parser.add_argument("--top-n", type=int, help="Use top-N indexed records when --sha256 is omitted.")
+    parser.add_argument(
+        "--sha256",
+        "--sha",
+        dest="sha256",
+        action="append",
+        help="Component sha256 prefix; may be repeated.",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        help="Use top-N indexed records when --sha256/--sha is omitted.",
+    )
     parser.add_argument("--include-blends", action="store_true", help="Allow existing blend artifacts in top-N selection.")
     parser.add_argument("--no-family-dedupe", action="store_true", help="Do not hide near-duplicate descendants from the same run family.")
     parser.add_argument("--family-dedupe-epsilon", type=float, default=0.00003, help="Hide descendants within this local-score delta.")
