@@ -2110,7 +2110,8 @@ def test_run_data_shows_resolved_model_settings(tmp_path):
 
 def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
-    cfg.agent.mode = "legacy"
+    cfg.agent.mode = "autogluon_preprocess"
+    cfg.agent.autogluon.profile = "s6e6_boost_gpu_ens"
     cfg.agent.aux = True
     cfg.agent.gpu = True
 
@@ -2130,7 +2131,9 @@ def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
 
     assert "Agent" in output
     assert "mode" in output
-    assert "legacy" in output
+    assert "autogluon_preprocess" in output
+    assert "ag.profile" in output
+    assert "s6e6_boost_gpu_ens" in output
     assert "aux" in output
     assert "true" in output
     assert "gpu" in output

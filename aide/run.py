@@ -2951,6 +2951,14 @@ def build_agent_mode_summary(
     mode_line = Text()
     mode_line.append("▶ mode      ", style=TUI_ROW_LABEL_STYLE)
     mode_line.append(mode, style=TUI_NEUTRAL_VALUE_STYLE)
+    ag_profile_line = None
+    if mode == "autogluon_preprocess":
+        ag_profile_line = Text()
+        ag_profile_line.append("▶ ag.profile ", style=TUI_ROW_LABEL_STYLE)
+        ag_profile_line.append(
+            str(getattr(cfg.agent.autogluon, "profile", "") or "-"),
+            style=TUI_NEUTRAL_VALUE_STYLE,
+        )
     aux_line = Text()
     aux_line.append("▶ aux       ", style=TUI_ROW_LABEL_STYLE)
     mode_value = aux_mode(cfg)
@@ -2971,10 +2979,10 @@ def build_agent_mode_summary(
     lines = [
         Text("Agent", style=TUI_ROW_LABEL_STYLE),
         mode_line,
-        aux_line,
-        gpu_line,
-        run_line,
     ]
+    if ag_profile_line is not None:
+        lines.append(ag_profile_line)
+    lines.extend([aux_line, gpu_line, run_line])
     if skip_execution:
         workers_line = Text()
         workers_line.append("▶ workers   ", style=TUI_ROW_LABEL_STYLE)
