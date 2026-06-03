@@ -1494,15 +1494,13 @@ def render_candidate_tree_table(
         if is_root_row:
             styled_row[0] = Text(row[0], style="bold")
         if row[1] == "1":
-            styled_row[1] = Text(row[1], style="bold green")
-            styled_row[3] = Text(row[3], style="bold green")
+            styled_row[3] = Text(row[3], style="bold black on bright_green")
         if row[2] == "1":
-            styled_row[2] = Text(row[2], style="bold cyan")
-            styled_row[4] = Text(row[4], style="bold cyan")
+            styled_row[4] = Text(row[4], style="bold black on bright_cyan")
         if row[5] == "submitted":
             styled_row[5] = Text(row[5], style="green")
         elif row[5] == "ready":
-            styled_row[5] = Text(row[5], style="yellow")
+            styled_row[5] = Text(row[5], style="bold bright_yellow")
         table.add_row(
             *styled_row,
             style=current_family_style,
