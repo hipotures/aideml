@@ -75,7 +75,11 @@ def test_refresh_index_records_result_manifests_without_journal(tmp_path):
                     "step": 4,
                     "ctime": _ctime("20260506T120000"),
                     "parent_id": "node-parent",
-                    "metric": {"value": 0.95098, "maximize": True},
+                    "metric": {
+                        "value": 0.95098,
+                        "maximize": True,
+                        "name": "balanced_accuracy",
+                    },
                     "is_buggy": False,
                     "plan": "remote plan",
                     "analysis": "remote analysis",
@@ -107,6 +111,7 @@ def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     assert record["node_id"] == "node-remote"
     assert record["parent_node_id"] == "node-parent"
     assert record["local_score"] == 0.95098
+    assert record["eval_metric"] == "balanced_accuracy"
     assert record["sha256"] == submission_sha
     assert record["profile"] == "full_boost_gpu"
     assert record["algo"] == "AG"
@@ -549,6 +554,7 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
                 "sha256": "aaaabbbbcccc",
                 "remote_status": "ERROR",
                 "public_score": None,
+                "eval_metric": "balanced_accuracy",
             },
             {
                 "competition": "playground-series-s6e5",
@@ -569,12 +575,49 @@ def test_render_registry_table_numbers_only_complete_submissions(tmp_path):
 
     output = console.export_text()
     assert "Submission registry" in output
+    assert "metric" in output
+    assert "balanced_accuracy" in output
     assert "Algo" in output
     assert "AG" in output
     assert "Leg" in output
     assert "0.90123" in output
     assert "COMPLETE" in output
     assert "ERROR" in output
+
+
+def test_registry_display_table_shows_metric_or_dash(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+                "eval_metric": "balanced_accuracy",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-b",
+                "step": 2,
+                "timestamp": "20260504T110000",
+                "local_score": 0.94,
+                "sha256": "dddd11112222",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90111",
+            },
+        ],
+    )
+
+    columns, rows = kaggle_submission_lab.registry_display_table(registry)
+
+    metric_index = columns.index("metric")
+    assert rows[0][metric_index] == "balanced_accuracy"
+    assert rows[1][metric_index] == "-"
 
 
 def test_render_registry_table_limits_rows_by_default(tmp_path):
@@ -962,7 +1005,7 @@ def test_render_registry_table_backfills_remote_only_rows_from_sha_prefix(tmp_pa
             "artifact_dir": str(artifact_dir),
         }
     ]
-    console = kaggle_submission_lab.Console(record=True, width=220, color_system=None)
+    console = kaggle_submission_lab.Console(record=True, width=280, color_system=None)
 
     kaggle_submission_lab.render_registry_table(
         console,

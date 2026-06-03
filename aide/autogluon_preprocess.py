@@ -1004,6 +1004,7 @@ def main() -> None:
         predictor = TabularPredictor(**predictor_kwargs)
         predictor.fit(**fit_kwargs)
         print("AIDE AutoGluon: finished fit", flush=True)
+    actual_eval_metric = str(getattr(predictor.eval_metric, "name", predictor.eval_metric))
     training_time = time.time() - training_started_at
     model_records = _leaderboard_records(predictor)
 
@@ -1084,6 +1085,7 @@ def main() -> None:
         "feature_count": feature_count,
         "preprocess_time": float(preprocess_time),
         "training_time": float(training_time),
+        "eval_metric": actual_eval_metric,
         "models": model_records,
         "prediction_artifacts": prediction_artifacts,
     }}
@@ -1093,6 +1095,7 @@ def main() -> None:
         "is_bug": False,
         "summary": summary,
         "metric": metric_value,
+        "eval_metric": actual_eval_metric,
         "lower_is_better": lower_is_better,
         "run_stats": run_stats,
         {research_marker_fields}

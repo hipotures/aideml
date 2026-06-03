@@ -92,7 +92,11 @@ def test_collect_candidates_reads_scores_and_marks_submit_ready(tmp_path):
                 "step": 0,
                 "id": "node-ready-low",
                 "ctime": _ctime("20260502T100000"),
-                "metric": {"value": 0.8, "maximize": True},
+                "metric": {
+                    "value": 0.8,
+                    "maximize": True,
+                    "name": "balanced_accuracy",
+                },
                 "is_buggy": False,
             },
             {
@@ -121,6 +125,7 @@ def test_collect_candidates_reads_scores_and_marks_submit_ready(tmp_path):
         (2, None, False),
     ]
     assert candidates[0].sha256 is not None
+    assert candidates[0].eval_metric == "balanced_accuracy"
     assert candidates[0].submission_path == (
         logs_dir / "run-a" / "artifacts" / "20260502T100000" / "submission.csv"
     )
@@ -666,6 +671,36 @@ def test_sync_registry_from_remote_updates_public_score_by_ref(tmp_path):
     assert reloaded.entries[0]["remote_url"] == "/submissions/52271267/52271267.raw"
 
 
+def test_sync_registry_from_remote_preserves_manually_failed_entry(tmp_path):
+    registry = SubmissionRegistry(
+        tmp_path / "registry.json",
+        [
+            {
+                "competition": "playground-series-s6e5",
+                "response": {"ref": 52271267},
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260502T101000",
+                "sha256": "abc123",
+                "local_score": None,
+                "public_score": "",
+                "remote_status": "FAILED_LOCAL_INVALID",
+                "manual_status": "failed",
+            }
+        ],
+    )
+
+    changed = sync_registry_from_remote(
+        registry=registry,
+        competition="playground-series-s6e5",
+        remote_submissions=[FakeRemoteSubmission()],
+    )
+
+    assert changed == 0
+    assert registry.entries[0]["public_score"] == ""
+    assert registry.entries[0]["remote_status"] == "FAILED_LOCAL_INVALID"
+
+
 def test_sync_registry_from_remote_updates_public_score_by_timestamp_description(
     tmp_path,
 ):
@@ -792,7 +827,7 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
         limit=2,
     )
     selected = [
-        replace(selected[0], algo="AG"),
+        replace(selected[0], algo="AG", eval_metric="balanced_accuracy"),
         replace(selected[1], algo="Leg"),
     ]
     registry = SubmissionRegistry(tmp_path / "registry.json")
@@ -815,6 +850,7 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
     assert "run=run-a" in client.calls[0]["message"]
     assert "step=1" in client.calls[0]["message"]
     assert "algo=AG" in client.calls[0]["message"]
+    assert submitted[0]["eval_metric"] == "balanced_accuracy"
     assert submitted[0]["algo"] == "AG"
     assert submitted[0]["uploaded_filename"] == (
         "sub_20260502T101000_step-1_node-fedcba98_sha-142e531fbf_cv-0.90000.csv"

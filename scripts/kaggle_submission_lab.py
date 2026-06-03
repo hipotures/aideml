@@ -291,6 +291,9 @@ def build_manifest_records(
                     "metric_maximize",
                     metric.get("maximize", True),
                 ),
+                "eval_metric": manifest.get("eval_metric")
+                or metric.get("name")
+                or autogluon.get("eval_metric"),
                 "is_buggy": bool(manifest.get("is_buggy") or status != "ok"),
                 "exec_time": (manifest.get("execution") or {}).get("exec_time"),
                 "status": status,
@@ -737,6 +740,7 @@ def _remote_display_rows(
             "remote_status": smart._status_to_string(
                 smart._remote_attr(remote, "status")
             ),
+            "eval_metric": parsed.get("metric") or parsed.get("eval_metric"),
             "algo": parsed.get("algo"),
             "run": parsed.get("run")
             or str(smart._remote_attr(remote, "file_name") or "-"),
@@ -746,6 +750,10 @@ def _remote_display_rows(
         }
         if record_lookup is not None:
             row["algo"] = row.get("algo") or _registry_entry_algo(row, record_lookup)
+            row["eval_metric"] = row.get("eval_metric") or _registry_entry_eval_metric(
+                row,
+                record_lookup,
+            )
             row["artifact_dir"] = _registry_entry_artifact_dir(row, record_lookup)
             row["hypothesis_id"] = _registry_entry_hypothesis_id(row, record_lookup)
         rows.append(row)
@@ -774,6 +782,7 @@ def _registry_record_lookup(
             "artifact_dir": record.get("artifact_dir"),
             "submission_path": record.get("submission_path"),
             "hypothesis_id": record.get("hypothesis_id"),
+            "eval_metric": record.get("eval_metric"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -860,6 +869,19 @@ def _registry_entry_hypothesis_id(
     return None
 
 
+def _registry_entry_eval_metric(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("eval_metric") or entry.get("metric")
+    if explicit:
+        return str(explicit)
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None and record.get("eval_metric"):
+        return str(record.get("eval_metric"))
+    return None
+
+
 def render_registry_table(
     console: Console,
     registry: smart.SubmissionRegistry,
@@ -881,6 +903,7 @@ def render_registry_table(
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("metric", no_wrap=True)
     table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
@@ -903,6 +926,7 @@ def render_registry_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            str(entry.get("eval_metric") or "-"),
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
@@ -936,6 +960,7 @@ def registry_display_rows(
             "local_score": entry.get("local_score"),
             "public_score": entry.get("public_score"),
             "remote_status": entry.get("remote_status"),
+            "eval_metric": _registry_entry_eval_metric(entry, record_lookup),
             "algo": _registry_entry_algo(entry, record_lookup),
             "hypothesis_id": _registry_entry_hypothesis_id(entry, record_lookup),
             "artifact_dir": _registry_entry_artifact_dir(entry, record_lookup),
@@ -978,7 +1003,19 @@ def registry_display_table(
     run_filters: list[str] | None = None,
     competition: str | None = None,
 ) -> tuple[list[str], list[list[str]]]:
-    columns = ["#", "cv", "public", "status", "run", "hyp", "Algo", "step", "date", "sha"]
+    columns = [
+        "#",
+        "cv",
+        "metric",
+        "public",
+        "status",
+        "run",
+        "hyp",
+        "Algo",
+        "step",
+        "date",
+        "sha",
+    ]
     if full_view:
         columns.append("artifact")
 
@@ -1001,6 +1038,7 @@ def registry_display_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            str(entry.get("eval_metric") or "-"),
             _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
@@ -1097,6 +1135,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         sha256=record.get("sha256"),
         validation_error=None,
         algo=_format_algo(record),
+        eval_metric=record.get("eval_metric"),
     )
 
 

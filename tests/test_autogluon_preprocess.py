@@ -622,6 +622,32 @@ def test_autogluon_best_boost_gpu_1h_matches_gpu_30m_with_longer_limit(tmp_path)
     assert settings["validation_strategy"] == "autogluon"
 
 
+def test_autogluon_best_xgb_1h_profiles_are_xgb_only(tmp_path):
+    expected_devices = {
+        "best_xgb_gpu_1h": ("cuda", True, 1),
+        "best_xgb_cpu_1h": ("cpu", False, 0),
+    }
+    for profile, (device, use_gpu, num_gpus) in expected_devices.items():
+        cfg = _cfg(tmp_path)
+        cfg.agent.autogluon.profile = profile
+        cfg.agent.autogluon.included_model_types = None
+
+        settings = resolve_autogluon_settings(cfg)
+
+        assert settings["included_model_types"] == ["XGB"]
+        assert settings["presets"] == "best"
+        assert settings["time_limit"] == 3600
+        assert settings["use_gpu"] is use_gpu
+        assert settings["class_balance"] == "balanced"
+        assert settings["validation_strategy"] == "autogluon"
+        assert settings["fit_args"] == {}
+        assert set(settings["hyperparameters"]) == {"XGB"}
+        assert settings["hyperparameters"]["XGB"][0]["device"] == device
+        assert settings["hyperparameters"]["XGB"][0]["tree_method"] == "hist"
+        assert settings["hyperparameters"]["XGB"][0]["ag_args"] == {"priority": 999}
+        assert settings["hyperparameters"]["XGB"][0]["ag_args_fit"] == {"num_gpus": num_gpus}
+
+
 def test_autogluon_gpu_profile_backfills_xgb_priority_for_saved_configs(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profile = "stale_gpu"
@@ -688,12 +714,12 @@ def test_autogluon_gpu_named_best_profile_uses_per_model_gpu_settings(tmp_path):
             {
                 "device": "cuda",
                 "tree_method": "hist",
-                "n_jobs": 8,
                 "ag_args": {"priority": 999},
                 "ag_args_fit": {"num_gpus": 1},
             }
         ],
     }
+    assert "n_jobs" not in settings["hyperparameters"]["XGB"][0]
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
     assert "'GBM': [{'ag_args_fit': {'num_gpus': 0}}]" in code
     assert "'use_gpu': True" in code

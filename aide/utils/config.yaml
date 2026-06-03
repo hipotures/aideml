@@ -189,7 +189,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -217,7 +216,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -246,7 +244,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -274,7 +271,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -301,7 +297,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -332,7 +327,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:
@@ -347,6 +341,44 @@ agent:
               gpu_ram_part: 0.8
               ag_args_fit:
                 num_gpus: 1
+        fit_args: {}
+      best_xgb_gpu_1h:
+        included_model_types: [XGB]
+        presets: best
+        time_limit: 3600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: autogluon
+        seed: 42
+        class_balance: balanced
+        use_gpu: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 1
+        fit_args: {}
+      best_xgb_cpu_1h:
+        included_model_types: [XGB]
+        presets: best
+        time_limit: 3600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: autogluon
+        seed: 42
+        class_balance: balanced
+        use_gpu: false
+        hyperparameters:
+          XGB:
+            - device: cpu
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 0
         fit_args: {}
       best_boost_1h:
         included_model_types: [XGB, GBM, CAT]
@@ -374,7 +406,6 @@ agent:
           XGB:
             - device: cuda
               tree_method: hist
-              n_jobs: 8
               ag_args:
                 priority: 999
               ag_args_fit:

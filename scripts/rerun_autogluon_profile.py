@@ -427,6 +427,7 @@ def run_profile_eval(
 
     marker = parse_result_marker("".join(exec_result.term_out))
     metric = marker.get("metric") if marker else None
+    eval_metric = marker.get("eval_metric") if marker else None
     lower_is_better = bool(marker.get("lower_is_better")) if marker else False
     validation_error = None
     sample_path = _find_sample_submission(input_dir)
@@ -458,6 +459,7 @@ def run_profile_eval(
         "time_limit": resolved_time_limit,
         "process_timeout": effective_timeout,
         "local_score": float(metric) if metric is not None else None,
+        "eval_metric": eval_metric,
         "metric_maximize": not lower_is_better,
         "exec_time": exec_result.exec_time,
         "source_run": source_record.get("run"),
@@ -514,6 +516,7 @@ def run_profile_eval(
             "metric": {
                 "value": float(metric) if metric is not None else None,
                 "maximize": not lower_is_better,
+                "name": eval_metric,
             },
             "submission_validation": (
                 {"status": "ok"} if validation_error is None else {"status": "error", "error": validation_error}
@@ -535,6 +538,7 @@ def run_profile_eval(
             "time_limit": resolved_time_limit,
             "process_timeout": effective_timeout,
             "use_gpu": None,
+            "eval_metric": eval_metric,
             "resolved_settings": {},
         },
         "source": {

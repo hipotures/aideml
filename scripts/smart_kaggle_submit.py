@@ -57,6 +57,7 @@ class Candidate:
     analysis: str | None = None
     validation_error: str | None = None
     algo: str | None = None
+    eval_metric: str | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -164,6 +165,12 @@ def _metric_value(node: dict[str, Any]) -> tuple[float | None, bool | None]:
     return float(value), maximize
 
 
+def _metric_name(node: dict[str, Any]) -> str | None:
+    metric = node.get("metric") or {}
+    name = metric.get("name") or node.get("eval_metric")
+    return str(name) if name else None
+
+
 def _ancestor_node_ids(
     node_id: str,
     node2parent: dict[str, str],
@@ -230,6 +237,7 @@ def collect_candidates(
                         sha256=checksum,
                         plan=node.get("plan"),
                         analysis=node.get("analysis"),
+                        eval_metric=_metric_name(node),
                     )
                 )
             finally:
@@ -654,10 +662,11 @@ def build_kaggle_message(candidate: Candidate) -> str:
     score = "nan" if candidate.local_score is None else f"{candidate.local_score:.5f}"
     node = candidate.node_id[:8] if candidate.node_id else "unknown"
     algo = f" | algo={candidate.algo}" if candidate.algo else ""
+    metric = f" | metric={candidate.eval_metric}" if candidate.eval_metric else ""
     return (
         f"cv={score} | run={candidate.run} | step={candidate.step} | "
         f"aide_ts={candidate.timestamp} | node={node} | "
-        f"sha={(candidate.sha256 or '')[:10]}{algo}"
+        f"sha={(candidate.sha256 or '')[:10]}{algo}{metric}"
     )
 
 
@@ -725,6 +734,7 @@ def submit_candidates(
             "timestamp": candidate.timestamp,
             "local_score": candidate.local_score,
             "metric_maximize": candidate.metric_maximize,
+            "eval_metric": candidate.eval_metric,
             "submission_path": str(candidate.submission_path),
             "upload_path": str(upload_path),
             "uploaded_filename": upload_path.name,
@@ -879,6 +889,8 @@ def sync_registry_from_remote(
                 parsed_description=parsed,
             ):
                 continue
+            if entry.get("manual_status") == "failed":
+                break
 
             fields = _remote_registry_fields(remote)
             if any(entry.get(key) != value for key, value in fields.items()):
@@ -1000,6 +1012,7 @@ def render_dry_run(
     submitted = Table(title="Local submission registry")
     submitted.add_column("#", justify="right")
     submitted.add_column("cv", justify="right")
+    submitted.add_column("metric")
     submitted.add_column("public", justify="right")
     submitted.add_column("status")
     submitted.add_column("run")
@@ -1016,6 +1029,7 @@ def render_dry_run(
         submitted.add_row(
             display_rank,
             _format_score(entry.get("local_score")),
+            str(entry.get("eval_metric") or "-"),
             str(entry.get("public_score") or ""),
             remote_status,
             str(entry.get("run", "")),
