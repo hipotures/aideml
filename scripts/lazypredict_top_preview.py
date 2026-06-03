@@ -5,6 +5,7 @@ import ast
 import concurrent.futures
 import contextlib
 import datetime as dt
+import inspect
 import joblib
 import json
 import math
@@ -24,6 +25,7 @@ except OSError:
 
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
@@ -46,7 +48,8 @@ from aide.autogluon_preprocess import extract_preprocess_source
 from scripts import kaggle_submission_lab as lab
 
 
-DEFAULT_DATA_DIR = Path("aide/example_tasks/playground-series-s6e6")
+DEFAULT_PROJECT_NAME = "playground-series-s6e6"
+DEFAULT_DATA_DIR = Path("aide/example_tasks") / DEFAULT_PROJECT_NAME
 DEFAULT_OUTPUT_DIR = Path("logs/lazypredict")
 DEFAULT_TUNE_TOP_K = 5
 DEFAULT_TUNE_TRIALS = 50
@@ -54,6 +57,23 @@ DEFAULT_TUNE_TIMEOUT = None
 DEFAULT_TUNE_BACKEND = "optuna"
 DEFAULT_TUNE_N_JOBS = 16
 DEFAULT_TUNE_METRIC = "roc_auc"
+SUPPORTED_METRICS = {"roc_auc", "balanced_accuracy", "accuracy", "f1"}
+METRIC_ALIASES = {
+    "auc": "roc_auc",
+    "roc auc": "roc_auc",
+    "roc-auc": "roc_auc",
+    "roc_auc": "roc_auc",
+    "balanced accuracy": "balanced_accuracy",
+    "balanced-accuracy": "balanced_accuracy",
+    "balanced_accuracy": "balanced_accuracy",
+    "bal acc": "balanced_accuracy",
+    "bal_acc": "balanced_accuracy",
+    "accuracy": "accuracy",
+    "acc": "accuracy",
+    "f1": "f1",
+    "f1 score": "f1",
+    "f1_score": "f1",
+}
 NATIVE_BOOSTING_MODELS = {
     "CatBoostClassifier",
     "LGBMClassifier",
@@ -79,6 +99,33 @@ THREAD_ENV_VARS = (
     "NUMEXPR_NUM_THREADS",
 )
 WORKER_DATA: dict[str, Any] = {}
+
+
+def load_project_env() -> dict[str, str]:
+    load_dotenv(dotenv_path=Path(".env"), override=True)
+    return {
+        "project_name": os.getenv("AIDE_PROJECT_NAME", "").strip(),
+        "project_metric": os.getenv("AIDE_PROJECT_METRIC", "").strip(),
+        "data_dir": os.getenv("AIDE_PROJECT_DATA_DIR", "").strip(),
+    }
+
+
+def normalize_metric(value: str) -> str:
+    normalized = " ".join(str(value).strip().lower().replace("_", " ").split())
+    metric = METRIC_ALIASES.get(normalized)
+    if metric is None:
+        valid = ", ".join(sorted(SUPPORTED_METRICS))
+        raise ValueError(f"Unsupported metric {value!r}; expected one of: {valid}")
+    return metric
+
+
+def metric_column(metric: str) -> str:
+    return {
+        "roc_auc": "ROC AUC",
+        "balanced_accuracy": "Balanced Accuracy",
+        "accuracy": "Accuracy",
+        "f1": "F1 Score",
+    }[metric]
 
 
 def write_outputs(
@@ -183,14 +230,27 @@ def record_is_ready(record: dict[str, Any]) -> bool:
     )
 
 
+def record_matches_competition(record: dict[str, Any], competition: str | None) -> bool:
+    if not competition:
+        return True
+    record_competition = str(record.get("competition") or "").strip()
+    return not record_competition or record_competition == competition
+
+
 def select_records(
     records: list[dict[str, Any]],
     *,
     run: str | None,
+    competition: str | None,
     limit: int,
     dedupe: bool,
 ) -> list[dict[str, Any]]:
     ready = [record for record in records if record_is_ready(record)]
+    ready = [
+        record
+        for record in ready
+        if record_matches_competition(record, competition)
+    ]
     if run:
         ready = [record for record in ready if record.get("run") == run]
     ordered = sorted(
@@ -218,9 +278,17 @@ def resolve_data_dir(record: dict[str, Any], explicit_data_dir: Path | None) -> 
     run = str(record.get("run") or "")
     if run:
         workspace_input = Path("workspaces") / run / "input"
-        if workspace_input.exists():
+        if data_dir_has_task_files(workspace_input):
             return workspace_input
     return DEFAULT_DATA_DIR
+
+
+def data_dir_has_task_files(data_dir: Path) -> bool:
+    return all(
+        (data_dir / f"{stem}.csv").exists()
+        or (data_dir / f"{stem}.csv.gz").exists()
+        for stem in ("train", "test", "sample_submission")
+    )
 
 
 def load_task_frames(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str, str]:
@@ -244,6 +312,43 @@ def build_preprocess_function(solution_path: Path):
     return preprocess
 
 
+def preprocess_accepts_aux(preprocess: Any) -> bool:
+    signature = inspect.signature(preprocess)
+    positional = [
+        parameter
+        for parameter in signature.parameters.values()
+        if parameter.kind
+        in {
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        }
+    ]
+    return len(positional) >= 2
+
+
+def read_aux_csv(data_dir: Path, solution_path: Path) -> pd.DataFrame | None:
+    config = lab.parse_autogluon_config(solution_path.read_text(encoding="utf-8")) or {}
+    aux_file = config.get("aux_file")
+    if not aux_file:
+        return None
+    aux_path = data_dir / str(aux_file)
+    if not aux_path.exists():
+        raise FileNotFoundError(f"Configured aux file not found: {aux_path}")
+    return pd.read_csv(aux_path)
+
+
+def run_preprocess(
+    preprocess: Any,
+    combined: pd.DataFrame,
+    aux_df: pd.DataFrame | None,
+) -> pd.DataFrame:
+    if preprocess_accepts_aux(preprocess):
+        if aux_df is None:
+            aux_df = pd.DataFrame()
+        return preprocess(combined.copy(), aux_df.copy())
+    return preprocess(combined.copy())
+
+
 def run_artifact_preprocess(
     record: dict[str, Any],
     *,
@@ -256,10 +361,12 @@ def run_artifact_preprocess(
     test_features = test_df.drop(columns=[id_col], errors="ignore")
     combined = make_combined_frame(train_features, test_features)
 
-    preprocess = build_preprocess_function(Path(record["solution_path"]))
+    solution_path = Path(record["solution_path"])
+    preprocess = build_preprocess_function(solution_path)
+    aux_df = read_aux_csv(data_dir, solution_path)
     started = time.time()
     with preprocess_timeout(preprocess_time_limit):
-        preprocessed = preprocess(combined.copy())
+        preprocessed = run_preprocess(preprocess, combined, aux_df)
     preprocess_time = time.time() - started
     preprocessed = validate_preprocessed_frame(
         combined,
@@ -278,6 +385,9 @@ def run_artifact_preprocess(
         "test_rows": int(len(test_df)),
         "preprocessed_columns": int(len(train_fe.columns)),
         "preprocess_time": preprocess_time,
+        "preprocess_accepts_aux": preprocess_accepts_aux(preprocess),
+        "aux_rows": None if aux_df is None else int(len(aux_df)),
+        "aux_columns": None if aux_df is None else int(len(aux_df.columns)),
     }
     return train_fe, test_fe, y, sample_submission, metadata
 
@@ -1190,7 +1300,7 @@ def write_tuned_oof_predictions(
     }
 
 
-def scores_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
+def scores_dataframe(results: list[dict[str, Any]], *, score_metric: str) -> pd.DataFrame:
     rows = []
     for result in results:
         metrics = result["metrics"]
@@ -1209,9 +1319,8 @@ def scores_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
     scores = pd.DataFrame(rows).set_index("Model")
-    if "ROC AUC" in scores.columns:
-        return scores.sort_values("ROC AUC", ascending=False, na_position="last")
-    return scores.sort_values("Balanced Accuracy", ascending=False)
+    column = metric_column(score_metric)
+    return scores.sort_values(column, ascending=False, na_position="last")
 
 
 def estimator_items(
@@ -1245,6 +1354,7 @@ def run_lazypredict_parallel(
     cv_folds: int,
     native_boosting_data: bool,
     exclude_models: set[str],
+    score_metric: str,
     verbose: int,
     console: Console,
 ) -> tuple[pd.DataFrame, dict[str, str], list[dict[str, Any]]]:
@@ -1285,7 +1395,7 @@ def run_lazypredict_parallel(
                         "time": result.get("time"),
                     }
                 )
-        return scores_dataframe(results), errors, failures
+        return scores_dataframe(results, score_metric=score_metric), errors, failures
 
     progress = Progress(
         SpinnerColumn(),
@@ -1343,7 +1453,7 @@ def run_lazypredict_parallel(
                         }
                     )
                 progress.update(task_id, advance=1)
-    return scores_dataframe(results), errors, failures
+    return scores_dataframe(results, score_metric=score_metric), errors, failures
 
 
 def run_lazy_tuning(
@@ -1944,13 +2054,41 @@ def finite_or_none(value: Any) -> float | None:
     return parsed if math.isfinite(parsed) else None
 
 
+def target_sample_metadata(y_train: pd.Series, y_valid: pd.Series) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    if pd.api.types.is_numeric_dtype(y_train):
+        metadata["target_mean_train"] = float(pd.Series(y_train).mean())
+        metadata["target_mean_valid"] = float(pd.Series(y_valid).mean())
+    else:
+        metadata["target_mean_train"] = None
+        metadata["target_mean_valid"] = None
+    metadata["target_counts_train"] = {
+        str(key): int(value)
+        for key, value in pd.Series(y_train).value_counts(dropna=False).items()
+    }
+    metadata["target_counts_valid"] = {
+        str(key): int(value)
+        for key, value in pd.Series(y_valid).value_counts(dropna=False).items()
+    }
+    return metadata
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    project_env = load_project_env()
+    project_name = project_env["project_name"] or DEFAULT_PROJECT_NAME
+    data_dir = Path(project_env["data_dir"]) if project_env["data_dir"] else None
+    metric = (
+        normalize_metric(project_env["project_metric"])
+        if project_env["project_metric"]
+        else DEFAULT_TUNE_METRIC
+    )
     parser = argparse.ArgumentParser(
         description="Run a quick LazyPredict benchmark over top AIDE preprocessing artifacts.",
     )
     parser.add_argument("--index", type=Path, default=lab.DEFAULT_INDEX_PATH)
-    parser.add_argument("--data-dir", type=Path)
-    parser.add_argument("--run", default="2-delectable-curvy-dolphin")
+    parser.add_argument("--data-dir", type=Path, default=data_dir)
+    parser.add_argument("--project", "--competition", dest="project", default=project_name)
+    parser.add_argument("--run")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument(
         "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
@@ -1987,6 +2125,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Number of folds when --eval-mode cv is used. Defaults to 5.",
     )
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--metric",
+        type=normalize_metric,
+        choices=sorted(SUPPORTED_METRICS),
+        default=metric,
+        help=(
+            "Metric used to rank LazyPredict models. Defaults to "
+            "AIDE_PROJECT_METRIC from .env."
+        ),
+    )
     parser.add_argument(
         "--max-models",
         type=int,
@@ -2055,9 +2203,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tune-backend", default=DEFAULT_TUNE_BACKEND)
     parser.add_argument(
         "--tune-metric",
-        choices=["roc_auc", "balanced_accuracy", "accuracy", "f1"],
-        default=DEFAULT_TUNE_METRIC,
-        help="Metric optimized during tuning. Defaults to roc_auc.",
+        type=normalize_metric,
+        choices=sorted(SUPPORTED_METRICS),
+        default=metric,
+        help="Metric optimized during tuning. Defaults to AIDE_PROJECT_METRIC from .env.",
     )
     parser.add_argument(
         "--tune-n-jobs",
@@ -2190,6 +2339,7 @@ def main(argv: list[str] | None = None) -> int:
         selected = select_records(
             records,
             run=args.run,
+            competition=args.project,
             limit=args.limit,
             dedupe=bool(args.dedupe),
         )
@@ -2208,6 +2358,10 @@ def main(argv: list[str] | None = None) -> int:
     tuning_path = run_dir / "tuning.csv.gz"
     details_path = run_dir / "details.json"
     console.print(f"artifacts: {run_dir}")
+    console.print(
+        f"project: {args.project} data_dir: {args.data_dir or DEFAULT_DATA_DIR} "
+        f"metric: {args.metric}"
+    )
     render_selected(console, selected)
     if exclude_models:
         console.print(
@@ -2275,6 +2429,7 @@ def main(argv: list[str] | None = None) -> int:
                 cv_folds=args.cv_folds,
                 native_boosting_data=args.native_boosting_data,
                 exclude_models=exclude_models,
+                score_metric=args.metric,
                 verbose=args.lazy_verbose,
                 console=console,
             )
@@ -2286,10 +2441,10 @@ def main(argv: list[str] | None = None) -> int:
                     "preprocess": prep_meta,
                     "cleaning": clean_meta,
                     "lazy_elapsed": elapsed,
+                    "score_metric": args.metric,
                     "sample": {
                         **sample_meta,
-                        "target_mean_train": float(pd.Series(y_train).mean()),
-                        "target_mean_valid": float(pd.Series(y_valid).mean()),
+                        **target_sample_metadata(y_train, y_valid),
                     },
                     "model_errors": errors,
                     "model_failures": failures,
