@@ -876,3 +876,41 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
         step=1,
         timestamp="20260502T101000",
     )
+
+
+def test_submit_candidates_records_source_sha256_for_rerun_candidate(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,target\n1,0.9\n")
+    candidate = smart_kaggle_submit.Candidate(
+        competition="playground-series-s6e5",
+        run="run-a",
+        step=-1,
+        node_id="profile-eval-20260502T100000",
+        parent_node_id=None,
+        ancestor_node_ids=(),
+        timestamp="20260502T100000",
+        ctime=1.0,
+        local_score=0.9,
+        metric_maximize=True,
+        is_buggy=False,
+        submission_path=submission_path,
+        sha256=smart_kaggle_submit._sha256(submission_path),
+        hypothesis_id="001234",
+        source_sha256="sourceabcdef0123456789",
+    )
+    registry = SubmissionRegistry(tmp_path / "registry.json")
+    client = FakeKaggleClient()
+
+    submitted = submit_candidates(
+        [candidate],
+        registry=registry,
+        client=client,
+        competition="playground-series-s6e5",
+    )
+
+    assert submitted[0]["hypothesis_id"] == "001234"
+    assert submitted[0]["source_sha256"] == "sourceabcdef0123456789"
+    assert (
+        SubmissionRegistry.load(tmp_path / "registry.json").entries[0]["source_sha256"]
+        == "sourceabcdef0123456789"
+    )

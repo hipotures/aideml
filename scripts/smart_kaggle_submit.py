@@ -58,6 +58,8 @@ class Candidate:
     validation_error: str | None = None
     algo: str | None = None
     eval_metric: str | None = None
+    hypothesis_id: str | None = None
+    source_sha256: str | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -739,6 +741,8 @@ def submit_candidates(
             "upload_path": str(upload_path),
             "uploaded_filename": upload_path.name,
             "sha256": candidate.sha256,
+            "hypothesis_id": candidate.hypothesis_id,
+            "source_sha256": candidate.source_sha256,
             "algo": candidate.algo,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),

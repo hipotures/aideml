@@ -534,6 +534,25 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     assert "20260504" in output
 
 
+def test_candidate_display_table_hides_hypothesis_column_when_all_empty():
+    records = [
+        {
+            "kind": "source_node",
+            "run": "2-text-run",
+            "step": 7,
+            "timestamp": "20260504T134159",
+            "local_score": 0.95026,
+            "sha256": "13bc36ab26abcdef",
+            "algo": "Leg",
+        }
+    ]
+
+    columns, rows = kaggle_submission_lab.candidate_display_table(records)
+
+    assert "hyp" not in columns
+    assert len(rows[0]) == len(columns)
+
+
 def test_candidate_display_table_shows_eval_metric_for_submit_ready_records():
     records = [
         {
@@ -784,6 +803,110 @@ def test_registry_display_table_shows_metric_or_dash(tmp_path):
     metric_index = columns.index("metric")
     assert rows[0][metric_index] == "balanced_accuracy"
     assert rows[1][metric_index] == "-"
+
+
+def test_registry_display_table_places_public_after_cv(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+        ],
+    )
+
+    columns, _rows = kaggle_submission_lab.registry_display_table(registry)
+
+    assert columns[:3] == ["#", "cv", "public"]
+
+
+def test_registry_display_table_shows_source_sha_for_rerun_submission(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": -1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "source_sha256": "source1234567890",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+        ],
+    )
+
+    columns, rows = kaggle_submission_lab.registry_display_table(registry)
+
+    source_index = columns.index("src_sha")
+    assert rows[0][source_index] == "source1234"
+
+
+def test_registry_display_rows_marks_sha_that_has_source_rerun(tmp_path):
+    source_sha = "aaaabbbbcccc1111"
+    rerun_sha = "dddd111122223333"
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-source",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": source_sha,
+                "remote_status": "COMPLETE",
+            },
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-rerun",
+                "step": -1,
+                "timestamp": "20260504T110000",
+                "local_score": 0.96,
+                "sha256": rerun_sha,
+                "source_sha256": source_sha,
+                "remote_status": "COMPLETE",
+            },
+        ],
+    )
+
+    rows = kaggle_submission_lab.registry_display_rows(registry)
+
+    by_sha = {row["sha256"]: row for row in rows}
+    assert by_sha[source_sha]["has_source_rerun"] is True
+    assert by_sha[rerun_sha]["has_source_rerun"] is False
+
+
+def test_registry_display_table_hides_hypothesis_column_when_all_empty(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "run-a",
+                "step": 1,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+        ],
+    )
+
+    columns, rows = kaggle_submission_lab.registry_display_table(registry)
+
+    assert "hyp" not in columns
+    assert len(rows[0]) == len(columns)
 
 
 def test_registry_display_table_shows_exec_time_from_records_or_dash(tmp_path):

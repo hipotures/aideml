@@ -19,6 +19,7 @@ from rich.progress import (
     track,
 )
 from rich.table import Table
+from rich.text import Text
 
 from scripts import smart_kaggle_submit as smart
 from aide.journal import Journal
@@ -35,6 +36,7 @@ DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
 INDEX_VERSION = 2
+SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
 
 
 def sha256_file(path: Path) -> str:
@@ -615,6 +617,7 @@ def render_table(
 ) -> None:
     columns, rows = candidate_display_table(records, full_view=full_view)
     show_source = "src_sha" in columns
+    show_hypothesis = "hyp" in columns
     table = Table(title="Top unsent submit-ready candidates", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
@@ -625,7 +628,8 @@ def render_table(
         table.add_column("prof", no_wrap=True)
     table.add_column("m", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
-    table.add_column("hyp", no_wrap=True)
+    if show_hypothesis:
+        table.add_column("hyp", no_wrap=True)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
@@ -643,10 +647,14 @@ def candidate_display_table(
     full_view: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
+    show_hypothesis = any(record.get("hypothesis_id") for record in records)
     columns = ["#", "cv", "time", "metric", "k"]
     if full_view:
         columns.append("prof")
-    columns.extend(["m", "run", "hyp", "Algo", "step", "date", "sha"])
+    columns.extend(["m", "run"])
+    if show_hypothesis:
+        columns.append("hyp")
+    columns.extend(["Algo", "step", "date", "sha"])
     if show_source:
         columns.append("src_sha")
 
@@ -669,7 +677,12 @@ def candidate_display_table(
             [
                 models,
                 _short_run(record.get("run")),
-                str(record.get("hypothesis_id") or "-"),
+            ]
+        )
+        if show_hypothesis:
+            row.append(str(record.get("hypothesis_id") or "-"))
+        row.extend(
+            [
                 _format_algo(record),
                 _format_step(record.get("step")),
                 _timestamp_date(record.get("timestamp")),
@@ -807,6 +820,7 @@ def _registry_record_lookup(
             "hypothesis_id": record.get("hypothesis_id"),
             "eval_metric": record.get("eval_metric"),
             "exec_time": record.get("exec_time"),
+            "source_sha256": record.get("source_sha256"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -921,6 +935,39 @@ def _registry_entry_exec_time(
     return None
 
 
+def _registry_entry_source_sha256(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("source_sha256")
+    if explicit:
+        return str(explicit)
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None and record.get("source_sha256"):
+        return str(record.get("source_sha256"))
+    return None
+
+
+def _mark_rows_with_source_reruns(rows: list[dict[str, Any]]) -> None:
+    source_shas = [
+        str(row.get("source_sha256") or "")
+        for row in rows
+        if row.get("source_sha256")
+    ]
+    for row in rows:
+        sha = str(row.get("sha256") or "")
+        row["has_source_rerun"] = any(
+            smart._sha256_matches(sha, source_sha) for source_sha in source_shas
+        )
+
+
+def _format_registry_sha(entry: dict[str, Any]) -> str | Text:
+    value = str(entry.get("sha256") or "")[:10] or "-"
+    if entry.get("has_source_rerun"):
+        return Text(value, style=SOURCE_RERUN_SHA_STYLE)
+    return value
+
+
 def render_registry_table(
     console: Console,
     registry: smart.SubmissionRegistry,
@@ -942,16 +989,21 @@ def render_registry_table(
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
+    table.add_column("public", justify="right", no_wrap=True)
     table.add_column("time", justify="right", no_wrap=True)
     table.add_column("metric", no_wrap=True)
-    table.add_column("public", justify="right", no_wrap=True)
     table.add_column("status", no_wrap=True)
     table.add_column("run", no_wrap=True, overflow="ellipsis", max_width=42)
-    table.add_column("hyp", no_wrap=True)
+    show_hypothesis = any(entry.get("hypothesis_id") for entry in sorted_rows)
+    if show_hypothesis:
+        table.add_column("hyp", no_wrap=True)
     table.add_column("Algo", no_wrap=True)
     table.add_column("step", justify="right", no_wrap=True)
     table.add_column("date", no_wrap=True)
     table.add_column("sha", no_wrap=True)
+    show_source = any(entry.get("source_sha256") for entry in sorted_rows)
+    if show_source:
+        table.add_column("src_sha", no_wrap=True)
     if full_view:
         table.add_column("artifact", no_wrap=True, overflow="fold")
 
@@ -966,21 +1018,24 @@ def render_registry_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            _format_public_score(entry.get("public_score")),
             _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
-            _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
-            str(entry.get("hypothesis_id") or "-"),
         ]
+        if show_hypothesis:
+            row.append(str(entry.get("hypothesis_id") or "-"))
         row.extend(
             [
                 _format_algo(entry, unknown_if_missing=True),
                 _format_step(entry.get("step")),
                 _display_date(entry.get("date")),
-                str(entry.get("sha256") or "")[:10] or "-",
+                _format_registry_sha(entry),
             ]
         )
+        if show_source:
+            row.append(str(entry.get("source_sha256") or "")[:10] or "-")
         if full_view:
             row.append(str(entry.get("artifact_dir") or "-"))
         table.add_row(*row)
@@ -1010,6 +1065,7 @@ def registry_display_rows(
             "step": entry.get("step"),
             "date": entry.get("timestamp"),
             "sha256": entry.get("sha256"),
+            "source_sha256": _registry_entry_source_sha256(entry, record_lookup),
         }
         for entry in registry.entries
         if competition is None or entry.get("competition") == competition
@@ -1029,6 +1085,7 @@ def registry_display_rows(
             for row in rows
             if str(row.get("run") or "") in selected_runs
         ]
+    _mark_rows_with_source_reruns(rows)
 
     sorted_rows = sorted(rows, key=_registry_display_sort_key, reverse=True)
     if limit is not None and limit > 0:
@@ -1045,12 +1102,20 @@ def registry_display_table(
     run_filters: list[str] | None = None,
     competition: str | None = None,
 ) -> tuple[list[str], list[list[str]]]:
+    display_rows = registry_display_rows(
+        registry,
+        remote_submissions,
+        records=records,
+        limit=limit,
+        run_filters=run_filters,
+        competition=competition,
+    )
     columns = [
         "#",
         "cv",
+        "public",
         "time",
         "metric",
-        "public",
         "status",
         "run",
         "hyp",
@@ -1059,19 +1124,18 @@ def registry_display_table(
         "date",
         "sha",
     ]
+    show_source = any(row.get("source_sha256") for row in display_rows)
+    show_hypothesis = any(row.get("hypothesis_id") for row in display_rows)
+    if not show_hypothesis:
+        columns.remove("hyp")
+    if show_source:
+        columns.append("src_sha")
     if full_view:
         columns.append("artifact")
 
     rows = []
     complete_rank = 0
-    for entry in registry_display_rows(
-        registry,
-        remote_submissions,
-        records=records,
-        limit=limit,
-        run_filters=run_filters,
-        competition=competition,
-    ):
+    for entry in display_rows:
         remote_status = str(entry.get("remote_status") or "")
         if remote_status.upper() == "COMPLETE":
             complete_rank += 1
@@ -1081,17 +1145,24 @@ def registry_display_table(
         row = [
             display_rank,
             _format_score(entry.get("local_score")),
+            _format_public_score(entry.get("public_score")),
             _format_duration(entry.get("exec_time")),
             str(entry.get("eval_metric") or "-"),
-            _format_public_score(entry.get("public_score")),
             remote_status or "-",
             str(entry.get("run") or "-"),
-            str(entry.get("hypothesis_id") or "-"),
-            _format_algo(entry, unknown_if_missing=True),
-            _format_step(entry.get("step")),
-            _display_date(entry.get("date")),
-            str(entry.get("sha256") or "")[:10] or "-",
         ]
+        if show_hypothesis:
+            row.append(str(entry.get("hypothesis_id") or "-"))
+        row.extend(
+            [
+                _format_algo(entry, unknown_if_missing=True),
+                _format_step(entry.get("step")),
+                _display_date(entry.get("date")),
+                str(entry.get("sha256") or "")[:10] or "-",
+            ]
+        )
+        if show_source:
+            row.append(str(entry.get("source_sha256") or "")[:10] or "-")
         if full_view:
             row.append(str(entry.get("artifact_dir") or "-"))
         rows.append(row)
@@ -1180,6 +1251,8 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         validation_error=None,
         algo=_format_algo(record),
         eval_metric=record.get("eval_metric"),
+        hypothesis_id=record.get("hypothesis_id"),
+        source_sha256=record.get("source_sha256"),
     )
 
 
