@@ -237,6 +237,15 @@ def record_matches_competition(record: dict[str, Any], competition: str | None) 
     return not record_competition or record_competition == competition
 
 
+def record_is_rerun(record: dict[str, Any]) -> bool:
+    return (
+        record.get("kind") == "profile_eval"
+        or record.get("source_run") is not None
+        or record.get("source_node_id") is not None
+        or record.get("source_sha256") is not None
+    )
+
+
 def select_records(
     records: list[dict[str, Any]],
     *,
@@ -244,6 +253,7 @@ def select_records(
     competition: str | None,
     limit: int,
     dedupe: bool,
+    include_reruns: bool,
 ) -> list[dict[str, Any]]:
     ready = [record for record in records if record_is_ready(record)]
     ready = [
@@ -251,6 +261,8 @@ def select_records(
         for record in ready
         if record_matches_competition(record, competition)
     ]
+    if not include_reruns:
+        ready = [record for record in ready if not record_is_rerun(record)]
     if run:
         ready = [record for record in ready if record.get("run") == run]
     ordered = sorted(
@@ -1786,6 +1798,7 @@ def render_selected(console: Console, records: list[dict[str, Any]]) -> None:
     table = Table(title="LazyPredict preview inputs")
     table.add_column("#", justify="right")
     table.add_column("cv", justify="right")
+    table.add_column("kind")
     table.add_column("run")
     table.add_column("step", justify="right")
     table.add_column("sha")
@@ -1794,6 +1807,7 @@ def render_selected(console: Console, records: list[dict[str, Any]]) -> None:
         table.add_row(
             str(idx),
             f"{float(record.get('local_score')):.6f}",
+            str(record.get("kind") or "source_node"),
             str(record.get("run") or "-"),
             str(record.get("step") if record.get("step") is not None else "-"),
             str(record.get("sha256") or "")[:10],
@@ -2089,6 +2103,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--data-dir", type=Path, default=data_dir)
     parser.add_argument("--project", "--competition", dest="project", default=project_name)
     parser.add_argument("--run")
+    parser.add_argument(
+        "--include-reruns",
+        action="store_true",
+        help="Include profile_eval/rerun records. By default only source run artifacts are used.",
+    )
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument(
         "--sha256", "--sha", dest="sha256", action="append", default=[], metavar="PREFIX"
@@ -2342,6 +2361,7 @@ def main(argv: list[str] | None = None) -> int:
             competition=args.project,
             limit=args.limit,
             dedupe=bool(args.dedupe),
+            include_reruns=bool(args.include_reruns),
         )
     if not selected:
         console.print("[red]No matching records found.[/red]")

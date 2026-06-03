@@ -59,6 +59,58 @@ def test_lazypredict_top_preview_uses_project_env_defaults(tmp_path, monkeypatch
     assert args.run is None
 
 
+def test_lazypredict_top_preview_excludes_reruns_by_default(tmp_path):
+    lazypredict_top_preview = _load_script("lazypredict_top_preview")
+    source_solution = tmp_path / "source_solution.py"
+    rerun_solution = tmp_path / "rerun_solution.py"
+    source_solution.write_text("def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df\n")
+    rerun_solution.write_text("def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df\n")
+    records = [
+        {
+            "kind": "profile_eval",
+            "run": "run-1",
+            "source_run": "run-1",
+            "local_score": 0.99,
+            "metric_maximize": True,
+            "status": "ok",
+            "is_buggy": False,
+            "solution_path": str(rerun_solution),
+        },
+        {
+            "kind": "source_node",
+            "run": "run-1",
+            "local_score": 0.90,
+            "metric_maximize": True,
+            "status": "ok",
+            "is_buggy": False,
+            "solution_path": str(source_solution),
+        },
+    ]
+
+    selected = lazypredict_top_preview.select_records(
+        records,
+        run=None,
+        competition=None,
+        limit=10,
+        dedupe=True,
+        include_reruns=False,
+    )
+    selected_with_reruns = lazypredict_top_preview.select_records(
+        records,
+        run=None,
+        competition=None,
+        limit=10,
+        dedupe=True,
+        include_reruns=True,
+    )
+
+    assert [record["kind"] for record in selected] == ["source_node"]
+    assert [record["kind"] for record in selected_with_reruns] == [
+        "profile_eval",
+        "source_node",
+    ]
+
+
 def test_lazypredict_top_preview_passes_aux_to_preprocess(tmp_path):
     lazypredict_top_preview = _load_script("lazypredict_top_preview")
     data_dir = tmp_path / "data"
