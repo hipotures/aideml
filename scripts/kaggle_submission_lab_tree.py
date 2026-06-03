@@ -1419,6 +1419,22 @@ def candidate_tree_display_table(
     return columns, rows
 
 
+def ready_submit_commands(rows: list[list[str]], *, max_count: int = 5) -> list[str]:
+    commands: list[str] = []
+    for row in rows:
+        if len(row) < 13 or row[5] != "ready":
+            continue
+        sha = str(row[12] or "").strip()
+        if not sha or sha == "-":
+            continue
+        commands.append(
+            f"uv run python scripts/kaggle_submission_lab_tree.py --sha {sha}"
+        )
+        if len(commands) >= max_count:
+            break
+    return commands
+
+
 def render_candidate_tree_table(
     console: Console,
     *,
@@ -1492,6 +1508,12 @@ def render_candidate_tree_table(
             style=current_family_style,
         )
     console.print(table)
+    commands = ready_submit_commands(rows)
+    if commands:
+        console.print()
+        console.print("Ready submit commands:")
+        for command in commands:
+            console.print(command)
 
 
 def _json_safe(value: Any) -> Any:
@@ -1615,7 +1637,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
-    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--limit", type=int, default=20)
     parser.add_argument(
         "--output-format",
         choices=["rich", "json", "txt"],
