@@ -118,6 +118,59 @@ def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     assert record["artifact_dir"] == str(artifact)
 
 
+def test_refresh_index_reads_eval_metric_from_autogluon_resolved_settings(tmp_path):
+    logs_dir = tmp_path / "logs"
+    artifact = _write_artifact(
+        logs_dir,
+        "resolved-settings-run",
+        "20260506T130000",
+        code="def preprocess(df):\n    return df\n",
+        submission="id,target\n1,0.9\n",
+    )
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "source_node",
+                "competition": "playground-series-s6e5",
+                "run": "resolved-settings-run",
+                "timestamp": "20260506T130000",
+                "artifact_dir": str(artifact),
+                "status": "ok",
+                "local_score": 0.95098,
+                "metric_maximize": True,
+                "is_buggy": False,
+                "sha256": submission_sha,
+                "node": {
+                    "id": "node-remote",
+                    "step": 4,
+                    "ctime": _ctime("20260506T130000"),
+                    "metric": {
+                        "value": 0.95098,
+                        "maximize": True,
+                    },
+                    "is_buggy": False,
+                },
+                "autogluon": {
+                    "resolved_settings": {
+                        "eval_metric": "balanced_accuracy",
+                    },
+                },
+            }
+        )
+    )
+
+    index = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=logs_dir / "submission_index.json",
+        competition="playground-series-s6e5",
+        reindex=True,
+    )
+
+    assert index["records"][0]["eval_metric"] == "balanced_accuracy"
+
+
 def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     logs_dir = tmp_path / "logs"
     run_name = "legacy-run"
@@ -328,6 +381,80 @@ def test_refresh_index_skips_unchanged_runs_without_reindex(tmp_path, monkeypatc
     assert second["records"] == first["records"]
 
 
+def test_refresh_index_rebuilds_old_index_version_for_eval_metric_backfill(tmp_path):
+    logs_dir = tmp_path / "logs"
+    artifact = _write_artifact(
+        logs_dir,
+        "run-a",
+        "20260504T100000",
+        code="AIDE_AG_CONFIG = {'included_model_types': ['XGB']}\n",
+    )
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "source_node",
+                "run": "run-a",
+                "timestamp": "20260504T100000",
+                "status": "ok",
+                "local_score": 0.9,
+                "metric_maximize": True,
+                "is_buggy": False,
+                "sha256": submission_sha,
+                "node": {
+                    "id": "node-a",
+                    "step": 0,
+                    "metric": {"value": 0.9, "maximize": True},
+                },
+                "autogluon": {
+                    "resolved_settings": {
+                        "eval_metric": "balanced_accuracy",
+                    },
+                },
+                "execution": {},
+                "source": {},
+            }
+        )
+    )
+    index_path = logs_dir / "submission_index.json"
+    index_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "competition": "playground-series-s6e5",
+                "records": [
+                    {
+                        "kind": "source_node",
+                        "run": "run-a",
+                        "step": 0,
+                        "timestamp": "20260504T100000",
+                        "local_score": 0.9,
+                        "metric_maximize": True,
+                        "is_buggy": False,
+                        "sha256": submission_sha,
+                        "submission_path": str(artifact / "submission.csv"),
+                        "algo": "AG",
+                        "eval_metric": None,
+                    }
+                ],
+                "runs": {
+                    "run-a": kaggle_submission_lab.run_scan_signature(logs_dir / "run-a"),
+                },
+            }
+        )
+    )
+
+    refreshed = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=index_path,
+        competition="playground-series-s6e5",
+    )
+
+    assert refreshed["version"] == kaggle_submission_lab.INDEX_VERSION
+    assert refreshed["records"][0]["eval_metric"] == "balanced_accuracy"
+
+
 def test_select_top_records_deduplicates_same_submission_hash(tmp_path):
     records = [
         {
@@ -404,6 +531,27 @@ def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     assert "hyp" in output
     assert "001234" in output
     assert "20260504" in output
+
+
+def test_candidate_display_table_shows_eval_metric_for_submit_ready_records():
+    records = [
+        {
+            "kind": "profile_eval",
+            "run": "2-text-run",
+            "step": None,
+            "timestamp": "20260504T134159",
+            "local_score": 0.95026,
+            "exec_time": 142.4,
+            "sha256": "13bc36ab26abcdef",
+            "algo": "AG",
+            "eval_metric": "balanced_accuracy",
+        }
+    ]
+
+    columns, rows = kaggle_submission_lab.candidate_display_table(records)
+
+    metric_index = columns.index("metric")
+    assert rows[0][metric_index] == "balanced_accuracy"
 
 
 def test_parse_args_defaults_to_rich_output_format():

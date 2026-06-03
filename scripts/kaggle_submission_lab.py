@@ -34,6 +34,7 @@ DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
 DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
+INDEX_VERSION = 2
 
 
 def sha256_file(path: Path) -> str:
@@ -166,6 +167,13 @@ def _autogluon_payload_has_settings(payload: dict[str, Any]) -> bool:
     )
 
 
+def _autogluon_eval_metric(payload: dict[str, Any]) -> Any:
+    resolved_settings = payload.get("resolved_settings")
+    if not isinstance(resolved_settings, dict):
+        resolved_settings = {}
+    return payload.get("eval_metric") or resolved_settings.get("eval_metric")
+
+
 def _record_looks_autogluon(record: dict[str, Any]) -> bool:
     explicit = record.get("algo")
     if isinstance(explicit, str):
@@ -293,7 +301,7 @@ def build_manifest_records(
                 ),
                 "eval_metric": manifest.get("eval_metric")
                 or metric.get("name")
-                or autogluon.get("eval_metric"),
+                or _autogluon_eval_metric(autogluon),
                 "is_buggy": bool(manifest.get("is_buggy") or status != "ok"),
                 "exec_time": (manifest.get("execution") or {}).get("exec_time"),
                 "status": status,
@@ -375,6 +383,7 @@ def refresh_index(
 ) -> dict[str, Any]:
     logs_dir = Path(logs_dir)
     index = _load_json(index_path) or {"records": [], "runs": {}}
+    needs_index_upgrade = index.get("version") != INDEX_VERSION
     existing_records = list(index.get("records", []))
     cached_runs = dict(index.get("runs", {}))
     records_by_run: dict[str, list[dict[str, Any]]] = {}
@@ -413,7 +422,7 @@ def refresh_index(
                 run=run,
                 run_dir=run_dir,
                 cached_runs=cached_runs,
-            ) and backfilled == 0 and not needs_hypothesis_backfill:
+            ) and backfilled == 0 and not needs_hypothesis_backfill and not needs_index_upgrade:
                 continue
             records, run_meta = build_run_records(
                 logs_dir=logs_dir,
@@ -432,7 +441,7 @@ def refresh_index(
         for record in records_by_run.get(run, [])
     ]
     refreshed = {
-        "version": 1,
+        "version": INDEX_VERSION,
         "competition": competition,
         "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "records": all_records,
@@ -610,6 +619,7 @@ def render_table(
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
     table.add_column("time", justify="right", no_wrap=True)
+    table.add_column("metric", no_wrap=True)
     table.add_column("k", no_wrap=True)
     if full_view:
         table.add_column("prof", no_wrap=True)
@@ -633,7 +643,7 @@ def candidate_display_table(
     full_view: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
-    columns = ["#", "cv", "time", "k"]
+    columns = ["#", "cv", "time", "metric", "k"]
     if full_view:
         columns.append("prof")
     columns.extend(["m", "run", "hyp", "Algo", "step", "date", "sha"])
@@ -650,6 +660,7 @@ def candidate_display_table(
             str(rank),
             _format_score(record.get("local_score")),
             _format_duration(record.get("exec_time")),
+            str(record.get("eval_metric") or "-"),
             "e" if record.get("kind") == "profile_eval" else "n",
         ]
         if full_view:
