@@ -638,7 +638,7 @@ def adaptive_table_limit(
         terminal_rows = shutil.get_terminal_size(fallback=(80, default)).lines
     if terminal_rows <= 0:
         return default
-    return max(default, int(terminal_rows * 0.75))
+    return max(default, int(terminal_rows * 0.70))
 
 
 def render_table(
