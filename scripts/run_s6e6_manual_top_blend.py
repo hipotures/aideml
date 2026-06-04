@@ -1539,7 +1539,6 @@ def main() -> int:
                 cat_cols=cb_cat_cols,
                 seed=args.seed,
                 lgb_device=args.lgb_hpo_device,
-                study_suffix=None if args.feature_variant == "all" else args.feature_variant,
             )
         elif args.hpo_session:
             hpo_stats = {
