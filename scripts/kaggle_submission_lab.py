@@ -5,6 +5,7 @@ import datetime as dt
 import hashlib
 import json
 import re
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable
@@ -36,6 +37,7 @@ DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
 DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
+DEFAULT_TABLE_LIMIT = 20
 INDEX_VERSION = 2
 SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
 
@@ -625,6 +627,18 @@ def _format_duration(value: Any) -> str:
     except (TypeError, ValueError):
         return "-"
     return f"{seconds / 60.0:.1f}m"
+
+
+def adaptive_table_limit(
+    *,
+    default: int = DEFAULT_TABLE_LIMIT,
+    terminal_rows: int | None = None,
+) -> int:
+    if terminal_rows is None:
+        terminal_rows = shutil.get_terminal_size(fallback=(80, default)).lines
+    if terminal_rows <= 0:
+        return default
+    return max(default, int(terminal_rows * 0.75))
 
 
 def render_table(
@@ -1770,7 +1784,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
-    parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help=(
+            "Maximum candidate families shown and selected. "
+            "Default adapts to terminal height."
+        ),
+    )
     parser.add_argument(
         "--output-format",
         choices=["rich", "json", "txt"],
@@ -1780,8 +1802,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--registry-limit",
         type=int,
-        default=20,
-        help="Maximum rows shown in Submission registry. Use 0 for no limit.",
+        default=None,
+        help=(
+            "Maximum rows shown in Submission registry. "
+            "Default adapts to terminal height; use 0 for no limit."
+        ),
     )
     parser.add_argument("--reindex", action="store_true")
     parser.add_argument(
@@ -1833,9 +1858,18 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         return 2
-    if args.registry_limit < 0:
+    if args.limit is not None and args.limit < 0:
+        console.print("[red]--limit must be greater than or equal to 0.[/red]")
+        return 2
+    if args.registry_limit is not None and args.registry_limit < 0:
         console.print("[red]--registry-limit must be greater than or equal to 0.[/red]")
         return 2
+    candidate_limit = adaptive_table_limit() if args.limit is None else args.limit
+    registry_limit = (
+        adaptive_table_limit()
+        if args.registry_limit is None
+        else None if args.registry_limit == 0 else args.registry_limit
+    )
 
     registry = smart.SubmissionRegistry.load(args.registry)
     client = None
@@ -1884,7 +1918,7 @@ def main(argv: list[str] | None = None) -> int:
                 records,
                 registry=registry,
                 competition=args.competition,
-                limit=args.limit,
+                limit=candidate_limit,
             )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
@@ -1901,7 +1935,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
-        registry_limit = None if args.registry_limit == 0 else args.registry_limit
         if args.output_format == "rich":
             render_candidate_tree_table(
                 console,
@@ -1910,7 +1943,7 @@ def main(argv: list[str] | None = None) -> int:
                 remote_submissions=remote_submissions,
                 records=records,
                 sort_by=args.tree_sort,
-                limit=args.limit,
+                limit=candidate_limit,
                 run_filters=run_filters,
                 competition=args.competition,
                 show_seeds=args.show_seeds,

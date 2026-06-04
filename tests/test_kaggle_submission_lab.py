@@ -580,6 +580,28 @@ def test_parse_args_defaults_to_rich_output_format():
     assert args.output_format == "rich"
 
 
+def test_parse_args_leaves_table_limits_unset_for_adaptive_defaults():
+    args = kaggle_submission_lab.parse_args([])
+
+    assert args.limit is None
+    assert args.registry_limit is None
+
+
+def test_parse_args_preserves_explicit_table_limits():
+    args = kaggle_submission_lab.parse_args(["--limit", "7", "--registry-limit", "9"])
+
+    assert args.limit == 7
+    assert args.registry_limit == 9
+
+
+def test_adaptive_table_limit_uses_three_quarters_of_tall_terminal():
+    assert kaggle_submission_lab.adaptive_table_limit(terminal_rows=80) == 60
+
+
+def test_adaptive_table_limit_never_drops_below_default():
+    assert kaggle_submission_lab.adaptive_table_limit(terminal_rows=24) == 20
+
+
 def test_parse_args_treats_sha_as_sha256_alias():
     args = kaggle_submission_lab.parse_args(["--sha", "abc123", "--sha256", "def456"])
 
