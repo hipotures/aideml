@@ -594,8 +594,8 @@ def test_parse_args_preserves_explicit_table_limits():
     assert args.registry_limit == 9
 
 
-def test_adaptive_table_limit_uses_seventy_percent_of_tall_terminal():
-    assert kaggle_submission_lab.adaptive_table_limit(terminal_rows=80) == 56
+def test_adaptive_table_limit_uses_sixty_five_percent_of_tall_terminal():
+    assert kaggle_submission_lab.adaptive_table_limit(terminal_rows=80) == 52
 
 
 def test_adaptive_table_limit_never_drops_below_default():
