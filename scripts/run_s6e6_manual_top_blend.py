@@ -1192,11 +1192,13 @@ def main() -> int:
     submission_sha = sha256_file(submission_path)
     log_blank()
     print(f"Saved submission: {submission_path}", flush=True)
+    log_blank()
     print(
         "Submit command: "
         f"uv run python scripts/kaggle_submission_lab.py --sha {submission_sha[:10]}",
         flush=True,
     )
+    log_blank()
     print(
         "AIDE_RESULT_JSON: "
         + json.dumps(
