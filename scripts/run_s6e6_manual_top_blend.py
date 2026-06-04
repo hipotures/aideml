@@ -502,6 +502,248 @@ def train_model_oof(
     return oof, test_preds, stats
 
 
+def xgb_oof_score(
+    *,
+    X_num: pd.DataFrame,
+    y: pd.Series,
+    folds: int,
+    seed: int,
+    tuned_params: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    n_classes = len(CLASS_ORDER)
+    oof = np.zeros((len(y), n_classes), dtype=np.float64)
+    scores: list[float] = []
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+    started_at = time.time()
+
+    log_blank()
+    print(f"[ablation:{label}] features={X_num.shape[1]} starting {folds}-fold XGB OOF", flush=True)
+    for fold, (tr_idx, va_idx) in enumerate(skf.split(X_num, y), 1):
+        print(f"[ablation:{label}] fold {fold}/{folds}", flush=True)
+        y_tr = y.iloc[tr_idx].to_numpy()
+        y_va = y.iloc[va_idx].to_numpy()
+        val_proba, _ = fit_xgb_fold_with_params(
+            X_num.iloc[tr_idx],
+            y_tr,
+            X_num.iloc[va_idx],
+            y_va,
+            X_num.iloc[va_idx],
+            seed + fold,
+            n_classes,
+            tuned_params,
+        )
+        oof[va_idx] = val_proba
+        fold_score = balanced_accuracy_score(y_va, val_proba.argmax(axis=1))
+        scores.append(float(fold_score))
+        print(f"[ablation:{label}] fold {fold} balanced_accuracy={fold_score:.6f}", flush=True)
+
+    score = balanced_accuracy_score(y, oof.argmax(axis=1))
+    log_blank()
+    print(f"[ablation:{label}] OOF balanced_accuracy={score:.6f}", flush=True)
+    return {
+        "variant": label,
+        "feature_count": int(X_num.shape[1]),
+        "oof_balanced_accuracy": float(score),
+        "fold_balanced_accuracy": scores,
+        "fit_time": float(time.time() - started_at),
+    }
+
+
+def feature_group_columns(columns: list[str]) -> dict[str, set[str]]:
+    cols = set(columns)
+    original = {
+        "alpha",
+        "delta",
+        "u",
+        "g",
+        "r",
+        "i",
+        "z",
+        "redshift",
+        "spectral_type",
+        "galaxy_population",
+    } & cols
+    raw_categoricals = {"spectral_type", "galaxy_population"} & cols
+    categorical_derived = {
+        col
+        for col in cols
+        if col.startswith("spectral_type_") or col.startswith("galaxy_population_")
+    }
+    missing_sentinel_flags = {
+        col
+        for col in cols
+        if col.endswith("_missing")
+        or col.endswith("_sentinel")
+        or col.endswith("_valid")
+        or col in {"mag_sentinel_count", "mag_sentinel_any", "mag_sentinel_rate", "mag_missing_count"}
+    }
+    fill_clip_tail = {
+        col
+        for col in cols
+        if col.endswith("_filled")
+        or col.endswith("_clipped01_99")
+        or col.endswith("_low_tail")
+        or col.endswith("_high_tail")
+        or col.endswith("_abs_dev_median")
+    }
+    mag_color_stats = {
+        col
+        for col in cols
+        if col.startswith("color_")
+        or col.startswith("mag_")
+        or col in {"u", "g", "r", "i", "z"}
+    }
+    aux_color = {col for col in cols if col.startswith("aux_color_")}
+    sky_position = {
+        col
+        for col in cols
+        if col.startswith("sky_")
+        or col.startswith("alpha_")
+        or col.startswith("delta_")
+        or col.startswith("aux_gal_")
+        or col in {"alpha", "delta"}
+    }
+    redshift_engineered = {
+        col
+        for col in cols
+        if col.startswith("redshift_") or col.startswith("redshift_tanh")
+    }
+    rest_color = {col for col in cols if col.startswith("rest_color_")}
+    return {
+        "original_raw": original,
+        "raw_categoricals": raw_categoricals,
+        "categorical_derived": categorical_derived,
+        "categorical_all": raw_categoricals | categorical_derived,
+        "missing_sentinel_flags": missing_sentinel_flags,
+        "fill_clip_tail": fill_clip_tail,
+        "mag_color_stats": mag_color_stats,
+        "aux_color": aux_color,
+        "sky_position": sky_position,
+        "redshift_engineered": redshift_engineered,
+        "rest_color": rest_color,
+    }
+
+
+def xgb_ablation_column_sets(
+    columns: list[str],
+) -> dict[str, list[str]]:
+    groups = feature_group_columns(columns)
+    all_cols = set(columns)
+    original_only = [col for col in columns if col in groups["original_raw"]]
+    variants: dict[str, list[str]] = {"all": columns}
+
+    for group_name, group_cols in groups.items():
+        kept = [col for col in columns if col not in group_cols]
+        if group_cols and kept:
+            variants[f"drop_{group_name}"] = kept
+
+    if original_only:
+        variants["only_original_raw"] = original_only
+
+    engineered_cols = all_cols - groups["original_raw"]
+    if engineered_cols:
+        variants["only_engineered"] = [col for col in columns if col in engineered_cols]
+
+    return variants
+
+
+def run_xgb_ablation(
+    *,
+    X_num: pd.DataFrame,
+    y: pd.Series,
+    folds: int,
+    seed: int,
+    tuned_params: dict[str, Any],
+    requested_variants: list[str] | None,
+) -> list[dict[str, Any]]:
+    variants = xgb_ablation_column_sets(list(X_num.columns))
+    if requested_variants:
+        missing = sorted(set(requested_variants) - set(variants))
+        if missing:
+            raise ValueError(
+                f"Unknown ablation variants: {missing}. Available: {sorted(variants)}"
+            )
+        variant_names = requested_variants
+    else:
+        variant_names = list(variants)
+
+    results: list[dict[str, Any]] = []
+    baseline_score: float | None = None
+    for variant_name in variant_names:
+        cols = variants[variant_name]
+        result = xgb_oof_score(
+            X_num=X_num[cols],
+            y=y,
+            folds=folds,
+            seed=seed,
+            tuned_params=tuned_params,
+            label=variant_name,
+        )
+        if variant_name == "all":
+            baseline_score = float(result["oof_balanced_accuracy"])
+        if baseline_score is not None:
+            result["delta_vs_all"] = float(result["oof_balanced_accuracy"] - baseline_score)
+        else:
+            result["delta_vs_all"] = None
+        result["dropped_columns"] = [
+            col for col in X_num.columns if col not in set(cols)
+        ]
+        results.append(result)
+
+    if baseline_score is None:
+        baseline = next((item for item in results if item["variant"] == "all"), None)
+        baseline_score = float(baseline["oof_balanced_accuracy"]) if baseline else None
+        if baseline_score is not None:
+            for result in results:
+                result["delta_vs_all"] = float(result["oof_balanced_accuracy"] - baseline_score)
+
+    return results
+
+
+def apply_feature_variant(
+    *,
+    X_num: pd.DataFrame,
+    X_test_num: pd.DataFrame,
+    X_cb: pd.DataFrame,
+    X_test_cb: pd.DataFrame,
+    cat_cols: list[str],
+    variant: str,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str], list[bool], dict[str, Any]]:
+    variants = xgb_ablation_column_sets(list(X_num.columns))
+    if variant not in variants:
+        raise ValueError(f"Unknown feature variant: {variant}. Available: {sorted(variants)}")
+
+    selected_cols = variants[variant]
+    selected_set = set(selected_cols)
+    kept_cat_cols = [col for col in cat_cols if col in selected_set]
+    cat_indicator = [col in set(kept_cat_cols) for col in selected_cols]
+    dropped_cols = [col for col in X_num.columns if col not in selected_set]
+    stats = {
+        "variant": variant,
+        "feature_count": len(selected_cols),
+        "dropped_count": len(dropped_cols),
+        "dropped_columns": dropped_cols,
+        "cat_cols": kept_cat_cols,
+    }
+    if variant != "all":
+        log_blank()
+        print(
+            f"[features] variant={variant} features={len(selected_cols)} "
+            f"dropped={len(dropped_cols)} cat_cols={len(kept_cat_cols)}",
+            flush=True,
+        )
+    return (
+        X_num[selected_cols].copy(),
+        X_test_num[selected_cols].copy(),
+        X_cb[selected_cols].copy(),
+        X_test_cb[selected_cols].copy(),
+        kept_cat_cols,
+        cat_indicator,
+        stats,
+    )
+
+
 def suggest_xgb_params(trial) -> dict[str, Any]:
     return {
         "n_estimators": trial.suggest_int("n_estimators", 1000, 2600, step=200),
@@ -566,6 +808,7 @@ def run_model_hpo(
     cat_cols: list[str],
     seed: int,
     lgb_device: str = "cpu",
+    study_suffix: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     import optuna
 
@@ -577,8 +820,11 @@ def run_model_hpo(
         raise ValueError("--hpo-folds must be at least 2")
 
     validate_hpo_session(session)
+    if study_suffix is not None:
+        validate_hpo_session(study_suffix)
     hpo_dir.mkdir(parents=True, exist_ok=True)
-    study_name = f"{session}-{model_name}"
+    effective_session = f"{session}-{study_suffix}" if study_suffix else session
+    study_name = f"{effective_session}-{model_name}"
     db_path = hpo_dir / f"{study_name}.db"
     storage_name = f"sqlite:///{db_path.resolve()}"
     sampler = optuna.samplers.TPESampler()
@@ -679,7 +925,9 @@ def run_model_hpo(
     except ValueError:
         stats = {
             "enabled": False,
-            "session": session,
+            "session": effective_session,
+            "base_session": session,
+            "study_suffix": study_suffix,
             "study_name": study_name,
             "storage": str(db_path),
             "trials_before": trials_before,
@@ -700,7 +948,9 @@ def run_model_hpo(
     best_params = dict(best_trial.params)
     stats = {
         "enabled": True,
-        "session": session,
+        "session": effective_session,
+        "base_session": session,
+        "study_suffix": study_suffix,
         "study_name": study_name,
         "storage": str(db_path),
         "trials_before": trials_before,
@@ -870,6 +1120,63 @@ def proba_frame(
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def write_xgb_ablation_artifacts(
+    *,
+    artifact_dir: Path,
+    results: list[dict[str, Any]],
+    args: argparse.Namespace,
+    hpo_stats: dict[str, Any] | None,
+    exec_time: float,
+) -> None:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    solution_path = artifact_dir / "solution.py"
+    shutil.copy2(Path(__file__), solution_path)
+
+    rows = []
+    for result in results:
+        rows.append(
+            {
+                "variant": result["variant"],
+                "feature_count": result["feature_count"],
+                "oof_balanced_accuracy": result["oof_balanced_accuracy"],
+                "delta_vs_all": result["delta_vs_all"],
+                "fit_time": result["fit_time"],
+                "dropped_count": len(result["dropped_columns"]),
+            }
+        )
+    results_frame = pd.DataFrame(rows).sort_values(
+        ["oof_balanced_accuracy", "variant"],
+        ascending=[False, True],
+    )
+    results_path = artifact_dir / "xgb_ablation_results.csv"
+    results_frame.to_csv(results_path, index=False)
+
+    payload = {
+        "schema_version": 1,
+        "kind": "xgb_ablation",
+        "run": RUN_ID,
+        "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "artifact_dir": str(artifact_dir),
+        "execution": {"exec_time": exec_time},
+        "args": json_safe(vars(args)),
+        "hpo": hpo_stats,
+        "results": json_safe(results),
+        "files": {
+            "solution": {
+                "path": "solution.py",
+                "sha256": sha256_file(solution_path),
+                "size": solution_path.stat().st_size,
+            },
+            "xgb_ablation_results": {
+                "path": "xgb_ablation_results.csv",
+                "sha256": sha256_file(results_path),
+                "size": results_path.stat().st_size,
+            },
+        },
+    }
+    write_json(artifact_dir / "xgb_ablation_result.json", payload)
 
 
 def json_safe(value: Any) -> Any:
@@ -1095,6 +1402,22 @@ def parse_args() -> argparse.Namespace:
         help="LightGBM device used for final OOF/test folds.",
     )
     parser.add_argument(
+        "--xgb-ablation",
+        action="store_true",
+        help="Run XGBoost feature-group ablation instead of producing a submission.",
+    )
+    parser.add_argument(
+        "--ablation-variants",
+        nargs="+",
+        default=None,
+        help="Optional subset of XGB ablation variants. Omit to run all variants.",
+    )
+    parser.add_argument(
+        "--feature-variant",
+        default="all",
+        help="Feature set variant for normal training/submission, e.g. drop_rest_color.",
+    )
+    parser.add_argument(
         "--artifact-suffix",
         default="",
         help="Optional suffix added to the artifact timestamp for smoke-test runs.",
@@ -1117,6 +1440,86 @@ def main() -> int:
     X_num, X_test_num, cat_indicator = make_numeric_frames(train_fe, test_fe, cat_cols)
     X_cb, X_test_cb, cb_cat_cols = make_catboost_frames(train_fe, test_fe, cat_cols)
 
+    if args.xgb_ablation:
+        if args.feature_variant != "all":
+            raise ValueError("--feature-variant is for normal training; use --ablation-variants with --xgb-ablation")
+        tuned_params: dict[str, Any] = {}
+        hpo_stats: dict[str, Any] | None = None
+        if args.hpo_session:
+            tuned_params, hpo_stats = run_model_hpo(
+                "xgb",
+                session=args.hpo_session,
+                hpo_dir=args.hpo_dir,
+                n_trials=args.hpo_trials,
+                folds=args.hpo_folds,
+                X_num=X_num,
+                X_cb=X_cb,
+                y=y,
+                cat_cols=cb_cat_cols,
+                seed=args.seed,
+                lgb_device=args.lgb_hpo_device,
+            )
+        results = run_xgb_ablation(
+            X_num=X_num,
+            y=y,
+            folds=args.folds,
+            seed=args.seed,
+            tuned_params=tuned_params,
+            requested_variants=args.ablation_variants,
+        )
+        timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + args.artifact_suffix
+        artifact_dir = args.logs_dir / RUN_ID / "artifacts" / f"{timestamp}-xgb-ablation"
+        write_xgb_ablation_artifacts(
+            artifact_dir=artifact_dir,
+            results=results,
+            args=args,
+            hpo_stats=hpo_stats,
+            exec_time=time.time() - started_at,
+        )
+        sorted_results = sorted(
+            results,
+            key=lambda item: float(item["oof_balanced_accuracy"]),
+            reverse=True,
+        )
+        log_blank()
+        print(f"Saved XGB ablation: {artifact_dir / 'xgb_ablation_results.csv'}", flush=True)
+        log_blank()
+        print("[ablation] results sorted by OOF balanced_accuracy", flush=True)
+        for result in sorted_results:
+            delta = result["delta_vs_all"]
+            delta_text = "n/a" if delta is None else f"{float(delta):+.6f}"
+            print(
+                f"[ablation] {result['variant']} "
+                f"score={float(result['oof_balanced_accuracy']):.6f} "
+                f"delta_vs_all={delta_text} features={result['feature_count']}",
+                flush=True,
+            )
+        log_blank()
+        print(
+            "AIDE_RESULT_JSON: "
+            + json.dumps(
+                {
+                    "is_bug": False,
+                    "metric": sorted_results[0]["oof_balanced_accuracy"],
+                    "eval_metric": "balanced_accuracy",
+                    "lower_is_better": False,
+                    "run_stats": {"xgb_ablation": json_safe(results), "hpo": hpo_stats},
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return 0
+
+    X_num, X_test_num, X_cb, X_test_cb, cb_cat_cols, cat_indicator, feature_stats = apply_feature_variant(
+        X_num=X_num,
+        X_test_num=X_test_num,
+        X_cb=X_cb,
+        X_test_cb=X_test_cb,
+        cat_cols=cb_cat_cols,
+        variant=args.feature_variant,
+    )
+
     oof_by_model: dict[str, np.ndarray] = {}
     test_by_model: dict[str, np.ndarray] = {}
     model_stats: list[dict[str, Any]] = []
@@ -1136,6 +1539,7 @@ def main() -> int:
                 cat_cols=cb_cat_cols,
                 seed=args.seed,
                 lgb_device=args.lgb_hpo_device,
+                study_suffix=None if args.feature_variant == "all" else args.feature_variant,
             )
         elif args.hpo_session:
             hpo_stats = {
@@ -1174,6 +1578,7 @@ def main() -> int:
         seed=args.seed,
         step=args.blend_step,
     )
+    blend_stats["feature_variant"] = feature_stats
     timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + args.artifact_suffix
     artifact_dir = args.logs_dir / RUN_ID / "artifacts" / timestamp
     submission_path = write_artifacts(
