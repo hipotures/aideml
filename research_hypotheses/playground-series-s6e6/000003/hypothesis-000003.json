@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Auxiliary coarse color-redshift class priors",
+  "summary": "Build smoothed P(class | color, redshift) lookup features from the labeled auxiliary file using coarse quantile bins, then map those priors onto train and test rows.",
+  "rationale": "Class-conditional distances and grid priors encode different information. The grid prior gives the model an empirical local class distribution in color-redshift space, which tree models can use more directly than raw density patterns from the auxiliary data.",
+  "implementation_hint": "Compute blue = color_u_g + color_g_r, red = color_r_i + color_i_z, and rz = log1p(max(redshift, 0)) for clean auxiliary rows. Build quantile edges from auxiliary data only, starting with a 16 x 16 x 12 grid. Crosstab key by class, reindex columns GALAXY, STAR, QSO, and apply Laplace smoothing with alpha 2.0. For competition rows, map the same key to aux_grid_prior_GALAXY, aux_grid_prior_STAR, aux_grid_prior_QSO, aux_grid_prior_support_log1p, and aux_grid_prior_qso_margin. Variants: 12 x 12 x 10, a blue/red grid without redshift, and a mag_mean/redshift/color_u_r grid.",
+  "expected_effect": "The model may gain calibrated local priors for rare or ambiguous regions, improving QSO and STAR recall under balanced accuracy.",
+  "risk": "Sparse bins can create noisy priors. Keep the first grid coarse and smoothed, and avoid deriving bin edges from competition labels.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "aide/example_tasks/playground-series-s6e6/original_sdss17/star_classification.csv",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

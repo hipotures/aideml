@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Auxiliary class-conditional distance features",
+  "summary": "Use class labels in original_sdss17/star_classification.csv to compute robust distances from each competition row to GALAXY, STAR, and QSO reference loci without matching objects by sky position.",
+  "rationale": "The seed uses the auxiliary data mostly as an unlabeled reference. The auxiliary file has the same core photometric columns plus class labels, so it can provide a deterministic external teacher. Robust class-conditional distances in magnitude, color, and redshift space may be especially useful around QSO/STAR and QSO/GALAXY boundaries.",
+  "implementation_hint": "After building u/g/r/i/z colors and redshift_tanh, create aux_work from aux columns u, g, r, i, z, redshift, and class. Add the same colors to aux_work. For each class in GALAXY, STAR, and QSO, compute medians and robust IQR-based scales over columns u, g, r, i, z, color_u_g, color_g_r, color_r_i, color_i_z, color_u_r, color_u_z, and redshift_tanh. Add aux_clsdist_<CLASS> as sqrt(mean(z^2)) and aux_clsdist_<CLASS>_log1p. Then add pairwise margins, aux_clsdist_best, aux_clsdist_margin, and aux_clsdist_confidence.",
+  "expected_effect": "Balanced accuracy may improve because the model receives compact class-locus proximity signals instead of having to infer external class structure indirectly from raw features.",
+  "risk": "This relies on labeled public external data. If the experiment policy disallows external labels, disable this hypothesis. Distribution mismatch between SDSS auxiliary rows and competition rows could also overfit public validation.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "aide/example_tasks/playground-series-s6e6/original_sdss17/star_classification.csv",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

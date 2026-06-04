@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Prune AutoGluon-flagged constant and duplicate-like features",
+  "summary": "Remove the feature columns the seed AutoGluon logs already reported as useless or unused, starting with constant/missing/sentinel indicators and then testing a broader duplicate-like cleanup.",
+  "rationale": "The seed log reports many original features that AutoGluon drops or leaves unused. Keeping them still expands preprocessing, memory, and split-search surface for tree models. A hard pruning pass is a low-risk way to reduce noisy candidate splits while preserving the stronger photometric, color, sky, redshift, and categorical features.",
+  "implementation_hint": "Add a final pruning block in preprocess. First variant drops only constant-style features such as alpha_missing, delta_missing, band sentinel/missing flags, redshift_missing, mag_sentinel_count/any/rate, spectral_type_missing, galaxy_population_missing, mag_missing_count, mag_curvature_sign, mag_quality_state_code/all_clean/nonzero, aux_color_ref_valid, sky_eqarea_valid, sky_galactic_valid, and aux_gal_b_abs_pct_valid. Second variant also drops duplicate-like or unused columns such as alpha_filled, delta_filled, u_filled, g_filled, r_filled, i_filled, z_filled, redshift_filled, mag_ptp, mag_curvature_abs, color_u_g_i_z_sum, sky_z, sky_ra_cos_delta, galaxy_population_freq, and galaxy_population_code. A third no-filled variant drops *_filled while keeping raw magnitudes.",
+  "expected_effect": "A small balanced_accuracy gain is plausible because XGBoost and CatBoost see fewer redundant or constant candidates, and the seed already shows only a subset of engineered columns surviving AutoGluon processing.",
+  "risk": "Some columns marked unused on one seed split may become useful after a later feature addition or different validation split, so test constant-only before the broader duplicate-like cleanup.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/aide_result.json"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

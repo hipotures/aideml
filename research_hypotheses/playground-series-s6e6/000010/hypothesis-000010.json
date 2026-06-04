@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Reallocate AutoGluon time from LightGBM to XGB and CatBoost",
+  "summary": "Keep the seed preprocessing fixed but test a bounded AutoGluon profile that gives more capacity to XGBoost and CatBoost, since the seed ensemble weight is dominated by XGBoost and CatBoost.",
+  "rationale": "The seed log shows XGBoost as the strongest base model and LightGBM with little or no effective ensemble contribution in the referenced run. A single controlled profile change can test whether time is better spent on multiple XGB configurations and a focused CatBoost run instead of an equally weighted default model set.",
+  "implementation_hint": "Create a separate run with included_model_types ['XGB', 'CAT'] and hyperparameters containing two GPU XGB configs: max_depth 6, learning_rate 0.03, subsample 0.9, colsample_bytree 0.9, priority 999; and max_depth 8, learning_rate 0.02, subsample 0.85, colsample_bytree 0.8, priority 998. Keep device='cuda', tree_method='hist', and num_gpus=1. Add one GPU CatBoost config with task_type='GPU', devices='0', gpu_ram_part=0.8, depth 8, learning_rate 0.04. Conservative variant keeps ['XGB', 'GBM', 'CAT'] but lowers LightGBM priority/time while adding the second XGB config.",
+  "expected_effect": "If LightGBM contributes little under the seed profile, reallocating time may improve the weighted ensemble or produce a stronger XGB-only/CAT-supported solution.",
+  "risk": "This is a model-control experiment, not preprocessing. It can interact with all feature changes, so test it separately after preprocessing hypotheses are ranked.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/aide_result.json",
+    "logs/2-hopping-sheep-from-camelot/config.yaml"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

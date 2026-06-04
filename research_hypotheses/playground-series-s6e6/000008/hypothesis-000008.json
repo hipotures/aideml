@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Faint-end photometric noise proxy features",
+  "summary": "Create deterministic proxies for photometric uncertainty from relative faintness, then normalize adjacent colors by those proxies.",
+  "rationale": "The competition data lacks explicit photometric errors. Magnitudes still imply a rough noise regime: fainter objects should have less reliable colors. Giving the model color reliability proxies can help classify ambiguous STAR/QSO and QSO/GALAXY cases.",
+  "implementation_hint": "After mag_matrix exists for ordered u, g, r, i, z, compute per-band medians, faint = magnitudes - band_medians, and noise_proxy = clip(exp(0.4 * clip(faint, -5, 5)), 0.05, 20). Add phot_noise_proxy_mean, max, blue, red, and blue_minus_red. For adjacent color pairs u-g, g-r, r-i, and i-z, add color_<a>_<b>_snr_proxy = color / sqrt(noise_a^2 + noise_b^2 + 1e-6).",
+  "expected_effect": "The model may learn when color features are less trustworthy, improving boundary decisions without external labels.",
+  "risk": "The proxy is heuristic and can duplicate magnitude information. Keep it separate from pruning and auxiliary-label experiments.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "aide/example_tasks/playground-series-s6e6/train.csv"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

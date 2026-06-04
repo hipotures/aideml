@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Sky and auxiliary-sky family ablations",
+  "summary": "Test whole-family pruning of sky geometry and auxiliary sky percentile features instead of dropping isolated columns.",
+  "rationale": "Direct catalog matching by alpha/delta appears weak, so sky features should be treated as possible generator artifacts rather than reliable physical identity keys. Large sky feature families can help local validation while hurting public/private generalization.",
+  "implementation_hint": "Run three standalone ablations. Minimal-sky keeps only alpha, delta, alpha_sin, alpha_cos, delta_sin, delta_cos, sky_eqarea_count_log, aux_gal_b_abs_pct, aux_gal_b_abs_pct_centered, and aux_gal_b_abs_pct_tail, dropping other sky_* and sky_galactic_* columns plus aux_gal_b_abs_pct_extreme. No-aux-sky drops columns starting with aux_gal_b_abs_pct. No-raw-coordinates drops alpha, delta, sky_x, sky_y, and sky_z while keeping aggregated occupancy and percentile features.",
+  "expected_effect": "The best ablation may improve generalization by removing fragile coordinate artifacts while retaining robust occupancy signals.",
+  "risk": "Some sky features may be genuinely useful synthetic priors. Treat this as an ablation family and do not combine with new auxiliary-label features in the first run.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/aide_result.json"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

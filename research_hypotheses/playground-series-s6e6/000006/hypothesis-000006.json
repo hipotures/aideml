@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Ordered spectral and galaxy-population interactions",
+  "summary": "Replace arbitrary categorical codes with semantically ordered spectral_type and galaxy_population features plus interactions with colors, redshift, and magnitude summaries.",
+  "rationale": "The seed encodes categories through frequency and arbitrary categorical codes, and galaxy_population_code/freq were reported unused. Domain ordering can give tree models cleaner monotonic splits and interaction signals, especially for spectral types O/B, A/F, G/K, and M.",
+  "implementation_hint": "Map spectral_type to spectral_type_temp_order using O/B=0, A/F=1, G/K=2, M=3, missing=-1. Add its square, multiply it by redshift_tanh, color_u_g, color_g_r, color_r_i, color_i_z, mag_mean, mag_slope, and mag_curvature when present. Map galaxy_population to galaxy_population_red_order using Blue_Cloud=0, Red_Sequence=1, missing=-1, and interact it with the same core color/redshift/mag features. In the pruning variant, drop spectral_type_code, galaxy_population_code, and galaxy_population_freq after adding the ordered features.",
+  "expected_effect": "The model may better exploit stable synthetic categories while reducing reliance on arbitrary code values.",
+  "risk": "If the synthetic category labels are not physically consistent, the imposed order can add misleading interactions. Keep the first run compact and compare with the pruning variant separately.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "aide/example_tasks/playground-series-s6e6/train.csv"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

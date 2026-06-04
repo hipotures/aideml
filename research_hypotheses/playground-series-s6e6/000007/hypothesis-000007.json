@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Redshift RBF gates for hard QSO regimes",
+  "summary": "Add local radial-basis redshift features and color interactions around known difficult redshift ranges, especially the QSO/STAR overlap region.",
+  "rationale": "The seed has global redshift transforms and interactions, but no local basis functions. Balanced accuracy rewards class-specific improvements, and QSO errors can concentrate in narrow redshift regimes where global trees may need many splits.",
+  "implementation_hint": "For numeric redshift, fill missing with the median and add Gaussian RBF features at centers 0.0, 0.05, 0.3, 0.7, 1.2, 2.0, 2.7, 3.5, and 5.0 with widths 0.03, 0.05, 0.15, 0.25, 0.35, 0.45, 0.35, 0.55, and 0.9. Add redshift_near_zero_flag, redshift_qso_star_overlap_gate from the 2.7 RBF, redshift_high_qso_gate for z > 1.6, and redshift_extreme_qso_gate for z > 4.0. Multiply the overlap gate by color_u_g, color_g_r, color_r_i, color_i_z, and mag_mean when present.",
+  "expected_effect": "The model may gain sharper decision gates for QSO/STAR and QSO/GALAXY overlap, improving minority-class recall without changing the training profile.",
+  "risk": "Hand-picked centers can overfit local validation. Validate as a standalone preprocessing change before combining with auxiliary class priors.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "aide/example_tasks/playground-series-s6e6.md"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "ID-block residual features for synthetic batch artifacts",
+  "summary": "After id features are confirmed active, add local block-count and within-block residual features over several id block sizes.",
+  "rationale": "Simple id modulo and rank features may be too crude to capture synthetic generation batches. Local block residuals can expose shifts in redshift, magnitude, and colors within nearby id ranges while avoiding raw id as a direct predictor.",
+  "implementation_hint": "After computing numeric id_int, test block sizes 256, 1024, 4096, and 16384. For each block, add id_block_<size>_count and id_block_<size>_count_log1p from value counts. For columns redshift, mag_mean, mag_std, color_u_g, color_g_r, color_r_i, and color_i_z when present, compute group median by block and add <col>_dev_idblock_<size>. A lighter first run should use block_size 4096 and only redshift, mag_mean, color_u_g, and color_g_r.",
+  "expected_effect": "Balanced accuracy may improve if the playground generator emits local id batches with shifted photometric or redshift distributions.",
+  "risk": "This hypothesis depends on id activation from hypothesis 000004. Block aggregates over combined train/test can be fragile if public/private test ordering differs.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/aide_result.json"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}

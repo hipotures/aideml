@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "autogluon"
+  ],
+  "title": "Activate or remove the dead id feature block",
+  "summary": "Verify whether seed id-derived features actually reach preprocess, then either pass id into preprocess and drop raw id afterward or remove the inactive block.",
+  "rationale": "The seed plan attributes score to id-derived synthetic ordering features, but the wrapper can drop id before preprocess. If the id block is inactive, current conclusions about id signal are misleading. If it is activated, deterministic rank, gap, block, and modulo features may expose synthetic generation artifacts.",
+  "implementation_hint": "Experiment 4A: change the wrapper input preparation so train_features drops only the target column and test_features is a full copy, allowing id into preprocess. At the end of preprocess, drop raw id with errors=\"ignore\" so AutoGluon only sees derived id features. Experiment 4B: if wrapper changes are out of scope, remove the `if \"id\" in out.columns:` block and rerun the seed as a cleanliness check.",
+  "expected_effect": "If id features were inactive, the cleanup clarifies the baseline. If active id features help, the run may recover generation-order signal not available through photometry alone.",
+  "risk": "Raw or poorly handled id can overfit synthetic ordering. The experiment must ensure raw id is not passed as a direct model feature unless explicitly tested.",
+  "sources": [
+    "aide://2-hopping-sheep-from-camelot/journal.json#c0bc345181fc495386b219669778cd79",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/solution.py",
+    "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610/aide_result.json"
+  ],
+  "origin": {
+    "kind": "manual_seeded_research",
+    "seed_run_id": "2-hopping-sheep-from-camelot",
+    "seed_node_id": "c0bc345181fc495386b219669778cd79",
+    "seed_score": 0.9671848318999143,
+    "seed_agent_mode": "autogluon",
+    "seed_aux": false,
+    "seed_artifact_dir": "logs/2-hopping-sheep-from-camelot/artifacts/20260603T195610",
+    "source_run_id": "2-seeded-tuna-public-stable",
+    "source_node_id": "57f1f399122b474da92cce640e6c4b91",
+    "source_step": 117
+  }
+}
