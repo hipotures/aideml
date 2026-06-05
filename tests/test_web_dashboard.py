@@ -174,20 +174,16 @@ def test_active_tree_line_blinks_slowly():
     assert "opacity: 0.45;" in css
 
 
-def test_web_dashboard_shows_server_connection_status():
+def test_web_dashboard_marks_logs_tab_when_snapshot_refresh_fails():
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
     css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
 
-    assert 'id="server-status"' in html
-    assert 'role="status"' in html
-    assert 'aria-live="polite"' in html
-    assert 'id="server-status-text"' in html
-    assert "setServerStatus(\"connected\"" in js
-    assert "snapshot.status" in js
-    assert "setServerStatus(\n      \"disconnected\"" in js
-    assert "refreshFailures += 1;" in js
-    assert ".server-status.connected" in css
-    assert ".server-status.disconnected" in css
-    assert "#server-status-text" in css
-    assert "@keyframes status-pulse" in css
+    assert 'id="server-status"' not in html
+    assert 'data-tab="logs"' in html
+    assert "grid-template-columns: repeat(3, 1fr);" in css
+    assert "setLogsConnectionError(false);" in js
+    assert "setLogsConnectionError(true);" in js
+    assert "dashboard refresh failed:" in js
+    assert ".tab.connection-error::after" in css
+    assert "@keyframes log-error-pulse" in css

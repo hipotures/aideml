@@ -2,23 +2,12 @@ let refreshMs = 2000;
 let treeTarget = null;
 let treeFollow = false;
 let lastTreeTarget = null;
-let refreshFailures = 0;
 
-function clockTime(date = new Date()) {
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function setServerStatus(state, label) {
-  const status = document.getElementById("server-status");
-  const textNode = document.getElementById("server-status-text");
-  status.classList.remove("connecting", "connected", "disconnected");
-  status.classList.add(state);
-  status.title = label;
-  textNode.textContent = label;
+function setLogsConnectionError(hasError) {
+  const logsTab = document.querySelector('[data-tab="logs"]');
+  if (logsTab) {
+    logsTab.classList.toggle("connection-error", hasError);
+  }
 }
 
 function switchTab(name) {
@@ -191,7 +180,7 @@ async function refresh() {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const snapshot = await response.json();
-    refreshFailures = 0;
+    setLogsConnectionError(false);
     refreshMs = Math.max(
       500,
       Math.min(
@@ -199,17 +188,11 @@ async function refresh() {
         Number(snapshot.refresh_seconds || refreshMs / 1000) * 1000,
       ),
     );
-    const aideStatus = text(snapshot.status || "server ok");
-    setServerStatus("connected", `aide ${aideStatus} · ${clockTime()}`);
     renderTree(snapshot);
     renderRunData(snapshot);
     renderLogs(snapshot);
   } catch (error) {
-    refreshFailures += 1;
-    setServerStatus(
-      "disconnected",
-      `reconnecting ${refreshFailures} · ${Math.round(refreshMs / 1000)}s`,
-    );
+    setLogsConnectionError(true);
     document.getElementById("logs").textContent = `dashboard refresh failed: ${error}`;
   } finally {
     setTimeout(refresh, refreshMs);
