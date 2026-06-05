@@ -48,7 +48,10 @@ from .utils import data_preview
 from .utils.config import Config, aux_file_name, resolve_aux_description_file
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.node_artifacts import node_artifact_dir as artifact_dir_for_node
-from .utils.plateau import is_plateau_blocked_descendant
+from .utils.plateau import (
+    DEFAULT_PLATEAU_BLOCK_EPSILON,
+    is_plateau_blocked_descendant,
+)
 from .utils.response import (
     extract_code,
     extract_jsons,
@@ -832,7 +835,11 @@ class Agent:
                     "reason": "submission_contract_or_oom_branch",
                 }
         plateau_epsilon = float(
-            getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
+            getattr(
+                search_cfg,
+                "plateau_block_epsilon",
+                DEFAULT_PLATEAU_BLOCK_EPSILON,
+            )
         )
         before_plateau_block = list(good_nodes)
         good_nodes = [

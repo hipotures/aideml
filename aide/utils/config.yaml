@@ -148,6 +148,7 @@ agent:
     forced_hypothesis: null
     hypothesis_max_non_improving_children_per_parent: 10
     hypothesis_min_improvement_epsilon: 0.00006
+    plateau_block_epsilon: 0.00001
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.

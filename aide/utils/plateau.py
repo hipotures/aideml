@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from aide.journal import Node
 
+DEFAULT_PLATEAU_BLOCK_EPSILON = 0.00001
+
 
 def nearest_scored_ancestor(node: Node) -> Node | None:
     parent = node.parent
@@ -39,7 +41,11 @@ def plateau_delta_to_nearest_scored_ancestor(node: Node) -> float | None:
     return node_value - ancestor_value
 
 
-def is_plateau_blocked_descendant(node: Node, *, epsilon: float = 0.0) -> bool:
+def is_plateau_blocked_descendant(
+    node: Node,
+    *,
+    epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+) -> bool:
     if node.parent is None:
         return False
     if node.is_buggy or node.is_terminal_failure:

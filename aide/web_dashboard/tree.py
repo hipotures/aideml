@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from aide.journal import Journal, Node
 from aide.utils.metric import MetricValue
-from aide.utils.plateau import is_plateau_blocked_descendant
+from aide.utils.plateau import (
+    DEFAULT_PLATEAU_BLOCK_EPSILON,
+    is_plateau_blocked_descendant,
+)
 
 from .state import WebTreeLine
 
@@ -87,7 +90,7 @@ def build_web_tree_lines(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
 ) -> list[WebTreeLine]:
     journal_nodes = set(journal.nodes)
     best_node = _best_scored_node(

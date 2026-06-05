@@ -51,6 +51,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.search.forced_root is None
     assert cfg.agent.search.hypothesis_max_non_improving_children_per_parent == 10
     assert cfg.agent.search.hypothesis_min_improvement_epsilon == 0.00006
+    assert cfg.agent.search.plateau_block_epsilon == 0.00001
     assert cfg.agent.memory_recent_steps == 100
     assert cfg.agent.memory_full_recent_steps == 20
     assert cfg.agent.include_parent_process_stdout is False

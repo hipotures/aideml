@@ -96,7 +96,10 @@ from .utils.node_artifacts import (
     node_artifact_dir as artifact_dir_for_node,
     node_artifact_submission_path as artifact_submission_path_for_node,
 )
-from .utils.plateau import is_plateau_blocked_descendant
+from .utils.plateau import (
+    DEFAULT_PLATEAU_BLOCK_EPSILON,
+    is_plateau_blocked_descendant,
+)
 from .utils.resource_monitor import (
     DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
     ResourceHistory,
@@ -836,7 +839,7 @@ def journal_to_rich_tree(
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
 ):
     if show_invalid_submission_branches:
@@ -964,7 +967,7 @@ def _visible_best_node(
     *,
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
 ) -> Node | None:
     if show_invalid_submission_branches:
         return journal.get_best_node()
@@ -992,7 +995,7 @@ def _tree_node_label(
     *,
     best_node: Node | None,
     disable_oom_saturated_parents: bool = False,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
@@ -1054,7 +1057,7 @@ def _tree_active_node_label(
     blink_on: bool,
     best_node: Node | None,
     disable_oom_saturated_parents: bool = False,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     line = _tree_active_placeholder_line(
@@ -1126,7 +1129,7 @@ def build_tree_view(
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
-    plateau_block_epsilon: float = 0.00006,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
 ) -> TreeView:
     items: list[TreeViewItem] = [
@@ -4342,7 +4345,7 @@ def run(argv: list[str] | None = None):
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
                         plateau_block_epsilon=(
-                            cfg.agent.search.hypothesis_min_improvement_epsilon
+                            cfg.agent.search.plateau_block_epsilon
                         ),
                     ),
                     run_sections=_web_run_sections(
@@ -4371,7 +4374,7 @@ def run(argv: list[str] | None = None):
             disable_oom_saturated_parents=(
                 cfg.agent.search.disable_oom_saturated_parents
             ),
-            plateau_block_epsilon=cfg.agent.search.hypothesis_min_improvement_epsilon,
+            plateau_block_epsilon=cfg.agent.search.plateau_block_epsilon,
             synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
         )
 
