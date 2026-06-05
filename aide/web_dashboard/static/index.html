@@ -16,7 +16,14 @@
     </nav>
     <main>
       <section class="panel active" data-panel="tree">
-        <div class="headline" id="tree-title">Solution tree</div>
+        <div class="tree-header">
+          <div class="headline" id="tree-title">Solution tree</div>
+          <div class="tree-toolbar" aria-label="Tree navigation">
+            <button class="tool-toggle" data-tree-target="best" type="button">best</button>
+            <button class="tool-toggle" data-tree-target="active" type="button">active</button>
+            <button class="tool-toggle" id="tree-follow" type="button" disabled>follow</button>
+          </div>
+        </div>
         <div class="tree" id="tree"></div>
       </section>
       <section class="panel" data-panel="run">

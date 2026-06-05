@@ -1,4 +1,7 @@
 let refreshMs = 2000;
+let treeTarget = null;
+let treeFollow = false;
+let lastTreeTarget = null;
 
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach((tab) => {
@@ -12,6 +15,33 @@ function switchTab(name) {
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
+
+document.querySelectorAll("[data-tree-target]").forEach((button) => {
+  button.addEventListener("click", () => {
+    treeTarget = treeTarget === button.dataset.treeTarget
+      ? null
+      : button.dataset.treeTarget;
+    if (treeTarget !== "active") treeFollow = false;
+    updateTreeToolbar();
+    scrollTreeToTarget({ force: true });
+  });
+});
+
+document.getElementById("tree-follow").addEventListener("click", () => {
+  if (treeTarget !== "active") return;
+  treeFollow = !treeFollow;
+  updateTreeToolbar();
+  scrollTreeToTarget({ force: treeFollow });
+});
+
+function updateTreeToolbar() {
+  document.querySelectorAll("[data-tree-target]").forEach((button) => {
+    button.classList.toggle("active", treeTarget === button.dataset.treeTarget);
+  });
+  const follow = document.getElementById("tree-follow");
+  follow.disabled = treeTarget !== "active";
+  follow.classList.toggle("active", treeTarget === "active" && treeFollow);
+}
 
 function text(value) {
   return value == null ? "" : String(value);
@@ -44,6 +74,21 @@ function renderTree(snapshot) {
     row.append(prefix, dot, label);
     tree.appendChild(row);
   }
+  scrollTreeToTarget({ force: treeFollow });
+}
+
+function scrollTreeToTarget({ force = false } = {}) {
+  if (!treeTarget) {
+    lastTreeTarget = null;
+    return;
+  }
+  const selector = treeTarget === "best" ? ".tree-line.best" : ".tree-line.active";
+  const target = document.querySelector(selector);
+  if (!target) return;
+  const targetText = target.textContent;
+  if (!force && lastTreeTarget === `${treeTarget}:${targetText}`) return;
+  target.scrollIntoView({ block: "center", inline: "nearest" });
+  lastTreeTarget = `${treeTarget}:${targetText}`;
 }
 
 function renderRunData(snapshot) {

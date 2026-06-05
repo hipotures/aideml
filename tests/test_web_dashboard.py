@@ -137,6 +137,24 @@ def test_static_js_renders_sectioned_run_data_with_legacy_fallback():
     assert "buckets.Agent" in js
 
 
+def test_tree_toolbar_controls_best_active_and_follow():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert 'class="tree-toolbar"' in html
+    assert 'data-tree-target="best"' in html
+    assert 'data-tree-target="active"' in html
+    assert 'id="tree-follow"' in html
+    assert "disabled" in html
+    assert "treeTarget = null" in js
+    assert "treeFollow = false" in js
+    assert ".tree-line.best" in js
+    assert ".tree-line.active" in js
+    assert "scrollIntoView" in js
+    assert ".tree-toolbar" in css
+
+
 def test_run_data_labels_do_not_wrap():
     css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
 

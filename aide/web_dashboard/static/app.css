@@ -75,10 +75,46 @@ main {
   background: #1d9bf0;
   display: inline-block;
   padding: 0 4px;
-  margin: 0 0 10px;
+  margin: 0;
   font-weight: 700;
   font-size: 13px;
   line-height: 17px;
+}
+
+.tree-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  white-space: nowrap;
+}
+
+.tree-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool-toggle {
+  appearance: none;
+  border: 1px solid #3b414b;
+  background: #1f242b;
+  color: #9aa7b7;
+  font: 700 11px/18px inherit;
+  height: 20px;
+  padding: 0 6px;
+}
+
+.tool-toggle.active {
+  color: #34d399;
+  border-color: #1d9bf0;
+  background: #102234;
+}
+
+.tool-toggle:disabled {
+  color: #586170;
+  border-color: #2b313a;
+  background: #181b20;
 }
 
 .tree {
