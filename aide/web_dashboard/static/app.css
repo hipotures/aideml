@@ -175,10 +175,23 @@ main {
 
 .tree-line.active .dot {
   background: #1d9bf0;
+  animation: active-node-fade 1.8s ease-in-out infinite;
 }
 
 .tree-line.active .label {
   color: #1d9bf0;
+  animation: active-node-fade 1.8s ease-in-out infinite;
+}
+
+@keyframes active-node-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
 }
 
 .run-list {

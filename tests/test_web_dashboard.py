@@ -162,3 +162,13 @@ def test_run_data_labels_do_not_wrap():
 
     assert "grid-template-columns: 12ch 1fr;" in css
     assert "white-space: nowrap;" in css
+
+
+def test_active_tree_line_blinks_slowly():
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert ".tree-line.active .dot" in css
+    assert ".tree-line.active .label" in css
+    assert "animation: active-node-fade 1.8s ease-in-out infinite;" in css
+    assert "@keyframes active-node-fade" in css
+    assert "opacity: 0.45;" in css
