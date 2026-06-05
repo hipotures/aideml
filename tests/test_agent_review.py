@@ -134,6 +134,30 @@ def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
     assert "checkpoint 000027" not in summary
 
 
+def test_journal_summary_hides_seeded_base_source_metadata():
+    journal = Journal()
+    seeded_base_prefix = "Seeded base artifact"
+    node = Node(
+        code="print('ok')",
+        plan=(
+            f"{seeded_base_prefix}: source_run=2-source "
+            "source_step=93 source_timestamp=20260605T055136-d22b43e4 "
+            "node_sha256=c6167676f8ecb99c31b256634572c026c01d6adf3f7d4514c8911a701c10f61e "
+            "Original plan: Train a controlled CatBoost/XGBoost blend."
+        ),
+    )
+    node.metric = MetricValue(0.965327, maximize=True)
+    node.is_buggy = False
+    journal.append(node)
+
+    summary = journal.generate_summary()
+
+    assert "Design: Train a controlled CatBoost/XGBoost blend." in summary
+    assert seeded_base_prefix not in summary
+    assert "source_run=" not in summary
+    assert "node_sha256=" not in summary
+
+
 def test_legacy_agent_memory_uses_configured_recent_and_full_windows(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False

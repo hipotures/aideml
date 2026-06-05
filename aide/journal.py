@@ -20,6 +20,7 @@ from .utils.response import trim_long_string
 
 
 OOM_FAILURE_PARENT_LIMIT = 3
+SEEDED_BASE_SUMMARY_PREFIX = "Seeded base artifact"
 
 
 def _summary_analysis_text(analysis: str | None) -> str:
@@ -33,6 +34,11 @@ def _summary_plan_text(plan: str | None) -> str:
     text = str(plan or "")
     if text.startswith("External Codex synthesis checkpoint"):
         return "External Codex synthesis generated a new root solution from top candidates."
+    if text.startswith(SEEDED_BASE_SUMMARY_PREFIX):
+        marker = " Original plan: "
+        if marker in text:
+            return text.split(marker, 1)[1].strip()
+        return "Seeded base artifact copied from a previous scored run."
     return text
 
 
