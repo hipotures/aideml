@@ -4,6 +4,7 @@ import ast
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,39 @@ def load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _simple_metric_name(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if len(text) > 80:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9_.:+-]+", text):
+        return None
+    return text
+
+
+def _dotenv_project_metric(path: Path = Path(".env")) -> str | None:
+    if not path.exists():
+        return None
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != "AIDE_PROJECT_METRIC":
+            continue
+        return _simple_metric_name(value.strip().strip("'\""))
+    return None
+
+
+def configured_metric_name(cfg: Any) -> str | None:
+    return (
+        _simple_metric_name(getattr(cfg, "eval", None))
+        or _simple_metric_name(os.getenv("AIDE_PROJECT_METRIC"))
+        or _dotenv_project_metric()
+    )
 
 
 def parse_autogluon_config(code: str) -> dict[str, Any] | None:
@@ -80,14 +114,17 @@ def directory_file_entries(path: Path, *, base_dir: Path) -> list[dict[str, Any]
     ]
 
 
-def metric_payload(node: Node) -> dict[str, Any]:
+def metric_payload(node: Node, *, name: str | None = None) -> dict[str, Any]:
     metric = node.metric
     if metric is None:
         return {"value": None, "maximize": None}
-    return {
+    payload = {
         "value": metric.value,
         "maximize": metric.maximize,
     }
+    if name is not None and metric.value is not None:
+        payload["name"] = name
+    return payload
 
 
 def run_stats_payload(node: Node) -> dict[str, Any] | None:
@@ -149,7 +186,8 @@ def build_node_artifact_manifest(
     validation_predictions_path = artifact_dir / "validation_predictions.csv"
     error_path = artifact_dir / "error.txt"
     code = solution_path.read_text(encoding="utf-8") if solution_path.exists() else node.code
-    metric = metric_payload(node)
+    eval_metric = configured_metric_name(cfg)
+    metric = metric_payload(node, name=eval_metric)
     status = node_status(node)
     run = Path(cfg.log_dir).name
     timestamp = artifact_dir.name
@@ -167,6 +205,7 @@ def build_node_artifact_manifest(
         "status": status,
         "local_score": metric["value"],
         "metric_maximize": metric["maximize"],
+        "eval_metric": eval_metric if metric["value"] is not None else None,
         "is_buggy": bool(node.is_buggy),
         "sha256": submission["sha256"] if submission else None,
         "profile": autogluon.get("profile"),

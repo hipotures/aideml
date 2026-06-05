@@ -13,6 +13,7 @@ class DummyConfig:
     log_dir: Path
     workspace_dir: Path
     exp_name: str = "run-a"
+    eval: str | None = "balanced_accuracy"
 
 
 def test_build_node_artifact_manifest_for_successful_node(tmp_path):
@@ -49,6 +50,7 @@ def test_build_node_artifact_manifest_for_successful_node(tmp_path):
     assert manifest["status"] == "ok"
     assert manifest["local_score"] == 0.95098
     assert manifest["metric_maximize"] is True
+    assert manifest["eval_metric"] == "balanced_accuracy"
     assert manifest["profile"] == "fast_boost"
     assert manifest["included_model_types"] == ["XGB", "GBM"]
     assert manifest["time_limit"] == 300
@@ -58,7 +60,11 @@ def test_build_node_artifact_manifest_for_successful_node(tmp_path):
         manifest["node"]["validity_warning"]
         == "Possible leakage in race-lap aggregate features."
     )
-    assert manifest["node"]["metric"] == {"value": 0.95098, "maximize": True}
+    assert manifest["node"]["metric"] == {
+        "value": 0.95098,
+        "maximize": True,
+        "name": "balanced_accuracy",
+    }
     assert manifest["execution"]["exec_time"] == 12.5
     assert manifest["files"]["submission"]["path"] == "submission.csv"
     assert len(manifest["files"]["submission"]["sha256"]) == 64
@@ -88,6 +94,7 @@ def test_build_node_artifact_manifest_for_bug_node(tmp_path):
 
     assert manifest["status"] == "bug"
     assert manifest["local_score"] is None
+    assert manifest["eval_metric"] is None
     assert manifest["is_buggy"] is True
     assert manifest["files"]["submission"] is None
     assert manifest["files"]["error"]["path"] == "error.txt"
