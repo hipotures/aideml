@@ -166,7 +166,7 @@ main {
 
 .datum {
   display: grid;
-  grid-template-columns: minmax(72px, 12ch) 1fr;
+  grid-template-columns: max-content 1fr;
   gap: 8px;
   padding: 0;
 }
@@ -174,6 +174,7 @@ main {
 .datum-label {
   color: #22d3ee;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .datum-label::before {

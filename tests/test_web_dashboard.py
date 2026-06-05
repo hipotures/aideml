@@ -135,3 +135,10 @@ def test_static_js_renders_sectioned_run_data_with_legacy_fallback():
     assert "legacyItems" in js
     assert "legacyRunSections" in js
     assert "buckets.Agent" in js
+
+
+def test_run_data_labels_do_not_wrap():
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert "grid-template-columns: max-content 1fr;" in css
+    assert "white-space: nowrap;" in css
