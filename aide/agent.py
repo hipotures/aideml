@@ -1542,6 +1542,7 @@ class Agent:
                 "You should be very specific and should only propose a single actionable improvement.",
                 "This improvement should be atomic so that we can experimentally evaluate the effect of the proposed change.",
                 "Take the Memory section into consideration when proposing the improvement.",
+                "Use the recent Memory and Previous attempts sections as a partial record of what has already been tried. Avoid near-duplicate changes when the same feature family, model setup, or training idea already appears there. If the recent record is dominated by small feature tweaks with marginal score movement, choose a more distinct controlled experiment instead: a different model family, ensembling strategy, calibration, feature selection, training setup, or a clearly new feature family. Make the proposed change easy to distinguish from the listed attempts, and preserve the required metric and output artifacts.",
                 "The solution sketch should be 3-5 sentences.",
                 "Don't suggest to do EDA.",
             ],

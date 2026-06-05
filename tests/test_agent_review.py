@@ -166,6 +166,36 @@ def test_legacy_agent_memory_uses_configured_recent_and_full_windows(tmp_path):
     assert "Results: results 2" in memory
 
 
+def test_legacy_improve_prompt_encourages_distinct_controlled_experiments(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    parent = Node(code="print('parent')", plan="parent plan")
+    parent.metric = MetricValue(0.91, maximize=True)
+    parent.is_buggy = False
+    journal = Journal()
+    journal.append(parent)
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    guidelines = captured["prompt"]["Instructions"][
+        "Solution improvement sketch guideline"
+    ]
+    assert any(
+        "Use the recent Memory and Previous attempts sections as a partial record" in line
+        for line in guidelines
+    )
+    assert any("different model family" in line for line in guidelines)
+    assert any("Make the proposed change easy to distinguish" in line for line in guidelines)
+
+
 def test_agent_data_preview_excludes_workspace_working_artifacts(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
