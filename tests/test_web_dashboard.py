@@ -5,7 +5,7 @@ import pytest
 
 from aide.journal import Journal, Node
 from aide.utils.metric import MetricValue
-from aide.web_dashboard.server import AideWebServer, _html, clamp_refresh_seconds
+from aide.web_dashboard.server import AideWebServer, STATIC_DIR, clamp_refresh_seconds
 from aide.web_dashboard.state import (
     WebDashboardSnapshot,
     WebDashboardState,
@@ -80,6 +80,31 @@ def test_web_server_serves_html_snapshot_and_404():
         server.stop()
 
 
+def test_web_server_reads_static_html_from_disk_on_each_request(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("first version", encoding="utf-8")
+
+    server = AideWebServer(
+        WebDashboardState(),
+        host="127.0.0.1",
+        port=0,
+        static_dir=static_dir,
+    )
+    server.start()
+    try:
+        with urlopen(f"http://127.0.0.1:{server.port}/", timeout=2) as response:
+            first = response.read().decode("utf-8")
+        (static_dir / "index.html").write_text("second version", encoding="utf-8")
+        with urlopen(f"http://127.0.0.1:{server.port}/", timeout=2) as response:
+            second = response.read().decode("utf-8")
+    finally:
+        server.stop()
+
+    assert first == "first version"
+    assert second == "second version"
+
+
 def test_refresh_seconds_are_clamped_for_browser_polling():
     assert clamp_refresh_seconds(0.1) == 0.5
     assert clamp_refresh_seconds(2.0) == 2.0
@@ -88,7 +113,8 @@ def test_refresh_seconds_are_clamped_for_browser_polling():
 
 
 def test_html_constrains_active_panel_as_touch_scroll_container():
-    html = _html(2.0)
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
 
-    assert "main { min-height: 0; overflow: hidden; }" in html
-    assert ".panel { height: 100%; min-height: 0; overflow: auto;" in html
+    assert "main {\n  min-height: 0;\n  overflow: hidden;\n}" in css
+    assert ".panel {\n  height: 100%;" in css
+    assert "  overflow: auto;" in css

@@ -19,6 +19,7 @@ setup(
     package_data={
         "aide": [
             "../requirements.txt",
+            "web_dashboard/static/*",
             "utils/config.yaml",
             "utils/viz_templates/*",
             "example_tasks/bitcoin_price/*",

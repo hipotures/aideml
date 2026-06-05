@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>AIDE live</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app">
+    <nav class="tabs" aria-label="Dashboard panels">
+      <button class="tab active" data-tab="tree" type="button">AIDE/ Tree</button>
+      <button class="tab" data-tab="run" type="button">Run data</button>
+      <button class="tab" data-tab="logs" type="button">Logs</button>
+    </nav>
+    <main>
+      <section class="panel active" data-panel="tree">
+        <div class="headline" id="tree-title">Solution tree</div>
+        <div class="tree" id="tree"></div>
+      </section>
+      <section class="panel" data-panel="run">
+        <div class="run-list" id="run-data"></div>
+      </section>
+      <section class="panel" data-panel="logs">
+        <pre class="logs" id="logs"></pre>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
