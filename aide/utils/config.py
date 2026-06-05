@@ -187,6 +187,8 @@ class AgentConfig:
     search: SearchConfig
     memory_recent_steps: int = 100
     memory_full_recent_steps: int = 20
+    include_parent_process_stdout: bool = False
+    parent_process_stdout_max_bytes: int = 5000
     gpu: bool = False
     aux: bool | str | None = False
     mode: str = "legacy"

@@ -107,6 +107,10 @@ agent:
   # Number of latest step values inside memory_recent_steps that retain full
   # Results/Validity warning detail.
   memory_full_recent_steps: 20
+  # Include the tail of the selected parent node's process_stdout.log in legacy
+  # improvement prompts as empirical context from the previous execution.
+  include_parent_process_stdout: False
+  parent_process_stdout_max_bytes: 5000
   # whether legacy full-script prompts should prefer CUDA/GPU-capable tabular models
   gpu: false
   # auxiliary data mode:

@@ -190,6 +190,48 @@ def test_legacy_agent_memory_uses_configured_recent_and_full_windows(tmp_path):
     assert "Results: results 2" in memory
 
 
+def test_legacy_improve_prompt_can_include_parent_process_stdout_tail(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    cfg.agent.include_parent_process_stdout = True
+    cfg.agent.parent_process_stdout_max_bytes = 96
+    parent = Node(
+        code="print('parent')",
+        plan="parent plan",
+        artifact_dir_name="parent-artifact",
+    )
+    parent.metric = MetricValue(0.91, maximize=True)
+    parent.is_buggy = False
+    journal = Journal()
+    journal.append(parent)
+    artifact_dir = Path(cfg.log_dir) / "artifacts" / "parent-artifact"
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "process_stdout.log").write_text(
+        "old fold diagnostics that should be truncated away\n"
+        + ("x" * 160)
+        + "\nGlobal class-wise ExtraTrees blend=[0.0, 0.0, 0.0]\n",
+        encoding="utf-8",
+    )
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    execution_log = captured["prompt"]["Previous execution log"]
+    assert "tail of the parent solution execution log" in execution_log
+    assert "Showing last 96 bytes" in execution_log
+    assert "Global class-wise ExtraTrees blend=[0.0, 0.0, 0.0]" in execution_log
+    assert "old fold diagnostics" not in execution_log
+    assert "Previous solution" in captured["prompt"]
+
+
 def test_legacy_improve_prompt_encourages_distinct_controlled_experiments(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.data_preview = False

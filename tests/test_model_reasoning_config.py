@@ -53,19 +53,25 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.search.hypothesis_min_improvement_epsilon == 0.00006
     assert cfg.agent.memory_recent_steps == 100
     assert cfg.agent.memory_full_recent_steps == 20
+    assert cfg.agent.include_parent_process_stdout is False
+    assert cfg.agent.parent_process_stdout_max_bytes == 5000
     assert cfg.agent.gpu is False
 
 
-def test_agent_memory_window_can_be_overridden_from_cli():
+def test_agent_memory_and_parent_stdout_options_can_be_overridden_from_cli():
     cfg = _load_cfg(
         cli_args=[
             "agent.memory_recent_steps=60",
             "agent.memory_full_recent_steps=12",
+            "agent.include_parent_process_stdout=true",
+            "agent.parent_process_stdout_max_bytes=2048",
         ]
     )
 
     assert cfg.agent.memory_recent_steps == 60
     assert cfg.agent.memory_full_recent_steps == 12
+    assert cfg.agent.include_parent_process_stdout is True
+    assert cfg.agent.parent_process_stdout_max_bytes == 2048
 
 
 def test_full_boost_gpu_ensemble_profile_is_available():

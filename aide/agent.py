@@ -1299,6 +1299,37 @@ class Agent:
                 full_recent_steps=self.acfg.memory_full_recent_steps,
             )
 
+    def _parent_process_stdout_prompt(self, parent_node: Node) -> str | None:
+        if not bool(getattr(self.acfg, "include_parent_process_stdout", False)):
+            return None
+
+        max_bytes = int(getattr(self.acfg, "parent_process_stdout_max_bytes", 5000) or 0)
+        if max_bytes <= 0:
+            return None
+
+        log_path = artifact_dir_for_node(self.cfg.log_dir, parent_node) / "process_stdout.log"
+        try:
+            data = log_path.read_bytes()
+        except OSError:
+            return None
+        if not data:
+            return None
+
+        truncated = len(data) > max_bytes
+        text = data[-max_bytes:].decode("utf-8", errors="replace").strip()
+        if not text:
+            return None
+
+        prefix = (
+            "The following is the tail of the parent solution execution log. It may "
+            "contain useful empirical diagnostics from the previous run, such as fold "
+            "scores, blend weights, calibration choices, model failures, or runtime "
+            "behavior. Use it as context for deciding the next atomic change.\n\n"
+        )
+        if truncated:
+            prefix += f"[Showing last {max_bytes} bytes of process_stdout.log]\n\n"
+        return prefix + "```text\n" + text + "\n```"
+
     def _autogluon_unavailable_columns(self) -> list[str]:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
         if columns is None:
@@ -1527,6 +1558,9 @@ class Agent:
         prompt["Previous solution"] = {
             "Code": wrap_code(parent_node.code),
         }
+        parent_stdout = self._parent_process_stdout_prompt(parent_node)
+        if parent_stdout is not None:
+            prompt["Previous execution log"] = parent_stdout
         previous_attempts = _format_previous_child_attempts(
             parent_node,
             epsilon=improvement_epsilon,
