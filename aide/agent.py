@@ -1108,7 +1108,7 @@ class Agent:
         if self.acfg.gpu:
             impl_guideline.extend(
                 [
-                    "A CUDA-capable NVIDIA GPU is available. Prefer GPU-enabled training for tabular tree models when the chosen library supports it. If a GPU-specific implementation fails, the next debug attempt may fall back to CPU.",
+                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models whenever the chosen library supports it. If a GPU-specific implementation fails, the next debug attempt may fall back to CPU.",
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
                     'For LightGBM, use `device_type="cuda"` when training on GPU.',
