@@ -648,6 +648,37 @@ def test_autogluon_best_xgb_1h_profiles_are_xgb_only(tmp_path):
         assert settings["hyperparameters"]["XGB"][0]["ag_args_fit"] == {"num_gpus": num_gpus}
 
 
+def test_autogluon_xgb_medium_gpu_balanced_10m_profile(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "xgb_medium_gpu_balanced_10m"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["XGB"]
+    assert settings["presets"] == "medium_quality"
+    assert settings["time_limit"] == 600
+    assert settings["preprocess_timeout"] == 180
+    assert settings["validation_strategy"] == "holdout"
+    assert settings["class_balance"] == "balanced"
+    assert settings["use_gpu"] is True
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+    assert settings["hyperparameters"] == {
+        "XGB": [
+            {
+                "device": "cuda",
+                "tree_method": "hist",
+                "ag_args": {"priority": 999},
+                "ag_args_fit": {"num_gpus": 1},
+            }
+        ]
+    }
+
+
 def test_autogluon_gpu_profile_backfills_xgb_priority_for_saved_configs(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profile = "stale_gpu"
