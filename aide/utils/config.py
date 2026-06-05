@@ -238,6 +238,14 @@ class SynthesisConfig:
 
 
 @dataclass
+class WebDashboardConfig:
+    enabled: bool = False
+    host: str = "0.0.0.0"
+    port: int = 8766
+    refresh_seconds: float = 2.0
+
+
+@dataclass
 class Config(Hashable):
     data_dir: Path
     desc_file: Path | None
@@ -259,6 +267,7 @@ class Config(Hashable):
     agent: AgentConfig
     research: ResearchConfig = field(default_factory=ResearchConfig)
     synthesis: SynthesisConfig = field(default_factory=SynthesisConfig)
+    web: WebDashboardConfig = field(default_factory=WebDashboardConfig)
 
 
 def _get_next_logindex(dir: Path) -> int:

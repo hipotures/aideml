@@ -110,6 +110,31 @@ def test_parse_runtime_args_extracts_submission_flags_from_omegaconf_overrides()
     assert remaining == ["agent.steps=200"]
 
 
+def test_parse_runtime_args_extracts_web_dashboard_flags():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--resume",
+            "2-example-run",
+            "--web",
+            "--web-host=127.0.0.1",
+            "--web-port",
+            "9001",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.run_id == "2-example-run"
+    assert runtime.web_enabled is True
+    assert runtime.web_host == "127.0.0.1"
+    assert runtime.web_port == 9001
+    assert remaining == ["agent.steps=200"]
+
+
+def test_parse_runtime_args_rejects_invalid_web_port():
+    with pytest.raises(ValueError, match="web-port"):
+        parse_runtime_args(["--web-port", "not-a-port"])
+
+
 def test_parse_runtime_args_extracts_skip_execution_flag():
     resume, runtime, remaining = parse_runtime_args(
         [

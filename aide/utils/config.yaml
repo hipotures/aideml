@@ -81,6 +81,13 @@ synthesis:
   model: gpt-5.4-mini
   reasoning_effort: low
 
+# optional read-only live web dashboard for the current run
+web:
+  enabled: False
+  host: 0.0.0.0
+  port: 8766
+  refresh_seconds: 2.0
+
 # agent hyperparams
 agent:
   # how many improvement iterations to run

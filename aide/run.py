@@ -108,6 +108,9 @@ from .utils.submission_validation import (
     validate_workspace_submission,
 )
 from .utils.response import extract_text_up_to_code
+from .web_dashboard.server import AideWebServer
+from .web_dashboard.state import WebDashboardSnapshot, WebDashboardState, WebRunDatum
+from .web_dashboard.tree import build_web_tree_lines
 
 logger = logging.getLogger("aide")
 
@@ -132,6 +135,9 @@ class RuntimeOptions:
     generate_only_hypothesis_ids: tuple[str, ...] = ()
     seed_sha_prefix: str | None = None
     seed_source_run: str | None = None
+    web_enabled: bool = False
+    web_host: str | None = None
+    web_port: int | None = None
 
 
 @dataclass(frozen=True)
@@ -210,6 +216,15 @@ def parse_runtime_args(
             raise ValueError(f"`{name}` requires a value.")
         return argv[next_index], next_index
 
+    def parse_port(name: str, value: str) -> int:
+        try:
+            port = int(value)
+        except ValueError as exc:
+            raise ValueError(f"`{name}` must be an integer port.") from exc
+        if port < 1 or port > 65535:
+            raise ValueError(f"`{name}` must be in range 1..65535.")
+        return port
+
     remaining: list[str] = []
     resume = ResumeRequest()
     runtime = RuntimeOptions()
@@ -242,6 +257,21 @@ def parse_runtime_args(
             runtime = replace(runtime, telegram_test_message=True)
         elif arg == "--debug":
             runtime = replace(runtime, debug=True)
+        elif arg == "--web":
+            runtime = replace(runtime, web_enabled=True)
+        elif arg == "--web-host":
+            value, i = require_option_value("--web-host", i)
+            runtime = replace(runtime, web_host=value)
+        elif arg.startswith("--web-host="):
+            runtime = replace(runtime, web_host=arg.split("=", 1)[1])
+        elif arg == "--web-port":
+            value, i = require_option_value("--web-port", i)
+            runtime = replace(runtime, web_port=parse_port("--web-port", value))
+        elif arg.startswith("--web-port="):
+            runtime = replace(
+                runtime,
+                web_port=parse_port("--web-port", arg.split("=", 1)[1]),
+            )
         elif arg in {"--skip-execution", "--generate-only"}:
             hypothesis_ids: list[str] = []
             if arg == "--generate-only":
@@ -326,6 +356,15 @@ def find_latest_run_id(top_log_dir: Path) -> str:
 def _cli_sets_key(cli_overrides: list[str], key: str) -> bool:
     prefix = f"{key}="
     return any(arg == key or arg.startswith(prefix) for arg in cli_overrides)
+
+
+def apply_runtime_web_options(cfg: Config, runtime: RuntimeOptions) -> None:
+    if runtime.web_enabled:
+        cfg.web.enabled = True
+    if runtime.web_host is not None:
+        cfg.web.host = runtime.web_host
+    if runtime.web_port is not None:
+        cfg.web.port = runtime.web_port
 
 
 def _is_base_root(node: Node) -> bool:
@@ -3694,6 +3733,7 @@ def run(argv: list[str] | None = None):
         journal = Journal()
         is_resume = False
 
+    apply_runtime_web_options(cfg, runtime_options)
     hypothesis_root_generate_workers = validate_hypothesis_root_generate_workers(cfg)
 
     logger.info(f'Starting run "{cfg.exp_name}"')
@@ -3860,6 +3900,21 @@ def run(argv: list[str] | None = None):
     pending_artifact_dir: Path | None = None
     display_node: Node | None = None
     active_root_generations: list[ActiveRootGeneration] = []
+    web_state = WebDashboardState()
+    web_server: AideWebServer | None = None
+    if cfg.web.enabled:
+        try:
+            web_server = AideWebServer(
+                web_state,
+                host=str(cfg.web.host),
+                port=int(cfg.web.port),
+                refresh_seconds=float(cfg.web.refresh_seconds),
+            )
+            web_server.start()
+            print(f"AIDE web dashboard: http://{cfg.web.host}:{web_server.port}/")
+        except OSError as exc:
+            logger.warning(f"Web dashboard disabled: {exc}")
+            web_server = None
 
     def request_execution_interrupt() -> KeyboardInterruptAction:
         nonlocal execution_interrupt_count, operator_notice, status_override
@@ -4127,6 +4182,92 @@ def run(argv: list[str] | None = None):
             )
         ]
 
+    def _plain_web_text(value: object) -> str:
+        text = str(value or "")
+        text = re.sub(r"\[[^\]]+\]", "", text)
+        return text.replace("[/]", "").strip()
+
+    def _web_run_data(
+        *,
+        status_text: str,
+        active_artifact_dir: Path | None,
+    ) -> list[WebRunDatum]:
+        data = [
+            WebRunDatum("Run", cfg.exp_name),
+            WebRunDatum("Progress", f"{completed_work_units()}/{cfg.agent.steps}"),
+            WebRunDatum("Status", _plain_web_text(status_text)),
+        ]
+        best = _best_scored_node(journal)
+        if best is not None and best.metric is not None and best.metric.value is not None:
+            step = best.step if best.step is not None else "?"
+            data.append(WebRunDatum("Best Score", f"{best.metric.value:.5f} · {step}"))
+        for label, model, effort in model_settings_for_run(cfg):
+            data.append(WebRunDatum(f"Model {label}", f"{model} · {effort or '-'}"))
+        data.extend(
+            [
+                WebRunDatum("Mode", str(cfg.agent.mode)),
+                WebRunDatum("GPU", str(cfg.agent.gpu)),
+                WebRunDatum("Aux", str(cfg.agent.aux)),
+                WebRunDatum("Log dir", str(cfg.log_dir)),
+                WebRunDatum("Workspace", str(cfg.workspace_dir)),
+            ]
+        )
+        if active_artifact_dir is not None:
+            data.append(WebRunDatum("Artifact", str(active_artifact_dir)))
+        error = last_error_record(journal)
+        if error is not None:
+            step = error.node.step if error.node.step is not None else "?"
+            data.append(WebRunDatum("Last Error", f"{step}: {' / '.join(error.lines)}"))
+        if operator_notice:
+            data.append(WebRunDatum("Notice", operator_notice))
+        return data
+
+    def _web_log_lines(active_artifact_dir: Path | None) -> list[str]:
+        log_path = active_run_log_path(active_artifact_dir)
+        if log_path is None:
+            hint = (
+                agent.active_research_hypothesis_log_hint
+                if agent.active_stage == "generating"
+                else None
+            )
+            if hint:
+                return hint.splitlines()[:80]
+            return ["waiting for process log"]
+        lines = _tail_log_lines(log_path, max_lines=120)
+        if not lines:
+            return [f"{log_path.name} is empty"]
+        return [_clip_log_line(line, max_width=180) for line in lines]
+
+    def publish_web_snapshot(
+        *,
+        status_text: str,
+        active_artifact_dir: Path | None,
+    ) -> None:
+        if web_server is None:
+            return
+        try:
+            web_state.update(
+                WebDashboardSnapshot(
+                    run_id=cfg.exp_name,
+                    refresh_seconds=float(cfg.web.refresh_seconds),
+                    tree_title="Solution tree",
+                    tree_lines=build_web_tree_lines(
+                        journal,
+                        active_parent_node=agent.active_parent_node,
+                        active_stage=agent.active_stage,
+                        active_hypothesis_id=active_hypothesis_id_for_display(),
+                    ),
+                    run_data=_web_run_data(
+                        status_text=status_text,
+                        active_artifact_dir=active_artifact_dir,
+                    ),
+                    log_lines=_web_log_lines(active_artifact_dir),
+                    status=_plain_web_text(status_text),
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - dashboard must not stop AIDE
+            logger.debug("Failed to publish web dashboard snapshot: %s", exc)
+
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
             journal,
@@ -4230,9 +4371,7 @@ def run(argv: list[str] | None = None):
             if agent.active_node is not None
             else pending_artifact_dir
         )
-        status.update(
-            status_override
-            or stage_status_message(
+        status_text = status_override or stage_status_message(
                 agent.active_stage,
                 elapsed,
                 agent_mode=cfg.agent.mode,
@@ -4240,6 +4379,10 @@ def run(argv: list[str] | None = None):
                 active_hypothesis_id=active_hypothesis_id_for_display(),
                 active_hypothesis_ids=active_root_hypothesis_ids_for_display(),
             )
+        status.update(status_text)
+        publish_web_snapshot(
+            status_text=status_text,
+            active_artifact_dir=active_artifact_dir,
         )
         terminal_size = shutil.get_terminal_size((120, 40))
         left_copy_width = max(20, int(terminal_size.columns * 3 / 5) - 4)
@@ -4982,6 +5125,8 @@ def run(argv: list[str] | None = None):
     finally:
         debug_log("before_cleanup_session", phase="cleanup")
         interpreter.cleanup_session()
+        if web_server is not None:
+            web_server.stop()
         debug_log("after_cleanup_session", phase="cleanup")
 
     print_final_tree(
