@@ -42,10 +42,11 @@ def _html(refresh_seconds: float) -> str:
     html {{ -webkit-text-size-adjust: none; text-size-adjust: none; }}
     body {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }}
     .app {{ height: 100dvh; display: grid; grid-template-rows: 48px 1fr; }}
+    main {{ min-height: 0; overflow: hidden; }}
     .tabs {{ display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid #3b414b; background: #111923; }}
     .tab {{ appearance: none; border: 0; border-right: 1px solid #2b313a; margin: 0; padding: 0 10px; background: transparent; color: #9aa7b7; font: 700 14px/48px inherit; text-align: center; }}
     .tab.active {{ color: #34d399; background: #102234; box-shadow: inset 0 -3px 0 #1d9bf0; }}
-    .panel {{ min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 12px 10px 24px; display: none; }}
+    .panel {{ height: 100%; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 12px 10px 24px; display: none; }}
     .panel.active {{ display: block; }}
     .headline {{ color: #111827; background: #1d9bf0; display: inline-block; padding: 0 4px; margin: 0 0 10px; font-weight: 700; font-size: 13px; line-height: 17px; }}
     .tree {{ font-size: 12px; line-height: 1.18; font-weight: 700; letter-spacing: 0; white-space: nowrap; }}

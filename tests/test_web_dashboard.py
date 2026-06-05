@@ -5,7 +5,7 @@ import pytest
 
 from aide.journal import Journal, Node
 from aide.utils.metric import MetricValue
-from aide.web_dashboard.server import AideWebServer, clamp_refresh_seconds
+from aide.web_dashboard.server import AideWebServer, _html, clamp_refresh_seconds
 from aide.web_dashboard.state import (
     WebDashboardSnapshot,
     WebDashboardState,
@@ -85,3 +85,10 @@ def test_refresh_seconds_are_clamped_for_browser_polling():
     assert clamp_refresh_seconds(2.0) == 2.0
     assert clamp_refresh_seconds(60.0) == 30.0
     assert clamp_refresh_seconds("bad") == 2.0
+
+
+def test_html_constrains_active_panel_as_touch_scroll_container():
+    html = _html(2.0)
+
+    assert "main { min-height: 0; overflow: hidden; }" in html
+    assert ".panel { height: 100%; min-height: 0; overflow: auto;" in html
