@@ -48,6 +48,7 @@ from .utils import data_preview
 from .utils.config import Config, aux_file_name, resolve_aux_description_file
 from .utils.metric import MetricValue, WorstMetricValue
 from .utils.node_artifacts import node_artifact_dir as artifact_dir_for_node
+from .utils.plateau import is_plateau_blocked_descendant
 from .utils.response import (
     extract_code,
     extract_jsons,
@@ -829,6 +830,25 @@ class Agent:
                 trace["rejections"][node.id] = {
                     "stage": "base_filters",
                     "reason": "submission_contract_or_oom_branch",
+                }
+        plateau_epsilon = float(
+            getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
+        )
+        before_plateau_block = list(good_nodes)
+        good_nodes = [
+            node
+            for node in good_nodes
+            if not is_plateau_blocked_descendant(node, epsilon=plateau_epsilon)
+        ]
+        trace["counts"]["after_plateau_block"] = len(good_nodes)
+        for node in before_plateau_block:
+            if node not in good_nodes:
+                trace["rejections"][node.id] = {
+                    "stage": "plateau_block",
+                    "reason": (
+                        "score_within_"
+                        f"{plateau_epsilon:g}_of_nearest_scored_ancestor"
+                    ),
                 }
         if self._is_hypothesis_mode():
             if forced_hypothesis_root is not None:

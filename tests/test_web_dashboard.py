@@ -51,6 +51,19 @@ def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
     assert all("─" not in line.prefix for line in lines)
 
 
+def test_web_tree_lines_mark_plateau_child_as_blocked():
+    journal = Journal()
+    parent = _scored_node(0.967787)
+    child = _scored_node(0.967813, parent=parent)
+    journal.append(parent)
+    journal.append(child)
+
+    lines = build_web_tree_lines(journal, plateau_block_epsilon=0.00006)
+
+    assert lines[1].label == "0.96781·1"
+    assert lines[1].kind == "blocked"
+
+
 def test_web_server_serves_html_snapshot_and_404():
     state = WebDashboardState()
     state.update(

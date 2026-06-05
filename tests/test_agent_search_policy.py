@@ -289,6 +289,26 @@ def test_standard_search_keeps_best_parent_after_non_improving_child_limit(
     assert saturated.id not in trace["rejections"]
 
 
+def test_search_policy_blocks_plateau_child_within_epsilon(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
+    journal = Journal()
+    parent = _good_node(0.967787)
+    plateau_child = _good_node(0.967813, parent=parent)
+    for node in [parent, plateau_child]:
+        journal.append(node)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is parent
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert trace["rejections"][plateau_child.id]["stage"] == "plateau_block"
+
+
 def test_hypothesis_search_keeps_parent_with_improving_child_available(
     tmp_path,
     monkeypatch,
@@ -367,7 +387,7 @@ def test_hypothesis_search_requires_epsilon_improvement_for_child_candidate(
     assert selected is parent
     trace = agent.last_search_decision
     assert trace is not None
-    assert trace["rejections"][tiny_gain.id]["stage"] == "branch_candidate"
+    assert trace["rejections"][tiny_gain.id]["stage"] == "plateau_block"
 
 
 def test_hypothesis_saturation_treats_tiny_gain_as_non_improving(
@@ -483,7 +503,7 @@ def test_search_policy_blocks_parent_after_three_oom_children_when_enabled(
     cfg.agent.search.disable_oom_saturated_parents = True
     journal = Journal()
     blocked_parent = _good_node(0.95110)
-    good_child = _good_node(0.95109, parent=blocked_parent)
+    good_child = _good_node(0.95120, parent=blocked_parent)
     fallback = _good_node(0.95090)
     journal.append(blocked_parent)
     journal.append(good_child)

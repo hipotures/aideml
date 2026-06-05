@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aide.journal import Journal, Node
 from aide.utils.metric import MetricValue
+from aide.utils.plateau import is_plateau_blocked_descendant
 
 from .state import WebTreeLine
 
@@ -36,11 +37,15 @@ def _runtime_suffix(node: Node) -> str:
     return f"·{minutes}m"
 
 
-def _best_scored_node(journal: Journal) -> Node | None:
+def _best_scored_node(journal: Journal, *, plateau_block_epsilon: float) -> Node | None:
     candidates = [
         node
         for node in journal.good_nodes
         if node.metric is not None and node.metric.value is not None
+        and not is_plateau_blocked_descendant(
+            node,
+            epsilon=plateau_block_epsilon,
+        )
     ]
     return max(candidates, key=lambda node: node.metric, default=None)
 
@@ -51,7 +56,12 @@ def _metric_text(metric: MetricValue | None) -> str | None:
     return f"{metric.value:.5f}"
 
 
-def _line_for_node(node: Node, *, best_node: Node | None) -> tuple[str, str]:
+def _line_for_node(
+    node: Node,
+    *,
+    best_node: Node | None,
+    plateau_block_epsilon: float,
+) -> tuple[str, str]:
     suffix = _hypothesis_or_step_suffix(node)
     runtime_suffix = _runtime_suffix(node)
     if node.status == "generated":
@@ -64,6 +74,8 @@ def _line_for_node(node: Node, *, best_node: Node | None) -> tuple[str, str]:
     metric = _metric_text(node.metric)
     if metric is None:
         return f"bug{suffix}{runtime_suffix}", "bug"
+    if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
+        return f"{metric}{suffix}{runtime_suffix}", "blocked"
     if node is best_node:
         return f"{metric}{suffix}{runtime_suffix}", "best"
     return f"{metric}{suffix}{runtime_suffix}", "ok"
@@ -75,9 +87,13 @@ def build_web_tree_lines(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
+    plateau_block_epsilon: float = 0.00006,
 ) -> list[WebTreeLine]:
     journal_nodes = set(journal.nodes)
-    best_node = _best_scored_node(journal)
+    best_node = _best_scored_node(
+        journal,
+        plateau_block_epsilon=plateau_block_epsilon,
+    )
     lines: list[WebTreeLine] = []
 
     def visible_children(node: Node) -> list[Node]:
@@ -116,7 +132,11 @@ def build_web_tree_lines(
         )
 
     def append_rec(node: Node, prefix: str, is_last: bool) -> None:
-        label, kind = _line_for_node(node, best_node=best_node)
+        label, kind = _line_for_node(
+            node,
+            best_node=best_node,
+            plateau_block_epsilon=plateau_block_epsilon,
+        )
         lines.append(
             WebTreeLine(
                 prefix=f"{prefix}{'└' if is_last else '├'}",

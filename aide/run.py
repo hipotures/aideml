@@ -96,6 +96,7 @@ from .utils.node_artifacts import (
     node_artifact_dir as artifact_dir_for_node,
     node_artifact_submission_path as artifact_submission_path_for_node,
 )
+from .utils.plateau import is_plateau_blocked_descendant
 from .utils.resource_monitor import (
     DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
     ResourceHistory,
@@ -835,6 +836,7 @@ def journal_to_rich_tree(
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = 0.00006,
     synthesis_node_ids: set[str] | None = None,
 ):
     if show_invalid_submission_branches:
@@ -844,6 +846,10 @@ def journal_to_rich_tree(
             node
             for node in journal.good_nodes
             if not node.is_in_submission_contract_error_branch
+            and not is_plateau_blocked_descendant(
+                node,
+                epsilon=plateau_block_epsilon,
+            )
             and (
                 not disable_oom_saturated_parents
                 or not node.is_oom_blocked_parent
@@ -912,7 +918,12 @@ def journal_to_rich_tree(
         else:
             metric_text = f"{node.metric.value:.5f}"
 
-            if disable_oom_saturated_parents and node.is_oom_blocked_parent:
+            if is_plateau_blocked_descendant(
+                node,
+                epsilon=plateau_block_epsilon,
+            ):
+                s = f"[bright_black]◉ {metric_text}{suffix}{runtime_suffix}"
+            elif disable_oom_saturated_parents and node.is_oom_blocked_parent:
                 s = f"[bright_black]✕ {metric_text}{suffix}{runtime_suffix}"
             elif node is best_node:
                 style = "bold "
@@ -953,6 +964,7 @@ def _visible_best_node(
     *,
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = 0.00006,
 ) -> Node | None:
     if show_invalid_submission_branches:
         return journal.get_best_node()
@@ -963,6 +975,10 @@ def _visible_best_node(
         if node.metric is not None
         and node.metric.value is not None
         and not node.is_in_submission_contract_error_branch
+        and not is_plateau_blocked_descendant(
+            node,
+            epsilon=plateau_block_epsilon,
+        )
         and (
             not disable_oom_saturated_parents
             or not node.is_oom_blocked_parent
@@ -976,6 +992,7 @@ def _tree_node_label(
     *,
     best_node: Node | None,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = 0.00006,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
@@ -1000,6 +1017,12 @@ def _tree_node_label(
         return Text(f"● timeout{suffix}{runtime_suffix}", style="red")
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text(f"● bug{suffix}{runtime_suffix}", style="red")
+
+    if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
+        return Text(
+            f"◉ {node.metric.value:.5f}{suffix}{runtime_suffix}",
+            style="bright_black",
+        )
 
     if disable_oom_saturated_parents and node.is_oom_blocked_parent:
         return Text(
@@ -1031,6 +1054,7 @@ def _tree_active_node_label(
     blink_on: bool,
     best_node: Node | None,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = 0.00006,
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     line = _tree_active_placeholder_line(
@@ -1043,6 +1067,7 @@ def _tree_active_node_label(
         node,
         best_node=best_node,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
+        plateau_block_epsilon=plateau_block_epsilon,
         synthesis_node_ids=synthesis_node_ids,
     )
     if node.status == "generated":
@@ -1101,6 +1126,7 @@ def build_tree_view(
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = 0.00006,
     synthesis_node_ids: set[str] | None = None,
 ) -> TreeView:
     items: list[TreeViewItem] = [
@@ -1126,6 +1152,7 @@ def build_tree_view(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
+        plateau_block_epsilon=plateau_block_epsilon,
     )
 
     def node_order_key(node: Node):
@@ -1218,6 +1245,7 @@ def build_tree_view(
                     blink_on=blink_on,
                     best_node=best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
+                    plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
                 )
             )
@@ -1227,6 +1255,7 @@ def build_tree_view(
                     node,
                     best_node=best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
+                    plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
                 )
             )
@@ -4312,6 +4341,9 @@ def run(argv: list[str] | None = None):
                         active_parent_node=agent.active_parent_node,
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
+                        plateau_block_epsilon=(
+                            cfg.agent.search.hypothesis_min_improvement_epsilon
+                        ),
                     ),
                     run_sections=_web_run_sections(
                         status_text=status_text,
@@ -4339,6 +4371,7 @@ def run(argv: list[str] | None = None):
             disable_oom_saturated_parents=(
                 cfg.agent.search.disable_oom_saturated_parents
             ),
+            plateau_block_epsilon=cfg.agent.search.hypothesis_min_improvement_epsilon,
             synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
         )
 
