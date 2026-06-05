@@ -3373,8 +3373,9 @@ def test_hypothesis_child_prompt_includes_legacy_reference_code(
     reference = captured["prompt"]["Reference implementation for assigned hypothesis"]
     assert "stored implementation of the newly assigned hypothesis 000303" in reference
     assert "Previous solution" in reference
-    assert "source of feature-engineering logic only" in reference
-    assert "Do not replace the parent training loop" in reference
+    assert "optional implementation context" in reference
+    assert "change the model family" in reference
+    assert "Do not replace the parent training loop" not in reference
     assert "helper_from_assigned_hypothesis" in reference
     assert "reference legacy code" in reference
 
@@ -3464,8 +3465,9 @@ def test_hypothesis_child_prompt_includes_autogluon_preprocess_reference_only(
 
     reference = captured["prompt"]["Reference implementation for assigned hypothesis"]
     assert "stored implementation of the newly assigned hypothesis 000303" in reference
-    assert "source of feature-engineering logic only" in reference
-    assert "Do not replace the parent training loop" in reference
+    assert "optional implementation context" in reference
+    assert "change the model family" in reference
+    assert "Do not replace the parent training loop" not in reference
     assert "assigned_feature" in reference
     assert "def preprocess" in reference
     assert "TabularPredictor" not in reference

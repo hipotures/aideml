@@ -226,6 +226,8 @@ def test_legacy_improve_prompt_can_include_parent_process_stdout_tail(tmp_path):
 
     execution_log = captured["prompt"]["Previous execution log"]
     assert "tail of the parent solution execution log" in execution_log
+    assert "empirical context when deciding what to change next" in execution_log
+    assert "atomic change" not in execution_log
     assert "Showing last 96 bytes" in execution_log
     assert "Global class-wise ExtraTrees blend=[0.0, 0.0, 0.0]" in execution_log
     assert "old fold diagnostics" not in execution_log

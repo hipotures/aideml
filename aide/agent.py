@@ -1270,12 +1270,11 @@ class Agent:
             "for applying this hypothesis on top of the `Previous solution` above. "
             "Do not treat this reference code as the current parent solution; the "
             "current parent solution remains the code in `Previous solution`. "
-            "Treat the reference implementation as a source of feature-engineering logic only, "
-            "not as a replacement solution. Do not replace the parent training loop, "
-            "model family, validation protocol, encoding strategy, fallback behavior, "
-            "or existing feature functions unless the assigned hypothesis explicitly requires it. "
-            "Preserve the branch history and parent code unless the assigned "
-            "hypothesis requires a narrow change.\n\n"
+            "Treat the reference implementation as optional implementation context "
+            "for the assigned idea. Keep useful parts of the parent solution, but "
+            "change the model family, training setup, encoding, fallback behavior, "
+            "or feature functions when that is the clearest way to test the "
+            "assigned hypothesis. Preserve the required output artifacts.\n\n"
             f"{mode_note}\n\n"
             f"{wrap_code(code)}"
         )
@@ -1324,7 +1323,7 @@ class Agent:
             "The following is the tail of the parent solution execution log. It may "
             "contain useful empirical diagnostics from the previous run, such as fold "
             "scores, blend weights, calibration choices, model failures, or runtime "
-            "behavior. Use it as context for deciding the next atomic change.\n\n"
+            "behavior. Use it as empirical context when deciding what to change next.\n\n"
         )
         if truncated:
             prefix += f"[Showing last {max_bytes} bytes of process_stdout.log]\n\n"
