@@ -502,6 +502,43 @@ def test_select_top_records_deduplicates_same_submission_hash(tmp_path):
     assert selected[0]["step"] == 2
 
 
+def test_filter_records_by_sha256_prefers_submit_source_over_seed_copy(tmp_path):
+    shared_sha = "571c2021bd9b1c6051a91d3a166ea15b5ffeb4156c19be3b1b67bcedc967c78a"
+    seed_copy = {
+        "kind": "source_node",
+        "run": "seed-run",
+        "step": 0,
+        "timestamp": "20260605T180137",
+        "local_score": 0.967766,
+        "metric_maximize": True,
+        "status": "ok",
+        "is_buggy": False,
+        "sha256": shared_sha,
+        "source_sha256": "6761efc978504c496c9e84d53906098eafa35482b6217dd30b706b756a05a14e",
+        "submission_path": str(tmp_path / "seed" / "submission.csv"),
+    }
+    source_record = {
+        "kind": "source_node",
+        "run": "source-run",
+        "step": 75,
+        "timestamp": "20260605T161533-c532beca",
+        "local_score": 0.967766,
+        "metric_maximize": True,
+        "status": "ok",
+        "is_buggy": False,
+        "sha256": shared_sha,
+        "source_sha256": None,
+        "submission_path": str(tmp_path / "source" / "submission.csv"),
+    }
+
+    selected = kaggle_submission_lab.filter_records_by_sha256(
+        [seed_copy, source_record],
+        ["571c2021bd"],
+    )
+
+    assert selected == [source_record]
+
+
 def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
     records = [

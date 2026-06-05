@@ -537,7 +537,7 @@ def filter_records_by_sha256(
         if len(matched_hashes) > 1:
             preview = ", ".join(sorted(str(value)[:10] for value in matched_hashes))
             raise ValueError(f"Ambiguous sha256 prefix {sha_filter}; matches: {preview}")
-        record = matches[0]
+        record = deduplicate_records_by_sha256(matches)[0]
         if record.get("sha256") not in selected_hashes:
             selected.append(record)
             selected_hashes.add(str(record.get("sha256")))
