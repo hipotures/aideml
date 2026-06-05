@@ -153,6 +153,8 @@ def test_tree_toolbar_controls_best_active_and_follow():
     assert ".tree-line.active" in js
     assert "scrollIntoView" in js
     assert ".tree-toolbar" in css
+    assert "position: sticky;" in css
+    assert "z-index: 5;" in css
 
 
 def test_run_data_labels_do_not_wrap():
