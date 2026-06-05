@@ -3532,16 +3532,12 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     )
     assert any(
         "For LightGBM" in line
-        and "keep LightGBM on CPU" in line
-        and "do not set" in line
-        for line in gpu_guidelines
-    )
-    assert any(
-        'device_type="gpu"' in line
         and 'device_type="cuda"' in line
-        and "native aborts" in line
+        and "when training on GPU" in line
         for line in gpu_guidelines
     )
+    assert not any("keep LightGBM on CPU" in line for line in gpu_guidelines)
+    assert not any("do not set" in line for line in gpu_guidelines)
 
 
 def test_agent_prompt_only_lists_importable_packages(tmp_path, monkeypatch):
