@@ -1541,9 +1541,21 @@ def _tree_row_is_root(row: list[str]) -> bool:
 def rerun_profile_commands(
     rows: list[list[str]],
     *,
+    records: list[dict[str, Any]] | None = None,
     max_count: int = 5,
     profile: str = "best_boost_gpu_1h",
 ) -> list[str]:
+    record_by_sha_prefix: dict[str, dict[str, Any]] = {}
+    if records is not None:
+        records_by_sha: dict[str, list[dict[str, Any]]] = {}
+        for record in records:
+            sha = str(record.get("sha256") or "")
+            if not sha:
+                continue
+            records_by_sha.setdefault(sha, []).append(record)
+        for sha, sha_records in records_by_sha.items():
+            record_by_sha_prefix[sha[:10]] = deduplicate_records_by_sha256(sha_records)[0]
+
     commands: list[str] = []
     index = 0
     while index < len(rows):
@@ -1566,6 +1578,9 @@ def rerun_profile_commands(
             continue
         sha = str(root[12] or "").strip()
         if not sha or sha == "-":
+            continue
+        record = record_by_sha_prefix.get(sha)
+        if record is None or _format_algo(record) != "AG":
             continue
         commands.append(
             "uv run python scripts/rerun_autogluon_profile.py "
@@ -1655,7 +1670,7 @@ def render_candidate_tree_table(
         console.print("Ready submit commands:")
         for command in commands:
             console.print(command)
-    rerun_commands = rerun_profile_commands(rows)
+    rerun_commands = rerun_profile_commands(rows, records=records)
     if rerun_commands:
         console.print()
         console.print("Ready rerun commands:")

@@ -539,6 +539,82 @@ def test_filter_records_by_sha256_prefers_submit_source_over_seed_copy(tmp_path)
     assert selected == [source_record]
 
 
+def test_rerun_profile_commands_only_include_autogluon_sources():
+    rows = [
+        [
+            "1",
+            "1",
+            "1",
+            "0.96779",
+            "0.96792",
+            "submitted",
+            "source",
+            "8.4m",
+            "-",
+            "legacy-run",
+            "81",
+            "20260605",
+            "b5d2b451e9",
+        ],
+        [
+            "2",
+            "2",
+            "2",
+            "0.96673",
+            "0.96771",
+            "submitted",
+            "source",
+            "3.0m",
+            "balanced_accuracy",
+            "ag-run",
+            "0",
+            "20260604",
+            "b7985e3335",
+        ],
+    ]
+    records = [
+        {
+            "kind": "source_node",
+            "algo": "Leg",
+            "sha256": "b5d2b451e98e9d93806ad6947e41968fb8796c85260cd68f9fdc82c5a4ec2645",
+        },
+        {
+            "kind": "source_node",
+            "algo": "AG",
+            "sha256": "b7985e3335555555555555555555555555555555555555555555555555555555",
+        },
+    ]
+
+    commands = kaggle_submission_lab.rerun_profile_commands(rows, records=records)
+
+    assert commands == [
+        "uv run python scripts/rerun_autogluon_profile.py "
+        "--sha b7985e3335 --profile best_boost_gpu_1h --execute"
+    ]
+
+
+def test_rerun_profile_commands_without_record_context_returns_empty():
+    rows = [
+        [
+            "1",
+            "1",
+            "1",
+            "0.96779",
+            "0.96792",
+            "submitted",
+            "source",
+            "8.4m",
+            "-",
+            "legacy-run",
+            "81",
+            "20260605",
+            "b5d2b451e9",
+        ],
+    ]
+
+    assert kaggle_submission_lab.rerun_profile_commands(rows) == []
+
+
 def test_render_table_hides_source_column_when_no_profile_evals(tmp_path):
     console = kaggle_submission_lab.Console(record=True, width=260, color_system=None)
     records = [
