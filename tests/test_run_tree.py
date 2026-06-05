@@ -310,6 +310,36 @@ def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
     assert "* 0.94600·1" in output
 
 
+def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
+    journal = Journal()
+    root = _good_node(0.945)
+    root.exec_time = 16 * 60 + 20
+    child = _good_node(0.946, parent=root)
+    child.exec_time = 47 * 60
+    bug = _bug_node(parent=root)
+    bug.exec_time = 0.0
+    journal.append(root)
+    journal.append(child)
+    journal.append(bug)
+
+    rich_output = _render_text(journal_to_rich_tree(journal))
+    view_output = _render_text(
+        render_tree_view(
+            build_tree_view(journal),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "0.94500·0·16m" in rich_output
+    assert "* 0.94600·1·47m" in rich_output
+    assert "bug·2·0m" not in rich_output
+    assert "0.94500·0·16m" in view_output
+    assert "* 0.94600·1·47m" in view_output
+    assert "bug·2·0m" not in view_output
+
+
 def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
     journal = Journal()
     parent = _hypothesis_node(_good_node(0.945), "000111")

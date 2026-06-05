@@ -31,6 +31,11 @@ def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
     child_a = _scored_node(0.93, parent=root_b)
     child_b = _scored_node(0.94, parent=root_b)
     root_c = _scored_node(0.95)
+    root_a.exec_time = 0.0
+    root_b.exec_time = 12 * 60
+    child_a.exec_time = 28 * 60 + 20
+    child_b.exec_time = 47 * 60
+    root_c.exec_time = 64 * 60
     for node in [root_a, root_b, child_a, child_b, root_c]:
         journal.append(node)
 
@@ -38,10 +43,10 @@ def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
 
     assert [(line.prefix, line.label) for line in lines] == [
         ("├", "0.91000·0"),
-        ("├", "0.92000·1"),
-        ("│├", "0.93000·2"),
-        ("│└", "0.94000·3"),
-        ("└", "0.95000·4"),
+        ("├", "0.92000·1·12m"),
+        ("│├", "0.93000·2·28m"),
+        ("│└", "0.94000·3·47m"),
+        ("└", "0.95000·4·64m"),
     ]
     assert all("─" not in line.prefix for line in lines)
 

@@ -390,6 +390,19 @@ def _node_hypothesis_suffix(node: Node) -> str:
     return ""
 
 
+def _node_runtime_suffix(node: Node) -> str:
+    try:
+        seconds = float(node.exec_time)
+    except (TypeError, ValueError):
+        return ""
+    if seconds <= 0:
+        return ""
+    minutes = int(round(seconds / 60.0))
+    if minutes <= 0:
+        return ""
+    return f"·{minutes}m"
+
+
 def _is_timeout_node(node: Node) -> bool:
     if node.exc_type in {"TimeoutError", "PreprocessTimeoutError"}:
         return True
@@ -883,39 +896,40 @@ def journal_to_rich_tree(
 
         synthesis_root = is_synthesis_root(node)
         suffix = _node_hypothesis_suffix(node)
+        runtime_suffix = _node_runtime_suffix(node)
         if node.status == "generated":
             s = f"[cyan]● generated{suffix}[/cyan]"
         elif node.status == "failed" and suffix:
-            s = f"[red]failed{suffix}[/red]"
+            s = f"[red]failed{suffix}{runtime_suffix}[/red]"
         elif synthesis_root and (
             node.is_buggy or node.metric is None or node.metric.value is None
         ):
-            s = f"[bold blue]◆[/bold blue] [red]bug{suffix}[/red]"
+            s = f"[bold blue]◆[/bold blue] [red]bug{suffix}{runtime_suffix}[/red]"
         elif _is_timeout_node(node):
-            s = f"[red]● timeout{suffix}"
+            s = f"[red]● timeout{suffix}{runtime_suffix}"
         elif node.is_buggy or node.metric is None or node.metric.value is None:
-            s = f"[red]● bug{suffix}"
+            s = f"[red]● bug{suffix}{runtime_suffix}"
         else:
             metric_text = f"{node.metric.value:.5f}"
 
             if disable_oom_saturated_parents and node.is_oom_blocked_parent:
-                s = f"[bright_black]✕ {metric_text}{suffix}"
+                s = f"[bright_black]✕ {metric_text}{suffix}{runtime_suffix}"
             elif node is best_node:
                 style = "bold "
-                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}{suffix}"
+                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}{suffix}{runtime_suffix}"
             elif _is_base_root(node):
                 style = "bold " if node is best_node else ""
                 s = (
                     f"[bright_magenta]◎[/bright_magenta] "
-                    f"[{style}green]{metric_text}{suffix}"
+                    f"[{style}green]{metric_text}{suffix}{runtime_suffix}"
                 )
             elif synthesis_root:
                 style = "bold " if node is best_node else ""
                 metric_style = f"{style}green"
-                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}"
+                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}{runtime_suffix}"
             else:
                 style = "bold " if node is best_node else ""
-                s = f"[{style}green]● {metric_text}{suffix}"
+                s = f"[{style}green]● {metric_text}{suffix}{runtime_suffix}"
 
         subtree = tree.add(s)
         for child in sorted(
@@ -965,10 +979,11 @@ def _tree_node_label(
     synthesis_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
+    runtime_suffix = _node_runtime_suffix(node)
     if node.status == "generated":
         return Text(f"● generated{suffix}", style="cyan")
     if node.is_terminal_failure:
-        return Text(f"● failed{suffix}", style="red")
+        return Text(f"● failed{suffix}{runtime_suffix}", style="red")
 
     synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
         node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
@@ -979,15 +994,18 @@ def _tree_node_label(
     ):
         label = Text()
         label.append("◆", style="bold blue")
-        label.append(f" bug{suffix}", style="red")
+        label.append(f" bug{suffix}{runtime_suffix}", style="red")
         return label
     if _is_timeout_node(node):
-        return Text(f"● timeout{suffix}", style="red")
+        return Text(f"● timeout{suffix}{runtime_suffix}", style="red")
     if node.is_buggy or node.metric is None or node.metric.value is None:
-        return Text(f"● bug{suffix}", style="red")
+        return Text(f"● bug{suffix}{runtime_suffix}", style="red")
 
     if disable_oom_saturated_parents and node.is_oom_blocked_parent:
-        return Text(f"✕ {node.metric.value:.5f}{suffix}", style="bright_black")
+        return Text(
+            f"✕ {node.metric.value:.5f}{suffix}{runtime_suffix}",
+            style="bright_black",
+        )
 
     label = Text()
     if node is best_node:
@@ -1001,7 +1019,7 @@ def _tree_node_label(
         label.append("● ", style="green")
 
     metric_style = "bold yellow" if node is best_node else "green"
-    metric_text = f"{node.metric.value:.5f}{suffix}"
+    metric_text = f"{node.metric.value:.5f}{suffix}{runtime_suffix}"
     label.append(metric_text, style=metric_style)
     return label
 

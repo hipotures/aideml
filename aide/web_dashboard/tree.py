@@ -23,6 +23,19 @@ def _hypothesis_or_step_suffix(node: Node) -> str:
     return ""
 
 
+def _runtime_suffix(node: Node) -> str:
+    try:
+        seconds = float(node.exec_time)
+    except (TypeError, ValueError):
+        return ""
+    if seconds <= 0:
+        return ""
+    minutes = int(round(seconds / 60.0))
+    if minutes <= 0:
+        return ""
+    return f"·{minutes}m"
+
+
 def _best_scored_node(journal: Journal) -> Node | None:
     candidates = [
         node
@@ -40,19 +53,20 @@ def _metric_text(metric: MetricValue | None) -> str | None:
 
 def _line_for_node(node: Node, *, best_node: Node | None) -> tuple[str, str]:
     suffix = _hypothesis_or_step_suffix(node)
+    runtime_suffix = _runtime_suffix(node)
     if node.status == "generated":
         return f"generated{suffix}", "generated"
     if node.is_terminal_failure or node.status == "failed":
-        return f"failed{suffix}", "bug"
+        return f"failed{suffix}{runtime_suffix}", "bug"
     if node.is_buggy:
-        return f"bug{suffix}", "bug"
+        return f"bug{suffix}{runtime_suffix}", "bug"
 
     metric = _metric_text(node.metric)
     if metric is None:
-        return f"bug{suffix}", "bug"
+        return f"bug{suffix}{runtime_suffix}", "bug"
     if node is best_node:
-        return f"{metric}{suffix}", "best"
-    return f"{metric}{suffix}", "ok"
+        return f"{metric}{suffix}{runtime_suffix}", "best"
+    return f"{metric}{suffix}{runtime_suffix}", "ok"
 
 
 def build_web_tree_lines(
