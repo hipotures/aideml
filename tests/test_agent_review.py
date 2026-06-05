@@ -98,6 +98,29 @@ def test_journal_summary_compacts_entries_older_than_recent_step_window():
     assert "Validity warning: warning 100" in full_last_section
 
 
+def test_journal_summary_marks_current_best_metric():
+    journal = Journal()
+    for score, plan in [
+        (0.91, "baseline"),
+        (0.95, "best plan"),
+        (0.93, "later plan"),
+    ]:
+        node = Node(code="print('ok')", plan=plan)
+        node.metric = MetricValue(score, maximize=True)
+        node.is_buggy = False
+        journal.append(node)
+
+    summary = journal.generate_summary()
+    sections = summary.split("\n-------------------------------\n")
+    best_section = next(section for section in sections if "Design: best plan" in section)
+    other_sections = [
+        section for section in sections if "Design: best plan" not in section
+    ]
+
+    assert "Validation Metric: 0.95000 (current best)" in best_section
+    assert all("(current best)" not in section for section in other_sections)
+
+
 def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
     journal = Journal()
     node = Node(code="print('ok')", plan="External Codex synthesis checkpoint 000027")

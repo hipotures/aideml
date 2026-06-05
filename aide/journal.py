@@ -269,6 +269,7 @@ class Journal(DataClassJsonMixin):
     ) -> str:
         """Generate a summary of the journal for the agent."""
         good_nodes = self.good_nodes
+        best_node = self.get_best_node()
         steps = [
             n.step
             for n in good_nodes
@@ -308,7 +309,8 @@ class Journal(DataClassJsonMixin):
                     summary_part += f"Results: {analysis_text}\n"
                 if n.validity_warning:
                     summary_part += f"Validity warning: {n.validity_warning}\n"
-            summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
+            best_marker = " (current best)" if n is best_node else ""
+            summary_part += f"Validation Metric: {n.metric.value:.5f}{best_marker}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
 
