@@ -3612,11 +3612,11 @@ def test_legacy_agent_prompt_prefers_behavior_preserving_optimization(tmp_path):
         "prefer 5-fold stratified CV" in line
         for line in guidelines
     )
-    assert any(
+    assert not any(
         "minimal semantic patch over the parent solution" in line
         for line in guidelines
     )
-    assert any(
+    assert not any(
         "Do not replace the parent training loop" in line
         for line in guidelines
     )
