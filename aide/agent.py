@@ -1328,7 +1328,7 @@ class Agent:
         )
         if truncated:
             prefix += f"[Showing last {max_bytes} bytes of process_stdout.log]\n\n"
-        return prefix + "```text\n" + text + "\n```"
+        return prefix + text
 
     def _autogluon_unavailable_columns(self) -> list[str]:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")

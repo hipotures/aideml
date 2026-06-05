@@ -229,6 +229,7 @@ def test_legacy_improve_prompt_can_include_parent_process_stdout_tail(tmp_path):
     assert "Showing last 96 bytes" in execution_log
     assert "Global class-wise ExtraTrees blend=[0.0, 0.0, 0.0]" in execution_log
     assert "old fold diagnostics" not in execution_log
+    assert "```" not in execution_log
     assert "Previous solution" in captured["prompt"]
 
 
