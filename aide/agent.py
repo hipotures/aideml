@@ -1297,7 +1297,10 @@ class Agent:
                 )
             return
         if include_global_memory:
-            prompt["Memory"] = self.journal.generate_summary(full_recent_steps=20)
+            prompt["Memory"] = self.journal.generate_summary(
+                recent_steps=self.acfg.memory_recent_steps,
+                full_recent_steps=self.acfg.memory_full_recent_steps,
+            )
 
     def _autogluon_unavailable_columns(self) -> list[str]:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")

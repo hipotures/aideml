@@ -264,28 +264,40 @@ class Journal(DataClassJsonMixin):
     def generate_summary(
         self,
         include_code: bool = False,
+        recent_steps: int | None = None,
         full_recent_steps: int | None = None,
     ) -> str:
         """Generate a summary of the journal for the agent."""
         good_nodes = self.good_nodes
-        recent_steps = None
-        if full_recent_steps is not None:
-            steps = [
-                n.step
-                for n in good_nodes
-                if isinstance(n.step, int) and not isinstance(n.step, bool)
-            ]
-            if full_recent_steps <= 0:
-                recent_steps = set()
+        steps = [
+            n.step
+            for n in good_nodes
+            if isinstance(n.step, int) and not isinstance(n.step, bool)
+        ]
+
+        included_steps = None
+        if recent_steps is not None:
+            if recent_steps <= 0:
+                included_steps = set()
             elif steps:
-                recent_steps = set(sorted(set(steps))[-full_recent_steps:])
+                included_steps = set(sorted(set(steps))[-recent_steps:])
+
+        full_steps = None
+        if full_recent_steps is not None:
+            if full_recent_steps <= 0:
+                full_steps = set()
+            elif steps:
+                full_steps = set(sorted(set(steps))[-full_recent_steps:])
 
         summary = []
         for n in good_nodes:
-            include_full_node = recent_steps is None or (
+            has_step = isinstance(n.step, int) and not isinstance(n.step, bool)
+            if included_steps is not None and (not has_step or n.step not in included_steps):
+                continue
+            include_full_node = full_steps is None or (
                 isinstance(n.step, int)
                 and not isinstance(n.step, bool)
-                and n.step in recent_steps
+                and n.step in full_steps
             )
             summary_part = f"Design: {_summary_plan_text(n.plan)}\n"
             if include_code and include_full_node:

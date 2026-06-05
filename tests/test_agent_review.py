@@ -65,39 +65,37 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
 def test_journal_summary_compacts_entries_older_than_recent_step_window():
     journal = Journal()
 
-    for step in range(20):
-        node = Node(code=f"print({step})", plan=f"recent plan {step}", step=step)
-        node.analysis = f"recent results {step}"
-        node.validity_warning = f"recent warning {step}"
+    for step in range(101):
+        node = Node(code=f"print({step})", plan=f"plan {step}")
+        node.analysis = f"results {step}"
+        node.validity_warning = f"warning {step}"
         node.metric = MetricValue(0.9 + step / 1000, maximize=True)
         node.is_buggy = False
         journal.append(node)
 
-    old_node = Node(code="print('old')", plan="old plan", step=-1)
-    old_node.analysis = "old results"
-    old_node.validity_warning = "old warning"
-    old_node.metric = MetricValue(0.81234, maximize=True)
-    old_node.is_buggy = False
-    journal.append(old_node)
-    old_node.step = -1
-
-    summary = journal.generate_summary(full_recent_steps=20)
+    summary = journal.generate_summary(recent_steps=100, full_recent_steps=20)
     sections = summary.split("\n-------------------------------\n")
-    old_section = next(section for section in sections if "Design: old plan" in section)
-    recent_zero_section = next(
-        section for section in sections if "Design: recent plan 0" in section
+    compact_section = next(section for section in sections if "Design: plan 1" in section)
+    compact_last_section = next(
+        section for section in sections if "Design: plan 80" in section
     )
-    recent_last_section = next(
-        section for section in sections if "Design: recent plan 19" in section
+    full_first_section = next(
+        section for section in sections if "Design: plan 81" in section
+    )
+    full_last_section = next(
+        section for section in sections if "Design: plan 100" in section
     )
 
-    assert "Results: old results" not in old_section
-    assert "Validity warning: old warning" not in old_section
-    assert "Validation Metric: 0.81234" in old_section
-    assert "Results: recent results 0" in recent_zero_section
-    assert "Validity warning: recent warning 0" in recent_zero_section
-    assert "Results: recent results 19" in recent_last_section
-    assert "Validity warning: recent warning 19" in recent_last_section
+    assert "Design: plan 0" not in summary
+    assert "Results: results 1" not in compact_section
+    assert "Validity warning: warning 1" not in compact_section
+    assert "Validation Metric: 0.90100" in compact_section
+    assert "Results: results 80" not in compact_last_section
+    assert "Validity warning: warning 80" not in compact_last_section
+    assert "Results: results 81" in full_first_section
+    assert "Validity warning: warning 81" in full_first_section
+    assert "Results: results 100" in full_last_section
+    assert "Validity warning: warning 100" in full_last_section
 
 
 def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
@@ -111,6 +109,38 @@ def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
 
     assert "Design: External Codex synthesis generated a new root solution" in summary
     assert "checkpoint 000027" not in summary
+
+
+def test_legacy_agent_memory_uses_configured_recent_and_full_windows(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    cfg.agent.memory_recent_steps = 2
+    cfg.agent.memory_full_recent_steps = 1
+    journal = Journal()
+    for step in range(3):
+        node = Node(code=f"print({step})", plan=f"plan {step}")
+        node.analysis = f"results {step}"
+        node.metric = MetricValue(0.9 + step / 1000, maximize=True)
+        node.is_buggy = False
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    memory = captured["prompt"]["Memory"]
+    assert "Design: plan 0" not in memory
+    assert "Design: plan 1" in memory
+    assert "Results: results 1" not in memory
+    assert "Design: plan 2" in memory
+    assert "Results: results 2" in memory
 
 
 def test_agent_data_preview_excludes_workspace_working_artifacts(tmp_path):
