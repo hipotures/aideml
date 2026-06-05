@@ -49,26 +49,73 @@ function renderTree(snapshot) {
 function renderRunData(snapshot) {
   const list = document.getElementById("run-data");
   list.replaceChildren();
-  const items = snapshot.run_data || [];
-  if (!items.length) {
+  const legacyItems = snapshot.run_data || [];
+  const sections = (snapshot.run_sections && snapshot.run_sections.length)
+    ? snapshot.run_sections
+    : legacyRunSections(legacyItems);
+  if (!sections.some((section) => (section.items || []).length)) {
     const empty = document.createElement("div");
     empty.className = "empty";
     empty.textContent = "waiting for run data";
     list.appendChild(empty);
     return;
   }
-  for (const item of items) {
-    const row = document.createElement("div");
-    row.className = "datum";
-    const label = document.createElement("div");
-    label.className = "datum-label";
-    label.textContent = text(item.label);
-    const value = document.createElement("div");
-    value.className = "datum-value";
-    value.textContent = text(item.value);
-    row.append(label, value);
-    list.appendChild(row);
+  for (const section of sections) {
+    const sectionEl = document.createElement("section");
+    sectionEl.className = "run-section";
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.textContent = text(section.title);
+    sectionEl.appendChild(title);
+    for (const item of section.items || []) {
+      const row = document.createElement("div");
+      row.className = "datum";
+      const label = document.createElement("div");
+      label.className = "datum-label";
+      label.textContent = text(item.label);
+      const value = document.createElement("div");
+      value.className = "datum-value";
+      value.textContent = text(item.value);
+      row.append(label, value);
+      sectionEl.appendChild(row);
+    }
+    list.appendChild(sectionEl);
   }
+}
+
+function legacyRunSections(items) {
+  const buckets = {
+    Run: [],
+    Models: [],
+    Agent: [],
+    Paths: [],
+    "Last Error": [],
+    Notice: [],
+  };
+  for (const item of items || []) {
+    const label = text(item.label);
+    const lower = label.toLowerCase();
+    if (lower.startsWith("model ")) {
+      buckets.Models.push({
+        label: label.replace(/^model\s+/i, ""),
+        value: item.value,
+      });
+    } else if (["mode", "gpu", "aux"].includes(lower)) {
+      buckets.Agent.push({ label: lower, value: item.value });
+    } else if (["log dir", "workspace", "artifact"].includes(lower)) {
+      buckets.Paths.push({ label: lower.replace(" dir", ""), value: item.value });
+    } else if (lower === "last error") {
+      buckets["Last Error"].push({ label: "error", value: item.value });
+    } else if (lower === "notice") {
+      buckets.Notice.push({ label: "message", value: item.value });
+    } else {
+      buckets.Run.push({ label: lower, value: item.value });
+    }
+  }
+  return Object.entries(buckets).map(([title, sectionItems]) => ({
+    title,
+    items: sectionItems,
+  }));
 }
 
 function renderLogs(snapshot) {

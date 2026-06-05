@@ -109,7 +109,12 @@ from .utils.submission_validation import (
 )
 from .utils.response import extract_text_up_to_code
 from .web_dashboard.server import AideWebServer
-from .web_dashboard.state import WebDashboardSnapshot, WebDashboardState, WebRunDatum
+from .web_dashboard.state import (
+    WebDashboardSnapshot,
+    WebDashboardState,
+    WebRunDatum,
+    WebRunSection,
+)
 from .web_dashboard.tree import build_web_tree_lines
 
 logger = logging.getLogger("aide")
@@ -4187,40 +4192,73 @@ def run(argv: list[str] | None = None):
         text = re.sub(r"\[[^\]]+\]", "", text)
         return text.replace("[/]", "").strip()
 
-    def _web_run_data(
+    def _web_run_sections(
         *,
         status_text: str,
         active_artifact_dir: Path | None,
-    ) -> list[WebRunDatum]:
-        data = [
-            WebRunDatum("Run", cfg.exp_name),
-            WebRunDatum("Progress", f"{completed_work_units()}/{cfg.agent.steps}"),
-            WebRunDatum("Status", _plain_web_text(status_text)),
+    ) -> list[WebRunSection]:
+        overview = [
+            WebRunDatum("progress", f"{completed_work_units()}/{cfg.agent.steps}"),
+            WebRunDatum("status", _plain_web_text(status_text)),
         ]
         best = _best_scored_node(journal)
         if best is not None and best.metric is not None and best.metric.value is not None:
             step = best.step if best.step is not None else "?"
-            data.append(WebRunDatum("Best Score", f"{best.metric.value:.5f} · {step}"))
-        for label, model, effort in model_settings_for_run(cfg):
-            data.append(WebRunDatum(f"Model {label}", f"{model} · {effort or '-'}"))
-        data.extend(
-            [
-                WebRunDatum("Mode", str(cfg.agent.mode)),
-                WebRunDatum("GPU", str(cfg.agent.gpu)),
-                WebRunDatum("Aux", str(cfg.agent.aux)),
-                WebRunDatum("Log dir", str(cfg.log_dir)),
-                WebRunDatum("Workspace", str(cfg.workspace_dir)),
-            ]
-        )
+            timestamp = dt.datetime.fromtimestamp(best.ctime).strftime("%m-%d %H:%M")
+            overview.append(
+                WebRunDatum("best score", f"{step} @ {timestamp} {best.metric.value:.5f}")
+            )
+
+        sections = [
+            WebRunSection("Run", overview),
+            WebRunSection(
+                "Models",
+                [
+                    WebRunDatum(label, f"{model} - {effort or '-'}")
+                    for label, model, effort in model_settings_for_run(cfg)
+                ],
+            ),
+            WebRunSection(
+                "Agent",
+                [
+                    WebRunDatum("mode", str(cfg.agent.mode)),
+                    WebRunDatum("aux", "on" if aux_mode(cfg) else "off"),
+                    WebRunDatum("gpu", str(cfg.agent.gpu).lower()),
+                    WebRunDatum(
+                        "run",
+                        "generate only" if runtime_options.skip_execution else "execute",
+                    ),
+                ],
+            ),
+            WebRunSection(
+                "Paths",
+                [
+                    WebRunDatum("log", str(cfg.log_dir)),
+                    WebRunDatum("workspace", str(cfg.workspace_dir)),
+                ],
+            ),
+        ]
         if active_artifact_dir is not None:
-            data.append(WebRunDatum("Artifact", str(active_artifact_dir)))
+            sections[-1].items.append(WebRunDatum("artifact", str(active_artifact_dir)))
+
         error = last_error_record(journal)
         if error is not None:
             step = error.node.step if error.node.step is not None else "?"
-            data.append(WebRunDatum("Last Error", f"{step}: {' / '.join(error.lines)}"))
+            sections.append(
+                WebRunSection(
+                    "Last Error",
+                    [WebRunDatum(str(step), " / ".join(error.lines))],
+                )
+            )
         if operator_notice:
-            data.append(WebRunDatum("Notice", operator_notice))
-        return data
+            sections.append(
+                WebRunSection("Notice", [WebRunDatum("message", operator_notice)])
+            )
+        return [
+            section
+            for section in sections
+            if section.items
+        ]
 
     def _web_log_lines(active_artifact_dir: Path | None) -> list[str]:
         log_path = active_run_log_path(active_artifact_dir)
@@ -4257,7 +4295,7 @@ def run(argv: list[str] | None = None):
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
                     ),
-                    run_data=_web_run_data(
+                    run_sections=_web_run_sections(
                         status_text=status_text,
                         active_artifact_dir=active_artifact_dir,
                     ),

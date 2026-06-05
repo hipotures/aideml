@@ -18,12 +18,19 @@ class WebRunDatum:
 
 
 @dataclass(frozen=True)
+class WebRunSection:
+    title: str
+    items: list[WebRunDatum] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class WebDashboardSnapshot:
     run_id: str = ""
     refresh_seconds: float = 2.0
     tree_title: str = "Solution tree"
     tree_lines: list[WebTreeLine] = field(default_factory=list)
     run_data: list[WebRunDatum] = field(default_factory=list)
+    run_sections: list[WebRunSection] = field(default_factory=list)
     log_lines: list[str] = field(default_factory=list)
     status: str = "starting"
 

@@ -10,6 +10,7 @@ from aide.web_dashboard.state import (
     WebDashboardSnapshot,
     WebDashboardState,
     WebRunDatum,
+    WebRunSection,
     WebTreeLine,
 )
 from aide.web_dashboard.tree import build_web_tree_lines
@@ -53,7 +54,12 @@ def test_web_server_serves_html_snapshot_and_404():
             refresh_seconds=1.5,
             tree_title="Solution tree",
             tree_lines=[WebTreeLine(prefix="├", label="0.96104·0", kind="ok")],
-            run_data=[WebRunDatum(label="Progress", value="39/1500")],
+            run_sections=[
+                WebRunSection(
+                    title="Agent",
+                    items=[WebRunDatum(label="mode", value="legacy")],
+                )
+            ],
             log_lines=["Fold 1 OOF balanced accuracy: 0.965367"],
         )
     )
@@ -72,6 +78,7 @@ def test_web_server_serves_html_snapshot_and_404():
             payload = response.read().decode("utf-8")
         assert "\"run_id\": \"2-delicate-cherubic-crane\"" in payload
         assert "\"prefix\": \"├\"" in payload
+        assert "\"title\": \"Agent\"" in payload
 
         with pytest.raises(HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{server.port}/missing", timeout=2)
@@ -118,3 +125,13 @@ def test_html_constrains_active_panel_as_touch_scroll_container():
     assert "main {\n  min-height: 0;\n  overflow: hidden;\n}" in css
     assert ".panel {\n  height: 100%;" in css
     assert "  overflow: auto;" in css
+
+
+def test_static_js_renders_sectioned_run_data_with_legacy_fallback():
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+
+    assert "snapshot.run_sections" in js
+    assert "section-title" in js
+    assert "legacyItems" in js
+    assert "legacyRunSections" in js
+    assert "buckets.Agent" in js
