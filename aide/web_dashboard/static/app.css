@@ -166,7 +166,7 @@ main {
 
 .datum {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: 12ch 1fr;
   gap: 8px;
   padding: 0;
 }
