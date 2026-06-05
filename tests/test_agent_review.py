@@ -62,6 +62,44 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
     assert "presets=medium_quality" not in summary
 
 
+def test_journal_summary_compacts_entries_older_than_recent_step_window():
+    journal = Journal()
+
+    for step in range(20):
+        node = Node(code=f"print({step})", plan=f"recent plan {step}", step=step)
+        node.analysis = f"recent results {step}"
+        node.validity_warning = f"recent warning {step}"
+        node.metric = MetricValue(0.9 + step / 1000, maximize=True)
+        node.is_buggy = False
+        journal.append(node)
+
+    old_node = Node(code="print('old')", plan="old plan", step=-1)
+    old_node.analysis = "old results"
+    old_node.validity_warning = "old warning"
+    old_node.metric = MetricValue(0.81234, maximize=True)
+    old_node.is_buggy = False
+    journal.append(old_node)
+    old_node.step = -1
+
+    summary = journal.generate_summary(full_recent_steps=20)
+    sections = summary.split("\n-------------------------------\n")
+    old_section = next(section for section in sections if "Design: old plan" in section)
+    recent_zero_section = next(
+        section for section in sections if "Design: recent plan 0" in section
+    )
+    recent_last_section = next(
+        section for section in sections if "Design: recent plan 19" in section
+    )
+
+    assert "Results: old results" not in old_section
+    assert "Validity warning: old warning" not in old_section
+    assert "Validation Metric: 0.81234" in old_section
+    assert "Results: recent results 0" in recent_zero_section
+    assert "Validity warning: recent warning 0" in recent_zero_section
+    assert "Results: recent results 19" in recent_last_section
+    assert "Validity warning: recent warning 19" in recent_last_section
+
+
 def test_journal_summary_hides_technical_synthesis_checkpoint_ids():
     journal = Journal()
     node = Node(code="print('ok')", plan="External Codex synthesis checkpoint 000027")

@@ -261,18 +261,41 @@ class Journal(DataClassJsonMixin):
             return None
         return max(nodes_with_metrics, key=lambda n: n.metric)
 
-    def generate_summary(self, include_code: bool = False) -> str:
+    def generate_summary(
+        self,
+        include_code: bool = False,
+        full_recent_steps: int | None = None,
+    ) -> str:
         """Generate a summary of the journal for the agent."""
+        good_nodes = self.good_nodes
+        recent_steps = None
+        if full_recent_steps is not None:
+            steps = [
+                n.step
+                for n in good_nodes
+                if isinstance(n.step, int) and not isinstance(n.step, bool)
+            ]
+            if full_recent_steps <= 0:
+                recent_steps = set()
+            elif steps:
+                recent_steps = set(sorted(set(steps))[-full_recent_steps:])
+
         summary = []
-        for n in self.good_nodes:
+        for n in good_nodes:
+            include_full_node = recent_steps is None or (
+                isinstance(n.step, int)
+                and not isinstance(n.step, bool)
+                and n.step in recent_steps
+            )
             summary_part = f"Design: {_summary_plan_text(n.plan)}\n"
-            if include_code:
+            if include_code and include_full_node:
                 summary_part += f"Code: {n.code}\n"
-            analysis_text = _summary_analysis_text(n.analysis)
-            if analysis_text:
-                summary_part += f"Results: {analysis_text}\n"
-            if n.validity_warning:
-                summary_part += f"Validity warning: {n.validity_warning}\n"
+            if include_full_node:
+                analysis_text = _summary_analysis_text(n.analysis)
+                if analysis_text:
+                    summary_part += f"Results: {analysis_text}\n"
+                if n.validity_warning:
+                    summary_part += f"Validity warning: {n.validity_warning}\n"
             summary_part += f"Validation Metric: {n.metric.value:.5f}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
