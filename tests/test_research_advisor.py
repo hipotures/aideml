@@ -3524,7 +3524,12 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     agent._draft()
 
     gpu_guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
-    assert any("CUDA-capable NVIDIA GPU" in line for line in gpu_guidelines)
+    assert any(
+        "CUDA-capable NVIDIA GPU" in line
+        and "GPU-specific implementation fails" in line
+        for line in gpu_guidelines
+    )
+    assert not any(line.startswith("If a GPU-specific") for line in gpu_guidelines)
     assert any('task_type="GPU"' in line for line in gpu_guidelines)
     assert any(
         'tree_method="hist"' in line and 'device="cuda"' in line
