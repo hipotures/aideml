@@ -33,7 +33,7 @@ main {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(126px, auto);
   border-bottom: 1px solid #3b414b;
   background: #111923;
 }
@@ -54,6 +54,66 @@ main {
   color: #34d399;
   background: #102234;
   box-shadow: inset 0 -3px 0 #1d9bf0;
+}
+
+.server-status {
+  min-width: 126px;
+  max-width: 34ch;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border-left: 1px solid #2b313a;
+  color: #9aa7b7;
+  font: 700 11px/1 inherit;
+  white-space: nowrap;
+}
+
+#server-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e6c700;
+  box-shadow: 0 0 0 2px rgba(230, 199, 0, 0.12);
+}
+
+.server-status.connected {
+  color: #34d399;
+}
+
+.server-status.connected .status-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.12);
+}
+
+.server-status.disconnected {
+  color: #ff6b7c;
+}
+
+.server-status.disconnected .status-dot {
+  background: #ff4d63;
+  box-shadow: 0 0 0 2px rgba(255, 77, 99, 0.16);
+  animation: status-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .panel {
@@ -258,5 +318,25 @@ main {
 
   .panel {
     padding: 14px 12px 28px;
+  }
+}
+
+@media (max-width: 520px) {
+  .tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 48px 28px;
+  }
+
+  .app {
+    grid-template-rows: 76px 1fr;
+  }
+
+  .server-status {
+    grid-column: 1 / -1;
+    min-width: 0;
+    max-width: none;
+    height: 28px;
+    border-top: 1px solid #2b313a;
+    border-left: 0;
   }
 }
