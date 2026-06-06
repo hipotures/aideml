@@ -735,10 +735,34 @@ def test_candidate_display_table_shows_eval_metric_for_submit_ready_records():
     assert rows[0][metric_index] == "balanced_accuracy"
 
 
+def test_render_candidate_tree_table_uses_submission_table_title(tmp_path):
+    console = kaggle_submission_lab.Console(record=True, width=180, color_system=None)
+
+    kaggle_submission_lab.render_candidate_tree_table(
+        console,
+        selected=[],
+        registry=kaggle_submission_lab.smart.SubmissionRegistry(
+            tmp_path / "registry.json",
+            entries=[],
+        ),
+        sort_by="cv",
+    )
+
+    output = console.export_text()
+    assert "Submission table (sorted by cv)" in output
+    assert "Submission candidate tree" not in output
+
+
 def test_parse_args_defaults_to_rich_output_format():
     args = kaggle_submission_lab.parse_args([])
 
     assert args.output_format == "rich"
+
+
+def test_parse_args_defaults_tree_sort_to_cv():
+    args = kaggle_submission_lab.parse_args([])
+
+    assert args.tree_sort == "cv"
 
 
 def test_parse_args_leaves_table_limits_unset_for_adaptive_defaults():

@@ -1402,7 +1402,7 @@ def candidate_tree_display_table(
     registry: smart.SubmissionRegistry,
     remote_submissions: list[Any] | None = None,
     records: list[dict[str, Any]] | None = None,
-    sort_by: str = "public",
+    sort_by: str = "cv",
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
@@ -1619,7 +1619,7 @@ def render_candidate_tree_table(
         show_seeds=show_seeds,
     )
     table = Table(
-        title=f"Submission candidate tree (sorted by {sort_by})",
+        title=f"Submission table (sorted by {sort_by})",
         box=box.SIMPLE,
         show_edge=False,
         padding=(0, 1),
@@ -1850,8 +1850,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--tree-sort",
         choices=["public", "cv"],
-        default="public",
-        help="Sort candidate tree families by best public score or best CV.",
+        default="cv",
+        help="Sort submission table families by best CV or public score.",
     )
     parser.add_argument(
         "--show-seeds",
