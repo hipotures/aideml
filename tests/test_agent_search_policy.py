@@ -82,6 +82,22 @@ def _oom_bug_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _lightgbm_cuda_crash_node(parent: Node | None = None) -> Node:
+    node = _bug_node(parent=parent)
+    node.status = "bug"
+    node.analysis = (
+        "REPL child process died unexpectedly\n\n"
+        "LightGBM CUDA native crash likely terminated the REPL child process "
+        "before Python could raise an exception."
+    )
+    node._term_out = [
+        "RuntimeError: REPL child process died unexpectedly\n"
+        "LightGBM CUDA native crash likely terminated the REPL child process "
+        "before Python could raise an exception."
+    ]
+    return node
+
+
 def test_search_policy_does_not_debug_invalid_submission_leaf(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 1.0
@@ -104,6 +120,21 @@ def test_search_policy_does_not_debug_catboost_gpu_oom_leaf(tmp_path):
     oom = _oom_bug_node()
     normal_bug = _bug_node()
     journal.append(oom)
+    journal.append(normal_bug)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is normal_bug
+
+
+def test_search_policy_does_not_debug_lightgbm_cuda_crash_leaf(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 1.0
+    journal = Journal()
+    gpu_crash = _lightgbm_cuda_crash_node()
+    normal_bug = _bug_node()
+    journal.append(gpu_crash)
     journal.append(normal_bug)
     agent = Agent(task_desc="task", cfg=cfg, journal=journal)
 

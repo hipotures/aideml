@@ -3516,9 +3516,37 @@ def _mark_node_submission_bug(
     return True
 
 
-def _execution_crash_log_diagnostic(artifact_dir: Path | None) -> str | None:
+def _lightgbm_cuda_code_evidence(code: str | None) -> bool:
+    if not code:
+        return False
+    lower_code = code.lower()
+    has_lightgbm = "lightgbm" in lower_code or "lgbmclassifier" in lower_code
+    has_cuda = (
+        '"cuda"' in lower_code
+        or "'cuda'" in lower_code
+        or "device_type=\"cuda\"" in lower_code
+        or "device_type='cuda'" in lower_code
+        or "device=\"cuda\"" in lower_code
+        or "device='cuda'" in lower_code
+    )
+    return has_lightgbm and has_cuda
+
+
+def _lightgbm_code_evidence(code: str | None) -> bool:
+    if not code:
+        return False
+    lower_code = code.lower()
+    return "lightgbm" in lower_code or "lgbmclassifier" in lower_code
+
+
+def _execution_crash_log_diagnostic(
+    artifact_dir: Path | None, *, code: str | None = None
+) -> str | None:
     if artifact_dir is None:
         return None
+
+    lightgbm_code = _lightgbm_code_evidence(code)
+    lightgbm_cuda_code = _lightgbm_cuda_code_evidence(code)
 
     for log_name in ("autogluon_stdout.log", "process_stdout.log"):
         log_path = artifact_dir / log_name
@@ -3530,6 +3558,43 @@ def _execution_crash_log_diagnostic(artifact_dir: Path | None) -> str | None:
             continue
 
         lower_log = log_text.lower()
+        is_nvidia_mmu_fault = (
+            "nvrm: xid" in lower_log
+            or "mmu fault" in lower_log
+            or "fault_pde" in lower_log
+        )
+        is_lightgbm_cuda_log = (
+            ("lightgbm" in lower_log or lightgbm_code or lightgbm_cuda_code)
+            and ("cuda" in lower_log or is_nvidia_mmu_fault)
+            and (
+                "mmu fault" in lower_log
+                or "fault_pde" in lower_log
+                or "nvrm: xid" in lower_log
+                or "process died" in lower_log
+                or "segmentation fault" in lower_log
+            )
+        )
+        if is_lightgbm_cuda_log:
+            evidence = ""
+            for line in log_text.splitlines():
+                lower_line = line.lower()
+                if (
+                    "nvrm: xid" in lower_line
+                    or "mmu fault" in lower_line
+                    or "fault_pde" in lower_line
+                    or "segmentation fault" in lower_line
+                ):
+                    evidence = line.strip()
+                    break
+
+            diagnostic = (
+                "LightGBM CUDA native crash while the REPL child process was "
+                f"executing. Evidence from {log_name}"
+            )
+            if evidence:
+                diagnostic += f": {evidence}"
+            return diagnostic
+
         is_cuda_oom = "cuda error 2: out of memory" in lower_log
         is_catboost_cuda_oom = (
             "catboost" in lower_log
@@ -3554,6 +3619,13 @@ def _execution_crash_log_diagnostic(artifact_dir: Path | None) -> str | None:
             diagnostic += f": {evidence}"
         return diagnostic
 
+    if lightgbm_cuda_code:
+        return (
+            "LightGBM CUDA native crash likely terminated the REPL child process "
+            "before Python could raise an exception. Evidence: generated code "
+            "uses LightGBM with CUDA and no Python traceback was captured."
+        )
+
     return None
 
 
@@ -3564,7 +3636,7 @@ def _mark_node_execution_crash(
     artifact_dir: Path | None = None,
 ) -> None:
     message = str(exc) or exc.__class__.__name__
-    diagnostic = _execution_crash_log_diagnostic(artifact_dir)
+    diagnostic = _execution_crash_log_diagnostic(artifact_dir, code=node.code)
     if diagnostic is not None:
         message = f"{message}\n\n{diagnostic}"
     node._term_out = [f"{exc.__class__.__name__}: {message}\n"]

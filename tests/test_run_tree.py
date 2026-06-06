@@ -2696,3 +2696,58 @@ def test_mark_node_execution_crash_reports_autogluon_gpu_oom(tmp_path):
     assert "CatBoost GPU ran out of memory" in node.term_out
     assert node.status == "failed"
     assert node.is_terminal_failure is True
+
+
+def test_mark_node_execution_crash_reports_lightgbm_cuda_xid(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    (artifact_dir / "process_stdout.log").write_text(
+        "Fold 1 HistGB block elapsed: 17.4s\n"
+        "[74122.571022] NVRM: Xid (PCI:0000:01:00): 31, pid=571427, "
+        "name=aide, channel 0x00000043, intr 00000000. MMU Fault: "
+        "ENGINE GRAPHICS GPC0 GPCCLIENT_T1_0 faulted @ 0x7f64_86000000. "
+        "Fault is of type FAULT_PDE ACCESS_TYPE_VIRT_READ\n",
+        encoding="utf-8",
+    )
+    node = Node(code="from lightgbm import LGBMClassifier\n", plan="crash")
+
+    _mark_node_execution_crash(
+        node,
+        RuntimeError("REPL child process died unexpectedly"),
+        artifact_dir=artifact_dir,
+    )
+
+    assert "LightGBM CUDA native crash" in node.analysis
+    assert "NVRM: Xid" in node.analysis
+    assert node.status == "failed"
+    assert node.is_terminal_failure is True
+
+
+def test_mark_node_execution_crash_reports_lightgbm_cuda_code_without_traceback(
+    tmp_path,
+):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    (artifact_dir / "process_stdout.log").write_text(
+        "Fold 1 HistGB block elapsed: 17.4s\n",
+        encoding="utf-8",
+    )
+    node = Node(
+        code=(
+            "from lightgbm import LGBMClassifier\n"
+            "model = LGBMClassifier(device_type='cuda')\n"
+            "model.fit(X, y)\n"
+        ),
+        plan="crash",
+    )
+
+    _mark_node_execution_crash(
+        node,
+        RuntimeError("REPL child process died unexpectedly"),
+        artifact_dir=artifact_dir,
+    )
+
+    assert "LightGBM CUDA native crash likely terminated" in node.analysis
+    assert "no Python traceback was captured" in node.analysis
+    assert node.status == "failed"
+    assert node.is_terminal_failure is True

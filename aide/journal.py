@@ -142,8 +142,18 @@ class Node(DataClassJsonMixin):
         )
 
     @property
+    def is_gpu_execution_failure(self) -> bool:
+        text = f"{self.analysis or ''}\n{''.join(self._term_out or [])}"
+        return self.is_oom_failure or (
+            "LightGBM CUDA native crash" in text
+            or "NVRM: Xid" in text
+            or "MMU Fault" in text
+            or "FAULT_PDE" in text
+        )
+
+    @property
     def is_terminal_failure(self) -> bool:
-        return self.status == "failed" or self.is_oom_failure or (
+        return self.status == "failed" or self.is_gpu_execution_failure or (
             self.status is None
             and self.is_buggy
             and str(self.code or "").lstrip().startswith("# Failed ")
