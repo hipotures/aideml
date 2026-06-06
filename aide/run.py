@@ -3597,12 +3597,16 @@ def _node_artifact_dir_from_ctime(cfg, ctime: float) -> Path:
     return Path(cfg.log_dir) / "artifacts" / timestamp
 
 
-def allocate_node_artifact_slot(log_dir: Path | str) -> tuple[float, str, Path]:
+def allocate_node_artifact_slot(
+    log_dir: Path | str,
+    *,
+    step: int | str | None = None,
+) -> tuple[float, str, Path]:
     ctime = time.time()
     artifacts_dir = Path(log_dir) / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     while True:
-        dir_name = new_artifact_dir_name(ctime=ctime)
+        dir_name = new_artifact_dir_name(ctime=ctime, step=step)
         artifact_dir = artifacts_dir / dir_name
         try:
             artifact_dir.mkdir(parents=True, exist_ok=False)
@@ -3620,7 +3624,7 @@ def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
     artifacts_dir = Path(cfg.log_dir) / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     while True:
-        dir_name = new_artifact_dir_name(ctime=node.ctime)
+        dir_name = new_artifact_dir_name(ctime=node.ctime, step=node.step)
         artifact_dir = artifacts_dir / dir_name
         try:
             artifact_dir.mkdir(parents=True, exist_ok=False)
@@ -3637,7 +3641,8 @@ def make_parallel_root_job(
     launched_index: int,
 ) -> ParallelRootJob:
     node_ctime, artifact_dir_name, artifact_dir = allocate_node_artifact_slot(
-        cfg.log_dir
+        cfg.log_dir,
+        step=reservation.completed_steps,
     )
     return ParallelRootJob(
         reservation=reservation,
@@ -5035,6 +5040,7 @@ def run(argv: list[str] | None = None):
                                 pending_artifact_dir,
                             ) = allocate_node_artifact_slot(
                                 cfg.log_dir,
+                                step=global_step,
                             )
 
                             def generate_current_node() -> Node:

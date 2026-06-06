@@ -530,6 +530,17 @@ def test_allocate_node_artifact_slot_sets_unique_explicit_name(tmp_path):
     assert len(first_dir_name.split("-")[-1]) == 8
 
 
+def test_allocate_node_artifact_slot_appends_step_to_explicit_name(tmp_path):
+    _ctime, dir_name, artifact_dir = allocate_node_artifact_slot(tmp_path, step=113)
+
+    parts = dir_name.split("-")
+    assert len(parts) == 3
+    assert len(parts[1]) == 8
+    assert parts[2] == "113"
+    assert artifact_dir.name == dir_name
+    assert artifact_dir.exists()
+
+
 def test_ensure_node_artifact_slot_assigns_hash_name_to_legacy_node(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
@@ -549,6 +560,26 @@ def test_ensure_node_artifact_slot_assigns_hash_name_to_legacy_node(tmp_path):
     same_dir = ensure_node_artifact_slot(cfg, node)
 
     assert same_dir == artifact_dir
+
+
+def test_ensure_node_artifact_slot_appends_node_step_to_explicit_name(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "run"
+    cfg = prep_cfg(cfg)
+    node = Node(code="print('x')", plan="x", ctime=1_779_492_701.0, step=113)
+
+    artifact_dir = ensure_node_artifact_slot(cfg, node)
+
+    assert node.artifact_dir_name is not None
+    assert node.artifact_dir_name.startswith("20260523T013141-")
+    parts = node.artifact_dir_name.split("-")
+    assert len(parts) == 3
+    assert len(parts[1]) == 8
+    assert parts[2] == "113"
+    assert artifact_dir == cfg.log_dir / "artifacts" / node.artifact_dir_name
+    assert artifact_dir.exists()
 
 
 def test_generation_retry_policy_stops_refill_after_three_failures():
