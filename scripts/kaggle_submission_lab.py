@@ -100,7 +100,10 @@ def backfill_legacy_source_manifests(run_dir: Path) -> int:
     if not journal_path.exists() or not artifacts_dir.exists():
         return 0
 
-    journal = serialize.load_json(journal_path, Journal)
+    try:
+        journal = serialize.load_json(journal_path, Journal)
+    except FileNotFoundError:
+        return 0
     cfg = SimpleNamespace(log_dir=run_dir)
     written = 0
     for node in journal.nodes:

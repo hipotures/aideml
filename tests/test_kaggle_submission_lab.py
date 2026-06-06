@@ -5,9 +5,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from aide.journal import Journal, Node
-from aide.utils import serialize
-from aide.utils.metric import MetricValue
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "kaggle_submission_lab.py"
@@ -191,23 +188,34 @@ def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     )
     submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
     run_dir = logs_dir / run_name
-    journal = Journal()
-    journal.append(
-        Node(
-            code=code,
-            plan="legacy plan",
-            id="node-legacy",
-            ctime=_ctime(timestamp),
-            status="ok",
-            exec_time=12.5,
-            analysis="legacy analysis",
-            metric=MetricValue(0.95098, maximize=True),
-            is_buggy=False,
-            research_mode="hypothesis",
-            research_hypotheses_offered=["001234"],
-        )
+    (run_dir / "journal.json").write_text(
+        json.dumps(
+            {
+                "__version": "2",
+                "nodes": [
+                    {
+                        "code": code,
+                        "plan": "legacy plan",
+                        "id": "node-legacy",
+                        "step": 0,
+                        "ctime": _ctime(timestamp),
+                        "status": "ok",
+                        "exec_time": 12.5,
+                        "analysis": "legacy analysis",
+                        "metric": {
+                            "value": 0.95098,
+                            "maximize": True,
+                        },
+                        "is_buggy": False,
+                        "research_mode": "hypothesis",
+                        "research_hypotheses_offered": ["001234"],
+                    }
+                ],
+                "node2parent": {},
+            }
+        ),
+        encoding="utf-8",
     )
-    serialize.dump_json(journal, run_dir / "journal.json")
 
     assert not (artifact / "aide_result.json").exists()
 
@@ -231,6 +239,46 @@ def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     assert record["profile"] == "full_boost_gpu"
     assert record["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert record["algo"] == "AG"
+
+
+def test_refresh_index_skips_legacy_journal_with_missing_solution_artifact(tmp_path):
+    logs_dir = tmp_path / "logs"
+    run_name = "legacy-missing-artifact-run"
+    run_dir = logs_dir / run_name
+    (run_dir / "artifacts").mkdir(parents=True)
+    (run_dir / "journal.json").write_text(
+        json.dumps(
+            {
+                "__version": "2",
+                "nodes": [
+                    {
+                        "id": "node-missing-artifact",
+                        "step": 0,
+                        "ctime": _ctime("20260525T031920"),
+                        "code": "print('inline legacy code')\n",
+                        "status": "ok",
+                        "is_buggy": False,
+                        "metric": {
+                            "value": 0.9214560578094251,
+                            "maximize": True,
+                        },
+                    }
+                ],
+                "node2parent": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    index = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=logs_dir / "submission_index.json",
+        competition="playground-series-s6e5",
+        reindex=True,
+    )
+
+    assert index["records"] == []
+    assert index["runs"][run_name]["scan_signature"] == {"artifacts": {}}
 
 
 def test_refresh_index_marks_non_autogluon_artifacts_as_legacy(tmp_path):
