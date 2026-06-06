@@ -416,6 +416,14 @@ def _node_public_score_bonus_active(
     return adjusted > oriented_local
 
 
+def _node_has_public_score(
+    node: Node,
+    *,
+    public_scores_by_node_id: dict[str, float],
+) -> bool:
+    return node.id in public_scores_by_node_id
+
+
 def _public_adjusted_tree_score(
     node: Node,
     *,
@@ -1036,6 +1044,7 @@ def _tree_node_label(
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_node_ids: set[str] | None = None,
     public_bonus_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
@@ -1073,9 +1082,15 @@ def _tree_node_label(
         )
 
     label = Text()
+    is_public = bool(public_node_ids and node.id in public_node_ids)
     is_public_bonus = bool(public_bonus_node_ids and node.id in public_bonus_node_ids)
-    if is_public_bonus:
-        diamond_style = "bold yellow" if node is public_best_node else "green"
+    if is_public:
+        if node is public_best_node:
+            diamond_style = "bold yellow"
+        elif is_public_bonus:
+            diamond_style = "bright_blue"
+        else:
+            diamond_style = "bright_black"
         label.append("◆ ", style=diamond_style)
     else:
         label.append("● ", style="green")
@@ -1096,6 +1111,7 @@ def _tree_active_node_label(
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_node_ids: set[str] | None = None,
     public_bonus_node_ids: set[str] | None = None,
 ) -> Text:
     line = _tree_active_placeholder_line(
@@ -1111,6 +1127,7 @@ def _tree_active_node_label(
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
         synthesis_node_ids=synthesis_node_ids,
+        public_node_ids=public_node_ids,
         public_bonus_node_ids=public_bonus_node_ids,
     )
     if node.status == "generated":
@@ -1195,6 +1212,14 @@ def build_tree_view(
     )
     active_item_id: str | None = None
     public_scores_by_node_id = public_scores_by_node_id or {}
+    public_node_ids = {
+        node.id
+        for node in journal.good_nodes
+        if _node_has_public_score(
+            node,
+            public_scores_by_node_id=public_scores_by_node_id,
+        )
+    }
     public_bonus_node_ids = {
         node.id
         for node in journal.good_nodes
@@ -1325,6 +1350,7 @@ def build_tree_view(
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
+                    public_node_ids=public_node_ids,
                     public_bonus_node_ids=public_bonus_node_ids,
                 )
             )
@@ -1337,6 +1363,7 @@ def build_tree_view(
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
+                    public_node_ids=public_node_ids,
                     public_bonus_node_ids=public_bonus_node_ids,
                 )
             )

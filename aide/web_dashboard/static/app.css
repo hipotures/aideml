@@ -189,6 +189,14 @@ main {
   content: "◆";
 }
 
+.tree-line.public-worse .dot {
+  color: #6b7280;
+}
+
+.tree-line.public-bonus .dot {
+  color: #38bdf8;
+}
+
 .tree-line.public-best .dot {
   color: #e6c700;
 }

@@ -1351,8 +1351,10 @@ def test_tree_view_marks_public_bonus_node_with_diamond_but_shows_cv():
     journal = Journal()
     cv_best = _good_node(0.967931)
     public_best = _good_node(0.967889)
+    public_worse = _good_node(0.967728)
     journal.append(cv_best)
     journal.append(public_best)
+    journal.append(public_worse)
 
     tree = render_tree_view(
         build_tree_view(
@@ -1360,6 +1362,7 @@ def test_tree_view_marks_public_bonus_node_with_diamond_but_shows_cv():
             public_scores_by_node_id={
                 cv_best.id: 0.96800,
                 public_best.id: 0.96830,
+                public_worse.id: 0.96753,
             },
             public_score_bonus_weight=0.5,
             public_score_bonus_cap=0.0005,
@@ -1373,10 +1376,13 @@ def test_tree_view_marks_public_bonus_node_with_diamond_but_shows_cv():
 
     assert "◆ 0.96793" in output
     assert "◆ 0.96789" in output
+    assert "◆ 0.96773" in output
     assert "* " not in output
     assert "0.96830" not in output
     assert "\x1b[1;33m0.96793" in ansi
     assert "\x1b[1;33m◆ " in ansi
+    assert "\x1b[94m◆ " in ansi
+    assert "\x1b[90m◆ " in ansi
     assert "\x1b[32m0.96789" in ansi
 
 

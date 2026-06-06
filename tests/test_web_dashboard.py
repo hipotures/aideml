@@ -94,23 +94,28 @@ def test_web_tree_lines_mark_public_bonus_node_but_keep_cv_label():
     journal = Journal()
     cv_best = _scored_node(0.967931)
     public_best = _scored_node(0.967889)
+    public_worse = _scored_node(0.967728)
     journal.append(cv_best)
     journal.append(public_best)
+    journal.append(public_worse)
 
     lines = build_web_tree_lines(
         journal,
         public_scores_by_node_id={
             cv_best.id: 0.96800,
             public_best.id: 0.96830,
+            public_worse.id: 0.96753,
         },
         public_score_bonus_weight=0.5,
         public_score_bonus_cap=0.0005,
     )
 
     assert lines[0].label == "0.96793·0"
-    assert lines[0].kind == "best public"
+    assert lines[0].kind == "best public public-bonus"
     assert lines[1].label == "0.96789·1"
     assert lines[1].kind == "public public-best"
+    assert lines[2].label == "0.96773·2"
+    assert lines[2].kind == "public public-worse"
     assert "0.96830" not in lines[1].label
 
 

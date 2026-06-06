@@ -62,6 +62,14 @@ def _node_public_score_bonus_active(
     return adjusted > oriented_local
 
 
+def _node_has_public_score(
+    node: Node,
+    *,
+    public_scores_by_node_id: dict[str, float],
+) -> bool:
+    return node.id in public_scores_by_node_id
+
+
 def _public_adjusted_tree_score(
     node: Node,
     *,
@@ -143,6 +151,7 @@ def _line_for_node(
     best_node: Node | None,
     public_best_node: Node | None,
     plateau_block_epsilon: float,
+    public_node_ids: set[str],
     public_bonus_node_ids: set[str],
 ) -> tuple[str, str]:
     suffix = _hypothesis_or_step_suffix(node)
@@ -159,13 +168,18 @@ def _line_for_node(
         return f"bug{suffix}{runtime_suffix}", "bug"
     if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
         return f"{metric}{suffix}{runtime_suffix}", "blocked"
+    is_public = node.id in public_node_ids
     is_public_bonus = node.id in public_bonus_node_ids
     is_public_best = node is public_best_node
     kinds: list[str] = []
     if node is best_node:
         kinds.append("best")
-    if is_public_bonus:
+    if is_public:
         kinds.append("public")
+    if is_public and not is_public_bonus and not is_public_best:
+        kinds.append("public-worse")
+    if is_public_bonus and not is_public_best:
+        kinds.append("public-bonus")
     if is_public_best:
         kinds.append("public-best")
     return f"{metric}{suffix}{runtime_suffix}", " ".join(kinds) or "ok"
@@ -184,6 +198,14 @@ def build_web_tree_lines(
 ) -> list[WebTreeLine]:
     journal_nodes = set(journal.nodes)
     public_scores_by_node_id = public_scores_by_node_id or {}
+    public_node_ids = {
+        node.id
+        for node in journal.good_nodes
+        if _node_has_public_score(
+            node,
+            public_scores_by_node_id=public_scores_by_node_id,
+        )
+    }
     public_bonus_node_ids = {
         node.id
         for node in journal.good_nodes
@@ -249,6 +271,7 @@ def build_web_tree_lines(
             best_node=best_node,
             public_best_node=public_best_node,
             plateau_block_epsilon=plateau_block_epsilon,
+            public_node_ids=public_node_ids,
             public_bonus_node_ids=public_bonus_node_ids,
         )
         lines.append(
