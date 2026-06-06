@@ -100,6 +100,10 @@ from .utils.plateau import (
     DEFAULT_PLATEAU_BLOCK_EPSILON,
     is_plateau_blocked_descendant,
 )
+from .utils.public_scores import (
+    load_public_scores_by_node_id,
+    public_adjusted_oriented_score,
+)
 from .utils.resource_monitor import (
     DEFAULT_RESOURCE_HISTORY_WINDOW_SECONDS,
     ResourceHistory,
@@ -122,6 +126,9 @@ from .web_dashboard.state import (
 from .web_dashboard.tree import build_web_tree_lines
 
 logger = logging.getLogger("aide")
+
+
+DEFAULT_PUBLIC_TREE_SCORE_BONUS_WEIGHT = 0.5
 
 
 @dataclass(frozen=True)
@@ -147,6 +154,7 @@ class RuntimeOptions:
     web_enabled: bool = False
     web_host: str | None = None
     web_port: int | None = None
+    public_tree_scores: bool = False
 
 
 @dataclass(frozen=True)
@@ -260,6 +268,8 @@ def parse_runtime_args(
             resume = ResumeRequest(requested=True, run_id=run_id)
         elif arg == "--show-invalid-submission-branches":
             runtime = replace(runtime, show_invalid_submission_branches=True)
+        elif arg == "--public-tree-scores":
+            runtime = replace(runtime, public_tree_scores=True)
         elif arg == "--force-check-submissions":
             runtime = replace(runtime, force_check_submissions=True)
         elif arg == "--telegram-test-message":
@@ -382,6 +392,44 @@ def _is_base_root(node: Node) -> bool:
     plan = str(node.plan or "")
     return plan.startswith(BASELINE_PLAN_PREFIX) or plan.startswith(
         SEEDED_BASE_PLAN_PREFIX
+    )
+
+
+def _node_public_score_bonus_active(
+    node: Node,
+    *,
+    public_scores_by_node_id: dict[str, float],
+    weight: float,
+    cap: float,
+) -> bool:
+    if node.metric is None or node.metric.value is None:
+        return False
+    local_score = float(node.metric.value)
+    adjusted = public_adjusted_oriented_score(
+        local_score=local_score,
+        public_score=public_scores_by_node_id.get(node.id),
+        maximize=node.metric.maximize is not False,
+        weight=weight,
+        cap=cap,
+    )
+    oriented_local = local_score if node.metric.maximize is not False else -local_score
+    return adjusted > oriented_local
+
+
+def _public_adjusted_tree_score(
+    node: Node,
+    *,
+    public_scores_by_node_id: dict[str, float],
+    weight: float,
+    cap: float,
+) -> float:
+    assert node.metric is not None and node.metric.value is not None
+    return public_adjusted_oriented_score(
+        local_score=float(node.metric.value),
+        public_score=public_scores_by_node_id.get(node.id),
+        maximize=node.metric.maximize is not False,
+        weight=weight,
+        cap=cap,
     )
 
 
@@ -968,6 +1016,7 @@ def _visible_best_node(
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    score_fn: Callable[[Node], float] | None = None,
 ) -> Node | None:
     if show_invalid_submission_branches:
         return journal.get_best_node()
@@ -987,6 +1036,8 @@ def _visible_best_node(
             or not node.is_oom_blocked_parent
         )
     ]
+    if score_fn is not None:
+        return max(visible_good_nodes, key=score_fn, default=None)
     return max(visible_good_nodes, key=lambda node: node.metric, default=None)
 
 
@@ -997,6 +1048,7 @@ def _tree_node_label(
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_bonus_node_ids: set[str] | None = None,
 ) -> Text:
     suffix = _node_hypothesis_suffix(node)
     runtime_suffix = _node_runtime_suffix(node)
@@ -1036,11 +1088,15 @@ def _tree_node_label(
     label = Text()
     if node is best_node:
         label.append("* ", style="bold yellow")
+        if public_bonus_node_ids and node.id in public_bonus_node_ids:
+            label.append("◆ ", style="green")
     elif baseline_root:
         label.append("◎ ", style="bright_magenta")
     elif synthesis_root:
         label.append("◆", style="blue")
         label.append(" ")
+    elif public_bonus_node_ids and node.id in public_bonus_node_ids:
+        label.append("◆ ", style="green")
     else:
         label.append("● ", style="green")
 
@@ -1059,6 +1115,7 @@ def _tree_active_node_label(
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_bonus_node_ids: set[str] | None = None,
 ) -> Text:
     line = _tree_active_placeholder_line(
         active_stage=active_stage,
@@ -1072,6 +1129,7 @@ def _tree_active_node_label(
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
         synthesis_node_ids=synthesis_node_ids,
+        public_bonus_node_ids=public_bonus_node_ids,
     )
     if node.status == "generated":
         suffix = _node_hypothesis_suffix(node)
@@ -1131,6 +1189,9 @@ def build_tree_view(
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_scores_by_node_id: dict[str, float] | None = None,
+    public_score_bonus_weight: float = 0.0,
+    public_score_bonus_cap: float = 0.0,
 ) -> TreeView:
     items: list[TreeViewItem] = [
         TreeViewItem(
@@ -1151,11 +1212,34 @@ def build_tree_view(
         else None
     )
     active_item_id: str | None = None
+    public_scores_by_node_id = public_scores_by_node_id or {}
+    public_bonus_node_ids = {
+        node.id
+        for node in journal.good_nodes
+        if _node_public_score_bonus_active(
+            node,
+            public_scores_by_node_id=public_scores_by_node_id,
+            weight=public_score_bonus_weight,
+            cap=public_score_bonus_cap,
+        )
+    }
+    score_fn: Callable[[Node], float] | None = None
+    if public_scores_by_node_id and public_score_bonus_weight > 0.0:
+        def public_adjusted_score(node: Node) -> float:
+            return _public_adjusted_tree_score(
+                node,
+                public_scores_by_node_id=public_scores_by_node_id,
+                weight=public_score_bonus_weight,
+                cap=public_score_bonus_cap,
+            )
+
+        score_fn = public_adjusted_score
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
+        score_fn=score_fn,
     )
 
     def node_order_key(node: Node):
@@ -1250,6 +1334,7 @@ def build_tree_view(
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
+                    public_bonus_node_ids=public_bonus_node_ids,
                 )
             )
         else:
@@ -1260,6 +1345,7 @@ def build_tree_view(
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
+                    public_bonus_node_ids=public_bonus_node_ids,
                 )
             )
         append_item(
@@ -1398,11 +1484,27 @@ def best_tree_item_id(
     *,
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
+    public_scores_by_node_id: dict[str, float] | None = None,
+    public_score_bonus_weight: float = 0.0,
+    public_score_bonus_cap: float = 0.0,
 ) -> str | None:
+    public_scores_by_node_id = public_scores_by_node_id or {}
+    score_fn: Callable[[Node], float] | None = None
+    if public_scores_by_node_id and public_score_bonus_weight > 0.0:
+        def public_adjusted_score(node: Node) -> float:
+            return _public_adjusted_tree_score(
+                node,
+                public_scores_by_node_id=public_scores_by_node_id,
+                weight=public_score_bonus_weight,
+                cap=public_score_bonus_cap,
+            )
+
+        score_fn = public_adjusted_score
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
+        score_fn=score_fn,
     )
     if best_node is None or best_node.id not in view.index_by_id:
         return None
@@ -2051,6 +2153,8 @@ class ArrowKeyReader:
         b"D": "debug",
         b"f": "follow",
         b"F": "follow",
+        b"p": "public",
+        b"P": "public",
         b"v": "view",
         b"V": "view",
         b"1": "copy_aide_panel",
@@ -3788,6 +3892,15 @@ def run(argv: list[str] | None = None):
         journal = Journal()
         is_resume = False
 
+    if (
+        runtime_options.public_tree_scores
+        and not _cli_sets_key(cli_args, "agent.search.public_score_bonus_weight")
+        and float(getattr(cfg.agent.search, "public_score_bonus_weight", 0.0)) <= 0.0
+    ):
+        cfg.agent.search.public_score_bonus_weight = (
+            DEFAULT_PUBLIC_TREE_SCORE_BONUS_WEIGHT
+        )
+
     apply_runtime_web_options(cfg, runtime_options)
     hypothesis_root_generate_workers = validate_hypothesis_root_generate_workers(cfg)
 
@@ -3932,6 +4045,8 @@ def run(argv: list[str] | None = None):
     prog.add_task("Progress:", total=cfg.agent.steps, completed=completed_work_units())
     status_override: str | None = None
     operator_notice: str | None = None
+    public_scores_notice: str | None = None
+    public_scores_notice_until: float | None = None
     stop_after_current_node = False
     execution_interrupt_count = 0
     resource_history = ResourceHistory(
@@ -4079,10 +4194,34 @@ def run(argv: list[str] | None = None):
             "copy_logs_panel",
         }
 
+    def public_score_bonus_enabled() -> bool:
+        return (
+            runtime_options.public_tree_scores
+            and float(getattr(cfg.agent.search, "public_score_bonus_weight", 0.0)) > 0.0
+            and float(getattr(cfg.agent.search, "public_score_bonus_cap", 0.0)) > 0.0
+        )
+
+    def refresh_public_scores() -> None:
+        nonlocal public_scores_notice, public_scores_notice_until
+        if not public_score_bonus_enabled():
+            public_scores_notice = "Public scores disabled"
+            public_scores_notice_until = time.monotonic() + 4.0
+            return
+        scores = load_public_scores_by_node_id(cfg.log_dir)
+        agent.public_scores_by_node_id = scores
+        public_scores_notice = f"Public scores refreshed: {len(scores)} nodes"
+        public_scores_notice_until = time.monotonic() + 4.0
+
+    if runtime_options.public_tree_scores:
+        refresh_public_scores()
+
     def dismiss_overlays() -> None:
         nonlocal copy_notice, copy_notice_until, search_debug_visible
+        nonlocal public_scores_notice, public_scores_notice_until
         copy_notice = None
         copy_notice_until = None
+        public_scores_notice = None
+        public_scores_notice_until = None
         search_debug_visible = False
 
     def drain_left_panel_navigation(view: TreeView) -> None:
@@ -4114,6 +4253,9 @@ def run(argv: list[str] | None = None):
                     return
                 if key == "debug":
                     search_debug_visible = not search_debug_visible
+                    return
+                if key == "public":
+                    refresh_public_scores()
                     return
                 if key in {"up", "down"}:
                     focused_table_item_id = move_tree_focus(
@@ -4164,6 +4306,9 @@ def run(argv: list[str] | None = None):
             if key == "debug":
                 search_debug_visible = not search_debug_visible
                 return
+            if key == "public":
+                refresh_public_scores()
+                return
             if key == "follow":
                 tree_follow_mode = (
                     "active" if tree_follow_mode == "off" else "off"
@@ -4188,6 +4333,11 @@ def run(argv: list[str] | None = None):
                     disable_oom_saturated_parents=(
                         cfg.agent.search.disable_oom_saturated_parents
                     ),
+                    public_scores_by_node_id=agent.public_scores_by_node_id,
+                    public_score_bonus_weight=(
+                        cfg.agent.search.public_score_bonus_weight
+                    ),
+                    public_score_bonus_cap=cfg.agent.search.public_score_bonus_cap,
                 )
                 if target_id is not None:
                     focused_tree_item_id = target_id
@@ -4347,6 +4497,13 @@ def run(argv: list[str] | None = None):
                         plateau_block_epsilon=(
                             cfg.agent.search.plateau_block_epsilon
                         ),
+                        public_scores_by_node_id=agent.public_scores_by_node_id,
+                        public_score_bonus_weight=(
+                            cfg.agent.search.public_score_bonus_weight
+                        ),
+                        public_score_bonus_cap=(
+                            cfg.agent.search.public_score_bonus_cap
+                        ),
                     ),
                     run_sections=_web_run_sections(
                         status_text=status_text,
@@ -4376,6 +4533,9 @@ def run(argv: list[str] | None = None):
             ),
             plateau_block_epsilon=cfg.agent.search.plateau_block_epsilon,
             synthesis_node_ids=synthesis_injected_node_ids(cfg.log_dir),
+            public_scores_by_node_id=agent.public_scores_by_node_id,
+            public_score_bonus_weight=cfg.agent.search.public_score_bonus_weight,
+            public_score_bonus_cap=cfg.agent.search.public_score_bonus_cap,
         )
 
     def current_left_panel_view(*, blink_on: bool) -> TreeView:
@@ -4434,7 +4594,15 @@ def run(argv: list[str] | None = None):
 
     def generate_live():
         nonlocal copy_notice, copy_notice_until
+        nonlocal public_scores_notice, public_scores_notice_until
         blink_on = int(time.monotonic() * 2) % 2 == 0
+        if (
+            public_scores_notice is not None
+            and public_scores_notice_until is not None
+            and time.monotonic() >= public_scores_notice_until
+        ):
+            public_scores_notice = None
+            public_scores_notice_until = None
         rendered_panel_view = left_panel_view
         left_view = current_left_panel_view(blink_on=blink_on)
         drain_left_panel_navigation(left_view)
@@ -4500,7 +4668,7 @@ def run(argv: list[str] | None = None):
                 model_settings=model_settings_for_run(cfg),
                 active_artifact_dir=active_artifact_dir,
                 cfg=cfg,
-                operator_notice=operator_notice,
+                operator_notice=operator_notice or public_scores_notice,
                 include_generated_hypothesis_roots=runtime_options.skip_execution,
                 skip_execution=runtime_options.skip_execution,
                 hypothesis_root_generate_workers=hypothesis_root_generate_workers,
@@ -4537,6 +4705,7 @@ def run(argv: list[str] | None = None):
                 "↑/↓ move  ← parent  → child  b best  a active  "
                 f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
                 f"d debug:{'on' if search_debug_visible else 'off'}  "
+                f"{'p public  ' if public_score_bonus_enabled() else ''}"
                 "1/2/3 copy  Ctrl+C stop"
             ),
         )

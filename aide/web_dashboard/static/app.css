@@ -181,6 +181,22 @@ main {
   color: #e6c700;
 }
 
+.tree-line.public .dot {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: #34d399;
+}
+
+.tree-line.public .dot::before {
+  content: "◆";
+}
+
+.tree-line.best.public .dot {
+  color: #e6c700;
+}
+
 .tree-line.bug .dot {
   background: #ff4d63;
 }

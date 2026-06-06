@@ -90,6 +90,28 @@ def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():
     assert lines[1].kind == "best"
 
 
+def test_web_tree_lines_mark_public_bonus_node_but_keep_cv_label():
+    journal = Journal()
+    cv_best = _scored_node(0.967931)
+    public_best = _scored_node(0.967889)
+    journal.append(cv_best)
+    journal.append(public_best)
+
+    lines = build_web_tree_lines(
+        journal,
+        public_scores_by_node_id={
+            cv_best.id: 0.96800,
+            public_best.id: 0.96830,
+        },
+        public_score_bonus_weight=0.5,
+        public_score_bonus_cap=0.0005,
+    )
+
+    assert lines[1].label == "0.96789·1"
+    assert lines[1].kind == "best public"
+    assert "0.96830" not in lines[1].label
+
+
 def test_web_server_serves_html_snapshot_and_404():
     state = WebDashboardState()
     state.update(

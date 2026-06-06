@@ -149,6 +149,8 @@ agent:
     hypothesis_max_non_improving_children_per_parent: 10
     hypothesis_min_improvement_epsilon: 0.00006
     plateau_block_epsilon: 0.00001
+    public_score_bonus_weight: 0.0
+    public_score_bonus_cap: 0.0005
 
   autogluon:
     # Named profiles for the fixed AutoGluon runner.

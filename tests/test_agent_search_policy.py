@@ -431,6 +431,101 @@ def test_hypothesis_search_requires_epsilon_improvement_for_child_candidate(
     assert trace["rejections"][tiny_gain.id]["stage"] == "branch_candidate"
 
 
+def test_hypothesis_search_public_bonus_can_clear_branch_epsilon(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
+    cfg.agent.search.public_score_bonus_weight = 0.5
+    cfg.agent.search.public_score_bonus_cap = 0.0005
+
+    journal = Journal()
+    parent = _good_node(0.967885)
+    public_best = _good_node(0.967889, parent=parent)
+    cv_best = _good_node(0.967931, parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (public_best, "000002"),
+        (cv_best, "000003"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    agent.public_scores_by_node_id = {
+        parent.id: 0.96804,
+        public_best.id: 0.96830,
+        cv_best.id: 0.96800,
+    }
+
+    selected = agent.search_policy()
+
+    assert selected is public_best
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert public_best.id not in trace["rejections"]
+    assert trace["reason"] == "highest_effective_metric_after_filters"
+    assert trace["selected"]["metric"] == 0.967889
+    assert trace["selected"]["effective_metric"] > cv_best.metric.value
+
+
+def test_hypothesis_search_public_bonus_keeps_raw_cv_improving_child_candidate(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.agent.search.debug_prob = 0.0
+    cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
+    cfg.agent.search.public_score_bonus_weight = 0.5
+    cfg.agent.search.public_score_bonus_cap = 0.0005
+
+    journal = Journal()
+    parent = _good_node(0.967885)
+    raw_cv_improvement = _good_node(0.968000, parent=parent)
+    for node, hypothesis_id in [
+        (parent, "000001"),
+        (raw_cv_improvement, "000002"),
+    ]:
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis_id]
+        journal.append(node)
+
+    monkeypatch.setattr(
+        "aide.agent.hypothesis_root_pool_exhausted",
+        lambda cfg, journal: True,
+    )
+    monkeypatch.setattr(
+        "aide.agent.filter_hypothesis_candidate_parents",
+        lambda cfg, journal, parent_nodes: parent_nodes,
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    agent.public_scores_by_node_id = {parent.id: 0.96830}
+
+    agent.search_policy()
+
+    trace = agent.last_search_decision
+    assert trace is not None
+    assert raw_cv_improvement.id not in trace["rejections"]
+    assert trace["counts"]["after_branch_candidate"] == 2
+
+
 def test_hypothesis_saturation_treats_tiny_gain_as_non_improving(
     tmp_path,
     monkeypatch,

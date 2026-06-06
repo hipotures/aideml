@@ -52,6 +52,7 @@ from .utils.plateau import (
     DEFAULT_PLATEAU_BLOCK_EPSILON,
     is_plateau_blocked_descendant,
 )
+from .utils.public_scores import public_adjusted_oriented_score
 from .utils.response import (
     extract_code,
     extract_jsons,
@@ -267,6 +268,28 @@ def _metric_for_search(node: Node) -> float:
     return -value if node.metric.maximize is False else value
 
 
+def _public_adjusted_metric_for_search(
+    node: Node,
+    *,
+    public_scores_by_node_id: dict[str, float],
+    weight: float,
+    cap: float,
+) -> float:
+    local_score = _metric_for_search(node)
+    weight = max(0.0, float(weight))
+    cap = max(0.0, float(cap))
+    if weight <= 0.0 or cap <= 0.0:
+        return local_score
+    public_score = public_scores_by_node_id.get(node.id)
+    return public_adjusted_oriented_score(
+        local_score=float(node.metric.value),
+        public_score=public_score,
+        maximize=node.metric.maximize is not False,
+        weight=weight,
+        cap=cap,
+    )
+
+
 def _node_improves_parent(
     child: Node,
     parent: Node,
@@ -285,6 +308,21 @@ def _node_improves_parent(
     return child_value > parent_value + epsilon
 
 
+def _node_improves_parent_by_score(
+    child: Node,
+    parent: Node,
+    *,
+    score_fn: Callable[[Node], float],
+    epsilon: float = 0.0,
+) -> bool:
+    if child.metric is None or child.metric.value is None:
+        return False
+    if parent.metric is None or parent.metric.value is None:
+        return False
+    epsilon = max(0.0, float(epsilon))
+    return score_fn(child) > score_fn(parent) + epsilon
+
+
 def _nearest_scored_ancestor(node: Node) -> Node | None:
     parent = node.parent
     while parent is not None:
@@ -298,10 +336,18 @@ def _node_improves_nearest_scored_ancestor(
     node: Node,
     *,
     epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
 ) -> bool:
     ancestor = _nearest_scored_ancestor(node)
     if ancestor is None:
         return False
+    if score_fn is not None and _node_improves_parent_by_score(
+        node,
+        ancestor,
+        score_fn=score_fn,
+        epsilon=epsilon,
+    ):
+        return True
     return _node_improves_parent(node, ancestor, epsilon=epsilon)
 
 
@@ -310,26 +356,56 @@ def _is_scored_non_improving_child(
     parent: Node,
     *,
     epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
 ) -> bool:
     if child.is_buggy or child.is_terminal_failure:
         return False
     if child.metric is None or child.metric.value is None:
         return False
+    if score_fn is not None and _node_improves_parent_by_score(
+        child,
+        parent,
+        score_fn=score_fn,
+        epsilon=epsilon,
+    ):
+        return False
     return not _node_improves_parent(child, parent, epsilon=epsilon)
 
 
-def _has_improving_child(node: Node, *, epsilon: float = 0.0) -> bool:
-    return any(
-        _node_improves_parent(child, node, epsilon=epsilon)
-        for child in node.children
-    )
+def _has_improving_child(
+    node: Node,
+    *,
+    epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
+) -> bool:
+    for child in node.children:
+        if score_fn is not None and _node_improves_parent_by_score(
+            child,
+            node,
+            score_fn=score_fn,
+            epsilon=epsilon,
+        ):
+            return True
+        if _node_improves_parent(child, node, epsilon=epsilon):
+            return True
+    return False
 
 
-def _non_improving_child_count(node: Node, *, epsilon: float = 0.0) -> int:
+def _non_improving_child_count(
+    node: Node,
+    *,
+    epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
+) -> int:
     return sum(
         1
         for child in node.children
-        if _is_scored_non_improving_child(child, node, epsilon=epsilon)
+        if _is_scored_non_improving_child(
+            child,
+            node,
+            epsilon=epsilon,
+            score_fn=score_fn,
+        )
     )
 
 
@@ -338,26 +414,47 @@ def _is_hypothesis_parent_saturated(
     *,
     limit: int,
     epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
 ) -> bool:
     if limit <= 0:
         return False
-    if _has_improving_child(node, epsilon=epsilon):
+    if _has_improving_child(node, epsilon=epsilon, score_fn=score_fn):
         return False
-    return _non_improving_child_count(node, epsilon=epsilon) >= limit
+    return _non_improving_child_count(node, epsilon=epsilon, score_fn=score_fn) >= limit
 
 
-def _is_hypothesis_branch_candidate(node: Node, *, epsilon: float = 0.0) -> bool:
+def _is_hypothesis_branch_candidate(
+    node: Node,
+    *,
+    epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
+) -> bool:
     if node.parent is None:
+        return True
+    if score_fn is not None and _node_improves_parent_by_score(
+        node,
+        node.parent,
+        score_fn=score_fn,
+        epsilon=epsilon,
+    ):
         return True
     if _node_improves_parent(node, node.parent, epsilon=epsilon):
         return True
     if node.parent.metric is None or node.parent.metric.value is None:
-        return _node_improves_nearest_scored_ancestor(node, epsilon=epsilon)
+        return _node_improves_nearest_scored_ancestor(
+            node,
+            epsilon=epsilon,
+            score_fn=score_fn,
+        )
     return False
 
 
-def _metric_score_range(nodes: list[Node]) -> tuple[dict[Node, float], float, float, float]:
-    metric_values = {node: _metric_for_search(node) for node in nodes}
+def _metric_score_range(
+    nodes: list[Node],
+    *,
+    score_fn: Callable[[Node], float] = _metric_for_search,
+) -> tuple[dict[Node, float], float, float, float]:
+    metric_values = {node: score_fn(node) for node in nodes}
     low = min(metric_values.values())
     high = max(metric_values.values())
     span = high - low
@@ -483,19 +580,24 @@ def _search_child_count(node: Node) -> int:
     return sum(1 for child in node.children if not child.is_terminal_failure)
 
 
-def _best_scored_search_node(journal: Journal) -> Node | None:
+def _best_scored_search_node(
+    journal: Journal,
+    *,
+    score_fn: Callable[[Node], float] = _metric_for_search,
+) -> Node | None:
     candidates = [
         node
         for node in journal.good_nodes
         if node.metric is not None and node.metric.value is not None
     ]
-    return max(candidates, key=lambda node: node.metric, default=None)
+    return max(candidates, key=score_fn, default=None)
 
 
 def _branch_candidate_rejection_reason(
     node: Node,
     *,
     epsilon: float = 0.0,
+    score_fn: Callable[[Node], float] | None = None,
 ) -> str:
     if node.parent is None:
         return "accepted_root"
@@ -505,8 +607,21 @@ def _branch_candidate_rejection_reason(
         if _nearest_scored_ancestor(node) is None:
             return "parent_metric_missing"
         return "does_not_improve_nearest_scored_ancestor"
-    if not _node_improves_parent(node, node.parent, epsilon=epsilon):
-        if _metric_for_search(node) > _metric_for_search(node.parent):
+    if score_fn is not None:
+        improves = _node_improves_parent_by_score(
+            node,
+            node.parent,
+            score_fn=score_fn,
+            epsilon=epsilon,
+        )
+        node_score = score_fn(node)
+        parent_score = score_fn(node.parent)
+    else:
+        improves = _node_improves_parent(node, node.parent, epsilon=epsilon)
+        node_score = _metric_for_search(node)
+        parent_score = _metric_for_search(node.parent)
+    if not improves:
+        if node_score > parent_score:
             return "does_not_clear_min_improvement_epsilon"
         return "does_not_improve_parent"
     return "accepted"
@@ -605,6 +720,7 @@ class Agent:
         self._pending_node_ctime: float | None = None
         self._pending_llm_log_dir: Path | None = None
         self.last_search_decision: dict[str, Any] | None = None
+        self.public_scores_by_node_id: dict[str, float] = {}
 
     def _record_search_decision(self, trace: dict[str, Any]) -> None:
         self.last_search_decision = trace
@@ -742,6 +858,19 @@ class Agent:
     def search_policy(self) -> Node | None:
         """Select a node to work on (or None to draft a new node)."""
         search_cfg = self.acfg.search
+        public_bonus_weight = float(
+            getattr(search_cfg, "public_score_bonus_weight", 0.0)
+        )
+        public_bonus_cap = float(getattr(search_cfg, "public_score_bonus_cap", 0.0))
+
+        def score_for_search(node: Node) -> float:
+            return _public_adjusted_metric_for_search(
+                node,
+                public_scores_by_node_id=self.public_scores_by_node_id,
+                weight=public_bonus_weight,
+                cap=public_bonus_cap,
+            )
+
         trace: dict[str, Any] = {
             "timestamp": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "step": len(self.journal.nodes),
@@ -754,6 +883,11 @@ class Agent:
             "best_node": None,
             "selected": None,
             "reason": None,
+            "public_score_bonus": {
+                "weight": public_bonus_weight,
+                "cap": public_bonus_cap,
+                "loaded_scores": len(self.public_scores_by_node_id),
+            },
         }
         forced_hypothesis_root = (
             _configured_forced_hypothesis_root(search_cfg)
@@ -764,9 +898,21 @@ class Agent:
 
         def finish(selected: Node | None, reason: str) -> Node | None:
             trace["selected"] = _search_node_payload(selected)
+            if (
+                trace["selected"] is not None
+                and selected is not None
+                and selected.metric is not None
+                and selected.metric.value is not None
+            ):
+                trace["selected"]["effective_metric"] = score_for_search(selected)
             trace["reason"] = reason
-            best_node = _best_scored_search_node(self.journal)
+            best_node = _best_scored_search_node(
+                self.journal,
+                score_fn=score_for_search,
+            )
             best_payload = _search_node_payload(best_node)
+            if best_payload is not None and best_node is not None:
+                best_payload["effective_metric"] = score_for_search(best_node)
             if best_payload is not None:
                 best_payload["selected"] = (
                     selected is not None
@@ -913,6 +1059,7 @@ class Agent:
                 if _is_hypothesis_branch_candidate(
                     node,
                     epsilon=improvement_epsilon,
+                    score_fn=score_for_search,
                 )
             ]
             trace["counts"]["after_branch_candidate"] = len(good_nodes)
@@ -923,6 +1070,7 @@ class Agent:
                         "reason": _branch_candidate_rejection_reason(
                             node,
                             epsilon=improvement_epsilon,
+                            score_fn=score_for_search,
                         ),
                     }
             limit = int(
@@ -941,6 +1089,7 @@ class Agent:
                         node,
                         limit=limit,
                         epsilon=improvement_epsilon,
+                        score_fn=score_for_search,
                     )
                 ]
                 trace["counts"]["after_saturation"] = len(good_nodes)
@@ -959,20 +1108,24 @@ class Agent:
 
         exploration_weight = float(getattr(search_cfg, "exploration_weight", 0.0))
         if exploration_weight <= 0:
-            greedy_node = max(good_nodes, key=lambda n: n.metric)
-            ranked = sorted(good_nodes, key=lambda n: n.metric, reverse=True)
+            greedy_node = max(good_nodes, key=score_for_search)
+            ranked = sorted(good_nodes, key=score_for_search, reverse=True)
             trace["top_candidates"] = [
                 {
                     **(_search_node_payload(node) or {}),
                     "rank": index + 1,
-                    "policy_score": _metric_value(node),
+                    "policy_score": score_for_search(node),
+                    "effective_metric": score_for_search(node),
                 }
                 for index, node in enumerate(ranked[:8])
             ]
             logger.debug("[search policy] greedy node selected")
-            return finish(greedy_node, "highest_metric_after_filters")
+            return finish(greedy_node, "highest_effective_metric_after_filters")
 
-        metric_values, metric_low, metric_high, metric_span = _metric_score_range(good_nodes)
+        metric_values, metric_low, metric_high, metric_span = _metric_score_range(
+            good_nodes,
+            score_fn=score_for_search,
+        )
         if metric_span <= 0:
             normalized_scores = {node: 1.0 for node in good_nodes}
         else:
@@ -989,7 +1142,7 @@ class Agent:
             )
             for node in good_nodes
         }
-        best_policy_node = max(good_nodes, key=lambda node: node.metric)
+        best_policy_node = max(good_nodes, key=score_for_search)
         min_best_children = int(
             getattr(search_cfg, "best_score_min_children_before_exploration", 0)
         )
@@ -1034,7 +1187,7 @@ class Agent:
                 policy_scores[selected_node] - policy_scores[best_policy_node]
             ),
             "selected_minus_best_metric": (
-                _metric_value(selected_node) - _metric_value(best_policy_node)
+                score_for_search(selected_node) - score_for_search(best_policy_node)
                 if (
                     _metric_value(selected_node) is not None
                     and _metric_value(best_policy_node) is not None
@@ -1058,6 +1211,7 @@ class Agent:
                 "rank": index + 1,
                 "normalized_metric": normalized_scores[node],
                 "policy_score": policy_scores[node],
+                "effective_metric": score_for_search(node),
             }
             for index, node in enumerate(ranked[:8])
         ]

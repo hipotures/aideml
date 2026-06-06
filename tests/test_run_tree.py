@@ -31,6 +31,7 @@ from aide.run import (
     model_settings_for_run,
     osc52_clipboard_sequence,
     panel_copy_path,
+    parse_runtime_args,
     ResourceSnapshot,
     ArrowKeyReader,
     _overlay_top,
@@ -63,6 +64,21 @@ from aide.utils.metric import MetricValue
 
 def test_resource_sparkline_uses_latest_samples_without_rebinning_history():
     assert _sparkline([100.0, 0.0, 0.0, 0.0], width=3, ceiling=100.0) == "▁▁▁"
+
+
+def test_parse_runtime_args_enables_public_tree_scores():
+    resume, runtime, remaining = parse_runtime_args(
+        ["--public-tree-scores", "agent.search.public_score_bonus_weight=0.25"]
+    )
+
+    assert resume.requested is False
+    assert runtime.public_tree_scores is True
+    assert remaining == ["agent.search.public_score_bonus_weight=0.25"]
+
+
+def test_arrow_key_reader_maps_p_to_public_refresh():
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"p"] == "public"
+    assert ArrowKeyReader.CHAR_KEY_MAP[b"P"] == "public"
 
 
 def test_search_decision_debug_view_explains_best_node_rejection():
@@ -1330,6 +1346,34 @@ def test_tree_view_colors_best_metric_yellow_like_star():
     assert "* 0.95100" in output
     assert "\x1b[1;33m* " in ansi
     assert "\x1b[1;33m0.95100" in ansi
+
+
+def test_tree_view_marks_public_bonus_node_with_diamond_but_shows_cv():
+    journal = Journal()
+    cv_best = _good_node(0.967931)
+    public_best = _good_node(0.967889)
+    journal.append(cv_best)
+    journal.append(public_best)
+
+    tree = render_tree_view(
+        build_tree_view(
+            journal,
+            public_scores_by_node_id={
+                cv_best.id: 0.96800,
+                public_best.id: 0.96830,
+            },
+            public_score_bonus_weight=0.5,
+            public_score_bonus_cap=0.0005,
+        ),
+        focused_item_id="header",
+        scroll_top=0,
+        viewport_height=10,
+    )
+    output = _render_text(tree)
+
+    assert "* ◆ 0.96789" in output
+    assert "* 0.96793" not in output
+    assert "0.96830" not in output
 
 
 def test_tree_view_marks_status_recorded_synthesis_root_blue():
