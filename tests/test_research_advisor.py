@@ -3529,11 +3529,11 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     assert any(
         "CUDA-capable NVIDIA GPU" in line
         and "Use GPU-enabled training" in line
-        and "GPU-specific implementation fails" in line
         for line in gpu_guidelines
     )
     assert not any("Prefer GPU-enabled training" in line for line in gpu_guidelines)
     assert not any(line.startswith("If a GPU-specific") for line in gpu_guidelines)
+    assert not any("If you cannot isolate" in line for line in gpu_guidelines)
     assert any('task_type="GPU"' in line for line in gpu_guidelines)
     assert any(
         'tree_method="hist"' in line and 'device="cuda"' in line
@@ -3541,8 +3541,9 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     )
     assert any(
         "For LightGBM" in line
-        and "try native CUDA training first" in line
-        and "fall back to a CPU LightGBM fit" in line
+        and "Always try LightGBM CUDA first" in line
+        and "CPU LightGBM fallback only after" in line
+        and "Do not choose CPU LightGBM before attempting" in line
         for line in gpu_guidelines
     )
     assert any(

@@ -1289,10 +1289,10 @@ class Agent:
         if self.acfg.gpu:
             impl_guideline.extend(
                 [
-                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models whenever the chosen library supports it. If a GPU-specific implementation fails, the next debug attempt may fall back to CPU.",
+                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models whenever the chosen library supports it.",
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
-                    'For LightGBM, when GPU is enabled, native CUDA training may terminate the Python process before `try/except` can run. If you use LightGBM CUDA with `device_type="cuda"` or `device="cuda"`, isolate the CUDA fit in a subprocess or run a small subprocess smoke test before full training so a nonzero exit can fall back to CPU LightGBM. If you cannot isolate it, use CPU LightGBM. Do not use `device_type="gpu"` or `device="gpu"` unless explicitly targeting an OpenCL LightGBM build.',
+                    'For LightGBM, when GPU is enabled, native CUDA training may terminate the Python process before `try/except` can run. Always try LightGBM CUDA first with `device_type="cuda"` or `device="cuda"` inside an isolated subprocess or subprocess smoke test, then use CPU LightGBM fallback only after that subprocess exits nonzero or reports a CUDA failure. Do not choose CPU LightGBM before attempting the isolated CUDA path. Do not use `device_type="gpu"` or `device="gpu"` unless explicitly targeting an OpenCL LightGBM build.',
                 ]
             )
 
