@@ -853,7 +853,7 @@ class Agent:
                 trace["rejections"][node.id] = {
                     "stage": "plateau_block",
                     "reason": (
-                        "score_within_"
+                        "non_improving_score_within_"
                         f"{plateau_epsilon:g}_of_nearest_scored_ancestor"
                     ),
                 }

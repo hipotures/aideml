@@ -51,7 +51,7 @@ def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
     assert all("─" not in line.prefix for line in lines)
 
 
-def test_web_tree_lines_mark_plateau_child_as_blocked():
+def test_web_tree_lines_keep_tiny_improving_child_unblocked():
     journal = Journal()
     parent = _scored_node(0.967787)
     child = _scored_node(0.967792, parent=parent)
@@ -61,6 +61,19 @@ def test_web_tree_lines_mark_plateau_child_as_blocked():
     lines = build_web_tree_lines(journal, plateau_block_epsilon=0.00001)
 
     assert lines[1].label == "0.96779·1"
+    assert lines[1].kind == "best"
+
+
+def test_web_tree_lines_mark_non_improving_plateau_child_as_blocked():
+    journal = Journal()
+    parent = _scored_node(0.967787)
+    child = _scored_node(0.967782, parent=parent)
+    journal.append(parent)
+    journal.append(child)
+
+    lines = build_web_tree_lines(journal, plateau_block_epsilon=0.00001)
+
+    assert lines[1].label == "0.96778·1"
     assert lines[1].kind == "blocked"
 
 

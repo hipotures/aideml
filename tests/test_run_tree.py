@@ -605,7 +605,7 @@ def test_journal_tree_renders_children_in_step_order():
     assert output.index("● 0.94100") < output.index("● 0.94300")
 
 
-def test_tree_view_marks_plateau_child_as_blocked():
+def test_tree_view_keeps_tiny_improving_child_unblocked():
     journal = Journal()
     parent = _good_node(0.967787)
     child = _good_node(0.967792, parent=parent)
@@ -614,8 +614,21 @@ def test_tree_view_marks_plateau_child_as_blocked():
 
     output = _render_text(build_tree_view(journal, plateau_block_epsilon=0.00001))
 
-    assert "◉ 0.96779" in output
-    assert "● 0.96779" not in output
+    assert "0.96779" in output
+    assert "◉ 0.96779" not in output
+
+
+def test_tree_view_marks_non_improving_plateau_child_as_blocked():
+    journal = Journal()
+    parent = _good_node(0.967787)
+    child = _good_node(0.967782, parent=parent)
+    journal.append(parent)
+    journal.append(child)
+
+    output = _render_text(build_tree_view(journal, plateau_block_epsilon=0.00001))
+
+    assert "◉ 0.96778" in output
+    assert "● 0.96778" not in output
 
 
 def test_tree_view_keeps_child_outside_plateau_epsilon_unblocked():

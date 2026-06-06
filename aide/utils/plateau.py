@@ -53,4 +53,5 @@ def is_plateau_blocked_descendant(
     delta = plateau_delta_to_nearest_scored_ancestor(node)
     if delta is None:
         return False
-    return abs(delta) <= max(0.0, float(epsilon))
+    epsilon = max(0.0, float(epsilon))
+    return -epsilon <= delta <= 0.0
