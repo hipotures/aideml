@@ -107,8 +107,10 @@ def test_web_tree_lines_mark_public_bonus_node_but_keep_cv_label():
         public_score_bonus_cap=0.0005,
     )
 
+    assert lines[0].label == "0.96793·0"
+    assert lines[0].kind == "best public"
     assert lines[1].label == "0.96789·1"
-    assert lines[1].kind == "best public"
+    assert lines[1].kind == "public public-best"
     assert "0.96830" not in lines[1].label
 
 
@@ -218,6 +220,7 @@ def test_tree_toolbar_controls_best_active_and_follow():
     assert ".tree-line.best" in js
     assert ".tree-line.active" in js
     assert "scrollIntoView" in js
+    assert ".tree-line.public-best .dot" in css
     assert ".tree-toolbar" in css
     assert "position: sticky;" in css
     assert "z-index: 5;" in css

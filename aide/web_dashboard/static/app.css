@@ -173,10 +173,6 @@ main {
   color: #34d399;
 }
 
-.tree-line.best .dot {
-  background: #e6c700;
-}
-
 .tree-line.best .label {
   color: #e6c700;
 }
@@ -193,7 +189,7 @@ main {
   content: "◆";
 }
 
-.tree-line.best.public .dot {
+.tree-line.public-best .dot {
   color: #e6c700;
 }
 

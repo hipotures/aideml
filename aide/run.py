@@ -976,22 +976,9 @@ def journal_to_rich_tree(
                 s = f"[bright_black]◉ {metric_text}{suffix}{runtime_suffix}"
             elif disable_oom_saturated_parents and node.is_oom_blocked_parent:
                 s = f"[bright_black]✕ {metric_text}{suffix}{runtime_suffix}"
-            elif node is best_node:
-                style = "bold "
-                s = f"[bold yellow]*[/bold yellow] [{style}green]{metric_text}{suffix}{runtime_suffix}"
-            elif _is_base_root(node):
-                style = "bold " if node is best_node else ""
-                s = (
-                    f"[bright_magenta]◎[/bright_magenta] "
-                    f"[{style}green]{metric_text}{suffix}{runtime_suffix}"
-                )
-            elif synthesis_root:
-                style = "bold " if node is best_node else ""
-                metric_style = f"{style}green"
-                s = f"[blue]◆[/blue] [{metric_style}]{metric_text}{suffix}{runtime_suffix}"
             else:
-                style = "bold " if node is best_node else ""
-                s = f"[{style}green]● {metric_text}{suffix}{runtime_suffix}"
+                metric_style = "bold yellow" if node is best_node else "green"
+                s = f"[green]●[/green] [{metric_style}]{metric_text}{suffix}{runtime_suffix}"
 
         subtree = tree.add(s)
         for child in sorted(
@@ -1045,6 +1032,7 @@ def _tree_node_label(
     node: Node,
     *,
     best_node: Node | None,
+    public_best_node: Node | None = None,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
@@ -1060,7 +1048,6 @@ def _tree_node_label(
     synthesis_root = bool(synthesis_node_ids and node.id in synthesis_node_ids) or (
         node.parent is None and str(node.plan or "").startswith(SYNTHESIS_PLAN_PREFIX)
     )
-    baseline_root = _is_base_root(node)
     if synthesis_root and (
         node.is_buggy or node.metric is None or node.metric.value is None
     ):
@@ -1086,17 +1073,10 @@ def _tree_node_label(
         )
 
     label = Text()
-    if node is best_node:
-        label.append("* ", style="bold yellow")
-        if public_bonus_node_ids and node.id in public_bonus_node_ids:
-            label.append("◆ ", style="green")
-    elif baseline_root:
-        label.append("◎ ", style="bright_magenta")
-    elif synthesis_root:
-        label.append("◆", style="blue")
-        label.append(" ")
-    elif public_bonus_node_ids and node.id in public_bonus_node_ids:
-        label.append("◆ ", style="green")
+    is_public_bonus = bool(public_bonus_node_ids and node.id in public_bonus_node_ids)
+    if is_public_bonus:
+        diamond_style = "bold yellow" if node is public_best_node else "green"
+        label.append("◆ ", style=diamond_style)
     else:
         label.append("● ", style="green")
 
@@ -1112,6 +1092,7 @@ def _tree_active_node_label(
     active_stage: str | None,
     blink_on: bool,
     best_node: Node | None,
+    public_best_node: Node | None = None,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
@@ -1126,6 +1107,7 @@ def _tree_active_node_label(
     label = _tree_node_label(
         node,
         best_node=best_node,
+        public_best_node=public_best_node,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
         synthesis_node_ids=synthesis_node_ids,
@@ -1239,8 +1221,16 @@ def build_tree_view(
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
-        score_fn=score_fn,
     )
+    public_best_node = _visible_best_node(
+        journal,
+        show_invalid_submission_branches=show_invalid_submission_branches,
+        disable_oom_saturated_parents=disable_oom_saturated_parents,
+        plateau_block_epsilon=plateau_block_epsilon,
+        score_fn=score_fn,
+    ) if score_fn is not None else None
+    if public_best_node is not None and public_best_node.id not in public_bonus_node_ids:
+        public_best_node = None
 
     def node_order_key(node: Node):
         return (
@@ -1331,6 +1321,7 @@ def build_tree_view(
                     active_stage=active_stage,
                     blink_on=blink_on,
                     best_node=best_node,
+                    public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
@@ -1342,6 +1333,7 @@ def build_tree_view(
                 _tree_node_label(
                     node,
                     best_node=best_node,
+                    public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
                     synthesis_node_ids=synthesis_node_ids,
@@ -1484,27 +1476,11 @@ def best_tree_item_id(
     *,
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
-    public_scores_by_node_id: dict[str, float] | None = None,
-    public_score_bonus_weight: float = 0.0,
-    public_score_bonus_cap: float = 0.0,
 ) -> str | None:
-    public_scores_by_node_id = public_scores_by_node_id or {}
-    score_fn: Callable[[Node], float] | None = None
-    if public_scores_by_node_id and public_score_bonus_weight > 0.0:
-        def public_adjusted_score(node: Node) -> float:
-            return _public_adjusted_tree_score(
-                node,
-                public_scores_by_node_id=public_scores_by_node_id,
-                weight=public_score_bonus_weight,
-                cap=public_score_bonus_cap,
-            )
-
-        score_fn = public_adjusted_score
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
-        score_fn=score_fn,
     )
     if best_node is None or best_node.id not in view.index_by_id:
         return None
@@ -4333,11 +4309,6 @@ def run(argv: list[str] | None = None):
                     disable_oom_saturated_parents=(
                         cfg.agent.search.disable_oom_saturated_parents
                     ),
-                    public_scores_by_node_id=agent.public_scores_by_node_id,
-                    public_score_bonus_weight=(
-                        cfg.agent.search.public_score_bonus_weight
-                    ),
-                    public_score_bonus_cap=cfg.agent.search.public_score_bonus_cap,
                 )
                 if target_id is not None:
                     focused_tree_item_id = target_id

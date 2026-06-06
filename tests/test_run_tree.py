@@ -288,7 +288,7 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
 
     output = _render_text(tree)
 
-    assert "* 0.94500" in output
+    assert "● 0.94500" in output
     assert "[*]" in output
     assert "executing" not in output
 
@@ -303,7 +303,7 @@ def test_journal_tree_uses_step_suffix_when_hypothesis_id_is_missing():
     output = _render_text(journal_to_rich_tree(journal))
 
     assert "0.94500·0" in output
-    assert "* 0.94600·1" in output
+    assert "● 0.94600·1" in output
 
 
 def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
@@ -323,7 +323,7 @@ def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
     )
 
     assert "0.94500·0" in output
-    assert "* 0.94600·1" in output
+    assert "● 0.94600·1" in output
 
 
 def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
@@ -349,10 +349,10 @@ def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
     )
 
     assert "0.94500·0·16m" in rich_output
-    assert "* 0.94600·1·47m" in rich_output
+    assert "● 0.94600·1·47m" in rich_output
     assert "bug·2·0m" not in rich_output
     assert "0.94500·0·16m" in view_output
-    assert "* 0.94600·1·47m" in view_output
+    assert "● 0.94600·1·47m" in view_output
     assert "bug·2·0m" not in view_output
 
 
@@ -494,7 +494,7 @@ def test_tree_view_ignores_generated_only_node_when_selecting_best():
         )
     )
 
-    assert "* 0.94100·000111" in output
+    assert "● 0.94100·000111" in output
     assert "generated·000123" in output
 
 
@@ -511,7 +511,7 @@ def test_final_tree_renderable_prints_complete_tree_without_focus():
 
     assert "Solution tree" in output
     assert "0.94100·000111" in output
-    assert "* 0.94200·000222" in output
+    assert "● 0.94200·000222" in output
     assert "\x1b[7m" not in output
 
 
@@ -573,7 +573,7 @@ def test_journal_tree_hides_invalid_submission_branch_by_default():
     assert "0.99000" not in output
 
 
-def test_journal_tree_best_marker_ignores_hidden_invalid_submission_branch():
+def test_journal_tree_best_label_ignores_hidden_invalid_submission_branch():
     journal = Journal()
     invalid = _submission_bug_node()
     hidden_best = _good_node(0.99, parent=invalid)
@@ -587,7 +587,7 @@ def test_journal_tree_best_marker_ignores_hidden_invalid_submission_branch():
     output = _render_text(tree)
 
     assert "0.99000" not in output
-    assert "* 0.90000" in output
+    assert "● 0.90000" in output
 
 
 def test_journal_tree_can_show_invalid_submission_branch():
@@ -660,7 +660,7 @@ def test_tree_view_keeps_child_outside_plateau_epsilon_unblocked():
     assert "◉ 0.96539" not in output
 
 
-def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
+def test_journal_tree_uses_score_icon_for_scored_synthesis_root():
     journal = Journal()
     root = Node(
         code="print('synth')",
@@ -673,15 +673,13 @@ def test_journal_tree_marks_synthesis_root_blue_but_children_normal():
     journal.append(child)
 
     output = _render_text(journal_to_rich_tree(journal))
-    ansi = _render_ansi(journal_to_rich_tree(journal))
 
-    assert "◆ 0.94600" in output
+    assert "● 0.94600" in output
     assert "synthesis)" not in output
-    assert "* 0.94700" in output
-    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+    assert "● 0.94700" in output
 
 
-def test_journal_tree_marks_status_recorded_synthesis_root_blue():
+def test_journal_tree_uses_score_icon_for_status_recorded_synthesis_root():
     journal = Journal()
     root = Node(
         code="print('synth')",
@@ -695,14 +693,12 @@ def test_journal_tree_marks_status_recorded_synthesis_root_blue():
 
     tree = journal_to_rich_tree(journal, synthesis_node_ids={root.id})
     output = _render_text(tree)
-    ansi = _render_ansi(tree)
 
-    assert "◆ 0.94600" in output
-    assert "* 0.94700" in output
-    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+    assert "● 0.94600" in output
+    assert "● 0.94700" in output
 
 
-def test_journal_tree_marks_baseline_with_star_until_new_best_then_bullseye():
+def test_journal_tree_uses_score_icons_for_baseline_nodes():
     journal = Journal()
     baseline = Node(
         code="print('baseline')",
@@ -715,19 +711,18 @@ def test_journal_tree_marks_baseline_with_star_until_new_best_then_bullseye():
     output = _render_text(journal_to_rich_tree(journal))
     ansi = _render_ansi(journal_to_rich_tree(journal))
 
-    assert "* 0.95000" in output
+    assert "● 0.95000" in output
     assert "◎" not in output
-    assert "\x1b[1;33m*" in ansi
+    assert "\x1b[1;33m0.95000" in ansi
 
     improved = _good_node(0.951)
     journal.append(improved)
 
     output = _render_text(journal_to_rich_tree(journal))
-    ansi = _render_ansi(journal_to_rich_tree(journal))
 
-    assert "◎ 0.95000" in output
-    assert "* 0.95100" in output
-    assert "\x1b[95m◎" in ansi
+    assert "● 0.95000" in output
+    assert "● 0.95100" in output
+    assert "◎" not in output
 
 
 def test_journal_tree_treats_appended_node_without_metric_as_bug():
@@ -762,7 +757,7 @@ def test_journal_tree_ignores_unappended_active_child_node():
 
     output = _render_text(tree)
 
-    assert "* 0.94500" in output
+    assert "● 0.94500" in output
     assert "n/a" not in output
     assert "[*]" in output
 
@@ -1184,7 +1179,8 @@ def test_render_tree_view_highlights_node_marker_and_score_not_tree_guides():
     ))
 
     assert "\x1b[7m└──" not in output
-    assert "\x1b[1;7;33m*" in output
+    assert "\x1b[7;32m●" in output
+    assert "\x1b[1;7;33m0.91000" in output
 
 
 def test_tree_view_renders_active_placeholder_as_tree_child():
@@ -1207,7 +1203,7 @@ def test_tree_view_renders_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── * 0.91000" in output
+    assert "├── ● 0.91000" in output
     assert "└── [*]" in output
 
 
@@ -1235,7 +1231,7 @@ def test_tree_view_renders_active_hypothesis_id_on_placeholder():
     assert "└── [*]·000348" in output
 
 
-def test_tree_view_marks_baseline_bullseye_when_not_best():
+def test_tree_view_uses_score_icons_for_baseline_nodes():
     journal = Journal()
     baseline = Node(code="print('baseline')", plan=f"{BASELINE_PLAN_PREFIX}: raw")
     baseline.metric = MetricValue(0.950, maximize=True)
@@ -1254,11 +1250,12 @@ def test_tree_view_marks_baseline_bullseye_when_not_best():
         )
     )
 
-    assert "◎ 0.95000" in output
-    assert "* 0.95100" in output
+    assert "● 0.95000" in output
+    assert "● 0.95100" in output
+    assert "◎" not in output
 
 
-def test_tree_view_marks_seeded_base_bullseye_when_not_best():
+def test_tree_view_uses_score_icons_for_seeded_base_nodes():
     journal = Journal()
     seeded = Node(code="print('seed')", plan=f"{SEEDED_BASE_PLAN_PREFIX}: source")
     seeded.metric = MetricValue(0.950, maximize=True)
@@ -1277,8 +1274,9 @@ def test_tree_view_marks_seeded_base_bullseye_when_not_best():
         )
     )
 
-    assert "◎ 0.95000" in output
-    assert "* 0.95100" in output
+    assert "● 0.95000" in output
+    assert "● 0.95100" in output
+    assert "◎" not in output
 
 
 def test_tree_view_keeps_oom_saturated_parent_active_by_default():
@@ -1298,7 +1296,7 @@ def test_tree_view_keeps_oom_saturated_parent_active_by_default():
     )
     output = _render_text(tree)
 
-    assert "* 0.95100" in output
+    assert "● 0.95100" in output
     assert "✕ 0.95100" not in output
     assert "failed" not in output.lower()
     assert "0.95000" in output
@@ -1328,7 +1326,7 @@ def test_tree_view_marks_oom_blocked_parent_gray_when_enabled():
     assert "\x1b[90m✕ 0.95100" in ansi
 
 
-def test_tree_view_colors_best_metric_yellow_like_star():
+def test_tree_view_colors_best_cv_metric_yellow_without_changing_icon():
     journal = Journal()
     best = _good_node(0.951)
     journal.append(_good_node(0.950))
@@ -1343,8 +1341,9 @@ def test_tree_view_colors_best_metric_yellow_like_star():
     output = _render_text(tree)
     ansi = _render_ansi(tree)
 
-    assert "* 0.95100" in output
-    assert "\x1b[1;33m* " in ansi
+    assert "● 0.95100" in output
+    assert "* 0.95100" not in output
+    assert "\x1b[32m●" in ansi
     assert "\x1b[1;33m0.95100" in ansi
 
 
@@ -1370,13 +1369,18 @@ def test_tree_view_marks_public_bonus_node_with_diamond_but_shows_cv():
         viewport_height=10,
     )
     output = _render_text(tree)
+    ansi = _render_ansi(tree)
 
-    assert "* ◆ 0.96789" in output
-    assert "* 0.96793" not in output
+    assert "◆ 0.96793" in output
+    assert "◆ 0.96789" in output
+    assert "* " not in output
     assert "0.96830" not in output
+    assert "\x1b[1;33m0.96793" in ansi
+    assert "\x1b[1;33m◆ " in ansi
+    assert "\x1b[32m0.96789" in ansi
 
 
-def test_tree_view_marks_status_recorded_synthesis_root_blue():
+def test_tree_view_uses_score_icon_for_status_recorded_synthesis_root():
     journal = Journal()
     root = Node(
         code="print('synth')",
@@ -1396,11 +1400,9 @@ def test_tree_view_marks_status_recorded_synthesis_root_blue():
         viewport_height=10,
     )
     output = _render_text(rendered)
-    ansi = _render_ansi(rendered)
 
-    assert "◆ 0.94600" in output
-    assert "* 0.94700" in output
-    assert "\x1b[34m◆\x1b[0m \x1b[32m0.94600" in ansi
+    assert "● 0.94600" in output
+    assert "● 0.94700" in output
 
 
 def test_synthesis_injected_node_ids_reads_checkpoint_status(tmp_path):
@@ -1432,7 +1434,7 @@ def test_tree_view_renders_root_active_placeholder_as_tree_child():
         viewport_height=10,
     ))
 
-    assert "├── * 0.90000" in output
+    assert "├── ● 0.90000" in output
     assert "└── [ ]" in output
 
 

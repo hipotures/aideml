@@ -83,11 +83,7 @@ def _best_scored_node(
     journal: Journal,
     *,
     plateau_block_epsilon: float,
-    public_scores_by_node_id: dict[str, float] | None = None,
-    public_score_bonus_weight: float = 0.0,
-    public_score_bonus_cap: float = 0.0,
 ) -> Node | None:
-    public_scores_by_node_id = public_scores_by_node_id or {}
     candidates = [
         node
         for node in journal.good_nodes
@@ -97,18 +93,42 @@ def _best_scored_node(
             epsilon=plateau_block_epsilon,
         )
     ]
-    if public_scores_by_node_id and public_score_bonus_weight > 0.0:
-        return max(
-            candidates,
-            key=lambda node: _public_adjusted_tree_score(
-                node,
-                public_scores_by_node_id=public_scores_by_node_id,
-                weight=public_score_bonus_weight,
-                cap=public_score_bonus_cap,
-            ),
-            default=None,
-        )
     return max(candidates, key=lambda node: node.metric, default=None)
+
+
+def _public_best_scored_node(
+    journal: Journal,
+    *,
+    plateau_block_epsilon: float,
+    public_scores_by_node_id: dict[str, float],
+    public_score_bonus_weight: float,
+    public_score_bonus_cap: float,
+    public_bonus_node_ids: set[str],
+) -> Node | None:
+    if not public_scores_by_node_id or public_score_bonus_weight <= 0.0:
+        return None
+    candidates = [
+        node
+        for node in journal.good_nodes
+        if node.metric is not None and node.metric.value is not None
+        and not is_plateau_blocked_descendant(
+            node,
+            epsilon=plateau_block_epsilon,
+        )
+    ]
+    best = max(
+        candidates,
+        key=lambda node: _public_adjusted_tree_score(
+            node,
+            public_scores_by_node_id=public_scores_by_node_id,
+            weight=public_score_bonus_weight,
+            cap=public_score_bonus_cap,
+        ),
+        default=None,
+    )
+    if best is None or best.id not in public_bonus_node_ids:
+        return None
+    return best
 
 
 def _metric_text(metric: MetricValue | None) -> str | None:
@@ -121,6 +141,7 @@ def _line_for_node(
     node: Node,
     *,
     best_node: Node | None,
+    public_best_node: Node | None,
     plateau_block_epsilon: float,
     public_bonus_node_ids: set[str],
 ) -> tuple[str, str]:
@@ -138,12 +159,16 @@ def _line_for_node(
         return f"bug{suffix}{runtime_suffix}", "bug"
     if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
         return f"{metric}{suffix}{runtime_suffix}", "blocked"
+    is_public_bonus = node.id in public_bonus_node_ids
+    is_public_best = node is public_best_node
+    kinds: list[str] = []
     if node is best_node:
-        kind = "best public" if node.id in public_bonus_node_ids else "best"
-        return f"{metric}{suffix}{runtime_suffix}", kind
-    if node.id in public_bonus_node_ids:
-        return f"{metric}{suffix}{runtime_suffix}", "public"
-    return f"{metric}{suffix}{runtime_suffix}", "ok"
+        kinds.append("best")
+    if is_public_bonus:
+        kinds.append("public")
+    if is_public_best:
+        kinds.append("public-best")
+    return f"{metric}{suffix}{runtime_suffix}", " ".join(kinds) or "ok"
 
 
 def build_web_tree_lines(
@@ -172,9 +197,14 @@ def build_web_tree_lines(
     best_node = _best_scored_node(
         journal,
         plateau_block_epsilon=plateau_block_epsilon,
+    )
+    public_best_node = _public_best_scored_node(
+        journal,
+        plateau_block_epsilon=plateau_block_epsilon,
         public_scores_by_node_id=public_scores_by_node_id,
         public_score_bonus_weight=public_score_bonus_weight,
         public_score_bonus_cap=public_score_bonus_cap,
+        public_bonus_node_ids=public_bonus_node_ids,
     )
     lines: list[WebTreeLine] = []
 
@@ -217,6 +247,7 @@ def build_web_tree_lines(
         label, kind = _line_for_node(
             node,
             best_node=best_node,
+            public_best_node=public_best_node,
             plateau_block_epsilon=plateau_block_epsilon,
             public_bonus_node_ids=public_bonus_node_ids,
         )
