@@ -1,4 +1,5 @@
 import copy
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -9,7 +10,22 @@ import dataclasses_json
 from ..journal import Journal
 
 
-def dumps_json(obj: dataclasses_json.DataClassJsonMixin):
+def _legacy_artifact_dir_name(node_dict: dict) -> str | None:
+    ctime = node_dict.get("ctime")
+    if isinstance(ctime, (int, float)) and not isinstance(ctime, bool):
+        return dt.datetime.fromtimestamp(float(ctime)).strftime("%Y%m%dT%H%M%S")
+    return None
+
+
+def _relative_code_path(artifact_dir_name: str) -> str:
+    return (Path("artifacts") / artifact_dir_name / "solution.py").as_posix()
+
+
+def dumps_json(
+    obj: dataclasses_json.DataClassJsonMixin,
+    *,
+    base_dir: Path | None = None,
+):
     """Serialize AIDE dataclasses (such as Journals) to JSON."""
     if isinstance(obj, Journal):
         obj = copy.deepcopy(obj)
@@ -17,19 +33,36 @@ def dumps_json(obj: dataclasses_json.DataClassJsonMixin):
         for n in obj.nodes:
             n.parent = None
             n.children = set()
+            artifact_dir_name = (
+                n.artifact_dir_name.strip()
+                if isinstance(n.artifact_dir_name, str)
+                else None
+            )
+            if not artifact_dir_name:
+                raise ValueError(
+                    f"Cannot serialize node {n.id}: missing artifact_dir_name."
+                )
+            code_path = _relative_code_path(artifact_dir_name)
+            if base_dir is not None and not (base_dir / code_path).exists():
+                raise FileNotFoundError(
+                    f"Cannot serialize node {n.id}: missing solution artifact "
+                    f"{base_dir / code_path}"
+                )
+            n.code = ""
+            n.code_path = code_path
 
     obj_dict = obj.to_dict()
 
     if isinstance(obj, Journal):
         obj_dict["node2parent"] = node2parent  # type: ignore
-        obj_dict["__version"] = "2"
+        obj_dict["__version"] = "3"
 
     return json.dumps(obj_dict, separators=(",", ":"))
 
 
 def dump_json(obj: dataclasses_json.DataClassJsonMixin, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = dumps_json(obj)
+    data = dumps_json(obj, base_dir=path.parent)
     tmp_name = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -55,9 +88,62 @@ def dump_json(obj: dataclasses_json.DataClassJsonMixin, path: Path):
 G = TypeVar("G", bound=dataclasses_json.DataClassJsonMixin)
 
 
-def loads_json(s: str, cls: Type[G]) -> G:
+def _hydrate_journal_code(obj_dict: dict, *, base_dir: Path) -> None:
+    version = str(obj_dict.get("__version") or "2")
+    nodes = obj_dict.get("nodes")
+    if not isinstance(nodes, list):
+        return
+
+    for node_dict in nodes:
+        if not isinstance(node_dict, dict):
+            continue
+        node_id = str(node_dict.get("id") or "<unknown>")
+        code_path_value = node_dict.get("code_path")
+        code_path = (
+            code_path_value.strip()
+            if isinstance(code_path_value, str) and code_path_value.strip()
+            else None
+        )
+        artifact_dir_name = node_dict.get("artifact_dir_name")
+        if not code_path:
+            if version != "2":
+                raise ValueError(f"Journal node {node_id} is missing code_path.")
+            if isinstance(artifact_dir_name, str) and artifact_dir_name.strip():
+                code_path = _relative_code_path(artifact_dir_name.strip())
+            else:
+                legacy_name = _legacy_artifact_dir_name(node_dict)
+                if legacy_name is None:
+                    raise ValueError(
+                        f"Legacy journal node {node_id} cannot infer code_path."
+                    )
+                artifact_dir_name = legacy_name
+                code_path = _relative_code_path(legacy_name)
+
+        solution_path = base_dir / code_path
+        if not solution_path.exists():
+            raise FileNotFoundError(
+                f"Journal node {node_id} solution artifact is missing: {solution_path}"
+            )
+        if not isinstance(artifact_dir_name, str) or not artifact_dir_name.strip():
+            parts = Path(code_path).parts
+            if len(parts) >= 3 and parts[0] == "artifacts":
+                artifact_dir_name = parts[1]
+        if not isinstance(artifact_dir_name, str) or not artifact_dir_name.strip():
+            raise ValueError(f"Journal node {node_id} is missing artifact_dir_name.")
+        node_dict["code"] = solution_path.read_text(encoding="utf-8")
+        node_dict["code_path"] = code_path
+        if (
+            not isinstance(node_dict.get("artifact_dir_name"), str)
+            or not node_dict["artifact_dir_name"].strip()
+        ):
+            node_dict["artifact_dir_name"] = artifact_dir_name
+
+
+def loads_json(s: str, cls: Type[G], *, base_dir: Path | None = None) -> G:
     """Deserialize JSON to AIDE dataclasses."""
     obj_dict = json.loads(s)
+    if cls is Journal:
+        _hydrate_journal_code(obj_dict, base_dir=base_dir or Path.cwd())
     obj = cls.from_dict(obj_dict)
 
     if isinstance(obj, Journal):
@@ -70,4 +156,4 @@ def loads_json(s: str, cls: Type[G]) -> G:
 
 def load_json(path: Path, cls: Type[G]) -> G:
     with open(path, "r") as f:
-        return loads_json(f.read(), cls)
+        return loads_json(f.read(), cls, base_dir=path.parent)

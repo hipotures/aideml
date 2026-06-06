@@ -48,6 +48,7 @@ class Node(DataClassJsonMixin):
 
     # ---- code & plan ----
     code: str
+    code_path: str | None = field(default=None, kw_only=True)
     plan: str = field(default=None, kw_only=True)  # type: ignore
 
     # ---- general attrs ----

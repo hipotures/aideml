@@ -49,6 +49,7 @@ class PromotionPlan:
 class PromotionCandidate:
     rank_score: float
     source_score: float
+    code: str
     journal_path: Path
     source_run_id: str
     source_agent_mode: str
@@ -206,6 +207,30 @@ def _source_artifact_dir(journal_path: Path, node: dict[str, Any]) -> str | None
     return (relative_run_dir / "artifacts" / artifact_dir_name).as_posix()
 
 
+def _legacy_artifact_dir_name(node: dict[str, Any]) -> str | None:
+    ctime = node.get("ctime")
+    if isinstance(ctime, int | float) and not isinstance(ctime, bool):
+        return dt.datetime.fromtimestamp(float(ctime)).strftime("%Y%m%dT%H%M%S")
+    return None
+
+
+def _node_code_path(journal_path: Path, node: dict[str, Any]) -> Path:
+    code_path = node.get("code_path")
+    if isinstance(code_path, str) and code_path.strip():
+        return journal_path.parent / code_path.strip()
+    artifact_dir_name = node.get("artifact_dir_name")
+    if isinstance(artifact_dir_name, str) and artifact_dir_name.strip():
+        return journal_path.parent / "artifacts" / artifact_dir_name.strip() / "solution.py"
+    legacy_name = _legacy_artifact_dir_name(node)
+    if legacy_name is not None:
+        return journal_path.parent / "artifacts" / legacy_name / "solution.py"
+    raise ValueError(f"Node {node.get('id')} has no code_path or artifact path.")
+
+
+def _node_code(journal_path: Path, node: dict[str, Any]) -> str:
+    return _node_code_path(journal_path, node).read_text(encoding="utf-8")
+
+
 def _node_timestamp(node: dict[str, Any]) -> str:
     ctime = node.get("ctime")
     if isinstance(ctime, int | float) and not isinstance(ctime, bool):
@@ -242,6 +267,7 @@ def _promotion_entry(
     branch_path: tuple[str, ...],
     artifact_dir: str | None,
     destination_dir: Path,
+    code: str,
     source_kind: str = "promoted_branch",
 ) -> PromotionEntry:
     return PromotionEntry(
@@ -258,7 +284,7 @@ def _promotion_entry(
         source_plan=_node_text(node, "plan"),
         source_analysis=_node_text(node, "analysis"),
         source_validity_warning=_node_text(node, "validity_warning"),
-        code=str(node["code"]),
+        code=code,
         created_at=_node_timestamp(node),
         destination_dir=destination_dir,
     )
@@ -286,9 +312,13 @@ def _branch_candidates_from_journal(
             continue
         if node.get("is_buggy") is True:
             continue
-        code = node.get("code")
-        if not isinstance(code, str) or not code.strip():
-            skipped.append(f"{source_run_id}:{node_id} branch node has empty code.")
+        try:
+            code = _node_code(journal_path, node)
+        except (OSError, ValueError) as exc:
+            skipped.append(f"{source_run_id}:{node_id} branch node has no artifact code: {exc}")
+            continue
+        if not code.strip():
+            skipped.append(f"{source_run_id}:{node_id} branch node has empty artifact code.")
             continue
         score = _node_score(node)
         if score is None:
@@ -300,6 +330,7 @@ def _branch_candidates_from_journal(
             PromotionCandidate(
                 rank_score=score[1],
                 source_score=score[0],
+                code=code,
                 journal_path=journal_path,
                 source_run_id=source_run_id,
                 source_agent_mode=source_agent_mode,
@@ -363,6 +394,7 @@ def _plan_from_candidates(
                     branch_path=candidate.branch_path,
                     artifact_dir=candidate.artifact_dir,
                     destination_dir=task_dir / existing_id,
+                    code=candidate.code,
                     source_kind=_promotion_kind_for_node(candidate.node),
                 )
             )
@@ -382,6 +414,7 @@ def _plan_from_candidates(
                 branch_path=candidate.branch_path,
                 artifact_dir=candidate.artifact_dir,
                 destination_dir=task_dir / hypothesis_id,
+                code=candidate.code,
                 source_kind=_promotion_kind_for_node(candidate.node),
             )
         )
@@ -461,9 +494,12 @@ def plan_node_promotion(
         raise ValueError(f"No node matching {label} found in {journal_path}.")
     if selected.get("is_buggy") is True:
         raise ValueError("Refusing to promote a buggy node.")
-    code = selected.get("code")
-    if not isinstance(code, str) or not code.strip():
-        raise ValueError("Refusing to promote a node with empty code.")
+    try:
+        code = _node_code(journal_path, selected)
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"Refusing to promote a node without artifact code: {exc}") from exc
+    if not code.strip():
+        raise ValueError("Refusing to promote a node with empty artifact code.")
     score = _node_score(selected)
     if score is None:
         raise ValueError("Refusing to promote a node without a numeric score.")
@@ -493,6 +529,7 @@ def plan_node_promotion(
                 branch_path=branch_path,
                 artifact_dir=artifact_dir,
                 destination_dir=task_dir / existing_id,
+                code=code,
                 source_kind=source_kind,
             ),
         )
@@ -512,6 +549,7 @@ def plan_node_promotion(
                 branch_path=branch_path,
                 artifact_dir=artifact_dir,
                 destination_dir=task_dir / hypothesis_id,
+                code=code,
                 source_kind=source_kind,
             ),
         )

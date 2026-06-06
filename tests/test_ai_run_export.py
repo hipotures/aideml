@@ -47,7 +47,7 @@ def _write_run(tmp_path: Path) -> Path:
     journal.append(root)
     journal.append(child)
     journal.append(bug)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
     return log_dir
 
 
@@ -65,6 +65,16 @@ def _write_data_dir(tmp_path: Path) -> Path:
 
 def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def _persist_journal(log_dir: Path, journal: Journal) -> None:
+    for node in journal.nodes:
+        if node.artifact_dir_name is None:
+            node.artifact_dir_name = artifact_timestamp_from_ctime(node.ctime)
+        artifact_dir = log_dir / "artifacts" / node.artifact_dir_name
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        (artifact_dir / "solution.py").write_text(node.code, encoding="utf-8")
+    serialize.dump_json(journal, log_dir / "journal.json")
 
 
 def test_export_preserves_tree_and_full_code(tmp_path):
@@ -156,7 +166,7 @@ def test_export_handles_invalid_metric_value(tmp_path):
     )
     journal = Journal()
     journal.append(bug)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
 
@@ -193,7 +203,7 @@ def test_export_best_local_uses_minimizing_metric_semantics(tmp_path):
     journal = Journal()
     journal.append(worse)
     journal.append(better)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
 
@@ -227,7 +237,7 @@ def test_export_best_local_keeps_zero_score_as_valid(tmp_path):
     journal = Journal()
     journal.append(worse)
     journal.append(better)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
 
@@ -242,7 +252,7 @@ def test_export_includes_submission_hash_and_public_score_by_node_id(tmp_path):
     log_dir = _write_run(tmp_path)
     timestamp = artifact_timestamp_from_ctime(1770000000.0)
     artifact_dir = log_dir / "artifacts" / timestamp
-    artifact_dir.mkdir(parents=True)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
     submission = artifact_dir / "submission.csv"
     submission.write_text("id,PitNextLap\n1,0.8\n")
     registry = log_dir.parent / "submission_registry.json"
@@ -279,7 +289,7 @@ def test_export_maps_public_score_by_sha_prefix(tmp_path):
     log_dir = _write_run(tmp_path)
     timestamp = artifact_timestamp_from_ctime(1770000000.0)
     artifact_dir = log_dir / "artifacts" / timestamp
-    artifact_dir.mkdir(parents=True)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
     submission = artifact_dir / "submission.csv"
     submission.write_text("id,PitNextLap\n1,0.8\n")
     from aide.utils.ai_run_export import _sha256_file
@@ -315,13 +325,13 @@ def test_export_marks_exact_code_and_submission_duplicates_without_pruning(tmp_p
     log_dir = _write_run(tmp_path)
     journal = serialize.load_json(log_dir / "journal.json", Journal)
     journal.nodes[1].code = journal.nodes[0].code
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
     root_timestamp = artifact_timestamp_from_ctime(1770000000.0)
     child_timestamp = artifact_timestamp_from_ctime(1770000060.0)
     root_artifact = log_dir / "artifacts" / root_timestamp
     child_artifact = log_dir / "artifacts" / child_timestamp
-    root_artifact.mkdir(parents=True)
-    child_artifact.mkdir(parents=True)
+    root_artifact.mkdir(parents=True, exist_ok=True)
+    child_artifact.mkdir(parents=True, exist_ok=True)
     body = "id,PitNextLap\n1,0.8\n2,0.2\n"
     (root_artifact / "submission.csv").write_text(body)
     (child_artifact / "submission.csv").write_text(body)
@@ -356,8 +366,8 @@ def test_export_marks_near_submission_duplicate_hint(tmp_path):
     child_timestamp = artifact_timestamp_from_ctime(1770000060.0)
     root_artifact = log_dir / "artifacts" / root_timestamp
     child_artifact = log_dir / "artifacts" / child_timestamp
-    root_artifact.mkdir(parents=True)
-    child_artifact.mkdir(parents=True)
+    root_artifact.mkdir(parents=True, exist_ok=True)
+    child_artifact.mkdir(parents=True, exist_ok=True)
     (root_artifact / "submission.csv").write_text(
         "id,PitNextLap\n1,0.80000\n2,0.20000\n"
     )
@@ -404,7 +414,7 @@ def test_export_normalizes_code_line_endings_for_exact_duplicates(tmp_path):
     journal = Journal()
     journal.append(root)
     journal.append(child)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     result = export_run_for_ai(log_dir, output_dir=tmp_path / "exports")
     nodes = _read_jsonl(result.nodes_path)
@@ -444,15 +454,15 @@ def test_export_public_scores_follow_minimizing_metric_semantics(tmp_path):
     journal = Journal()
     journal.append(first)
     journal.append(second)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     first_timestamp = artifact_timestamp_from_ctime(first.ctime)
     second_timestamp = artifact_timestamp_from_ctime(second.ctime)
-    (log_dir / "artifacts" / first_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / first_timestamp).mkdir(parents=True, exist_ok=True)
     (log_dir / "artifacts" / first_timestamp / "submission.csv").write_text(
         "id,PitNextLap\n1,0.8\n"
     )
-    (log_dir / "artifacts" / second_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / second_timestamp).mkdir(parents=True, exist_ok=True)
     (log_dir / "artifacts" / second_timestamp / "submission.csv").write_text(
         "id,PitNextLap\n1,0.7\n"
     )
@@ -525,12 +535,12 @@ def test_export_preserves_unknown_metric_direction_and_ranks_as_maximize(tmp_pat
     journal = Journal()
     journal.append(root)
     journal.append(child)
-    serialize.dump_json(journal, log_dir / "journal.json")
+    _persist_journal(log_dir, journal)
 
     root_timestamp = artifact_timestamp_from_ctime(root.ctime)
     child_timestamp = artifact_timestamp_from_ctime(child.ctime)
-    (log_dir / "artifacts" / root_timestamp).mkdir(parents=True)
-    (log_dir / "artifacts" / child_timestamp).mkdir(parents=True)
+    (log_dir / "artifacts" / root_timestamp).mkdir(parents=True, exist_ok=True)
+    (log_dir / "artifacts" / child_timestamp).mkdir(parents=True, exist_ok=True)
     body = "id,PitNextLap\n1,0.8\n2,0.2\n"
     (log_dir / "artifacts" / root_timestamp / "submission.csv").write_text(body)
     (log_dir / "artifacts" / child_timestamp / "submission.csv").write_text(body)

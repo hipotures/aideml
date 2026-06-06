@@ -12,6 +12,7 @@ from typing import Any
 from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
+from aide.utils.node_artifacts import node_artifact_dir
 from aide.utils.prediction_similarity import submission_prediction_rmse
 from scripts.smart_kaggle_submit import _parse_public_score, _sha256_matches
 
@@ -288,7 +289,7 @@ def _node_depth(node: Node) -> int:
 
 
 def _artifact_dir(log_dir: Path, node: Node) -> Path:
-    return log_dir / "artifacts" / _timestamp_from_node(node)
+    return node_artifact_dir(log_dir, node)
 
 
 def _public_score_for_node(

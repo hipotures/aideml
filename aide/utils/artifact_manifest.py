@@ -185,7 +185,9 @@ def build_node_artifact_manifest(
     test_predictions_path = artifact_dir / "test_predictions.csv"
     validation_predictions_path = artifact_dir / "validation_predictions.csv"
     error_path = artifact_dir / "error.txt"
-    code = solution_path.read_text(encoding="utf-8") if solution_path.exists() else node.code
+    if not solution_path.exists():
+        raise FileNotFoundError(f"Missing node solution artifact: {solution_path}")
+    code = solution_path.read_text(encoding="utf-8")
     eval_metric = configured_metric_name(cfg)
     metric = metric_payload(node, name=eval_metric)
     status = node_status(node)
@@ -284,7 +286,9 @@ def _node_from_manifest(manifest: dict[str, Any], artifact_dir: Path) -> Node:
     execution = manifest.get("execution") or {}
     metric_payload_ = node_payload.get("metric") or {}
     solution_path = artifact_dir / "solution.py"
-    code = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
+    if not solution_path.exists():
+        raise FileNotFoundError(f"Missing node solution artifact: {solution_path}")
+    code = solution_path.read_text(encoding="utf-8")
     node = Node(
         code=code,
         plan=node_payload.get("plan"),

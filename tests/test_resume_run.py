@@ -1,6 +1,5 @@
 import os
 import time
-import datetime as dt
 import json
 from pathlib import Path
 
@@ -824,10 +823,7 @@ def test_load_resume_state_persists_submission_contract_revalidation(tmp_path):
     )
 
     journal = serialize.load_json(log_dir / "journal.json", Journal)
-    timestamp = dt.datetime.fromtimestamp(journal.nodes[0].ctime).strftime(
-        "%Y%m%dT%H%M%S"
-    )
-    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir = node_artifact_dir(log_dir, journal.nodes[0])
     artifact_dir.mkdir(parents=True, exist_ok=True)
     (artifact_dir / "submission.csv").write_text("id,PitNextLap\n1,0.8\n1,0.9\n")
 
@@ -855,7 +851,11 @@ def test_load_resume_state_does_not_submission_validate_generated_nodes(tmp_path
     )
 
     journal = Journal()
-    generated = Node(code="print('generated')", plan="generated")
+    generated = Node(
+        code="print('generated')",
+        plan="generated",
+        artifact_dir_name="generated-artifact",
+    )
     journal.append(generated)
     mark_node_generated_only(generated)
     generated.is_buggy = True
@@ -864,6 +864,9 @@ def test_load_resume_state_does_not_submission_validate_generated_nodes(tmp_path
     generated._term_out = [
         "SubmissionValidationError: missing artifact submission.csv\n"
     ]
+    artifact_dir = log_dir / "artifacts" / generated.artifact_dir_name
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "solution.py").write_text(generated.code, encoding="utf-8")
     serialize.dump_json(journal, log_dir / "journal.json")
 
     _cfg, loaded = load_resume_state(
@@ -892,10 +895,7 @@ def test_load_resume_state_force_revalidates_cached_submission(tmp_path, monkeyp
     )
 
     journal = serialize.load_json(log_dir / "journal.json", Journal)
-    timestamp = dt.datetime.fromtimestamp(journal.nodes[0].ctime).strftime(
-        "%Y%m%dT%H%M%S"
-    )
-    artifact_dir = log_dir / "artifacts" / timestamp
+    artifact_dir = node_artifact_dir(log_dir, journal.nodes[0])
     artifact_dir.mkdir(parents=True, exist_ok=True)
     submission_path = artifact_dir / "submission.csv"
     submission_path.write_text("id,PitNextLap\n1,0.8\n")
@@ -963,7 +963,7 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     assert cfg.synthesis.every_scored_steps == 15
     assert cfg.exec.memory_limit_gb == 80.0
     assert cfg.agent.mode == "legacy"
-    assert cfg.agent.autogluon.profile == "full_boost"
+    assert cfg.agent.autogluon.profile == "s6e6_boost_gpu"
     assert cfg.agent.autogluon.time_limit == 600
     assert cfg.agent.autogluon.included_model_types is None
 

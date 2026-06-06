@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Callable, Hashable, Literal, cast
 
@@ -22,7 +22,10 @@ import logging
 from . import tree_export
 from . import copytree, preproc_data, serialize
 from .artifact_manifest import write_node_artifact_manifest
-from .node_artifacts import node_artifact_dir as artifact_dir_for_node
+from .node_artifacts import (
+    new_artifact_dir_name,
+    node_artifact_dir as artifact_dir_for_node,
+)
 
 shutup.mute_warnings()
 logging.basicConfig(
@@ -59,7 +62,16 @@ def _portable_config_value(value):
 
 
 def _portable_config(cfg):
-    container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+    if OmegaConf.is_config(cfg):
+        container = OmegaConf.to_container(cfg, resolve=False, enum_to_str=True)
+    elif is_dataclass(cfg):
+        container = asdict(cfg)
+    else:
+        container = {
+            key: value
+            for key, value in vars(cfg).items()
+            if not key.startswith("_")
+        }
     return OmegaConf.create(_portable_config_value(container))
 
 
@@ -855,6 +867,34 @@ def _save_node_artifacts(cfg: Config, node) -> None:
     write_node_artifact_manifest(cfg=cfg, node=node, artifact_dir=artifact_dir)
 
 
+def _ensure_node_artifact_slot(cfg: Config, node) -> Path:
+    if isinstance(node.artifact_dir_name, str) and node.artifact_dir_name.strip():
+        node.artifact_dir_name = node.artifact_dir_name.strip()
+        artifact_dir = artifact_dir_for_node(cfg.log_dir, node)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        return artifact_dir
+
+    artifacts_dir = Path(cfg.log_dir) / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        dir_name = new_artifact_dir_name(ctime=node.ctime, step=node.step)
+        artifact_dir = artifacts_dir / dir_name
+        try:
+            artifact_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            continue
+        node.artifact_dir_name = dir_name
+        return artifact_dir
+
+
+def _write_missing_solution_artifacts(cfg: Config, journal, current_node=None) -> None:
+    for node in journal.nodes:
+        artifact_dir = _ensure_node_artifact_slot(cfg, node)
+        solution_path = artifact_dir / "solution.py"
+        if node is current_node or not solution_path.exists():
+            solution_path.write_text(node.code, encoding="utf-8")
+
+
 def save_run(
     cfg: Config,
     journal,
@@ -871,6 +911,11 @@ def save_run(
     notify("Preparing log directory")
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
 
+    notify("Saving node artifacts")
+    _write_missing_solution_artifacts(cfg, journal, current_node=current_node)
+    if current_node is not None:
+        _save_node_artifacts(cfg, current_node)
+
     # save journal
     notify("Saving journal")
     serialize.dump_json(journal, cfg.log_dir / "journal.json")
@@ -886,7 +931,3 @@ def save_run(
     if best_node is not None:
         with open(cfg.log_dir / "best_solution.py", "w") as f:
             f.write(best_node.code)
-
-    if current_node is not None:
-        notify("Saving node artifacts")
-        _save_node_artifacts(cfg, current_node)

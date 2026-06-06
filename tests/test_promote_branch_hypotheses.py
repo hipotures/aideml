@@ -10,6 +10,16 @@ from scripts.promote_branch_hypotheses import (
 )
 
 
+def _attach_solution_artifact(run_dir: Path, node: dict, code: str) -> None:
+    artifact_dir_name = node.get("artifact_dir_name") or f"{node['id']}-artifact"
+    node["artifact_dir_name"] = artifact_dir_name
+    artifact_dir = run_dir / "artifacts" / artifact_dir_name
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "solution.py").write_text(code, encoding="utf-8")
+    node["code"] = ""
+    node["code_path"] = f"artifacts/{artifact_dir_name}/solution.py"
+
+
 def _write_run(
     tmp_path: Path,
     *,
@@ -21,64 +31,68 @@ def _write_run(
     run_dir.mkdir(parents=True)
     (run_dir / "config.yaml").write_text(f"agent:\n  mode: {mode}\n", encoding="utf-8")
     branch_a_score, branch_b_score, branch_c_score = branch_scores
+    nodes = [
+        {
+            "id": "root-a",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000101"],
+            "plan": "Root A source plan.",
+            "analysis": "Root A source analysis.",
+            "validity_warning": "",
+            "code": "print('root a')\n",
+            "is_buggy": False,
+            "metric": {"value": 0.90, "maximize": True},
+            "artifact_dir_name": "root-a-artifact",
+            "ctime": 1000.0,
+        },
+        {
+            "id": "branch-a",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000201"],
+            "plan": "Branch A source plan.",
+            "analysis": "Branch A source analysis.",
+            "validity_warning": "",
+            "code": "print('branch a')\n",
+            "is_buggy": False,
+            "metric": {"value": branch_a_score, "maximize": True},
+            "artifact_dir_name": "branch-a-artifact",
+            "ctime": 1001.0,
+        },
+        {
+            "id": "branch-b",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000202"],
+            "plan": "Branch B source plan.",
+            "analysis": "Branch B source analysis.",
+            "validity_warning": "",
+            "code": "print('branch b')\n",
+            "is_buggy": False,
+            "metric": {"value": branch_b_score, "maximize": True},
+            "artifact_dir_name": "branch-b-artifact",
+            "ctime": 1002.0,
+        },
+        {
+            "id": "branch-c",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000203"],
+            "plan": "Branch C source plan.",
+            "analysis": "Branch C source analysis.",
+            "validity_warning": "",
+            "code": "print('branch c')\n",
+            "is_buggy": False,
+            "metric": {"value": branch_c_score, "maximize": True},
+            "artifact_dir_name": "branch-c-artifact",
+            "ctime": 1003.0,
+        },
+    ]
+    for node in nodes:
+        _attach_solution_artifact(run_dir, node, str(node["code"]))
     journal = {
-        "nodes": [
-            {
-                "id": "root-a",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000101"],
-                "plan": "Root A source plan.",
-                "analysis": "Root A source analysis.",
-                "validity_warning": "",
-                "code": "print('root a')\n",
-                "is_buggy": False,
-                "metric": {"value": 0.90, "maximize": True},
-                "artifact_dir_name": "root-a-artifact",
-                "ctime": 1000.0,
-            },
-            {
-                "id": "branch-a",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000201"],
-                "plan": "Branch A source plan.",
-                "analysis": "Branch A source analysis.",
-                "validity_warning": "",
-                "code": "print('branch a')\n",
-                "is_buggy": False,
-                "metric": {"value": branch_a_score, "maximize": True},
-                "artifact_dir_name": "branch-a-artifact",
-                "ctime": 1001.0,
-            },
-            {
-                "id": "branch-b",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000202"],
-                "plan": "Branch B source plan.",
-                "analysis": "Branch B source analysis.",
-                "validity_warning": "",
-                "code": "print('branch b')\n",
-                "is_buggy": False,
-                "metric": {"value": branch_b_score, "maximize": True},
-                "artifact_dir_name": "branch-b-artifact",
-                "ctime": 1002.0,
-            },
-            {
-                "id": "branch-c",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000203"],
-                "plan": "Branch C source plan.",
-                "analysis": "Branch C source analysis.",
-                "validity_warning": "",
-                "code": "print('branch c')\n",
-                "is_buggy": False,
-                "metric": {"value": branch_c_score, "maximize": True},
-                "ctime": 1003.0,
-            },
-        ],
+        "nodes": nodes,
         "node2parent": {
             "branch-a": "root-a",
             "branch-b": "branch-a",
@@ -179,31 +193,34 @@ def test_promotes_classic_node_by_step_to_root_hypothesis(tmp_path):
     run_dir = tmp_path / "logs" / "classic-run"
     run_dir.mkdir(parents=True)
     (run_dir / "config.yaml").write_text("agent:\n  mode: legacy\n", encoding="utf-8")
+    nodes = [
+        {
+            "id": "node-root",
+            "parent": None,
+            "step": 0,
+            "code": "print('root')\n",
+            "is_buggy": False,
+            "metric": {"value": 0.90, "maximize": True},
+            "ctime": 1000.0,
+        },
+        {
+            "id": "node-113",
+            "parent": "node-root",
+            "step": 113,
+            "plan": "Keep the RealMLP core and add nested fold-bagged blend configurations.",
+            "analysis": "Nested meta-OOF blend selection completed successfully.",
+            "validity_warning": "Nested blend warning.",
+            "code": "print('classic top')\n",
+            "is_buggy": False,
+            "metric": {"value": 0.95467, "maximize": True},
+            "artifact_dir_name": "classic-artifact",
+            "ctime": 1001.0,
+        },
+    ]
+    for node in nodes:
+        _attach_solution_artifact(run_dir, node, str(node["code"]))
     journal = {
-        "nodes": [
-            {
-                "id": "node-root",
-                "parent": None,
-                "step": 0,
-                "code": "print('root')\n",
-                "is_buggy": False,
-                "metric": {"value": 0.90, "maximize": True},
-                "ctime": 1000.0,
-            },
-            {
-                "id": "node-113",
-                "parent": "node-root",
-                "step": 113,
-                "plan": "Keep the RealMLP core and add nested fold-bagged blend configurations.",
-                "analysis": "Nested meta-OOF blend selection completed successfully.",
-                "validity_warning": "Nested blend warning.",
-                "code": "print('classic top')\n",
-                "is_buggy": False,
-                "metric": {"value": 0.95467, "maximize": True},
-                "artifact_dir_name": "classic-artifact",
-                "ctime": 1001.0,
-            },
-        ],
+        "nodes": nodes,
         "node2parent": {"node-113": "node-root"},
     }
     journal_path = run_dir / "journal.json"
@@ -251,21 +268,24 @@ def test_cli_promotes_classic_node_by_run_and_step(tmp_path):
     run_dir = tmp_path / "logs" / "classic-run"
     run_dir.mkdir(parents=True)
     (run_dir / "config.yaml").write_text("agent:\n  mode: legacy\n", encoding="utf-8")
+    nodes = [
+        {
+            "id": "node-113",
+            "parent": None,
+            "step": 113,
+            "plan": "Classic CLI source plan.",
+            "analysis": "Classic CLI source analysis.",
+            "validity_warning": "",
+            "code": "print('classic cli')\n",
+            "is_buggy": False,
+            "metric": {"value": 0.95467, "maximize": True},
+            "ctime": 1001.0,
+        },
+    ]
+    for node in nodes:
+        _attach_solution_artifact(run_dir, node, str(node["code"]))
     journal = {
-        "nodes": [
-            {
-                "id": "node-113",
-                "parent": None,
-                "step": 113,
-                "plan": "Classic CLI source plan.",
-                "analysis": "Classic CLI source analysis.",
-                "validity_warning": "",
-                "code": "print('classic cli')\n",
-                "is_buggy": False,
-                "metric": {"value": 0.95467, "maximize": True},
-                "ctime": 1001.0,
-            },
-        ],
+        "nodes": nodes,
         "node2parent": {},
     }
     (run_dir / "journal.json").write_text(json.dumps(journal), encoding="utf-8")

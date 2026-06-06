@@ -2,8 +2,11 @@ from pathlib import Path
 from dataclasses import dataclass
 import os
 
+import pytest
+
 from aide.journal import Journal, Node
 from aide.run import mark_node_generated_only
+from aide.utils import serialize
 from aide.utils.config import save_run
 from aide.utils.metric import MetricValue
 import json
@@ -45,13 +48,13 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     artifact_dirs = sorted((log_dir / "artifacts").iterdir())
 
     assert len(artifact_dirs) == 1
-    assert artifact_dirs[0].name == "20260502T213547"
+    assert artifact_dirs[0].name.startswith("20260502T213547-")
     assert (artifact_dirs[0] / "solution.py").read_text() == "print('current node')"
     assert (artifact_dirs[0] / "submission.csv").read_text() == "id,PitNextLap\n1,0.7\n"
     manifest = json.loads((artifact_dirs[0] / "aide_result.json").read_text())
     assert manifest["kind"] == "source_node"
     assert manifest["run"] == "run"
-    assert manifest["timestamp"] == "20260502T213547"
+    assert manifest["timestamp"] == artifact_dirs[0].name
     assert manifest["status"] == "ok"
     assert manifest["local_score"] == 0.9473
     assert manifest["node"]["id"] == node.id
@@ -60,6 +63,12 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
     assert manifest["files"]["submission"]["path"] == "submission.csv"
     assert not (artifact_dirs[0] / "error.txt").exists()
     assert (log_dir / "best_solution.py").read_text() == "print('current node')"
+    saved = json.loads((log_dir / "journal.json").read_text())
+    assert saved["__version"] == "3"
+    assert saved["nodes"][0]["code"] == ""
+    assert saved["nodes"][0]["code_path"] == (
+        f"artifacts/{artifact_dirs[0].name}/solution.py"
+    )
 
 
 def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
@@ -86,6 +95,51 @@ def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
 
     artifact_dir = cfg.log_dir / "artifacts" / "20260523T220603-a1b2c3d4"
     assert (artifact_dir / "solution.py").read_text() == "print('current node')"
+
+
+def test_load_json_hydrates_code_from_solution_artifact(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(code="print('original')", plan="plan")
+    node.is_buggy = False
+    node._term_out = ["ok\n"]
+    journal.append(node)
+
+    save_run(cfg, journal, current_node=node)
+    artifact_dir = next((log_dir / "artifacts").iterdir())
+    (artifact_dir / "solution.py").write_text("print('edited')", encoding="utf-8")
+
+    loaded = serialize.load_json(log_dir / "journal.json", Journal)
+
+    assert loaded.nodes[0].code == "print('edited')"
+
+
+def test_load_json_rejects_missing_solution_artifact(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    log_dir.mkdir(parents=True)
+    (log_dir / "journal.json").write_text(
+        json.dumps(
+            {
+                "__version": "3",
+                "nodes": [
+                    {
+                        "id": "node-1",
+                        "code": "",
+                        "code_path": "artifacts/node-1/solution.py",
+                        "artifact_dir_name": "node-1",
+                    }
+                ],
+                "node2parent": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FileNotFoundError, match="solution artifact"):
+        serialize.load_json(log_dir / "journal.json", Journal)
 
 
 def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
@@ -119,9 +173,8 @@ def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
 
     save_run(cfg, journal, current_node=node)
 
-    manifest = json.loads(
-        (log_dir / "artifacts" / "20260502T213547" / "aide_result.json").read_text()
-    )
+    artifact_dir = next((log_dir / "artifacts").iterdir())
+    manifest = json.loads((artifact_dir / "aide_result.json").read_text())
 
     expected = dict(node.run_stats)
     expected["total_exec_time"] = 1.0
@@ -150,9 +203,8 @@ def test_save_run_handles_generated_only_current_node_without_metric(tmp_path):
     save_run(cfg, journal, current_node=generated)
 
     assert (log_dir / "best_solution.py").read_text() == "print('scored')"
-    manifest = json.loads(
-        (log_dir / "artifacts" / "20260502T213547" / "aide_result.json").read_text()
-    )
+    artifact_dir = next((log_dir / "artifacts").iterdir())
+    manifest = json.loads((artifact_dir / "aide_result.json").read_text())
     assert manifest["status"] == "generated"
     assert manifest["local_score"] is None
 
@@ -205,7 +257,7 @@ def test_save_run_does_not_archive_submission_when_missing(tmp_path):
 
     save_run(cfg, journal, current_node=node)
 
-    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir = next((log_dir / "artifacts").iterdir())
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
@@ -243,7 +295,7 @@ def test_save_run_does_not_archive_stale_submission_from_previous_node(tmp_path)
 
     save_run(cfg, journal, current_node=node)
 
-    artifact_dir = log_dir / "artifacts" / "20260502T213547"
+    artifact_dir = next((log_dir / "artifacts").iterdir())
 
     assert (artifact_dir / "solution.py").exists()
     assert not (artifact_dir / "submission.csv").exists()
@@ -284,9 +336,9 @@ def test_save_run_reports_progress_for_each_save_stage(tmp_path):
 
     assert messages == [
         "Preparing log directory",
+        "Saving node artifacts",
         "Saving journal",
         "Saving config",
         "Rendering tree HTML",
         "Saving best solution",
-        "Saving node artifacts",
     ]

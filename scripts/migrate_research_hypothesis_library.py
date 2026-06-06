@@ -39,6 +39,7 @@ class ExportEntry:
     hypothesis_id: str
     mode: str
     destination: Path
+    code: str
     buggy: bool
     score: float | None
     timestamp: str | None
@@ -195,6 +196,30 @@ def _node_score(node: dict[str, Any]) -> float | None:
     return float(value)
 
 
+def _legacy_artifact_dir_name(node: dict[str, Any]) -> str | None:
+    ctime = node.get("ctime")
+    if isinstance(ctime, (float, int)) and not isinstance(ctime, bool):
+        return dt.datetime.fromtimestamp(float(ctime)).strftime("%Y%m%dT%H%M%S")
+    return None
+
+
+def _node_code_path(journal_path: Path, node: dict[str, Any]) -> Path:
+    code_path = node.get("code_path")
+    if isinstance(code_path, str) and code_path.strip():
+        return journal_path.parent / code_path.strip()
+    artifact_dir_name = node.get("artifact_dir_name")
+    if isinstance(artifact_dir_name, str) and artifact_dir_name.strip():
+        return journal_path.parent / "artifacts" / artifact_dir_name.strip() / "solution.py"
+    legacy_name = _legacy_artifact_dir_name(node)
+    if legacy_name is not None:
+        return journal_path.parent / "artifacts" / legacy_name / "solution.py"
+    raise ValueError(f"Node {node.get('id')} has no code_path or artifact path.")
+
+
+def _node_code(journal_path: Path, node: dict[str, Any]) -> str:
+    return _node_code_path(journal_path, node).read_text(encoding="utf-8")
+
+
 def plan_root_code_export(
     *,
     root: Path,
@@ -218,9 +243,13 @@ def plan_root_code_export(
             skipped.append(f"Root node {node.get('id')} has no single hypothesis id.")
             continue
         hypothesis_id = offered[0]
-        code = node.get("code")
-        if not isinstance(code, str) or not code.strip():
-            skipped.append(f"Root node {node.get('id')} has empty code.")
+        try:
+            code = _node_code(journal_path, node)
+        except (OSError, ValueError) as exc:
+            skipped.append(f"Root node {node.get('id')} has no artifact code: {exc}")
+            continue
+        if not code.strip():
+            skipped.append(f"Root node {node.get('id')} has empty artifact code.")
             continue
         hypothesis_dir = task_dir / hypothesis_id
         hypothesis_json = hypothesis_dir / f"hypothesis-{hypothesis_id}.json"
@@ -256,6 +285,7 @@ def plan_root_code_export(
                 hypothesis_id=hypothesis_id,
                 mode=mode,
                 destination=hypothesis_dir / f"{mode}-001.py",
+                code=_node_code(journal_path, node),
                 buggy=bool(node.get("is_buggy")),
                 score=_node_score(node),
                 timestamp=_node_timestamp(node),
@@ -290,17 +320,9 @@ def apply_root_code_export(plan: ExportPlan, *, dry_run: bool) -> None:
         return
     if plan.conflicts:
         raise ValueError("Refusing to export while conflicts are present.")
-    journal = json.loads(plan.journal_path.read_text(encoding="utf-8"))
-    nodes_by_id = {
-        str(node.get("id") or ""): node
-        for node in journal.get("nodes", [])
-        if isinstance(node, dict)
-    }
     for entry in plan.entries:
-        node = nodes_by_id[entry.node_id]
-        code = str(node["code"])
         entry.destination.parent.mkdir(parents=True, exist_ok=True)
-        entry.destination.write_text(code, encoding="utf-8")
+        entry.destination.write_text(entry.code, encoding="utf-8")
 
         manifest_path = entry.destination.parent / "code_manifest.json"
         manifest = _load_manifest(entry.destination.parent)

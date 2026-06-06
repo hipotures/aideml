@@ -36,6 +36,16 @@ def _write_old_hypothesis(root: Path, task: str, hypothesis_id: str) -> None:
     )
 
 
+def _attach_solution_artifact(run_dir: Path, node: dict, code: str) -> None:
+    artifact_dir_name = node.get("artifact_dir_name") or f"{node['id']}-artifact"
+    node["artifact_dir_name"] = artifact_dir_name
+    artifact_dir = run_dir / "artifacts" / artifact_dir_name
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "solution.py").write_text(code, encoding="utf-8")
+    node["code"] = ""
+    node["code_path"] = f"artifacts/{artifact_dir_name}/solution.py"
+
+
 def test_structure_migration_moves_hypotheses_to_flat_id_dirs(tmp_path):
     task = "playground-series-s6e5"
     _write_old_hypothesis(tmp_path, task, "000001")
@@ -77,27 +87,30 @@ def test_root_code_export_writes_versions_and_active_manifest(tmp_path):
         "agent:\n  mode: autogluon_preprocess\n",
         encoding="utf-8",
     )
+    nodes = [
+        {
+            "id": "node-ok",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000001"],
+            "code": "print('ok')\n",
+            "is_buggy": False,
+            "metric": {"value": 0.91, "maximize": True},
+            "ctime": 1000.0,
+        },
+        {
+            "id": "branch",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000001"],
+            "code": "print('branch')\n",
+            "is_buggy": False,
+        },
+    ]
+    for node in nodes:
+        _attach_solution_artifact(run_dir, node, str(node["code"]))
     journal = {
-        "nodes": [
-            {
-                "id": "node-ok",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000001"],
-                "code": "print('ok')\n",
-                "is_buggy": False,
-                "metric": {"value": 0.91, "maximize": True},
-                "ctime": 1000.0,
-            },
-            {
-                "id": "branch",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000001"],
-                "code": "print('branch')\n",
-                "is_buggy": False,
-            },
-        ],
+        "nodes": nodes,
         "node2parent": {"branch": "node-ok"},
     }
     journal_path = run_dir / "journal.json"
@@ -153,25 +166,28 @@ def test_root_code_export_reports_duplicate_journal_roots_as_conflict(tmp_path):
     )
     run_dir = tmp_path / "logs" / "run-1"
     run_dir.mkdir(parents=True)
+    nodes = [
+        {
+            "id": "root-1",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000001"],
+            "code": "print('one')\n",
+            "is_buggy": False,
+        },
+        {
+            "id": "root-2",
+            "parent": None,
+            "research_mode": "hypothesis",
+            "research_hypotheses_offered": ["000001"],
+            "code": "print('two')\n",
+            "is_buggy": False,
+        },
+    ]
+    for node in nodes:
+        _attach_solution_artifact(run_dir, node, str(node["code"]))
     journal = {
-        "nodes": [
-            {
-                "id": "root-1",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000001"],
-                "code": "print('one')\n",
-                "is_buggy": False,
-            },
-            {
-                "id": "root-2",
-                "parent": None,
-                "research_mode": "hypothesis",
-                "research_hypotheses_offered": ["000001"],
-                "code": "print('two')\n",
-                "is_buggy": False,
-            },
-        ],
+        "nodes": nodes,
         "node2parent": {},
     }
     journal_path = run_dir / "journal.json"
