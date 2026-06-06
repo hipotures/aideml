@@ -1413,6 +1413,7 @@ def candidate_tree_display_table(
 
     artifacts: dict[str, dict[str, Any]] = {}
     visible_root_shas: set[str] = set()
+    selected_root_shas: set[str] = set()
     tree_records = [
         record
         for record in records or []
@@ -1429,6 +1430,7 @@ def candidate_tree_display_table(
         root_sha = _tree_parent_sha(artifact) or str(record.get("sha256") or "")
         if root_sha:
             visible_root_shas.add(root_sha)
+            selected_root_shas.add(root_sha)
 
     registry_rows = registry_display_rows(
         registry,
@@ -1473,7 +1475,20 @@ def candidate_tree_display_table(
         reverse=True,
     )
     if limit is not None and limit > 0:
-        families = families[:limit]
+        selected_families = [
+            family
+            for family in families
+            if str(family[0].get("sha256") or "") in selected_root_shas
+        ]
+        other_families = [
+            family
+            for family in families
+            if str(family[0].get("sha256") or "") not in selected_root_shas
+        ]
+        families = selected_families[:limit]
+        remaining = limit - len(families)
+        if remaining > 0:
+            families.extend(other_families[:remaining])
 
     displayed_artifacts = [row for root, children in families for row in [root, *children]]
     cv_ranks = _rank_tree_artifacts(displayed_artifacts, _tree_cv_score)
