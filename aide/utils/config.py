@@ -26,6 +26,7 @@ from .node_artifacts import (
     new_artifact_dir_name,
     node_artifact_dir as artifact_dir_for_node,
 )
+from .path_portability import sanitize_persisted_payload, sanitize_text
 
 shutup.mute_warnings()
 logging.basicConfig(
@@ -806,22 +807,32 @@ def _node_error_text(node) -> str | None:
     if getattr(node, "exc_info", None):
         sections.append(
             "Exception info:\n"
-            + json.dumps(node.exc_info, indent=2, ensure_ascii=False, default=str)
+            + json.dumps(
+                sanitize_persisted_payload(node.exc_info),
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            )
         )
     if getattr(node, "exc_stack", None):
         sections.append(
             "Exception stack:\n"
-            + json.dumps(node.exc_stack, indent=2, ensure_ascii=False, default=str)
+            + json.dumps(
+                sanitize_persisted_payload(node.exc_stack),
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            )
         )
     if getattr(node, "_term_out", None):
-        sections.append("Terminal output:\n" + "".join(node._term_out).rstrip())
+        sections.append("Terminal output:\n" + sanitize_text("".join(node._term_out)).rstrip())
     if getattr(node, "analysis", None):
-        sections.append("Analysis:\n" + str(node.analysis).rstrip())
+        sections.append("Analysis:\n" + sanitize_text(str(node.analysis)).rstrip())
     if getattr(node, "submission_validation", None):
         sections.append(
             "Submission validation:\n"
             + json.dumps(
-                node.submission_validation,
+                sanitize_persisted_payload(node.submission_validation),
                 indent=2,
                 ensure_ascii=False,
                 default=str,

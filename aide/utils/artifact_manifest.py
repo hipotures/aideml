@@ -11,9 +11,10 @@ from typing import Any
 
 from ..journal import Journal, Node
 from .metric import MetricValue
+from .path_portability import sanitize_persisted_payload, to_portable_path
 
 RESULT_MANIFEST_NAME = "aide_result.json"
-RESULT_SCHEMA_VERSION = 1
+RESULT_SCHEMA_VERSION = 2
 BASELINE_PLAN_PREFIX = "AutoGluon raw baseline"
 SEEDED_BASE_PLAN_PREFIX = "Seeded base artifact"
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
@@ -29,7 +30,10 @@ def sha256_file(path: Path) -> str:
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(sanitize_persisted_payload(payload), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -203,7 +207,7 @@ def build_node_artifact_manifest(
         "run": run,
         "timestamp": timestamp,
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "artifact_dir": str(artifact_dir),
+        "artifact_dir": to_portable_path(artifact_dir),
         "status": status,
         "local_score": metric["value"],
         "metric_maximize": metric["maximize"],
@@ -237,20 +241,20 @@ def build_node_artifact_manifest(
             "status": status,
             "origin": node_origin(node),
             "plan": node.plan,
-            "analysis": node.analysis,
-            "validity_warning": node.validity_warning,
+            "analysis": sanitize_persisted_payload(node.analysis),
+            "validity_warning": sanitize_persisted_payload(node.validity_warning),
             "is_buggy": bool(node.is_buggy),
             "metric": metric,
-            "submission_validation": node.submission_validation,
+            "submission_validation": sanitize_persisted_payload(node.submission_validation),
         },
         "execution": {
             "exec_time": node.exec_time,
             "exc_type": node.exc_type,
-            "exc_info": node.exc_info,
-            "exc_stack": node.exc_stack,
+            "exc_info": sanitize_persisted_payload(node.exc_info),
+            "exc_stack": sanitize_persisted_payload(node.exc_stack),
         },
-        "run_stats": run_stats_payload(node),
-        "submission_validation": node.submission_validation,
+        "run_stats": sanitize_persisted_payload(run_stats_payload(node)),
+        "submission_validation": sanitize_persisted_payload(node.submission_validation),
         "autogluon": autogluon,
         "source": {
             "source_run": None,

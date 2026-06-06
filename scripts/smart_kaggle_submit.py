@@ -13,6 +13,7 @@ from typing import Any, Iterable
 from aide.utils.submission_validation import (
     validate_submission_file as validate_submission_against_sample,
 )
+from aide.utils.path_portability import sanitize_persisted_payload, to_portable_path
 from aide.utils.prediction_similarity import (
     DEFAULT_PREDICTION_ROUND_DECIMALS,
     DEFAULT_PREDICTION_SIMILARITY_MIN_COMMON_SAMPLE_SIZE,
@@ -94,7 +95,7 @@ class SubmissionRegistry:
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"submissions": self.entries}
+        payload = sanitize_persisted_payload({"submissions": self.entries})
         self.path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
     def add(self, entry: dict[str, Any]) -> None:
@@ -737,8 +738,8 @@ def submit_candidates(
             "local_score": candidate.local_score,
             "metric_maximize": candidate.metric_maximize,
             "eval_metric": candidate.eval_metric,
-            "submission_path": str(candidate.submission_path),
-            "upload_path": str(upload_path),
+            "submission_path": to_portable_path(candidate.submission_path),
+            "upload_path": to_portable_path(upload_path),
             "uploaded_filename": upload_path.name,
             "sha256": candidate.sha256,
             "hypothesis_id": candidate.hypothesis_id,

@@ -31,6 +31,11 @@ from aide.utils.artifact_manifest import (
     artifact_timestamp_from_ctime,
     write_node_artifact_manifest,
 )
+from aide.utils.path_portability import (
+    resolve_portable_path,
+    sanitize_persisted_payload,
+    to_portable_path,
+)
 
 
 DEFAULT_COMPETITION = smart.DEFAULT_COMPETITION
@@ -91,7 +96,16 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    path.write_text(
+        json.dumps(sanitize_persisted_payload(payload), indent=2, sort_keys=True) + "\n"
+    )
+
+
+def _record_path(value: Any) -> Path:
+    text = str(value or "").strip()
+    if not text:
+        return Path("/__aideml_missing_path__")
+    return resolve_portable_path(text)
 
 
 def backfill_legacy_source_manifests(run_dir: Path) -> int:
@@ -266,9 +280,9 @@ def _artifact_record_base(
         "competition": competition,
         "run": run,
         "timestamp": timestamp,
-        "artifact_dir": str(artifact_dir),
-        "solution_path": str(solution_path),
-        "submission_path": str(submission_path),
+        "artifact_dir": to_portable_path(artifact_dir),
+        "solution_path": to_portable_path(solution_path),
+        "submission_path": to_portable_path(submission_path),
         "sha256": sha256_file(submission_path) if submission_path.exists() else None,
         "profile": profile,
         "autogluon_presets": ag_config.get("presets"),
@@ -372,7 +386,7 @@ def build_run_records(
     )
     artifact_signatures = {}
     for record in records:
-        submission_path = Path(record["submission_path"])
+        submission_path = _record_path(record["submission_path"])
         if submission_path.exists():
             artifact_signatures[record["timestamp"]] = {
                 "submission_sha256": record["sha256"],
@@ -482,7 +496,7 @@ def _record_is_submit_ready(record: dict[str, Any]) -> bool:
         and not record.get("is_buggy")
         and record.get("local_score") is not None
         and record.get("sha256") is not None
-        and Path(record.get("submission_path", "")).exists()
+        and _record_path(record.get("submission_path", "")).exists()
     )
 
 
@@ -933,7 +947,7 @@ def _registry_entry_algo(
 
     artifact_dir = _registry_entry_artifact_dir(entry, lookup)
     if artifact_dir != "-":
-        solution_path = Path(artifact_dir) / "solution.py"
+        solution_path = _record_path(artifact_dir) / "solution.py"
         if solution_path.exists():
             try:
                 code = solution_path.read_text(encoding="utf-8", errors="replace")
@@ -955,10 +969,10 @@ def _registry_entry_artifact_dir(
         value = record.get(key) if key in record else entry.get(key)
         if not value:
             continue
-        path = Path(str(value))
+        path = _record_path(value)
         if key in {"submission_path", "upload_path"}:
             path = path.parent
-        return str(path)
+        return to_portable_path(path)
     return "-"
 
 
@@ -1758,7 +1772,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         local_score=record.get("local_score"),
         metric_maximize=record.get("metric_maximize", True),
         is_buggy=bool(record.get("is_buggy")),
-        submission_path=Path(record.get("submission_path")),
+        submission_path=_record_path(record.get("submission_path")),
         sha256=record.get("sha256"),
         validation_error=None,
         algo=_format_algo(record),

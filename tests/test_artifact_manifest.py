@@ -43,7 +43,7 @@ def test_build_node_artifact_manifest_for_successful_node(tmp_path):
         artifact_dir=artifact_dir,
     )
 
-    assert manifest["schema_version"] == 1
+    assert manifest["schema_version"] == 2
     assert manifest["kind"] == "source_node"
     assert manifest["run"] == "run-a"
     assert manifest["timestamp"] == "20260506T120000"

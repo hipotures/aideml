@@ -38,6 +38,11 @@ from aide.autogluon_preprocess import (
 from aide.interpreter import ExecutionResult
 from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
 from aide.utils.config import _load_cfg
+from aide.utils.path_portability import (
+    resolve_portable_path,
+    sanitize_persisted_payload,
+    to_portable_path,
+)
 from aide.utils.submission_validation import validate_submission_file
 from scripts import kaggle_submission_lab as lab
 
@@ -59,7 +64,16 @@ def timestamp_now() -> str:
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    path.write_text(
+        json.dumps(sanitize_persisted_payload(payload), indent=2, sort_keys=True) + "\n"
+    )
+
+
+def _record_path(value: Any) -> Path:
+    text = str(value or "").strip()
+    if not text:
+        return Path("/__aideml_missing_path__")
+    return resolve_portable_path(text)
 
 
 def _file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
@@ -478,7 +492,7 @@ def run_profile_eval(
         **metadata,
         "run": run,
         "timestamp": timestamp,
-        "artifact_dir": str(artifact_dir),
+        "artifact_dir": to_portable_path(artifact_dir),
         "local_score": float(metric) if metric is not None else None,
         "metric_maximize": not lower_is_better,
         "is_buggy": not is_ok,
@@ -526,8 +540,8 @@ def run_profile_eval(
         "execution": {
             "exec_time": exec_result.exec_time,
             "exc_type": exec_result.exc_type,
-            "exc_info": exec_result.exc_info,
-            "exc_stack": exec_result.exc_stack,
+            "exc_info": sanitize_persisted_payload(exec_result.exc_info),
+            "exc_stack": sanitize_persisted_payload(exec_result.exc_stack),
         },
         "submission_validation": (
             {"status": "ok"} if validation_error is None else {"status": "error", "error": validation_error}
@@ -557,9 +571,9 @@ def run_profile_eval(
         **metadata,
         "run": run,
         "timestamp": timestamp,
-        "artifact_dir": str(artifact_dir),
-        "solution_path": str(artifact_dir / "solution.py"),
-        "submission_path": str(submission_path),
+        "artifact_dir": to_portable_path(artifact_dir),
+        "solution_path": to_portable_path(artifact_dir / "solution.py"),
+        "submission_path": to_portable_path(submission_path),
         "sha256": lab.sha256_file(submission_path) if submission_path.exists() else None,
         "step": None,
         "node_id": None,
@@ -584,7 +598,7 @@ def _find_existing_eval(
             continue
         if not record.get("sha256"):
             continue
-        if not Path(record.get("submission_path", "")).exists():
+        if not _record_path(record.get("submission_path")).exists():
             continue
         if record.get("source_sha256") != source_sha256:
             continue

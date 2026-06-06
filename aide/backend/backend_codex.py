@@ -8,6 +8,8 @@ from pathlib import Path
 
 from funcy import notnone, select_values
 
+from aide.utils.path_portability import sanitize_persisted_payload
+
 from .utils import FunctionSpec, OutputType
 
 
@@ -72,7 +74,8 @@ def _write_codex_profile(
         "[command]",
         "argv = [",
     ]
-    lines.extend(f'  {json.dumps(part)},' for part in command)
+    profile_command = sanitize_persisted_payload(command)
+    lines.extend(f'  {json.dumps(part)},' for part in profile_command)
     lines.extend(["]", ""])
     (work_dir / _prefixed(prefix, "codex_profile.toml")).write_text(
         "\n".join(lines),

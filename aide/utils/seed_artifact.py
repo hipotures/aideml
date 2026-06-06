@@ -11,6 +11,7 @@ from typing import Any
 from ..journal import Journal, Node
 from .artifact_manifest import (
     RESULT_MANIFEST_NAME,
+    RESULT_SCHEMA_VERSION,
     SEEDED_BASE_PLAN_PREFIX,
     artifact_timestamp_from_ctime,
     autogluon_payload,
@@ -25,6 +26,7 @@ from .artifact_manifest import (
     write_json,
 )
 from .metric import MetricValue
+from .path_portability import sanitize_persisted_payload, to_portable_path
 
 SHA_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{6,64}$")
 SEEDABLE_MANIFEST_KINDS = {"source_node", "profile_eval"}
@@ -284,9 +286,10 @@ def _rewrite_manifest(
     manifest.update(
         {
             "run": Path(cfg.log_dir).name,
+            "schema_version": RESULT_SCHEMA_VERSION,
             "timestamp": artifact_dir.name,
             "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-            "artifact_dir": str(artifact_dir),
+            "artifact_dir": to_portable_path(artifact_dir),
             "status": node_status(node),
             "local_score": metric["value"],
             "metric_maximize": metric["maximize"],
@@ -325,19 +328,23 @@ def _rewrite_manifest(
                 "status": node_status(node),
                 "origin": node_origin(node),
                 "plan": node.plan,
-                "analysis": node.analysis,
-                "validity_warning": node.validity_warning,
+                "analysis": sanitize_persisted_payload(node.analysis),
+                "validity_warning": sanitize_persisted_payload(node.validity_warning),
                 "is_buggy": bool(node.is_buggy),
                 "metric": metric,
-                "submission_validation": node.submission_validation,
+                "submission_validation": sanitize_persisted_payload(
+                    node.submission_validation
+                ),
             },
             "execution": {
                 "exec_time": node.exec_time,
                 "exc_type": node.exc_type,
-                "exc_info": node.exc_info,
-                "exc_stack": node.exc_stack,
+                "exc_info": sanitize_persisted_payload(node.exc_info),
+                "exc_stack": sanitize_persisted_payload(node.exc_stack),
             },
-            "submission_validation": node.submission_validation,
+            "submission_validation": sanitize_persisted_payload(
+                node.submission_validation
+            ),
             "autogluon": autogluon,
             "source": {
                 "source_run": source.run_id,

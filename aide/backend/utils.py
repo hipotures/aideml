@@ -9,6 +9,8 @@ import backoff
 import logging
 from typing import Callable
 
+from aide.utils.path_portability import sanitize_persisted_payload, sanitize_text, to_portable_path
+
 PromptType = str | dict | list
 FunctionCallType = dict
 OutputType = str | FunctionCallType
@@ -76,13 +78,18 @@ def _prefixed(prefix: str | None, name: str) -> str:
 
 def _json_default(value):
     if isinstance(value, Path):
-        return str(value)
+        return to_portable_path(value)
     return str(value)
 
 
 def _write_json(path: Path, payload: dict | list) -> None:
     path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default)
+        json.dumps(
+            sanitize_persisted_payload(payload),
+            indent=2,
+            ensure_ascii=False,
+            default=_json_default,
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -123,7 +130,7 @@ def write_llm_request_files(
         _write_json(path / _prefixed(prefix, "context.json"), context)
         _write_json(path / _prefixed(prefix, "request.json"), request_payload)
         (path / _prefixed(prefix, "request.md")).write_text(
-            request_markdown(system_message, user_message),
+            sanitize_text(request_markdown(system_message, user_message)),
             encoding="utf-8",
         )
         (path / _prefixed(prefix, "stderr.log")).touch()

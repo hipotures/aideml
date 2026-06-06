@@ -13,6 +13,11 @@ from aide.journal import Journal, Node
 from aide.utils import serialize
 from aide.utils.artifact_manifest import artifact_timestamp_from_ctime
 from aide.utils.node_artifacts import node_artifact_dir
+from aide.utils.path_portability import (
+    resolve_portable_path,
+    sanitize_persisted_payload,
+    to_portable_path,
+)
 from aide.utils.prediction_similarity import submission_prediction_rmse
 from scripts.smart_kaggle_submit import _parse_public_score, _sha256_matches
 
@@ -241,8 +246,8 @@ def annotate_near_submission_duplicates(
         matched_rmse = None
         for canonical in canonicals:
             rmse = submission_prediction_rmse(
-                Path(record["submission_path"]),
-                Path(canonical["submission_path"]),
+                resolve_portable_path(str(record["submission_path"])),
+                resolve_portable_path(str(canonical["submission_path"])),
                 sample_size=sample_size,
                 min_common_sample_size=min_common_sample_size,
             )
@@ -358,9 +363,11 @@ def _node_record(
         "metric_maximize": _metric_maximize(node),
         "created_at": _created_at(node),
         "exec_time": node.exec_time,
-        "artifact_dir": str(artifact_dir) if artifact_dir.exists() else None,
+        "artifact_dir": to_portable_path(artifact_dir) if artifact_dir.exists() else None,
         "code_sha256": _sha256_text(node.code or ""),
-        "submission_path": str(submission_path) if submission_path.exists() else None,
+        "submission_path": (
+            to_portable_path(submission_path) if submission_path.exists() else None
+        ),
         "submission_sha256": submission_sha256,
         "duplicate": {},
         "plan": node.plan,
@@ -487,11 +494,20 @@ def export_run_for_ai(
     _report_progress(progress_callback, "Writing export", 0)
     with nodes_path.open("w", encoding="utf-8") as f:
         for record in nodes:
-            f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+            f.write(
+                json.dumps(
+                    sanitize_persisted_payload(record),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
 
     meta_path.write_text(
         json.dumps(
-            _meta_record(log_dir, journal, nodes, _raw_data_records(export_dir, data_paths)),
+            sanitize_persisted_payload(
+                _meta_record(log_dir, journal, nodes, _raw_data_records(export_dir, data_paths))
+            ),
             indent=2,
             sort_keys=True,
         )

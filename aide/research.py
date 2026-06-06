@@ -23,6 +23,11 @@ from .journal import Journal, Node
 from .utils import data_preview
 from .utils.config import Config
 from .utils.metric import MetricValue
+from .utils.path_portability import (
+    sanitize_persisted_payload,
+    sanitize_text,
+    to_portable_path,
+)
 
 RESEARCH_PROMPT_INTRO = (
     "You are a research scientist and Kaggle competition strategist. Your job "
@@ -136,13 +141,21 @@ class ScoredHypothesisRootCode(HypothesisRootCode):
 
 
 def _json_default(value: Any) -> str:
+    if isinstance(value, Path):
+        return to_portable_path(value)
     return str(value)
 
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default) + "\n",
+        json.dumps(
+            sanitize_persisted_payload(payload),
+            indent=2,
+            ensure_ascii=False,
+            default=_json_default,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -811,7 +824,7 @@ def _write_manual_source_ref(
     _write_json(
         _manual_run_dir(cfg) / "source_ref.json",
         {
-            "source_dir": str(library.source_dir),
+            "source_dir": to_portable_path(library.source_dir),
             "source_hash": library.source_hash,
             "indexed_hypothesis_count": len(library.hypotheses),
             "enabled_hypothesis_count": enabled_count,
@@ -2310,7 +2323,7 @@ def run_research_checkpoint(
         },
     )
     _write_json(checkpoint_dir / "context.json", context)
-    (checkpoint_dir / "request.md").write_text(prompt, encoding="utf-8")
+    (checkpoint_dir / "request.md").write_text(sanitize_text(prompt), encoding="utf-8")
     _write_json(
         checkpoint_dir / "request.json",
         {
