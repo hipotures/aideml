@@ -377,6 +377,15 @@ def _cli_sets_key(cli_overrides: list[str], key: str) -> bool:
     return any(arg == key or arg.startswith(prefix) for arg in cli_overrides)
 
 
+def _migrate_resume_memory_prompt_defaults(cfg: Any) -> None:
+    if "agent" not in cfg:
+        return
+    if cfg.agent.get("memory_recent_steps") == 100:
+        cfg.agent.memory_recent_steps = 50
+    if cfg.agent.get("memory_full_recent_steps") == 20:
+        cfg.agent.memory_full_recent_steps = 10
+
+
 def apply_runtime_web_options(cfg: Config, runtime: RuntimeOptions) -> None:
     if runtime.web_enabled:
         cfg.web.enabled = True
@@ -839,6 +848,7 @@ def load_resume_state(
     cli_overrides = _normalize_forced_root_cli_overrides(cli_overrides)
     forced_root_overridden = _cli_sets_key(cli_overrides, "agent.search.forced_root")
     cfg = OmegaConf.load(config_path)
+    _migrate_resume_memory_prompt_defaults(cfg)
     if (
         not forced_root_overridden
         and "agent" in cfg
