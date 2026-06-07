@@ -54,8 +54,8 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.search.plateau_block_epsilon == 0.00001
     assert cfg.agent.search.public_score_bonus_weight == 0.0
     assert cfg.agent.search.public_score_bonus_cap == 0.0005
-    assert cfg.agent.memory_recent_steps == 100
-    assert cfg.agent.memory_full_recent_steps == 20
+    assert cfg.agent.memory_recent_steps == 50
+    assert cfg.agent.memory_full_recent_steps == 10
     assert cfg.agent.include_parent_process_stdout is False
     assert cfg.agent.parent_process_stdout_max_bytes == 5000
     assert cfg.agent.gpu is False

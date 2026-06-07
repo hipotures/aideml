@@ -65,7 +65,7 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
 def test_journal_summary_compacts_entries_older_than_recent_step_window():
     journal = Journal()
 
-    for step in range(101):
+    for step in range(51):
         node = Node(code=f"print({step})", plan=f"plan {step}")
         node.analysis = f"results {step}"
         node.validity_warning = f"warning {step}"
@@ -73,29 +73,29 @@ def test_journal_summary_compacts_entries_older_than_recent_step_window():
         node.is_buggy = False
         journal.append(node)
 
-    summary = journal.generate_summary(recent_steps=100, full_recent_steps=20)
+    summary = journal.generate_summary(recent_steps=50, full_recent_steps=10)
     sections = summary.split("\n-------------------------------\n")
     compact_section = next(section for section in sections if "Design: plan 1" in section)
     compact_last_section = next(
-        section for section in sections if "Design: plan 80" in section
+        section for section in sections if "Design: plan 40" in section
     )
     full_first_section = next(
-        section for section in sections if "Design: plan 81" in section
+        section for section in sections if "Design: plan 41" in section
     )
     full_last_section = next(
-        section for section in sections if "Design: plan 100" in section
+        section for section in sections if "Design: plan 50" in section
     )
 
     assert "Design: plan 0" not in summary
     assert "Results: results 1" not in compact_section
     assert "Validity warning: warning 1" not in compact_section
     assert "Validation Metric: 0.90100" in compact_section
-    assert "Results: results 80" not in compact_last_section
-    assert "Validity warning: warning 80" not in compact_last_section
-    assert "Results: results 81" in full_first_section
-    assert "Validity warning: warning 81" in full_first_section
-    assert "Results: results 100" in full_last_section
-    assert "Validity warning: warning 100" in full_last_section
+    assert "Results: results 40" not in compact_last_section
+    assert "Validity warning: warning 40" not in compact_last_section
+    assert "Results: results 41" in full_first_section
+    assert "Validity warning: warning 41" in full_first_section
+    assert "Results: results 50" in full_last_section
+    assert "Validity warning: warning 50" in full_last_section
 
 
 def test_journal_summary_marks_current_best_metric():

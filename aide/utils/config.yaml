@@ -103,10 +103,10 @@ agent:
   data_preview: True
   # Global legacy Memory prompt budget: keep only this many latest step values.
   # Within that window, older entries are compacted to Design + Validation Metric.
-  memory_recent_steps: 100
+  memory_recent_steps: 50
   # Number of latest step values inside memory_recent_steps that retain full
   # Results/Validity warning detail.
-  memory_full_recent_steps: 20
+  memory_full_recent_steps: 10
   # Include the tail of the selected parent node's process_stdout.log in legacy
   # improvement prompts as empirical context from the previous execution.
   include_parent_process_stdout: False
