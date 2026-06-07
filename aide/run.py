@@ -2098,13 +2098,21 @@ def build_final_tree_renderable(
     *,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
+    public_scores_by_node_id: dict[str, float] | None = None,
+    public_score_bonus_weight: float = 0.0,
+    public_score_bonus_cap: float = 0.0,
 ) -> Group:
     view = build_tree_view(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
+        plateau_block_epsilon=plateau_block_epsilon,
         synthesis_node_ids=synthesis_node_ids,
+        public_scores_by_node_id=public_scores_by_node_id,
+        public_score_bonus_weight=public_score_bonus_weight,
+        public_score_bonus_cap=public_score_bonus_cap,
     )
     return Group(*(item.line for item in view.items))
 
@@ -2115,6 +2123,10 @@ def print_final_tree(
     log_dir: Path | str | None = None,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    public_scores_by_node_id: dict[str, float] | None = None,
+    public_score_bonus_weight: float = 0.0,
+    public_score_bonus_cap: float = 0.0,
 ) -> None:
     synthesis_node_ids = synthesis_injected_node_ids(log_dir) if log_dir else set()
     Console().print(
@@ -2122,7 +2134,11 @@ def print_final_tree(
             journal,
             show_invalid_submission_branches=show_invalid_submission_branches,
             disable_oom_saturated_parents=disable_oom_saturated_parents,
+            plateau_block_epsilon=plateau_block_epsilon,
             synthesis_node_ids=synthesis_node_ids,
+            public_scores_by_node_id=public_scores_by_node_id,
+            public_score_bonus_weight=public_score_bonus_weight,
+            public_score_bonus_cap=public_score_bonus_cap,
         )
     )
 
@@ -5481,6 +5497,10 @@ def run(argv: list[str] | None = None):
         log_dir=cfg.log_dir,
         show_invalid_submission_branches=runtime_options.show_invalid_submission_branches,
         disable_oom_saturated_parents=cfg.agent.search.disable_oom_saturated_parents,
+        plateau_block_epsilon=cfg.agent.search.plateau_block_epsilon,
+        public_scores_by_node_id=agent.public_scores_by_node_id,
+        public_score_bonus_weight=cfg.agent.search.public_score_bonus_weight,
+        public_score_bonus_cap=cfg.agent.search.public_score_bonus_cap,
     )
     emit_completion_bell()
 

@@ -515,6 +515,45 @@ def test_final_tree_renderable_prints_complete_tree_without_focus():
     assert "\x1b[7m" not in output
 
 
+def test_final_tree_renderable_keeps_public_score_markers():
+    journal = Journal()
+    cv_best = _good_node(0.967931)
+    public_best = _good_node(0.967889)
+    public_worse = _good_node(0.967728)
+    journal.append(cv_best)
+    journal.append(public_best)
+    journal.append(public_worse)
+    public_scores_by_node_id = {
+        cv_best.id: 0.96800,
+        public_best.id: 0.96830,
+        public_worse.id: 0.96753,
+    }
+
+    output = _render_text(
+        build_final_tree_renderable(
+            journal,
+            public_scores_by_node_id=public_scores_by_node_id,
+            public_score_bonus_weight=0.5,
+            public_score_bonus_cap=0.0005,
+        )
+    )
+    ansi = _render_ansi(
+        build_final_tree_renderable(
+            journal,
+            public_scores_by_node_id=public_scores_by_node_id,
+            public_score_bonus_weight=0.5,
+            public_score_bonus_cap=0.0005,
+        )
+    )
+
+    assert "◆ 0.96793" in output
+    assert "◆ 0.96789" in output
+    assert "◆ 0.96773" in output
+    assert "\x1b[1;33m◆ " in ansi
+    assert "\x1b[94m◆ " in ansi
+    assert "\x1b[90m◆ " in ansi
+
+
 def test_emit_completion_bell_writes_two_bells_to_tty_path(monkeypatch):
     writes = []
 
