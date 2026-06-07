@@ -196,6 +196,7 @@ def seed_run_from_nodes(
     shas: tuple[str, ...] = (),
     run_id: str | None = None,
     prepare_workspace: bool = True,
+    code_only: bool = False,
 ) -> SeedRunResult:
     _validate_run_id(source_run)
     _validate_run_id(run_id)
@@ -241,7 +242,7 @@ def seed_run_from_nodes(
         (workspace_dir / "input").mkdir(parents=True, exist_ok=True)
         (workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
-    journal, seeded = seed_journal_from_artifacts(cfg, sources)
+    journal, seeded = seed_journal_from_artifacts(cfg, sources, code_only=code_only)
     save_run(cfg, journal)
 
     return SeedRunResult(
@@ -270,6 +271,11 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[
         action="store_true",
         help="Create empty input/working directories instead of preparing data.",
     )
+    parser.add_argument(
+        "--code-only",
+        action="store_true",
+        help="Seed only solution.py; do not copy scores, submissions, predictions, logs, or execution metadata.",
+    )
     return parser.parse_known_args(argv)
 
 
@@ -297,6 +303,7 @@ def main(argv: list[str] | None = None) -> int:
         shas=_split_values(args.shas),
         cli_overrides=cli_overrides,
         prepare_workspace=not args.no_prepare_workspace,
+        code_only=args.code_only,
     )
 
     print(f"Created run: {result.run_id}")

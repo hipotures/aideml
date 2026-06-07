@@ -236,7 +236,12 @@ def _term_out_from_source(source: SeedArtifactSource) -> list[str]:
     return []
 
 
-def _seed_node_from_source(source: SeedArtifactSource, *, ctime: float) -> Node:
+def _seed_node_from_source(
+    source: SeedArtifactSource,
+    *,
+    ctime: float,
+    code_only: bool = False,
+) -> Node:
     solution_path = source.artifact_dir / "solution.py"
     if not solution_path.exists():
         raise FileNotFoundError(f"Source artifact has no solution.py: {source.artifact_dir}")
@@ -246,8 +251,15 @@ def _seed_node_from_source(source: SeedArtifactSource, *, ctime: float) -> Node:
         code=solution_path.read_text(encoding="utf-8"),
         plan=_seed_plan(source),
         ctime=ctime,
-        _term_out=_term_out_from_source(source),
+        _term_out=[] if code_only else _term_out_from_source(source),
     )
+    if code_only:
+        node.status = "generated"
+        node.is_buggy = False
+        node.metric = None
+        node.run_stats = {"seeded_from_manifest": True, "code_only": True}
+        return node
+
     node.status = node_payload.get("status") or source.manifest.get("status")
     node.analysis = node_payload.get("analysis")
     node.validity_warning = node_payload.get("validity_warning")
@@ -269,6 +281,7 @@ def _rewrite_manifest(
     node: Node,
     source: SeedArtifactSource,
     artifact_dir: Path,
+    code_only: bool = False,
 ) -> None:
     manifest = dict(source.manifest)
     solution_path = artifact_dir / "solution.py"
@@ -353,6 +366,7 @@ def _rewrite_manifest(
                 "source_timestamp": source.timestamp,
                 "source_sha256": source.matched_sha256,
                 "source_match_kind": source.matched_kind,
+                "code_only": bool(code_only),
             },
         }
     )
@@ -364,8 +378,14 @@ def seed_journal_from_artifact(
     source: SeedArtifactSource,
     *,
     ctime: float | None = None,
+    code_only: bool = False,
 ) -> tuple[Journal, Node, Path]:
-    journal, seeded = seed_journal_from_artifacts(cfg, [source], ctime=ctime)
+    journal, seeded = seed_journal_from_artifacts(
+        cfg,
+        [source],
+        ctime=ctime,
+        code_only=code_only,
+    )
     first = seeded[0]
     return journal, first.node, first.artifact_dir
 
@@ -375,6 +395,7 @@ def seed_journal_from_artifacts(
     sources: list[SeedArtifactSource],
     *,
     ctime: float | None = None,
+    code_only: bool = False,
 ) -> tuple[Journal, list[SeededArtifactNode]]:
     if not sources:
         raise ValueError("At least one seed artifact source is required.")
@@ -387,12 +408,22 @@ def seed_journal_from_artifacts(
     for source in sources:
         artifact_dir, node_ctime = _target_artifact_dir(log_dir, next_ctime)
         next_ctime = node_ctime + 1.0
-        shutil.copytree(source.artifact_dir, artifact_dir)
+        if code_only:
+            artifact_dir.mkdir(parents=True, exist_ok=False)
+            shutil.copy2(source.artifact_dir / "solution.py", artifact_dir / "solution.py")
+        else:
+            shutil.copytree(source.artifact_dir, artifact_dir)
 
-        node = _seed_node_from_source(source, ctime=node_ctime)
+        node = _seed_node_from_source(source, ctime=node_ctime, code_only=code_only)
         node.artifact_dir_name = artifact_dir.name
         journal.append(node)
-        _rewrite_manifest(cfg=cfg, node=node, source=source, artifact_dir=artifact_dir)
+        _rewrite_manifest(
+            cfg=cfg,
+            node=node,
+            source=source,
+            artifact_dir=artifact_dir,
+            code_only=code_only,
+        )
 
         seeded.append(
             SeededArtifactNode(
@@ -403,12 +434,12 @@ def seed_journal_from_artifacts(
         )
 
         submission_path = artifact_dir / "submission.csv"
-        if submission_path.exists():
+        if not code_only and submission_path.exists():
             working_dir = Path(cfg.workspace_dir) / "working"
             working_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(submission_path, working_dir / "submission.csv")
 
-    if len(seeded) > 1:
+    if not code_only and len(seeded) > 1:
         working_dir = Path(cfg.workspace_dir) / "working"
         working_dir.mkdir(parents=True, exist_ok=True)
         for item in seeded:

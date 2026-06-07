@@ -153,6 +153,40 @@ def test_seed_run_from_nodes_top_n_creates_resumable_root_nodes(tmp_path):
     assert manifest["files"]["test_predictions"]["path"] == "test_predictions.csv.gz"
 
 
+def test_seed_run_from_nodes_code_only_creates_unscored_seed(tmp_path):
+    logs_dir, workspaces_dir, source_run, _nodes = _write_source_run(tmp_path)
+
+    result = seed_run_from_nodes(
+        source_run=source_run,
+        steps=(1,),
+        run_id="2-code-only-seed",
+        cli_overrides=_cli_overrides(tmp_path),
+        prepare_workspace=False,
+        code_only=True,
+    )
+
+    loaded_cfg, journal = load_resume_state(
+        run_id=result.run_id,
+        top_log_dir=logs_dir,
+        top_workspace_dir=workspaces_dir,
+        cli_overrides=[],
+    )
+    node = journal.nodes[0]
+    assert loaded_cfg.exp_name == "2-code-only-seed"
+    assert node.status == "generated"
+    assert node.metric is None
+    assert node.exec_time is None
+
+    artifact = result.seeded[0].artifact_dir
+    assert (artifact / "solution.py").exists()
+    assert not (artifact / "submission.csv").exists()
+    assert not (artifact / "notes.txt").exists()
+
+    manifest = json.loads((artifact / RESULT_MANIFEST_NAME).read_text(encoding="utf-8"))
+    assert manifest["local_score"] is None
+    assert manifest["source"]["code_only"] is True
+
+
 def test_select_seed_sources_by_steps_node_ids_and_shas(tmp_path):
     logs_dir, _workspaces_dir, source_run, nodes = _write_source_run(tmp_path)
 

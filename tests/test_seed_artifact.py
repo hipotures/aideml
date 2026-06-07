@@ -166,6 +166,51 @@ def test_seed_journal_from_artifact_copies_artifact_and_rewrites_manifest(tmp_pa
     assert manifest["files"]["solution"]["sha256"] == sha256_file(artifact_dir / "solution.py")
 
 
+def test_seed_journal_from_artifact_code_only_copies_solution_without_score(tmp_path):
+    top_log_dir = tmp_path / "logs"
+    source_artifact = _write_source_artifact(
+        top_log_dir,
+        "1-source-run",
+        "20260506T120000",
+        code="print('seed')\n",
+        score=0.95,
+        step=11,
+        log_text="seed execution log\n",
+    )
+    source = find_seed_artifact(top_log_dir, sha256_file(source_artifact / "submission.csv")[:12])
+    cfg = DummyConfig(
+        log_dir=top_log_dir / "2-new-run",
+        workspace_dir=tmp_path / "workspaces" / "2-new-run",
+    )
+
+    journal, node, artifact_dir = seed_journal_from_artifact(
+        cfg,
+        source,
+        ctime=1778065200.0,
+        code_only=True,
+    )
+
+    assert journal.nodes == [node]
+    assert node.status == "generated"
+    assert node.metric is None
+    assert node.exec_time is None
+    assert node.term_out == ""
+    assert node.submission_validation is None
+    assert (artifact_dir / "solution.py").read_text(encoding="utf-8") == "print('seed')\n"
+    assert not (artifact_dir / "submission.csv").exists()
+    assert not (artifact_dir / "notes.txt").exists()
+    assert not (cfg.workspace_dir / "working" / "submission.csv").exists()
+
+    manifest = json.loads((artifact_dir / RESULT_MANIFEST_NAME).read_text(encoding="utf-8"))
+    assert manifest["status"] == "generated"
+    assert manifest["local_score"] is None
+    assert manifest["sha256"] is None
+    assert manifest["files"]["submission"] is None
+    assert manifest["node"]["metric"]["value"] is None
+    assert manifest["execution"]["exec_time"] is None
+    assert manifest["source"]["code_only"] is True
+
+
 def test_seeded_single_node_can_be_exported_to_tree_struct(tmp_path):
     top_log_dir = tmp_path / "logs"
     source_artifact = _write_source_artifact(
