@@ -70,23 +70,6 @@ def _node_has_public_score(
     return node.id in public_scores_by_node_id
 
 
-def _public_adjusted_tree_score(
-    node: Node,
-    *,
-    public_scores_by_node_id: dict[str, float],
-    weight: float,
-    cap: float,
-) -> float:
-    assert node.metric is not None and node.metric.value is not None
-    return public_adjusted_oriented_score(
-        local_score=float(node.metric.value),
-        public_score=public_scores_by_node_id.get(node.id),
-        maximize=node.metric.maximize is not False,
-        weight=weight,
-        cap=cap,
-    )
-
-
 def _best_scored_node(
     journal: Journal,
     *,
@@ -109,34 +92,28 @@ def _public_best_scored_node(
     *,
     plateau_block_epsilon: float,
     public_scores_by_node_id: dict[str, float],
-    public_score_bonus_weight: float,
-    public_score_bonus_cap: float,
-    public_bonus_node_ids: set[str],
 ) -> Node | None:
-    if not public_scores_by_node_id or public_score_bonus_weight <= 0.0:
+    if not public_scores_by_node_id:
         return None
     candidates = [
         node
         for node in journal.good_nodes
         if node.metric is not None and node.metric.value is not None
+        and node.id in public_scores_by_node_id
         and not is_plateau_blocked_descendant(
             node,
             epsilon=plateau_block_epsilon,
         )
     ]
-    best = max(
+    return max(
         candidates,
-        key=lambda node: _public_adjusted_tree_score(
-            node,
-            public_scores_by_node_id=public_scores_by_node_id,
-            weight=public_score_bonus_weight,
-            cap=public_score_bonus_cap,
+        key=lambda node: (
+            public_scores_by_node_id[node.id]
+            if node.metric.maximize is not False
+            else -public_scores_by_node_id[node.id]
         ),
         default=None,
     )
-    if best is None or best.id not in public_bonus_node_ids:
-        return None
-    return best
 
 
 def _metric_text(metric: MetricValue | None) -> str | None:
@@ -224,9 +201,6 @@ def build_web_tree_lines(
         journal,
         plateau_block_epsilon=plateau_block_epsilon,
         public_scores_by_node_id=public_scores_by_node_id,
-        public_score_bonus_weight=public_score_bonus_weight,
-        public_score_bonus_cap=public_score_bonus_cap,
-        public_bonus_node_ids=public_bonus_node_ids,
     )
     lines: list[WebTreeLine] = []
 

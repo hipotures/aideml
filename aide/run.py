@@ -433,23 +433,6 @@ def _node_has_public_score(
     return node.id in public_scores_by_node_id
 
 
-def _public_adjusted_tree_score(
-    node: Node,
-    *,
-    public_scores_by_node_id: dict[str, float],
-    weight: float,
-    cap: float,
-) -> float:
-    assert node.metric is not None and node.metric.value is not None
-    return public_adjusted_oriented_score(
-        local_score=float(node.metric.value),
-        public_score=public_scores_by_node_id.get(node.id),
-        maximize=node.metric.maximize is not False,
-        weight=weight,
-        cap=cap,
-    )
-
-
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
     if hypothesis_id is not None:
@@ -1046,6 +1029,44 @@ def _visible_best_node(
     return max(visible_good_nodes, key=lambda node: node.metric, default=None)
 
 
+def _visible_public_best_node(
+    journal: Journal,
+    *,
+    public_scores_by_node_id: dict[str, float],
+    show_invalid_submission_branches: bool,
+    disable_oom_saturated_parents: bool = False,
+    plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+) -> Node | None:
+    candidates = [
+        node
+        for node in journal.good_nodes
+        if node.metric is not None
+        and node.metric.value is not None
+        and node.id in public_scores_by_node_id
+        and (
+            show_invalid_submission_branches
+            or not node.is_in_submission_contract_error_branch
+        )
+        and not is_plateau_blocked_descendant(
+            node,
+            epsilon=plateau_block_epsilon,
+        )
+        and (
+            not disable_oom_saturated_parents
+            or not node.is_oom_blocked_parent
+        )
+    ]
+    return max(
+        candidates,
+        key=lambda node: (
+            public_scores_by_node_id[node.id]
+            if node.metric.maximize is not False
+            else -public_scores_by_node_id[node.id]
+        ),
+        default=None,
+    )
+
+
 def _tree_node_label(
     node: Node,
     *,
@@ -1240,32 +1261,19 @@ def build_tree_view(
             cap=public_score_bonus_cap,
         )
     }
-    score_fn: Callable[[Node], float] | None = None
-    if public_scores_by_node_id and public_score_bonus_weight > 0.0:
-        def public_adjusted_score(node: Node) -> float:
-            return _public_adjusted_tree_score(
-                node,
-                public_scores_by_node_id=public_scores_by_node_id,
-                weight=public_score_bonus_weight,
-                cap=public_score_bonus_cap,
-            )
-
-        score_fn = public_adjusted_score
     best_node = _visible_best_node(
         journal,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
     )
-    public_best_node = _visible_best_node(
+    public_best_node = _visible_public_best_node(
         journal,
+        public_scores_by_node_id=public_scores_by_node_id,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
-        score_fn=score_fn,
-    ) if score_fn is not None else None
-    if public_best_node is not None and public_best_node.id not in public_bonus_node_ids:
-        public_best_node = None
+    )
 
     def node_order_key(node: Node):
         return (

@@ -119,6 +119,29 @@ def test_web_tree_lines_mark_public_bonus_node_but_keep_cv_label():
     assert "0.96830" not in lines[1].label
 
 
+def test_web_tree_lines_mark_raw_public_best_not_public_adjusted_best():
+    journal = Journal()
+    cv_best = _scored_node(0.96815)
+    public_best = _scored_node(0.96805)
+    journal.append(cv_best)
+    journal.append(public_best)
+
+    lines = build_web_tree_lines(
+        journal,
+        public_scores_by_node_id={
+            cv_best.id: 0.96877,
+            public_best.id: 0.96892,
+        },
+        public_score_bonus_weight=0.5,
+        public_score_bonus_cap=0.0005,
+    )
+
+    assert lines[0].label == "0.96815·0"
+    assert lines[0].kind == "best public public-bonus"
+    assert lines[1].label == "0.96805·1"
+    assert lines[1].kind == "public public-best"
+
+
 def test_web_server_serves_html_snapshot_and_404():
     state = WebDashboardState()
     state.update(

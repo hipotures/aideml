@@ -554,6 +554,29 @@ def test_final_tree_renderable_keeps_public_score_markers():
     assert "\x1b[90m◆ " in ansi
 
 
+def test_final_tree_marks_raw_public_best_not_public_adjusted_best():
+    journal = Journal()
+    cv_best = _good_node(0.96815)
+    public_best = _good_node(0.96805)
+    journal.append(cv_best)
+    journal.append(public_best)
+
+    ansi = _render_ansi(
+        build_final_tree_renderable(
+            journal,
+            public_scores_by_node_id={
+                cv_best.id: 0.96877,
+                public_best.id: 0.96892,
+            },
+            public_score_bonus_weight=0.5,
+            public_score_bonus_cap=0.0005,
+        )
+    )
+
+    assert "\x1b[94m◆ \x1b[0m\x1b[1;33m0.96815" in ansi
+    assert "\x1b[1;33m◆ \x1b[0m\x1b[32m0.96805" in ansi
+
+
 def test_emit_completion_bell_writes_two_bells_to_tty_path(monkeypatch):
     writes = []
 
