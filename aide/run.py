@@ -3793,6 +3793,10 @@ def generate_reserved_hypothesis_root(
         cfg=base_agent.cfg,
         journal=Journal(nodes=list(journal.nodes)),
     )
+    worker_agent.public_scores_by_node_id = dict(base_agent.public_scores_by_node_id)
+    worker_agent.prompt_public_scores_by_node_id = dict(
+        base_agent.prompt_public_scores_by_node_id
+    )
     worker_agent.data_preview = base_agent.data_preview
     if worker_agent.data_preview is None:
         worker_agent.update_data_preview()
@@ -4066,6 +4070,7 @@ def run(argv: list[str] | None = None):
         cfg=cfg,
         journal=journal,
     )
+    agent.prompt_public_scores_by_node_id = load_public_scores_by_node_id(cfg.log_dir)
     recovered_generated_roots = recover_generated_only_root_artifacts(
         cfg=cfg,
         journal=journal,
@@ -4319,6 +4324,7 @@ def run(argv: list[str] | None = None):
             return
         scores = load_public_scores_by_node_id(cfg.log_dir)
         agent.public_scores_by_node_id = scores
+        agent.prompt_public_scores_by_node_id = scores
         public_scores_notice = f"Public scores refreshed: {len(scores)} nodes"
         public_scores_notice_until = time.monotonic() + 4.0
 

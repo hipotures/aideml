@@ -721,6 +721,7 @@ class Agent:
         self._pending_llm_log_dir: Path | None = None
         self.last_search_decision: dict[str, Any] | None = None
         self.public_scores_by_node_id: dict[str, float] = {}
+        self.prompt_public_scores_by_node_id: dict[str, float] = {}
 
     def _record_search_decision(self, trace: dict[str, Any]) -> None:
         self.last_search_decision = trace
@@ -1470,13 +1471,15 @@ class Agent:
         if self._is_hypothesis_mode():
             if parent_node is not None:
                 prompt["Branch context"] = self.journal.generate_branch_context(
-                    parent_node
+                    parent_node,
+                    public_scores_by_node_id=self.prompt_public_scores_by_node_id,
                 )
             return
         if include_global_memory:
             prompt["Memory"] = self.journal.generate_summary(
                 recent_steps=self.acfg.memory_recent_steps,
                 full_recent_steps=self.acfg.memory_full_recent_steps,
+                public_scores_by_node_id=self.prompt_public_scores_by_node_id,
             )
 
     def _parent_process_stdout_prompt(self, parent_node: Node) -> str | None:

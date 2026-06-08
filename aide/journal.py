@@ -21,6 +21,8 @@ from .utils.response import trim_long_string
 
 OOM_FAILURE_PARENT_LIMIT = 3
 SEEDED_BASE_SUMMARY_PREFIX = "Seeded base artifact"
+PUBLIC_CV_CLOSE_TOLERANCE_PCT = 0.05
+PUBLIC_CV_MEANINGFUL_TOLERANCE_PCT = 0.20
 
 
 def _summary_analysis_text(analysis: str | None) -> str:
@@ -40,6 +42,83 @@ def _summary_plan_text(plan: str | None) -> str:
             return text.split(marker, 1)[1].strip()
         return "Seeded base artifact copied from a previous scored run."
     return text
+
+
+def _format_public_cv_interpretation(
+    *,
+    cv_score: float,
+    public_score: float,
+    maximize: bool,
+) -> str:
+    raw_gap = public_score - cv_score
+    if cv_score == 0:
+        relative_pct = None
+    else:
+        oriented_gap = raw_gap if maximize else -raw_gap
+        relative_pct = 100.0 * oriented_gap / abs(cv_score)
+
+    lines = [
+        f"Kaggle public score: {public_score:.5f}",
+        f"CV-public gap: {raw_gap:+.5f}.",
+    ]
+    reliability_prefix = "Use public score only as reliability context, not as an optimization target. "
+
+    if relative_pct is None:
+        lines.append(
+            "Public/CV interpretation: CV is zero, so percentage alignment is undefined. "
+            + reliability_prefix
+            + "Inspect the raw public/CV gap before making the next change."
+        )
+        return "\n".join(lines)
+
+    abs_pct = abs(relative_pct)
+    if abs_pct <= PUBLIC_CV_CLOSE_TOLERANCE_PCT:
+        if raw_gap == 0:
+            comparison = "the same as CV"
+        else:
+            direction = "lower" if raw_gap < 0 else "higher"
+            comparison = f"{abs_pct:.2f}% {direction} than CV"
+        lines.append(
+            f"Public/CV interpretation: public is {comparison}; public and CV look close/aligned. "
+            + reliability_prefix
+            + "Continue with the intended hypothesis normally while preserving CV discipline."
+        )
+    elif relative_pct < 0:
+        severity = (
+            "mildly lower"
+            if abs_pct <= PUBLIC_CV_MEANINGFUL_TOLERANCE_PCT
+            else "meaningfully lower"
+        )
+        action = (
+            "Prefer a conservative robustness-oriented change and avoid adding major "
+            "model complexity unless the hypothesis directly addresses generalization."
+            if abs_pct <= PUBLIC_CV_MEANINGFUL_TOLERANCE_PCT
+            else "Prefer diagnostic, validation, leakage-checking, simplification, "
+            "or robustness changes; do not stack more complexity on this node just because CV is high."
+        )
+        if maximize:
+            comparison = "lower than CV"
+        else:
+            comparison = "worse than CV"
+        lines.append(
+            f"Public/CV interpretation: public is {abs_pct:.2f}% {comparison}; "
+            f"{severity}, possible overfitting or CV/public split mismatch. "
+            + reliability_prefix
+            + action
+        )
+    else:
+        if maximize:
+            comparison = "higher than CV"
+        else:
+            comparison = "better than CV"
+        lines.append(
+            f"Public/CV interpretation: public is {abs_pct:.2f}% {comparison}; "
+            "CV may be conservative or the public split favorable. "
+            + reliability_prefix
+            + "Do not chase the public leaderboard directly; preserve CV discipline and generalization."
+        )
+
+    return "\n".join(lines)
 
 
 @dataclass(eq=False)
@@ -283,8 +362,10 @@ class Journal(DataClassJsonMixin):
         include_code: bool = False,
         recent_steps: int | None = None,
         full_recent_steps: int | None = None,
+        public_scores_by_node_id: dict[str, float] | None = None,
     ) -> str:
         """Generate a summary of the journal for the agent."""
+        public_scores_by_node_id = public_scores_by_node_id or {}
         good_nodes = self.good_nodes
         best_node = self.get_best_node()
         steps = [
@@ -328,6 +409,16 @@ class Journal(DataClassJsonMixin):
                     summary_part += f"Validity warning: {n.validity_warning}\n"
             best_marker = " (current best)" if n is best_node else ""
             summary_part += f"Validation Metric: {n.metric.value:.5f}{best_marker}\n"
+            public_score = public_scores_by_node_id.get(n.id)
+            if public_score is not None:
+                summary_part += (
+                    _format_public_cv_interpretation(
+                        cv_score=float(n.metric.value),
+                        public_score=public_score,
+                        maximize=n.metric.maximize is not False,
+                    )
+                    + "\n"
+                )
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
 
@@ -339,8 +430,14 @@ class Journal(DataClassJsonMixin):
             current = current.parent
         return list(reversed(path))
 
-    def generate_branch_context(self, parent_node: Node) -> str:
+    def generate_branch_context(
+        self,
+        parent_node: Node,
+        *,
+        public_scores_by_node_id: dict[str, float] | None = None,
+    ) -> str:
         """Generate hypothesis-mode context for the selected parent branch."""
+        public_scores_by_node_id = public_scores_by_node_id or {}
         ancestors = self._ancestor_path(parent_node)
         hypothesis_path = [
             n.research_hypotheses_offered[0]
@@ -373,6 +470,15 @@ class Journal(DataClassJsonMixin):
             lines.append(f"Design: {_summary_plan_text(ancestor.plan)}")
             if ancestor.metric is not None and ancestor.metric.value is not None:
                 lines.append(f"Validation Metric: {ancestor.metric.value:.5f}")
+                public_score = public_scores_by_node_id.get(ancestor.id)
+                if public_score is not None:
+                    lines.extend(
+                        _format_public_cv_interpretation(
+                            cv_score=float(ancestor.metric.value),
+                            public_score=public_score,
+                            maximize=ancestor.metric.maximize is not False,
+                        ).splitlines()
+                    )
             if idx != len(ancestors):
                 lines.extend(["", "-------------------------------"])
             lines.append("")

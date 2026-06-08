@@ -62,6 +62,37 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
     assert "presets=medium_quality" not in summary
 
 
+def test_journal_summary_includes_public_score_context_when_available():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="plan")
+    node.metric = MetricValue(0.96794, maximize=True)
+    node.is_buggy = False
+    journal.append(node)
+
+    summary = journal.generate_summary(public_scores_by_node_id={node.id: 0.96677})
+
+    assert "Validation Metric: 0.96794" in summary
+    assert "Kaggle public score: 0.96677" in summary
+    assert "CV-public gap: -0.00117." in summary
+    assert "public is 0.12% lower than CV" in summary
+    assert "Use public score only as reliability context" in summary
+    assert "Prefer a conservative robustness-oriented change" in summary
+
+
+def test_journal_summary_interprets_minimizing_public_score_direction():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="plan")
+    node.metric = MetricValue(0.50000, maximize=False)
+    node.is_buggy = False
+    journal.append(node)
+
+    summary = journal.generate_summary(public_scores_by_node_id={node.id: 0.50100})
+
+    assert "Kaggle public score: 0.50100" in summary
+    assert "CV-public gap: +0.00100." in summary
+    assert "public is 0.20% worse than CV" in summary
+
+
 def test_journal_summary_compacts_entries_older_than_recent_step_window():
     journal = Journal()
 
@@ -340,6 +371,39 @@ def test_journal_generates_branch_context_from_root_to_parent_only():
     assert "Unrelated root plan" not in context
     assert "000303" not in context
     assert "Grandchild plan" not in context
+
+
+def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+
+    journal = Journal()
+    root = Node(code="root", plan="Root hypothesis plan")
+    root.metric = MetricValue(0.91, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000101"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child hypothesis plan", parent=root)
+    child.metric = MetricValue(0.92, maximize=True)
+    child.is_buggy = False
+    child.research_mode = "hypothesis"
+    child.research_hypotheses_offered = ["000202"]
+    journal.append(child)
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    agent.prompt_public_scores_by_node_id = {child.id: 0.91900}
+    prompt = {"Instructions": {}}
+
+    agent._add_memory_or_branch_context(prompt, parent_node=child)
+
+    context = prompt["Branch context"]
+    assert "Validation Metric: 0.92000" in context
+    assert "Kaggle public score: 0.91900" in context
+    assert "public is 0.11% lower than CV" in context
+    assert "Use public score only as reliability context" in context
 
 
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(
