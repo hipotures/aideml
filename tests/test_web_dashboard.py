@@ -24,7 +24,7 @@ def _scored_node(score: float, *, parent: Node | None = None) -> Node:
     return node
 
 
-def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
+def test_web_tree_lines_include_compact_and_desktop_text_prefixes():
     journal = Journal()
     root_a = _scored_node(0.91)
     root_b = _scored_node(0.92)
@@ -49,6 +49,13 @@ def test_web_tree_lines_use_compact_text_prefixes_without_horizontal_rule():
         ("└", "0.95000·4·64m"),
     ]
     assert all("─" not in line.prefix for line in lines)
+    assert [line.desktop_prefix for line in lines] == [
+        "├── ",
+        "├── ",
+        "│   ├── ",
+        "│   └── ",
+        "└── ",
+    ]
 
 
 def test_web_tree_lines_keep_tiny_improving_child_unblocked():
@@ -174,6 +181,7 @@ def test_web_server_serves_html_snapshot_and_404():
             payload = response.read().decode("utf-8")
         assert "\"run_id\": \"2-delicate-cherubic-crane\"" in payload
         assert "\"prefix\": \"├\"" in payload
+        assert "\"desktop_prefix\": \"\"" in payload
         assert "\"title\": \"Agent\"" in payload
 
         with pytest.raises(HTTPError) as exc_info:
@@ -269,6 +277,14 @@ def test_active_tree_line_blinks_slowly():
     assert "animation: active-node-fade 1.8s ease-in-out infinite;" in css
     assert "@keyframes active-node-fade" in css
     assert "opacity: 0.45;" in css
+
+
+def test_static_js_uses_desktop_tree_prefix_above_mobile_width():
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+
+    assert 'window.matchMedia("(max-width: 767px)")' in js
+    assert "line.desktop_prefix || line.prefix" in js
+    assert "if (lastSnapshot) renderTree(lastSnapshot);" in js
 
 
 def test_web_dashboard_marks_logs_tab_when_snapshot_refresh_fails():

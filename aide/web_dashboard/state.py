@@ -9,6 +9,7 @@ class WebTreeLine:
     prefix: str
     label: str
     kind: str = "ok"
+    desktop_prefix: str = ""
 
 
 @dataclass(frozen=True)

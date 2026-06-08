@@ -228,18 +228,25 @@ def build_web_tree_lines(
             return f"{label}·{active_hypothesis_id}"
         return label
 
-    def append_active(prefix: str, is_last: bool) -> None:
+    def append_active(prefix: str, desktop_prefix: str, is_last: bool) -> None:
         if active_stage is None:
             return
+        branch = "└" if is_last else "├"
         lines.append(
             WebTreeLine(
-                prefix=f"{prefix}{'└' if is_last else '├'}",
+                prefix=f"{prefix}{branch}",
                 label=active_label(),
                 kind="active",
+                desktop_prefix=f"{desktop_prefix}{branch}── ",
             )
         )
 
-    def append_rec(node: Node, prefix: str, is_last: bool) -> None:
+    def append_rec(
+        node: Node,
+        prefix: str,
+        desktop_prefix: str,
+        is_last: bool,
+    ) -> None:
         label, kind = _line_for_node(
             node,
             best_node=best_node,
@@ -248,29 +255,33 @@ def build_web_tree_lines(
             public_node_ids=public_node_ids,
             public_bonus_node_ids=public_bonus_node_ids,
         )
+        branch = "└" if is_last else "├"
         lines.append(
             WebTreeLine(
-                prefix=f"{prefix}{'└' if is_last else '├'}",
+                prefix=f"{prefix}{branch}",
                 label=label,
                 kind=kind,
+                desktop_prefix=f"{desktop_prefix}{branch}── ",
             )
         )
         children = visible_children(node)
         has_active_child = node is active_parent_node and active_stage is not None
         next_prefix = f"{prefix}{' ' if is_last else '│'}"
+        next_desktop_prefix = f"{desktop_prefix}{'    ' if is_last else '│   '}"
         for index, child in enumerate(children):
             append_rec(
                 child,
                 next_prefix,
+                next_desktop_prefix,
                 index == len(children) - 1 and not has_active_child,
             )
         if has_active_child:
-            append_active(next_prefix, True)
+            append_active(next_prefix, next_desktop_prefix, True)
 
     roots = sorted(journal.draft_nodes, key=lambda node: _node_order_key(journal, node))
     has_root_active = active_parent_node is None and active_stage is not None
     for index, node in enumerate(roots):
-        append_rec(node, "", index == len(roots) - 1 and not has_root_active)
+        append_rec(node, "", "", index == len(roots) - 1 and not has_root_active)
     if has_root_active:
-        append_active("", True)
+        append_active("", "", True)
     return lines
