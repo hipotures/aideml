@@ -2,6 +2,7 @@ let refreshMs = 2000;
 let treeTarget = null;
 let treeFollow = false;
 let lastTreeTarget = null;
+let lastSnapshot = null;
 
 function setLogsConnectionError(hasError) {
   const logsTab = document.querySelector('[data-tab="logs"]');
@@ -54,6 +55,27 @@ function text(value) {
   return value == null ? "" : String(value);
 }
 
+function isMobileViewport() {
+  const narrow = window.matchMedia("(max-width: 767px)").matches;
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const userAgentMobile = navigator.userAgentData?.mobile;
+  return typeof userAgentMobile === "boolean" ? userAgentMobile : narrow || coarsePointer;
+}
+
+function desktopTreePrefix(prefix) {
+  const compact = text(prefix);
+  if (!compact) return "";
+
+  const guides = compact.slice(0, -1);
+  const branch = compact.slice(-1);
+  return guides.replaceAll("│", "│   ").replaceAll(" ", "    ")
+    + (branch === "└" ? "└── " : "├── ");
+}
+
+function treePrefix(prefix) {
+  return isMobileViewport() ? text(prefix) : desktopTreePrefix(prefix);
+}
+
 function renderTree(snapshot) {
   document.getElementById("tree-title").textContent =
     snapshot.tree_title || "Solution tree";
@@ -72,7 +94,7 @@ function renderTree(snapshot) {
     row.className = `tree-line ${line.kind || "ok"}`;
     const prefix = document.createElement("span");
     prefix.className = "prefix";
-    prefix.textContent = text(line.prefix);
+    prefix.textContent = treePrefix(line.prefix);
     const dot = document.createElement("span");
     dot.className = "dot";
     const label = document.createElement("span");
@@ -175,31 +197,12 @@ function renderLogs(snapshot) {
   logs.textContent = (snapshot.log_lines || []).join("\n") || "waiting for process log";
 }
 
-function renderViewportDebug() {
-  const debug = document.getElementById("viewport-debug");
-  if (!debug) return;
-
-  const narrow = window.matchMedia("(max-width: 767px)").matches;
-  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-  const userAgentMobile = navigator.userAgentData?.mobile;
-  const mobileDetected = typeof userAgentMobile === "boolean"
-    ? userAgentMobile
-    : narrow || coarsePointer;
-  const source = typeof userAgentMobile === "boolean" ? "uaData" : "media";
-
-  debug.textContent = [
-    `window ${window.innerWidth}x${window.innerHeight}px`,
-    `mobile ${mobileDetected ? "yes" : "no"} (${source})`,
-    `narrow ${narrow ? "yes" : "no"}`,
-    `coarse ${coarsePointer ? "yes" : "no"}`,
-  ].join(" · ");
-}
-
 async function refresh() {
   try {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const snapshot = await response.json();
+    lastSnapshot = snapshot;
     setLogsConnectionError(false);
     refreshMs = Math.max(
       500,
@@ -219,6 +222,7 @@ async function refresh() {
   }
 }
 
-window.addEventListener("resize", renderViewportDebug);
-renderViewportDebug();
+window.addEventListener("resize", () => {
+  if (lastSnapshot) renderTree(lastSnapshot);
+});
 refresh();
