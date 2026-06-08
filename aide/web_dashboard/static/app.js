@@ -68,8 +68,7 @@ function desktopTreePrefix(prefix) {
 
   const guides = compact.slice(0, -1);
   const branch = compact.slice(-1);
-  return guides.replaceAll("│", "│   ").replaceAll(" ", "    ")
-    + (branch === "└" ? "└── " : "├── ");
+  return guides + (branch === "└" ? "└── " : "├── ");
 }
 
 function treePrefix(prefix) {

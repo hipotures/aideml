@@ -275,7 +275,7 @@ def test_static_js_expands_web_tree_prefixes_on_desktop_only():
     js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
 
     assert "function desktopTreePrefix(prefix)" in js
-    assert 'replaceAll("│", "│   ")' in js
+    assert "const guides = compact.slice(0, -1);" in js
     assert 'branch === "└" ? "└── " : "├── "' in js
     assert "isMobileViewport() ? text(prefix) : desktopTreePrefix(prefix)" in js
     assert "if (lastSnapshot) renderTree(lastSnapshot);" in js
