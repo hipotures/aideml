@@ -30,3 +30,24 @@ but they should not mutate AIDE state. A generic "JSON describes every UI widget
 engine is probably too broad for a first version; a typed AIDE run-state snapshot
 plus small reusable telemetry/render modules would be more practical and easier to
 reuse in other terminal tools later.
+
+## Generate parent-child diff descriptions for run steps
+
+Future idea: add a cached `diff_description` for each non-root node so submit
+tables and research tooling can show what actually changed in a step, not only
+the generated plan or validation score.
+
+Use `journal.json` as the source of truth: resolve `node2parent`, diff the
+parent and child `code` fields with a unified diff, then send a compact diff plus
+the parent/child plans and metrics to an LLM. The LLM should return one or two
+plain-text sentences describing the real code change, focused on modeling,
+features, validation, ensembling, calibration, data usage, or output artifacts.
+It should not infer beyond the diff, and should explicitly say when the change is
+mostly formatting or refactoring.
+
+This should be implemented as an offline/cacheable command, not during submit,
+for example `scripts/generate_diff_descriptions.py --run RUN --missing-only`.
+The generated descriptions can be stored in `aide_result.json`, in
+`submission_index.json`, or in a small central cache keyed by `(run, node_id)`.
+`kaggle_submission_lab` should only read the cached field and optionally show it
+in full view.
