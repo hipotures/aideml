@@ -2,7 +2,6 @@ let refreshMs = 2000;
 let treeTarget = null;
 let treeFollow = false;
 let lastTreeTarget = null;
-let lastSnapshot = null;
 
 function setLogsConnectionError(hasError) {
   const logsTab = document.querySelector('[data-tab="logs"]');
@@ -55,26 +54,6 @@ function text(value) {
   return value == null ? "" : String(value);
 }
 
-function isMobileViewport() {
-  const narrow = window.matchMedia("(max-width: 767px)").matches;
-  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-  const userAgentMobile = navigator.userAgentData?.mobile;
-  return typeof userAgentMobile === "boolean" ? userAgentMobile : narrow || coarsePointer;
-}
-
-function desktopTreePrefix(prefix) {
-  const compact = text(prefix);
-  if (!compact) return "";
-
-  const guides = compact.slice(0, -1);
-  const branch = compact.slice(-1);
-  return guides + (branch === "└" ? "└── " : "├── ");
-}
-
-function treePrefix(prefix) {
-  return isMobileViewport() ? text(prefix) : desktopTreePrefix(prefix);
-}
-
 function renderTree(snapshot) {
   document.getElementById("tree-title").textContent =
     snapshot.tree_title || "Solution tree";
@@ -93,7 +72,7 @@ function renderTree(snapshot) {
     row.className = `tree-line ${line.kind || "ok"}`;
     const prefix = document.createElement("span");
     prefix.className = "prefix";
-    prefix.textContent = treePrefix(line.prefix);
+    prefix.textContent = text(line.prefix);
     const dot = document.createElement("span");
     dot.className = "dot";
     const label = document.createElement("span");
@@ -201,7 +180,6 @@ async function refresh() {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const snapshot = await response.json();
-    lastSnapshot = snapshot;
     setLogsConnectionError(false);
     refreshMs = Math.max(
       500,
@@ -221,7 +199,4 @@ async function refresh() {
   }
 }
 
-window.addEventListener("resize", () => {
-  if (lastSnapshot) renderTree(lastSnapshot);
-});
 refresh();

@@ -271,16 +271,6 @@ def test_active_tree_line_blinks_slowly():
     assert "opacity: 0.45;" in css
 
 
-def test_static_js_expands_web_tree_prefixes_on_desktop_only():
-    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
-
-    assert "function desktopTreePrefix(prefix)" in js
-    assert "const guides = compact.slice(0, -1);" in js
-    assert 'branch === "└" ? "└── " : "├── "' in js
-    assert "isMobileViewport() ? text(prefix) : desktopTreePrefix(prefix)" in js
-    assert "if (lastSnapshot) renderTree(lastSnapshot);" in js
-
-
 def test_web_dashboard_marks_logs_tab_when_snapshot_refresh_fails():
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
