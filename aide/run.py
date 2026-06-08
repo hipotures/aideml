@@ -2367,10 +2367,14 @@ def last_error_lines(journal: Journal, *, max_lines: int = 2) -> list[str]:
 def _last_error_title(record: LastErrorRecord | None) -> str:
     if record is None:
         return "Last Error"
+    step = record.node.step if record.node.step is not None else "?"
+    timestamp = dt.datetime.fromtimestamp(record.node.ctime).strftime("%m-%d %H:%M")
     hypothesis_id = hypothesis_id_for_node(record.node)
     hypothesis_text = f" · {hypothesis_id}" if hypothesis_id is not None else ""
-    timestamp = dt.datetime.fromtimestamp(record.node.ctime).strftime("%H:%M:%S")
-    return f"Last Error{hypothesis_text} @ {timestamp}"
+    return (
+        f"Last Error {_format_run_status_step(step)} @ {timestamp}"
+        f"{hypothesis_text}"
+    )
 
 
 def build_last_error_summary(journal: Journal, *, log_dir: Path | None = None) -> Group:
