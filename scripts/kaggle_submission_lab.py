@@ -639,6 +639,18 @@ def _short_models(models: list[Any] | None) -> str:
 def _format_duration(value: Any) -> str:
     if value is None or value == "":
         return "-"
+    text = str(value).strip()
+    if text.endswith("m"):
+        try:
+            return f"{float(text[:-1]):.1f}m"
+        except (TypeError, ValueError):
+            return "-"
+    if text.endswith("s"):
+        try:
+            seconds = float(text[:-1])
+        except (TypeError, ValueError):
+            return "-"
+        return f"{seconds / 60.0:.1f}m"
     try:
         seconds = float(value)
     except (TypeError, ValueError):
@@ -843,6 +855,7 @@ def _remote_display_rows(
                 smart._remote_attr(remote, "status")
             ),
             "eval_metric": parsed.get("metric") or parsed.get("eval_metric"),
+            "exec_time": parsed.get("exec_time") or parsed.get("time"),
             "algo": parsed.get("algo"),
             "run": parsed.get("run")
             or str(smart._remote_attr(remote, "file_name") or "-"),
@@ -1779,6 +1792,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         eval_metric=record.get("eval_metric"),
         hypothesis_id=record.get("hypothesis_id"),
         source_sha256=record.get("source_sha256"),
+        exec_time=record.get("exec_time"),
     )
 
 

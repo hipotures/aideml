@@ -780,7 +780,7 @@ def test_sync_registry_from_remote_updates_public_score_by_timestamp_description
             FakeRemoteSubmission(
                 description=(
                     "cv=0.90000 | run=run-a | step=1 | "
-                    "aide_ts=20260502T101000 | node=fedcba98"
+                    "aide_ts=20260502T101000 | node=fedcba98 | time=25.7m"
                 )
             )
         ],
@@ -789,6 +789,7 @@ def test_sync_registry_from_remote_updates_public_score_by_timestamp_description
     reloaded = SubmissionRegistry.load(tmp_path / "registry.json")
     assert changed == 1
     assert reloaded.entries[0]["public_score"] == "0.87654"
+    assert reloaded.entries[0]["exec_time"] == "25.7m"
     assert reloaded.entries[0]["remote_description"].startswith("cv=0.90000")
 
 
@@ -882,7 +883,7 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
         limit=2,
     )
     selected = [
-        replace(selected[0], algo="AG", eval_metric="balanced_accuracy"),
+        replace(selected[0], algo="AG", eval_metric="balanced_accuracy", exec_time=1542.0),
         replace(selected[1], algo="Leg"),
     ]
     registry = SubmissionRegistry(tmp_path / "registry.json")
@@ -905,8 +906,10 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
     assert "run=run-a" in client.calls[0]["message"]
     assert "step=1" in client.calls[0]["message"]
     assert "algo=AG" in client.calls[0]["message"]
+    assert client.calls[0]["message"].endswith("time=25.7m")
     assert submitted[0]["eval_metric"] == "balanced_accuracy"
     assert submitted[0]["algo"] == "AG"
+    assert submitted[0]["exec_time"] == 1542.0
     assert submitted[0]["uploaded_filename"] == (
         "sub_20260502T101000_step-1_node-fedcba98_sha-142e531fbf_cv-0.90000.csv"
     )

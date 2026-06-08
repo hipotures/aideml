@@ -61,6 +61,7 @@ class Candidate:
     eval_metric: str | None = None
     hypothesis_id: str | None = None
     source_sha256: str | None = None
+    exec_time: float | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -241,6 +242,7 @@ def collect_candidates(
                         plan=node.get("plan"),
                         analysis=node.get("analysis"),
                         eval_metric=_metric_name(node),
+                        exec_time=node.get("exec_time"),
                     )
                 )
             finally:
@@ -666,11 +668,23 @@ def build_kaggle_message(candidate: Candidate) -> str:
     node = candidate.node_id[:8] if candidate.node_id else "unknown"
     algo = f" | algo={candidate.algo}" if candidate.algo else ""
     metric = f" | metric={candidate.eval_metric}" if candidate.eval_metric else ""
+    exec_time = _format_message_duration(candidate.exec_time)
+    time = f" | time={exec_time}" if exec_time else ""
     return (
         f"cv={score} | run={candidate.run} | step={candidate.step} | "
         f"aide_ts={candidate.timestamp} | node={node} | "
-        f"sha={(candidate.sha256 or '')[:10]}{algo}{metric}"
+        f"sha={(candidate.sha256 or '')[:10]}{algo}{metric}{time}"
     )
+
+
+def _format_message_duration(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return None
+    return f"{seconds / 60.0:.1f}m"
 
 
 def build_upload_filename(candidate: Candidate) -> str:
@@ -736,6 +750,7 @@ def submit_candidates(
             "node_id": candidate.node_id,
             "timestamp": candidate.timestamp,
             "local_score": candidate.local_score,
+            "exec_time": candidate.exec_time,
             "metric_maximize": candidate.metric_maximize,
             "eval_metric": candidate.eval_metric,
             "submission_path": to_portable_path(candidate.submission_path),
@@ -893,6 +908,9 @@ def _remote_registry_fields(remote: Any) -> dict[str, Any]:
         "remote_total_bytes": _remote_attr(remote, "total_bytes"),
         "synced_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
+    parsed_exec_time = parsed.get("exec_time") or parsed.get("time")
+    if parsed_exec_time:
+        fields["exec_time"] = parsed_exec_time
     if _description_marks_local_invalid(parsed):
         reason = parsed.get("reason") or parsed.get("invalid_reason") or "marked ignored in Kaggle description"
         fields.update(

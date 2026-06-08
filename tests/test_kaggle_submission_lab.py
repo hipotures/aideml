@@ -1671,7 +1671,7 @@ def test_render_registry_table_parses_remote_only_aide_description(tmp_path):
         file_name = "sub_20260505T204454_step--1_node-profile-_sha-165e7caae1_cv-0.95100.csv"
         description = (
             "cv=0.95100 | run=2-remote-server-run | step=-1 | "
-            "aide_ts=20260505T204454 | node=profile- | sha=165e7caae1"
+            "aide_ts=20260505T204454 | node=profile- | sha=165e7caae1 | time=25.7m"
         )
         status = "COMPLETE"
         public_score = "0.95072"
@@ -1684,6 +1684,7 @@ def test_render_registry_table_parses_remote_only_aide_description(tmp_path):
     output = console.export_text()
     assert "0.95100" in output
     assert "0.95072" in output
+    assert "25.7m" in output
     assert "2-remote-server-run" in output
     assert "20260505" in output
     assert "165e7caae1" in output
