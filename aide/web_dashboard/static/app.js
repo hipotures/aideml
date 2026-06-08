@@ -175,6 +175,26 @@ function renderLogs(snapshot) {
   logs.textContent = (snapshot.log_lines || []).join("\n") || "waiting for process log";
 }
 
+function renderViewportDebug() {
+  const debug = document.getElementById("viewport-debug");
+  if (!debug) return;
+
+  const narrow = window.matchMedia("(max-width: 767px)").matches;
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const userAgentMobile = navigator.userAgentData?.mobile;
+  const mobileDetected = typeof userAgentMobile === "boolean"
+    ? userAgentMobile
+    : narrow || coarsePointer;
+  const source = typeof userAgentMobile === "boolean" ? "uaData" : "media";
+
+  debug.textContent = [
+    `window ${window.innerWidth}x${window.innerHeight}px`,
+    `mobile ${mobileDetected ? "yes" : "no"} (${source})`,
+    `narrow ${narrow ? "yes" : "no"}`,
+    `coarse ${coarsePointer ? "yes" : "no"}`,
+  ].join(" · ");
+}
+
 async function refresh() {
   try {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
@@ -199,4 +219,6 @@ async function refresh() {
   }
 }
 
+window.addEventListener("resize", renderViewportDebug);
+renderViewportDebug();
 refresh();

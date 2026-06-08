@@ -296,6 +296,17 @@ main {
   overflow-wrap: anywhere;
 }
 
+.viewport-debug {
+  max-width: 900px;
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid #2b313a;
+  color: #7d8794;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .logs {
   margin: 0;
   font: 700 12px/1.35 inherit;
