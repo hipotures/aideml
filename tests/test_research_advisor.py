@@ -3578,6 +3578,13 @@ def test_legacy_agent_prompt_forbids_data_directory_discovery(tmp_path):
     assert "write_submission" in contract
     assert "write_validation_predictions" in contract
     assert "train, test, sample_sub = load_competition_data()" in contract
+    assert "do not call `to_csv()`" in contract
+    assert "submission.csv" in contract
+    assert "oof_predictions.csv.gz" in contract
+    assert "test_predictions.csv.gz" in contract
+    assert "validation_predictions.csv.gz" in contract
+    assert "write each required artifact at most once" in contract
+    assert "call `write_test_predictions(...)` exactly once" in contract
     assert "Do not read train/test/sample_submission manually" in contract
     assert "data-directory discovery code" in contract
     assert "find_data_dir()" in contract

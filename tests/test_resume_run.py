@@ -526,6 +526,8 @@ def test_allocate_node_artifact_slot_sets_unique_explicit_name(tmp_path):
     assert second_dir.name == second_dir_name
     assert first_dir.exists()
     assert second_dir.exists()
+    assert (first_dir / "aide_solution_helpers.py").exists()
+    assert (second_dir / "aide_solution_helpers.py").exists()
     assert len(first_dir_name.split("-")[-1]) == 8
 
 
@@ -538,6 +540,7 @@ def test_allocate_node_artifact_slot_appends_step_to_explicit_name(tmp_path):
     assert parts[2] == "113"
     assert artifact_dir.name == dir_name
     assert artifact_dir.exists()
+    assert (artifact_dir / "aide_solution_helpers.py").exists()
 
 
 def test_ensure_node_artifact_slot_assigns_hash_name_to_legacy_node(tmp_path):

@@ -84,6 +84,7 @@ from .utils.config import (
     aux_file_name,
     aux_mode,
     copy_aux_file_input,
+    copy_solution_helper,
     load_task_desc,
     prep_agent_workspace,
     save_run,
@@ -3755,6 +3756,7 @@ def allocate_node_artifact_slot(
             artifact_dir.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             continue
+        copy_solution_helper(artifact_dir)
         return ctime, dir_name, artifact_dir
 
 
