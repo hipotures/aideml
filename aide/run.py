@@ -1519,6 +1519,32 @@ def build_tree_view(
         status_text = str(row.get("status") or "hypothesis")
         score = row.get("score")
         prefix = "└── " if is_last and not has_active_after_roots else "├── "
+        is_active_virtual_root = (
+            active_stage is not None
+            and active_existing_node is None
+            and active_parent_node is None
+            and active_hypothesis_id == hypothesis_id
+        )
+        if is_active_virtual_root:
+            line = Text(prefix, style=TUI_INACTIVE_VALUE_STYLE)
+            line.append_text(
+                _tree_active_placeholder_line(
+                    active_stage=active_stage,
+                    active_hypothesis_id=hypothesis_id,
+                    blink_on=blink_on,
+                )
+            )
+            item_id = f"hypothesis-root:{hypothesis_id}"
+            append_item(
+                TreeViewItem(
+                    item_id,
+                    "header",
+                    line,
+                    focus_start=len(prefix),
+                )
+            )
+            active_item_id = item_id
+            return
         status_style = {
             "score": TUI_METRIC_VALUE_STYLE,
             "code": "cyan",
@@ -1551,32 +1577,6 @@ def build_tree_view(
                 focus_start=len(prefix),
             )
         )
-        if (
-            active_stage is not None
-            and active_existing_node is None
-            and active_parent_node is None
-            and active_hypothesis_id == hypothesis_id
-        ):
-            child_prefix = "    " if is_last and not has_active_after_roots else "│   "
-            child_prefix += "└── "
-            active_line = Text(child_prefix, style=TUI_INACTIVE_VALUE_STYLE)
-            active_line.append_text(
-                _tree_active_placeholder_line(
-                    active_stage=active_stage,
-                    active_hypothesis_id=None,
-                    blink_on=blink_on,
-                )
-            )
-            item_id = f"active:{hypothesis_id}"
-            append_item(
-                TreeViewItem(
-                    item_id,
-                    f"hypothesis-root:{hypothesis_id}",
-                    active_line,
-                    focus_start=len(child_prefix),
-                )
-            )
-            active_item_id = item_id
 
     roots = [
         node

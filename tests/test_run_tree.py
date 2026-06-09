@@ -2029,7 +2029,7 @@ def test_solution_tree_shows_virtual_root_hypotheses_when_journal_is_empty(tmp_p
     assert "code" not in output
 
 
-def test_solution_tree_places_active_marker_under_virtual_root_hypothesis(tmp_path):
+def test_solution_tree_marks_virtual_root_hypothesis_active_on_same_line(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path / task)
@@ -2056,10 +2056,11 @@ def test_solution_tree_places_active_marker_under_virtual_root_hypothesis(tmp_pa
         )
     )
 
-    assert "○ 000011" in output
-    assert "[*]" in output
-    assert output.index("000011") < output.index("[*]") < output.index("000012")
-    assert active_tree_item_id(view) == "active:000011"
+    assert "[*]·000011" in output
+    assert "○ 000011" not in output
+    assert output.count("[*]") == 1
+    assert output.index("[*]·000011") < output.index("000012")
+    assert active_tree_item_id(view) == "hypothesis-root:000011"
 
 
 def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
