@@ -1716,9 +1716,10 @@ def _hypothesis_root_inventory_rows(
     except (OSError, ValueError):
         return []
 
+    hypotheses = _compatible_manual_hypotheses(cfg, library)
     best_by_id = _best_hypothesis_nodes_by_id(journal)
     rows: list[dict[str, object]] = []
-    for hypothesis in library.hypotheses:
+    for hypothesis in hypotheses:
         node = best_by_id.get(hypothesis.id)
         status = "hypothesis"
         score: float | None = None
@@ -1827,12 +1828,7 @@ def build_root_hypotheses_view(
             )
     if inventory_rows:
         rows.sort(key=lambda row: str(row["hypothesis_id"]))
-    lines = [
-        Text(
-            "#    state       score    hypothesis  mode  title",
-            style=TUI_ROW_LABEL_STYLE,
-        )
-    ]
+    lines: list[Text] = []
     for index, row in enumerate(rows, start=1):
         hypothesis_id = str(row["hypothesis_id"])
         step = row.get("step")
@@ -1843,8 +1839,9 @@ def build_root_hypotheses_view(
         title_text = str(row.get("title") or "")
         if len(title_text) > 44:
             title_text = title_text[:41] + "..."
+        prefix = "└── " if index == len(rows) else "├── "
         line = Text()
-        line.append(f"{step_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
+        line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
         status_style = {
             "score": TUI_METRIC_VALUE_STYLE,
             "code": "cyan",
@@ -1853,13 +1850,23 @@ def build_root_hypotheses_view(
             "bug": "red",
             "failed": "red",
         }.get(status_text, TUI_INACTIVE_VALUE_STYLE)
+        marker = {
+            "score": "●",
+            "code": "●",
+            "generated": "●",
+            "hypothesis": "○",
+            "bug": "×",
+            "failed": "×",
+        }.get(status_text, "○")
+        line.append(f"{marker} ", style=status_style)
+        line.append(f"{hypothesis_id:<8}", style=TUI_NEUTRAL_VALUE_STYLE)
         line.append(f"{status_text:<11}", style=status_style)
         line.append(f"{score_text:<9}", style=TUI_METRIC_VALUE_STYLE)
-        line.append(f"{hypothesis_id:<12}", style=TUI_NEUTRAL_VALUE_STYLE)
         line.append(
-            f"{str(row.get('mode') or 'n/a'):<5}",
+            f"{str(row.get('mode') or 'n/a'):<7}",
             style=TUI_INACTIVE_VALUE_STYLE,
         )
+        line.append(f"{step_text:<5}", style=TUI_INACTIVE_VALUE_STYLE)
         line.append(title_text, style=TUI_INACTIVE_VALUE_STYLE)
         lines.append(line)
     if not rows:
@@ -4501,11 +4508,7 @@ def run(argv: list[str] | None = None):
     tree_scroll_top = 0
     tree_follow_mode = "off"
     search_debug_visible = False
-    left_panel_view: LeftPanelView = (
-        "root"
-        if _is_research_hypothesis_mode(cfg) or _has_hypothesis_root_inventory(cfg)
-        else "tree"
-    )
+    left_panel_view: LeftPanelView = "tree"
     focused_table_item_id = "header"
     focused_table_item_index = 0
     table_scroll_top = 0

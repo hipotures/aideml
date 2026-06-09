@@ -218,6 +218,7 @@ def _write_root_hypothesis(
     hypothesis_id: str,
     *,
     title: str,
+    agent_modes: list[str] | None = None,
 ) -> Path:
     hypothesis_dir = root / "research_hypotheses" / task / hypothesis_id
     hypothesis_dir.mkdir(parents=True, exist_ok=True)
@@ -226,7 +227,7 @@ def _write_root_hypothesis(
         json.dumps(
             {
                 "enabled": True,
-                "agent_modes": ["legacy"],
+                "agent_modes": agent_modes or ["legacy"],
                 "title": title,
                 "summary": f"{title} summary",
                 "rationale": f"{title} rationale",
@@ -905,9 +906,8 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     )
 
     assert "Root hypotheses" in output
-    assert "#    state       score    hypothesis  mode  title" in output
-    assert "002  score      0.95200  000222      ag,leg" in output
-    assert "001  score      0.95000  000111      leg" in output
+    assert "├── ● 000222  score      0.95200  ag,leg 002" in output
+    assert "└── ● 000111  score      0.95000  leg    001" in output
     assert output.index("000222") < output.index("000111")
     assert "000333" not in output
     assert "0.99000" not in output
@@ -1935,6 +1935,13 @@ def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
     cfg.workspace_dir = str(tmp_path / "workspaces" / "2-root-view-test")
     cfg.agent.mode = "legacy"
 
+    _write_root_hypothesis(
+        tmp_path,
+        task,
+        "000000",
+        title="AutoGluon only",
+        agent_modes=["autogluon"],
+    )
     _write_root_hypothesis(tmp_path, task, "000001", title="Only hypothesis")
     code_dir = _write_root_hypothesis(tmp_path, task, "000002", title="Has code")
     code_path = code_dir / "legacy-001.py"
@@ -1963,9 +1970,11 @@ def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
         build_root_hypotheses_view(journal, cfg=cfg, repo_root=tmp_path)
     )
 
-    assert "hypothesis n/a      000001" in output
-    assert "code       n/a      000002" in output
-    assert "score      0.96321  000003" in output
+    assert "AutoGluon only" not in output
+    assert "000000" not in output
+    assert "○ 000001  hypothesis n/a      leg    001" in output
+    assert "● 000002  code       n/a      leg    002" in output
+    assert "● 000003  score      0.96321  leg    000" in output
     assert "Only hypothesis" in output
     assert "Has code" in output
     assert "Has score" in output
