@@ -24,6 +24,7 @@ from .backend import FunctionSpec, query
 from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import Journal, Node
+from .refactor_sidecar import RefactorConfig, maybe_refactor_response_py
 from .research import (
     build_data_overview,
     filter_hypothesis_candidate_parents,
@@ -1618,12 +1619,49 @@ class Agent:
                     log_dir=self._pending_llm_log_dir,
                     code=code,
                 )
+                self._maybe_refactor_generated_response()
                 # merge all code blocks into a single string
                 return nl_text, code
 
             print("Plan + code extraction failed, retrying...")
         print("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
+
+    def _maybe_refactor_generated_response(self) -> None:
+        if self._pending_llm_log_dir is None:
+            return
+        if is_autogluon_preprocess_mode(self.cfg):
+            return
+
+        config = RefactorConfig.from_env()
+        if not config.enabled:
+            return
+
+        artifact_dir = Path(self._pending_llm_log_dir)
+
+        def call_model(prompt_text: str, model: str, timeout_s: int) -> str:
+            context = {
+                **self._generation_log_context(),
+                "phase": "refactor",
+            }
+            output = query(
+                system_message=prompt_text,
+                user_message=None,
+                model=model,
+                temperature=None,
+                llm_log_dir=artifact_dir,
+                llm_log_prefix="refactor",
+                llm_log_context=context,
+                timeout=timeout_s,
+            )
+            return output if isinstance(output, str) else json.dumps(output)
+
+        maybe_refactor_response_py(
+            response_py_path=artifact_dir / "response.py",
+            artifact_dir=artifact_dir,
+            call_model=call_model,
+            config=config,
+        )
 
     def _draft(self, *, hypothesis_selection: Any | None = None) -> Node:
         if is_autogluon_preprocess_mode(self.cfg):
