@@ -35,4 +35,7 @@ Default cache mode is `AIDE_CACHE_MODE=off`.
 
 The refactored code must remain correct if all cache operations are disabled or fail.
 
+Any prediction cache contract must fingerprint the exact fold-local training,
+validation, and test feature objects used by the wrapped fit/predict block.
+
 In phase 1, the refactored code is saved as a sidecar artifact and is not used to replace the original code.

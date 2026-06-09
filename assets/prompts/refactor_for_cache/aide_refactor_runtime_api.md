@@ -57,6 +57,9 @@ contract = build_prediction_contract(
     fold_id=fold_idx,
     class_order=class_order,
     feature_cols=feature_cols,
+    train_features=X_train_xgb,
+    valid_features=X_val_xgb,
+    test_features=xgb_test_df,
     model_params=params,
     fold_indices=valid_idx,
     target_values=y_tr_code,
@@ -83,5 +86,11 @@ cached = cached_fold_prediction(
     compute_fn=compute_xgb_predictions,
 )
 ```
+
+`train_features`, `valid_features`, and `test_features` are required whenever
+you use `cached_fold_prediction(...)`. Pass the exact feature matrix/dataframe
+objects used for model fitting and validation/test prediction in that fold.
+Do not use `cached_fold_prediction(...)` if you cannot identify those exact
+objects without changing behavior.
 
 When `AIDE_CACHE_MODE=off`, this computes normally and does not read/write shared prediction arrays.

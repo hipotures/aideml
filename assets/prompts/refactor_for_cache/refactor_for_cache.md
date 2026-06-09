@@ -146,10 +146,23 @@ Use `cached_fold_prediction(...)` only when the original code has a clean fold-l
 - has a known fold id;
 - has a known model family/variant id;
 - can return `valid_idx`, `valid_proba`, and `test_proba` without changing logic.
+- can pass the exact fold-local feature objects used for training, validation prediction,
+  and test prediction into `build_prediction_contract(...)` as `train_features`,
+  `valid_features`, and `test_features`.
 
 If this is not clean, do not force cache wrapping. Use only `aide_stage(...)`.
 
 When using `cached_fold_prediction(...)`, keep the original compute block inside `compute_fn`.
+When building the prediction contract for a cache wrapper, always include:
+
+```python
+train_features=<exact features passed to model.fit for this fold>
+valid_features=<exact features passed to validation predict/predict_proba>
+test_features=<exact features passed to test predict/predict_proba>
+```
+
+Do not use `cached_fold_prediction(...)` if these exact feature objects are not
+available or are ambiguous.
 
 The wrapper must not change predictions when `AIDE_CACHE_MODE=off`.
 

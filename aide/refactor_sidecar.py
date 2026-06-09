@@ -150,6 +150,8 @@ def validate_refactored_code(code: str) -> tuple[bool, str]:
     imports_runtime = False
     uses_stage = False
     finalizes = False
+    uses_prediction_cache = False
+    contract_has_feature_fingerprints = False
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -168,6 +170,20 @@ def validate_refactored_code(code: str) -> tuple[bool, str]:
                 "finalize_aide_artifacts",
                 "aide_refactor_runtime.finalize_aide_artifacts",
             }
+            uses_prediction_cache = uses_prediction_cache or called in {
+                "cached_fold_prediction",
+                "aide_refactor_runtime.cached_fold_prediction",
+            }
+            if called in {
+                "build_prediction_contract",
+                "aide_refactor_runtime.build_prediction_contract",
+            }:
+                keyword_names = {kw.arg for kw in node.keywords if kw.arg is not None}
+                contract_has_feature_fingerprints = {
+                    "train_features",
+                    "valid_features",
+                    "test_features",
+                }.issubset(keyword_names)
 
     if not imports_runtime:
         return False, "missing_runtime_import"
@@ -175,6 +191,8 @@ def validate_refactored_code(code: str) -> tuple[bool, str]:
         return False, "missing_aide_stage"
     if not finalizes:
         return False, "missing_finalize_aide_artifacts"
+    if uses_prediction_cache and not contract_has_feature_fingerprints:
+        return False, "missing_prediction_feature_fingerprints"
     return True, "ok"
 
 

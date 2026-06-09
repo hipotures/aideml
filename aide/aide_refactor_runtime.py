@@ -356,7 +356,8 @@ def get_aide_context(working_dir: Optional[Union[str, Path]] = None) -> AideCont
 
 def finalize_aide_artifacts() -> None:
     try:
-        get_aide_runtime().finalize()
+        if _RUNTIME is not None:
+            _RUNTIME.finalize()
     except Exception:
         pass
 
@@ -449,6 +450,9 @@ def build_prediction_contract(
     fold_id: Union[str, int],
     class_order: Optional[Sequence[Any]] = None,
     feature_cols: Optional[Sequence[str]] = None,
+    train_features: Optional[Any] = None,
+    valid_features: Optional[Any] = None,
+    test_features: Optional[Any] = None,
     model_params: Optional[Mapping[str, Any]] = None,
     fold_indices: Optional[Any] = None,
     target_values: Optional[Any] = None,
@@ -467,6 +471,12 @@ def build_prediction_contract(
     if feature_cols is not None:
         contract["feature_cols_hash"] = hash_sequence(list(feature_cols), prefix="features_")
         contract["feature_cols_count"] = len(feature_cols)
+    if train_features is not None:
+        contract["train_features_hash"] = hash_array_light(train_features, prefix="train_features_")
+    if valid_features is not None:
+        contract["valid_features_hash"] = hash_array_light(valid_features, prefix="valid_features_")
+    if test_features is not None:
+        contract["test_features_hash"] = hash_array_light(test_features, prefix="test_features_")
     if model_params is not None:
         contract["model_params_hash"] = stable_hash_json(dict(model_params), prefix="params_")
     if fold_indices is not None:

@@ -1,5 +1,6 @@
 import json
 
+import aide.aide_refactor_runtime as runtime
 from aide.journal import Journal
 from aide.agent import Agent
 from aide.refactor_sidecar import (
@@ -63,6 +64,101 @@ def test_validate_refactored_code_requires_stage_and_finalize():
 
     assert valid is False
     assert status == "missing_finalize_aide_artifacts"
+
+
+def test_validate_refactored_code_rejects_prediction_cache_without_feature_fingerprints():
+    code = """\
+from aide_refactor_runtime import (
+    aide_stage,
+    finalize_aide_artifacts,
+    build_prediction_contract,
+    cached_fold_prediction,
+)
+
+with aide_stage("training_stage"):
+    contract = build_prediction_contract(
+        model_family="xgb",
+        variant_id="default",
+        fold_id=1,
+        feature_cols=["a"],
+    )
+    cached_fold_prediction(
+        model_family="xgb",
+        variant_id="default",
+        fold_id=1,
+        contract=contract,
+        compute_fn=lambda: (valid_idx, valid_proba, test_proba),
+    )
+finalize_aide_artifacts()
+"""
+
+    valid, status = validate_refactored_code(code)
+
+    assert valid is False
+    assert status == "missing_prediction_feature_fingerprints"
+
+
+def test_validate_refactored_code_accepts_prediction_cache_with_feature_fingerprints():
+    code = """\
+from aide_refactor_runtime import (
+    aide_stage,
+    finalize_aide_artifacts,
+    build_prediction_contract,
+    cached_fold_prediction,
+)
+
+with aide_stage("training_stage"):
+    contract = build_prediction_contract(
+        model_family="xgb",
+        variant_id="default",
+        fold_id=1,
+        feature_cols=["a"],
+        train_features=X_train,
+        valid_features=X_valid,
+        test_features=X_test,
+    )
+    cached_fold_prediction(
+        model_family="xgb",
+        variant_id="default",
+        fold_id=1,
+        contract=contract,
+        compute_fn=lambda: (valid_idx, valid_proba, test_proba),
+    )
+finalize_aide_artifacts()
+"""
+
+    valid, status = validate_refactored_code(code)
+
+    assert valid is True
+    assert status == "ok"
+
+
+def test_prediction_contract_hashes_feature_values(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIDE_ARTIFACT_DIR", str(tmp_path / "runtime-artifacts"))
+    runtime._RUNTIME = None
+    base = {
+        "model_family": "xgb",
+        "variant_id": "default",
+        "fold_id": 1,
+        "feature_cols": ["a"],
+        "train_features": [[1.0], [2.0]],
+        "valid_features": [[3.0]],
+        "test_features": [[4.0]],
+    }
+
+    first = runtime.build_prediction_contract(**base)
+    second = runtime.build_prediction_contract(
+        **{
+            **base,
+            "test_features": [[9.0]],
+        }
+    )
+
+    assert first["train_features_hash"].startswith("train_features_")
+    assert first["valid_features_hash"].startswith("valid_features_")
+    assert first["test_features_hash"].startswith("test_features_")
+    assert first["prediction_key"] != second["prediction_key"]
+    runtime._RUNTIME = None
 
 
 def _write_refactor_inputs(tmp_path):
