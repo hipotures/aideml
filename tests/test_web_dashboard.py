@@ -84,6 +84,23 @@ def test_web_tree_lines_mark_non_improving_plateau_child_as_blocked():
     assert lines[1].kind == "blocked"
 
 
+def test_web_tree_lines_keep_public_marker_on_blocked_submitted_node():
+    journal = Journal()
+    parent = _scored_node(0.967787)
+    child = _scored_node(0.967782, parent=parent)
+    journal.append(parent)
+    journal.append(child)
+
+    lines = build_web_tree_lines(
+        journal,
+        plateau_block_epsilon=0.00001,
+        public_scores_by_node_id={child.id: 0.96869},
+    )
+
+    assert lines[1].label == "0.96778·1"
+    assert lines[1].kind == "blocked public"
+
+
 def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():
     journal = Journal()
     parent = _scored_node(0.965327)
@@ -267,6 +284,15 @@ def test_run_data_labels_do_not_wrap():
 
     assert "grid-template-columns: 12ch 1fr;" in css
     assert "white-space: nowrap;" in css
+
+
+def test_blocked_public_tree_marker_uses_dim_diamond():
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert ".tree-line.blocked.public .dot" in css
+    assert ".tree-line.blocked.public .dot::before" in css
+    assert 'content: "◆";' in css
+    assert "color: #94a3b8;" in css
 
 
 def test_active_tree_line_blinks_slowly():

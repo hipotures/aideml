@@ -143,9 +143,12 @@ def _line_for_node(
     metric = _metric_text(node.metric)
     if metric is None:
         return f"bug{suffix}{runtime_suffix}", "bug"
-    if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
-        return f"{metric}{suffix}{runtime_suffix}", "blocked"
     is_public = node.id in public_node_ids
+    if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
+        kinds = ["blocked"]
+        if is_public:
+            kinds.append("public")
+        return f"{metric}{suffix}{runtime_suffix}", " ".join(kinds)
     is_public_bonus = node.id in public_bonus_node_ids
     is_public_best = node is public_best_node
     kinds: list[str] = []
