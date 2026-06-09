@@ -1801,6 +1801,29 @@ def test_research_prompt_uses_requested_hypothesis_count():
     assert "contain exactly 3 items" in prompt
 
 
+def test_research_prompt_includes_current_run_hypotheses():
+    prompt = build_research_prompt(
+        {
+            "task_desc": "task",
+            "best_working_solutions": [],
+            "worst_working_solutions": [],
+            "current_run_hypotheses": [
+                {
+                    "id": "000014",
+                    "title": "Photometric Color Stack",
+                    "summary": "Add color-index features.",
+                    "code_status": "hypothesis_only",
+                }
+            ],
+            "hypothesis_count": 1,
+        }
+    )
+
+    assert '"current_run_hypotheses"' in prompt
+    assert "Photometric Color Stack" in prompt
+    assert "materially different" in prompt
+
+
 def test_research_prompt_includes_previous_research_summaries(tmp_path):
     context = {
         "task_desc": "task",
@@ -1880,6 +1903,9 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     checkpoint_dir = Path(result["checkpoint_dir"])
     command = seen["cmd"]
 
+    assert checkpoint_dir == (
+        Path(cfg.log_dir) / "artifacts" / "research-checkpoint-000010"
+    )
     assert command[:6] == [
         "codex",
         "--search",

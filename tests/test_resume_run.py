@@ -23,6 +23,7 @@ from aide.run import (
     record_generated_only_node,
     recover_generated_only_root_artifacts,
     save_parallel_generate_only_run,
+    should_parallel_generate_only_roots,
     should_cleanup_workspace_on_exit,
     validate_hypothesis_root_generate_workers,
 )
@@ -174,6 +175,26 @@ def test_validate_hypothesis_root_generate_workers_rejects_invalid_values(worker
 
     with pytest.raises(ValueError, match="hypothesis_root_generate_workers"):
         validate_hypothesis_root_generate_workers(cfg)
+
+
+def test_forced_generate_only_hypothesis_ids_disable_parallel_workers():
+    assert not should_parallel_generate_only_roots(
+        skip_execution=True,
+        materialize_enabled=True,
+        research_mode="hypothesis",
+        hypothesis_root_generate_workers=3,
+        forced_hypothesis_ids=("000014", "000015", "000016"),
+    )
+
+
+def test_generate_only_parallel_workers_require_no_forced_ids():
+    assert should_parallel_generate_only_roots(
+        skip_execution=True,
+        materialize_enabled=True,
+        research_mode="hypothesis",
+        hypothesis_root_generate_workers=3,
+        forced_hypothesis_ids=(),
+    )
 
 
 def test_seed_scored_hypothesis_roots_ignores_resume(monkeypatch):

@@ -2289,11 +2289,21 @@ def _checkpoint_name(completed_steps: int) -> str:
 
 
 def _checkpoint_label(checkpoint: Path) -> str:
-    return checkpoint.name.removeprefix("checkpoint-")
+    name = checkpoint.name
+    if name.startswith("research-checkpoint-"):
+        return name.removeprefix("research-checkpoint-")
+    return name.removeprefix("checkpoint-")
 
 
 def checkpoint_dir_for(cfg: Config, completed_steps: int) -> Path:
-    return Path(cfg.log_dir) / "research" / _checkpoint_name(completed_steps)
+    return Path(cfg.log_dir) / "artifacts" / f"research-{_checkpoint_name(completed_steps)}"
+
+
+def _checkpoint_dirs_for_step(cfg: Config, completed_steps: int) -> list[Path]:
+    return [
+        checkpoint_dir_for(cfg, completed_steps),
+        Path(cfg.log_dir) / "research" / _checkpoint_name(completed_steps),
+    ]
 
 
 def _checkpoint_step(checkpoint: Path) -> int:
@@ -2385,20 +2395,76 @@ def _max_public_score(
     return _prompt_score(max(scores)) if scores else None
 
 
+def _current_run_generated_hypothesis_payloads(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> list[dict[str, Any]]:
+    try:
+        generated_ids = _load_generated_root_ids(cfg)
+    except OSError:
+        return []
+    if not generated_ids:
+        return []
+    try:
+        library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    except ValueError:
+        return []
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    payloads: list[dict[str, Any]] = []
+    for hypothesis_id in generated_ids:
+        hypothesis = by_id.get(hypothesis_id)
+        if hypothesis is None:
+            continue
+        scored_code = load_scored_hypothesis_root_code(
+            cfg,
+            hypothesis_id,
+            repo_root=repo_root,
+        )
+        root_code = (
+            None
+            if scored_code is not None
+            else load_hypothesis_root_code(cfg, hypothesis_id, repo_root=repo_root)
+        )
+        payload: dict[str, Any] = {
+            "id": hypothesis.id,
+            "title": hypothesis.title,
+            "summary": _compact_prompt_text(hypothesis.summary, max_chars=500),
+            "rationale": _compact_prompt_text(hypothesis.rationale, max_chars=900),
+            "expected_effect": _compact_prompt_text(
+                hypothesis.expected_effect,
+                max_chars=500,
+            ),
+            "risk": _compact_prompt_text(hypothesis.risk, max_chars=500),
+        }
+        if scored_code is not None:
+            payload["code_status"] = "executed"
+            payload["score"] = _prompt_score(scored_code.score)
+            payload["code_file"] = scored_code.path.name
+        elif root_code is not None:
+            payload["code_status"] = "materialized_not_scored"
+            payload["code_file"] = root_code.path.name
+        else:
+            payload["code_status"] = "hypothesis_only"
+        payloads.append(payload)
+    return payloads
+
+
 def _completed_research_checkpoints(
     *, cfg: Config, before_step: int
 ) -> list[tuple[int, Path]]:
-    research_dir = Path(cfg.log_dir) / "research"
-    if not research_dir.exists():
-        return []
     checkpoints: list[tuple[int, Path]] = []
-    for checkpoint in sorted(research_dir.glob("checkpoint-*")):
+    checkpoint_paths = [
+        *sorted((Path(cfg.log_dir) / "artifacts").glob("research-checkpoint-*")),
+        *sorted((Path(cfg.log_dir) / "research").glob("checkpoint-*")),
+    ]
+    for checkpoint in checkpoint_paths:
         if _checkpoint_status(checkpoint) != "completed":
             continue
         step = _checkpoint_step(checkpoint)
         if step < before_step:
             checkpoints.append((step, checkpoint))
-    return checkpoints
+    return sorted(checkpoints, key=lambda item: item[0])
 
 
 def collect_previous_research_summaries(
@@ -2506,6 +2572,7 @@ def collect_research_context(
             journal=journal,
             completed_steps=completed_steps,
         ),
+        "current_run_hypotheses": _current_run_generated_hypothesis_payloads(cfg),
     }
 
 
@@ -2524,6 +2591,7 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "best_working_solutions",
             "worst_working_solutions",
             "previous_research_summaries",
+            "current_run_hypotheses",
             "hypothesis_count",
         ]
         if key in context and context.get(key) is not None
@@ -2742,30 +2810,31 @@ def _checkpoint_status(path: Path) -> str | None:
 
 
 def _latest_checkpoint_with_status(log_dir: Path | str) -> tuple[Path, str] | None:
-    research_dir = Path(log_dir) / "research"
-    if not research_dir.exists():
-        return None
-
     candidates: list[tuple[Path, str]] = []
-    for checkpoint in sorted(research_dir.glob("checkpoint-*")):
+    checkpoint_paths = [
+        *sorted((Path(log_dir) / "artifacts").glob("research-checkpoint-*")),
+        *sorted((Path(log_dir) / "research").glob("checkpoint-*")),
+    ]
+    for checkpoint in checkpoint_paths:
         status = _checkpoint_status(checkpoint)
         if status is not None:
             candidates.append((checkpoint, status))
-    return candidates[-1] if candidates else None
+    return sorted(candidates, key=lambda item: _checkpoint_step(item[0]))[-1] if candidates else None
 
 
 def load_latest_research_hints(log_dir: Path | str) -> dict[str, Any] | None:
-    research_dir = Path(log_dir) / "research"
-    if not research_dir.exists():
-        return None
     completed: list[Path] = []
-    for checkpoint in sorted(research_dir.glob("checkpoint-*")):
+    checkpoint_paths = [
+        *sorted((Path(log_dir) / "artifacts").glob("research-checkpoint-*")),
+        *sorted((Path(log_dir) / "research").glob("checkpoint-*")),
+    ]
+    for checkpoint in checkpoint_paths:
         if _checkpoint_status(checkpoint) == "completed":
             completed.append(checkpoint)
     if not completed:
         return None
 
-    latest = completed[-1]
+    latest = sorted(completed, key=_checkpoint_step)[-1]
     response = _read_json(latest / "response.json")
     parsed = response.get("parsed_response", {})
     if not isinstance(parsed, dict):
@@ -2878,7 +2947,10 @@ class ResearchAdvisor:
             return False
 
         checkpoint_dir = checkpoint_dir_for(self.cfg, completed_steps)
-        if _checkpoint_status(checkpoint_dir) is not None:
+        if any(
+            _checkpoint_status(candidate) is not None
+            for candidate in _checkpoint_dirs_for_step(self.cfg, completed_steps)
+        ):
             return False
 
         context_started = time.monotonic()
@@ -2946,7 +3018,7 @@ class ResearchAdvisor:
         latest = load_latest_research_hints(self.cfg.log_dir)
         if latest is not None:
             return (
-                f"[green]Research: ✓ {latest['checkpoint'].removeprefix('checkpoint-')}"
+                f"[green]Research: ✓ {_checkpoint_label(Path(latest['checkpoint']))}"
             )
 
         if latest_checkpoint is not None:

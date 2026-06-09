@@ -38,6 +38,12 @@ simple baseline algorithms look promising. Treat unexecuted hypotheses only as
 anti-duplication context. Treat buggy hypotheses as implementation warnings,
 not as evidence that the feature family is weak. Do not debug broken code.
 
+When current_run_hypotheses is present, it contains hypotheses already created
+earlier in this same run. Use it to avoid duplicates and to make this new
+hypothesis materially different. If an earlier hypothesis has code_status,
+score, or code_file fields, treat those as evidence about whether that
+hypothesis has already been materialized or scored.
+
 # Prior research history
 If previous_research_summaries is present, it lists recent completed research
 proposals. Each entry includes its summary plus the maximum local CV score and
@@ -52,6 +58,9 @@ snippets that still ran successfully. local_cv_score is the validation metric.
 kaggle_public_score is included only when a completed Kaggle public
 leaderboard score is available for that exact node. Use these examples only to
 understand what has already been tried and what performed well or poorly.
+current_run_hypotheses contains earlier hypotheses from this same run, including
+their id, title, summary, rationale, expected_effect, risk, and optional
+materialization/score metadata.
 
 # Required JSON output shape
 Return JSON with: summary; hypotheses[].title; hypotheses[].summary;

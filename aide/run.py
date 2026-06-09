@@ -396,6 +396,23 @@ def validate_hypothesis_root_generate_workers(cfg: Config) -> int:
     return raw
 
 
+def should_parallel_generate_only_roots(
+    *,
+    skip_execution: bool,
+    materialize_enabled: bool,
+    research_mode: str,
+    hypothesis_root_generate_workers: int,
+    forced_hypothesis_ids: tuple[str, ...] = (),
+) -> bool:
+    return (
+        skip_execution
+        and materialize_enabled
+        and research_mode == "hypothesis"
+        and hypothesis_root_generate_workers > 1
+        and not forced_hypothesis_ids
+    )
+
+
 def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
     resume, _runtime, remaining = parse_runtime_args(argv)
     return resume, remaining
@@ -2535,12 +2552,18 @@ def _latest_checkpoint_status(
     log_dir: Path | str,
     kind: Literal["research", "synthesis"],
 ) -> CheckpointStatusRecord | None:
-    checkpoint_dir = Path(log_dir) / kind
-    if not checkpoint_dir.exists():
-        return None
+    root = Path(log_dir)
+    checkpoint_paths = (
+        [
+            *sorted((root / "artifacts").glob("research-checkpoint-*/status.json")),
+            *sorted((root / "research").glob("checkpoint-*/status.json")),
+        ]
+        if kind == "research"
+        else sorted((root / kind).glob("checkpoint-*/status.json"))
+    )
 
     records: list[CheckpointStatusRecord] = []
-    for status_path in sorted(checkpoint_dir.glob("checkpoint-*/status.json")):
+    for status_path in checkpoint_paths:
         try:
             status_data = json.loads(status_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -2548,7 +2571,11 @@ def _latest_checkpoint_status(
         if not isinstance(status_data, dict):
             continue
         status = status_data.get("status")
-        label = status_path.parent.name.removeprefix("checkpoint-")
+        label = status_path.parent.name
+        if label.startswith("research-checkpoint-"):
+            label = label.removeprefix("research-checkpoint-")
+        else:
+            label = label.removeprefix("checkpoint-")
         records.append(
             CheckpointStatusRecord(
                 label=label,
@@ -4241,7 +4268,6 @@ def run(argv: list[str] | None = None):
     generated_only_evaluations = 0
     hypothesis_only_root_count = 0
     hypothesis_only_created: list[Any] = []
-    pipeline_hypothesis_generation_attempted = False
 
     def remember_hypothesis_only_selection(selection: Any) -> None:
         seen = {
@@ -4276,25 +4302,22 @@ def run(argv: list[str] | None = None):
     def pipeline_root_hypotheses_to_generate() -> int:
         if not _is_research_hypothesis_mode(cfg):
             return 0
-        if pipeline_hypothesis_generation_attempted:
-            return 0
         if runtime_options.generate_only_hypothesis_ids:
             return 0
         root_quota = pipeline_root_hypothesis_quota()
         if root_quota <= 0:
             return 0
         try:
-            generated_root_count = len(_load_generated_root_ids(cfg))
+            generated_root_ids = set(_load_generated_root_ids(cfg))
         except OSError:
-            generated_root_count = 0
-        existing_root_count = (
-            len(_root_hypothesis_ids_in_journal(journal))
-            + hypothesis_only_root_count
-            + generated_root_count
-        )
+            generated_root_ids = set()
+        existing_root_ids = _root_hypothesis_ids_in_journal(journal) | generated_root_ids
+        existing_root_count = max(len(existing_root_ids), hypothesis_only_root_count)
         remaining_roots = root_quota - existing_root_count
         remaining_steps = cfg.agent.steps - completed_work_units()
-        return max(min(remaining_roots, remaining_steps), 0)
+        if remaining_roots <= 0 or remaining_steps <= 0:
+            return 0
+        return 1
 
     def active_stage_timeout_s() -> int | None:
         if agent.active_stage == "generating":
@@ -5048,14 +5071,12 @@ def run(argv: list[str] | None = None):
         return renderable
 
     def parallel_root_workers_enabled() -> bool:
-        return (
-            pipeline_skip_execution()
-            and pipeline_materialize_enabled()
-            and cfg.research.mode == "hypothesis"
-            and (
-                hypothesis_root_generate_workers > 1
-                or bool(runtime_options.generate_only_hypothesis_ids)
-            )
+        return should_parallel_generate_only_roots(
+            skip_execution=pipeline_skip_execution(),
+            materialize_enabled=pipeline_materialize_enabled(),
+            research_mode=str(cfg.research.mode),
+            hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+            forced_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
         )
 
     def refresh_active_root_generations(
@@ -5197,6 +5218,64 @@ def run(argv: list[str] | None = None):
         refresh_active_root_generations({})
         agent.clear_active_step()
 
+    def generate_next_forced_root_serial(live: Live) -> Node | None:
+        nonlocal pending_artifact_dir
+        reservations = reserve_hypothesis_roots(
+            cfg,
+            journal=journal,
+            count=1,
+            completed_steps=len(journal),
+            reserved_hypothesis_ids=set(),
+            forced_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
+        )
+        if not reservations:
+            return None
+        reservation = reservations[0]
+        (
+            node_ctime,
+            artifact_dir_name,
+            pending_artifact_dir,
+        ) = allocate_node_artifact_slot(
+            cfg.log_dir,
+            step=reservation.completed_steps,
+            workspace_dir=cfg.workspace_dir,
+        )
+
+        def generate_reserved_node() -> Node:
+            debug_log(
+                "before_generate_forced_hypothesis_root",
+                phase="generate",
+                extra={
+                    "hypothesis_id": reservation.hypothesis_id,
+                    "node_ctime": node_ctime,
+                    "llm_log_dir": str(pending_artifact_dir),
+                },
+            )
+            node = agent.generate_preselected_hypothesis_root(
+                reservation.selection,
+                node_ctime=node_ctime,
+                llm_log_dir=pending_artifact_dir,
+                artifact_dir_name=artifact_dir_name,
+            )
+            debug_log(
+                "after_generate_forced_hypothesis_root",
+                phase="generate",
+                node=node,
+                extra={"llm_log_dir": str(pending_artifact_dir)},
+            )
+            return node
+
+        node = run_with_live_refresh(
+            live,
+            generate_live,
+            generate_reserved_node,
+            tick=lambda: drain_left_panel_navigation(
+                current_left_panel_view(blink_on=True)
+            ),
+        )
+        agent.save_hypothesis_root_code_for_node(node, activate=False)
+        return node
+
     interrupted = False
     interrupt_message = ""
     try:
@@ -5217,7 +5296,7 @@ def run(argv: list[str] | None = None):
                             pipeline_root_hypotheses_to_generate()
                         )
                         if root_hypotheses_to_generate > 0:
-                            pipeline_hypothesis_generation_attempted = True
+                            research_checkpoint_step = completed_work_units()
                             operator_notice = (
                                 "Generating "
                                 f"{root_hypotheses_to_generate} research "
@@ -5229,7 +5308,7 @@ def run(argv: list[str] | None = None):
                                     "before_generate_pipeline_hypotheses",
                                     phase="research",
                                     extra={
-                                        "completed_steps": global_step,
+                                        "completed_steps": research_checkpoint_step,
                                         "count": root_hypotheses_to_generate,
                                     },
                                 )
@@ -5237,14 +5316,14 @@ def run(argv: list[str] | None = None):
                                     cfg=cfg,
                                     task_desc=task_desc,
                                     journal=journal,
-                                    completed_steps=global_step,
+                                    completed_steps=research_checkpoint_step,
                                     count=root_hypotheses_to_generate,
                                 )
                                 debug_log(
                                     "after_generate_pipeline_hypotheses",
                                     phase="research",
                                     extra={
-                                        "completed_steps": global_step,
+                                        "completed_steps": research_checkpoint_step,
                                         "hypothesis_ids": [
                                             hypothesis.id
                                             for hypothesis in selection.hypotheses
@@ -5278,12 +5357,13 @@ def run(argv: list[str] | None = None):
                                     cfg=cfg,
                                     selection=generated_selection,
                                     parent_node=None,
-                                    completed_steps=global_step,
+                                    completed_steps=research_checkpoint_step,
                                 )
                                 remember_hypothesis_only_selection(generated_selection)
                                 created_count = len(generated_selection.hypotheses)
                                 hypothesis_only_root_count += created_count
                                 generated_only_evaluations += created_count
+                                global_step = completed_work_units()
                                 save_run(
                                     cfg,
                                     journal,
@@ -5292,12 +5372,21 @@ def run(argv: list[str] | None = None):
                                         live,
                                     ),
                                 )
-                                interrupted = True
-                                interrupt_message = format_hypothesis_only_finish_message(
-                                    hypothesis_only_root_count,
-                                    hypothesis_only_created,
-                                )
-                                break
+                                root_quota = pipeline_root_hypothesis_quota()
+                                if (
+                                    root_quota > 0
+                                    and hypothesis_only_root_count >= root_quota
+                                ) or completed_work_units() >= cfg.agent.steps:
+                                    interrupted = True
+                                    interrupt_message = (
+                                        format_hypothesis_only_finish_message(
+                                            hypothesis_only_root_count,
+                                            hypothesis_only_created,
+                                        )
+                                    )
+                                    break
+                                live.update(generate_live(), refresh=True)
+                                continue
 
                         if parallel_root_workers_enabled():
                             run_parallel_generate_only_roots(live)
@@ -5312,6 +5401,30 @@ def run(argv: list[str] | None = None):
                                 ),
                             )
                             break
+                        if (
+                            pipeline_skip_execution()
+                            and pipeline_materialize_enabled()
+                            and cfg.research.mode == "hypothesis"
+                            and runtime_options.generate_only_hypothesis_ids
+                        ):
+                            result_node = generate_next_forced_root_serial(live)
+                            display_node = result_node
+                            if result_node is None:
+                                interrupted = True
+                                interrupt_message = (
+                                    "Generate-only hypothesis mode finished "
+                                    "materializing requested hypotheses; no code "
+                                    "was executed."
+                                )
+                                save_run(
+                                    cfg,
+                                    journal,
+                                    progress_callback=lambda message: update_save_status(
+                                        message,
+                                        live,
+                                    ),
+                                )
+                                break
                         pending_generated_node = (
                             None
                             if pipeline_skip_execution()
