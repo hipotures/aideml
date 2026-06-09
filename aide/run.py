@@ -31,6 +31,7 @@ from .research import (
     clear_hypothesis_root_generation_failure,
     count_scored_working_nodes,
     effective_hypothesis_root_limit,
+    generate_research_hypotheses_for_pipeline,
     hypothesis_id_for_node,
     load_manual_hypothesis_library,
     record_manual_prompt_node,
@@ -39,6 +40,7 @@ from .research import (
     reserve_hypothesis_roots,
     scored_hypothesis_root_nodes,
     select_hypothesis_for_node,
+    _load_generated_root_ids,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -4209,9 +4211,16 @@ def run(argv: list[str] | None = None):
     global_step = len(journal)
     generated_only_evaluations = 0
     hypothesis_only_root_count = 0
+    pipeline_hypothesis_generation_attempted = False
 
     def completed_work_units() -> int:
         return len(journal) + generated_only_evaluations
+
+    def pipeline_root_hypothesis_quota() -> int:
+        try:
+            return max(int(getattr(cfg.agent, "hypotheses", 0) or 0), 0)
+        except (TypeError, ValueError):
+            return 0
 
     def pipeline_skip_execution() -> bool:
         return runtime_options.skip_execution or (
@@ -4222,6 +4231,29 @@ def run(argv: list[str] | None = None):
         return (not _is_research_hypothesis_mode(cfg)) or _research_materialize_enabled(
             cfg
         )
+
+    def pipeline_root_hypotheses_to_generate() -> int:
+        if not _is_research_hypothesis_mode(cfg):
+            return 0
+        if pipeline_hypothesis_generation_attempted:
+            return 0
+        if runtime_options.generate_only_hypothesis_ids:
+            return 0
+        root_quota = pipeline_root_hypothesis_quota()
+        if root_quota <= 0:
+            return 0
+        try:
+            generated_root_count = len(_load_generated_root_ids(cfg))
+        except OSError:
+            generated_root_count = 0
+        existing_root_count = (
+            len(_root_hypothesis_ids_in_journal(journal))
+            + hypothesis_only_root_count
+            + generated_root_count
+        )
+        remaining_roots = root_quota - existing_root_count
+        remaining_steps = cfg.agent.steps - completed_work_units()
+        return max(min(remaining_roots, remaining_steps), 0)
 
     def active_stage_timeout_s() -> int | None:
         if agent.active_stage == "generating":
@@ -5140,6 +5172,92 @@ def run(argv: list[str] | None = None):
                     node_already_in_journal = False
                     display_node = None
                     try:
+                        root_hypotheses_to_generate = (
+                            pipeline_root_hypotheses_to_generate()
+                        )
+                        if root_hypotheses_to_generate > 0:
+                            pipeline_hypothesis_generation_attempted = True
+                            operator_notice = (
+                                "Generating "
+                                f"{root_hypotheses_to_generate} research "
+                                "hypotheses ..."
+                            )
+
+                            def generate_pipeline_hypotheses():
+                                debug_log(
+                                    "before_generate_pipeline_hypotheses",
+                                    phase="research",
+                                    extra={
+                                        "completed_steps": global_step,
+                                        "count": root_hypotheses_to_generate,
+                                    },
+                                )
+                                selection = generate_research_hypotheses_for_pipeline(
+                                    cfg=cfg,
+                                    task_desc=task_desc,
+                                    journal=journal,
+                                    completed_steps=global_step,
+                                    count=root_hypotheses_to_generate,
+                                )
+                                debug_log(
+                                    "after_generate_pipeline_hypotheses",
+                                    phase="research",
+                                    extra={
+                                        "completed_steps": global_step,
+                                        "hypothesis_ids": [
+                                            hypothesis.id
+                                            for hypothesis in selection.hypotheses
+                                        ],
+                                    },
+                                )
+                                return selection
+
+                            try:
+                                generated_selection = run_with_live_refresh(
+                                    live,
+                                    generate_live,
+                                    generate_pipeline_hypotheses,
+                                    tick=lambda: drain_left_panel_navigation(
+                                        current_left_panel_view(blink_on=True)
+                                    ),
+                                )
+                            except ValueError as exc:
+                                interrupted = True
+                                interrupt_message = (
+                                    "Hypothesis generation stopped: "
+                                    f"{exc}"
+                                )
+                                break
+                            finally:
+                                operator_notice = None
+                                agent.clear_active_step()
+
+                            if not pipeline_materialize_enabled():
+                                record_hypothesis_only_selection(
+                                    cfg=cfg,
+                                    selection=generated_selection,
+                                    parent_node=None,
+                                    completed_steps=global_step,
+                                )
+                                created_count = len(generated_selection.hypotheses)
+                                hypothesis_only_root_count += created_count
+                                generated_only_evaluations += created_count
+                                save_run(
+                                    cfg,
+                                    journal,
+                                    progress_callback=lambda message: update_save_status(
+                                        message,
+                                        live,
+                                    ),
+                                )
+                                interrupted = True
+                                interrupt_message = (
+                                    "Hypothesis-only mode finished creating "
+                                    f"{hypothesis_only_root_count} ROOT hypotheses; "
+                                    "no code was materialized or executed."
+                                )
+                                break
+
                         if parallel_root_workers_enabled():
                             run_parallel_generate_only_roots(live)
                             interrupted = True

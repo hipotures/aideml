@@ -158,6 +158,22 @@ def _write_code_manifest(
     )
 
 
+def _generated_hypothesis_payload(
+    *,
+    title: str = "Wide tabular root",
+    summary: str = "Build a broad tabular baseline with rich feature coverage.",
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "summary": summary,
+        "rationale": "A broad root should test many plausible tabular signals.",
+        "implementation_hint": "Use leak-free CV and a compact tree model ensemble.",
+        "expected_effect": "A stronger diverse root for later local improvements.",
+        "risk": "The broad feature set can overfit if validation is weak.",
+        "sources": ["https://example.com/tabular-root"],
+    }
+
+
 def _manual_cfg(tmp_path: Path):
     cfg = _cfg(tmp_path)
     data_dir = tmp_path / "playground-series-s6e5"
@@ -228,6 +244,24 @@ def test_manual_hypothesis_library_indexes_json_files_from_task_slug(tmp_path):
     assert library.hypotheses[0].risk
     assert library.hypotheses[0].sources == []
     assert library.source_hash.startswith("sha256:")
+
+
+def test_manual_hypothesis_library_uses_project_name_env_for_default_input(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.data_dir = tmp_path / "input"
+    Path(cfg.data_dir).mkdir(exist_ok=True)
+    monkeypatch.setenv("AIDE_PROJECT_NAME", "playground-series-s6e6")
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e6", "000001")
+
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+
+    assert library.task_slug == "playground-series-s6e6"
+    assert library.source_dir == (
+        tmp_path / "research_hypotheses" / "playground-series-s6e6"
+    )
 
 
 def test_manual_hypothesis_library_loads_optional_sources(tmp_path):
@@ -597,6 +631,88 @@ def test_record_hypothesis_only_selection_writes_artifact_without_node(tmp_path)
     assert payload["materialized"] is False
     assert payload["executed"] is False
     assert len(journal.nodes) == 0
+
+
+def test_store_generated_research_hypotheses_persists_library_and_run_record(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    checkpoint_dir = Path(cfg.log_dir) / "research" / "checkpoint-000000"
+    parsed_response = {
+        "summary": "Generated root hypotheses.",
+        "hypotheses": [
+            _generated_hypothesis_payload(),
+            _generated_hypothesis_payload(
+                title="Alternative categorical root",
+                summary="Test categorical-heavy preprocessing with robust CV.",
+            ),
+        ],
+    }
+
+    selection = research.store_generated_research_hypotheses(
+        cfg=cfg,
+        parsed_response=parsed_response,
+        completed_steps=0,
+        checkpoint_dir=checkpoint_dir,
+        count=2,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == [
+        "000001",
+        "000002",
+    ]
+    first_path = (
+        tmp_path
+        / "research_hypotheses"
+        / "playground-series-s6e5"
+        / "000001"
+        / "hypothesis-000001.json"
+    )
+    first_payload = json.loads(first_path.read_text(encoding="utf-8"))
+    assert first_payload["enabled"] is True
+    assert first_payload["agent_modes"] == ["legacy"]
+    assert first_payload["summary"] == (
+        "Build a broad tabular baseline with rich feature coverage."
+    )
+    generated_log = (
+        Path(cfg.log_dir) / "research_hypotheses" / "generated_hypotheses.jsonl"
+    )
+    records = generated_log.read_text(encoding="utf-8").splitlines()
+    assert len(records) == 1
+    record = json.loads(records[0])
+    assert record["hypothesis_ids"] == ["000001", "000002"]
+    assert record["checkpoint_step"] == 0
+
+
+def test_select_hypothesis_for_root_prioritizes_generated_run_hypotheses(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    checkpoint_dir = Path(cfg.log_dir) / "research" / "checkpoint-000000"
+    research.store_generated_research_hypotheses(
+        cfg=cfg,
+        parsed_response={
+            "summary": "Generated root hypotheses.",
+            "hypotheses": [_generated_hypothesis_payload(title="Generated root")],
+        },
+        completed_steps=0,
+        checkpoint_dir=checkpoint_dir,
+        count=1,
+        repo_root=tmp_path,
+    )
+
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=Journal(),
+        parent_node=None,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000002"]
 
 
 def test_select_hypothesis_for_node_uses_forced_disabled_child_queue(tmp_path):
@@ -1585,7 +1701,22 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert '"parent_step"' not in prompt
     assert "hypotheses[].target" not in prompt
     assert "Return exactly 5 concise new solution ideas" in prompt
+    assert "hypotheses[].summary" in prompt
     assert "Do not target a specific previous node or code block" in prompt
+
+
+def test_research_prompt_uses_requested_hypothesis_count():
+    prompt = build_research_prompt(
+        {
+            "task_desc": "task",
+            "best_working_solutions": [],
+            "worst_working_solutions": [],
+            "hypothesis_count": 3,
+        }
+    )
+
+    assert "Return exactly 3 concise new solution ideas" in prompt
+    assert "contain exactly 3 items" in prompt
 
 
 def test_research_prompt_includes_previous_research_summaries(tmp_path):
@@ -1633,6 +1764,7 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
                     "hypotheses": [
                         {
                             "title": "Try calibrated LightGBM",
+                            "summary": "Test calibrated LightGBM probabilities.",
                             "rationale": "AUC often benefits from calibration checks.",
                             "implementation_hint": "Add calibrated CV probabilities.",
                             "expected_effect": "small AUC gain",

@@ -6,6 +6,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
 import random
 import re
 import subprocess
@@ -51,6 +52,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                 "additionalProperties": False,
                 "properties": {
                     "title": {"type": "string"},
+                    "summary": {"type": "string"},
                     "rationale": {"type": "string"},
                     "implementation_hint": {"type": "string"},
                     "expected_effect": {"type": "string"},
@@ -62,6 +64,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                 },
                 "required": [
                     "title",
+                    "summary",
                     "rationale",
                     "implementation_hint",
                     "expected_effect",
@@ -165,7 +168,11 @@ def _read_json(path: Path) -> Any:
 
 
 def _manual_task_slug(cfg: Config) -> str:
-    return Path(cfg.data_dir).name
+    data_slug = Path(cfg.data_dir).name
+    project_name = os.getenv("AIDE_PROJECT_NAME", "").strip()
+    if project_name and data_slug == "input":
+        return project_name
+    return data_slug
 
 
 def _manual_library_dir(cfg: Config, *, repo_root: Path = REPO_ROOT) -> Path:
@@ -872,6 +879,209 @@ def _append_manual_offer(
         f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
 
 
+def _generated_hypotheses_path(cfg: Config) -> Path:
+    return _manual_run_dir(cfg) / "generated_hypotheses.jsonl"
+
+
+def _next_hypothesis_number(source_dir: Path) -> int:
+    max_id = 0
+    for path in _new_layout_hypothesis_files(source_dir):
+        max_id = max(max_id, int(path.parent.name))
+    for path in _legacy_layout_hypothesis_files(source_dir):
+        match = MANUAL_HYPOTHESIS_PATTERN.match(path.name)
+        if match is not None:
+            max_id = max(max_id, int(match.group(1)))
+    return max_id + 1
+
+
+def _agent_modes_for_generated_hypothesis(cfg: Config) -> list[str]:
+    agent_mode = _manual_agent_mode_key(cfg)
+    if agent_mode == "autogluon":
+        return ["legacy", "autogluon"]
+    return ["legacy"]
+
+
+def _normalize_generated_hypothesis(
+    raw: dict[str, Any],
+    *,
+    agent_modes: list[str],
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "enabled": True,
+        "agent_modes": list(agent_modes),
+    }
+    for field in (
+        "title",
+        "summary",
+        "rationale",
+        "implementation_hint",
+        "expected_effect",
+        "risk",
+    ):
+        value = raw.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Generated hypothesis missing required field {field!r}.")
+        payload[field] = value.strip()
+    sources = raw.get("sources", [])
+    if not isinstance(sources, list):
+        raise ValueError("Generated hypothesis sources must be a list.")
+    payload["sources"] = [str(source).strip() for source in sources if str(source).strip()]
+    return payload
+
+
+def _append_generated_hypothesis_record(
+    *,
+    cfg: Config,
+    completed_steps: int,
+    checkpoint_dir: Path,
+    created_ids: list[str],
+    created_paths: list[Path],
+) -> None:
+    path = _generated_hypotheses_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "checkpoint_step": completed_steps,
+        "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "checkpoint_dir": to_portable_path(checkpoint_dir),
+        "task_slug": _manual_task_slug(cfg),
+        "agent_mode": _manual_agent_mode_key(cfg),
+        "hypothesis_ids": created_ids,
+        "paths": [to_portable_path(path) for path in created_paths],
+    }
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
+
+
+def _load_generated_root_ids(cfg: Config) -> list[str]:
+    path = _generated_hypotheses_path(cfg)
+    if not path.exists():
+        return []
+    ids: list[str] = []
+    seen: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        raw_ids = payload.get("hypothesis_ids")
+        if not isinstance(raw_ids, list):
+            continue
+        for hypothesis_id in raw_ids:
+            if not isinstance(hypothesis_id, str) or hypothesis_id in seen:
+                continue
+            seen.add(hypothesis_id)
+            ids.append(hypothesis_id)
+    return ids
+
+
+def _unmaterialized_generated_root_ids(
+    cfg: Config,
+    *,
+    journal: Journal,
+    compatible_by_id: dict[str, ManualHypothesis],
+    reserved_hypothesis_ids: set[str] | None = None,
+) -> list[str]:
+    blocked = _root_hypothesis_ids(journal)
+    blocked |= set(reserved_hypothesis_ids or set())
+    return [
+        hypothesis_id
+        for hypothesis_id in _load_generated_root_ids(cfg)
+        if hypothesis_id in compatible_by_id and hypothesis_id not in blocked
+    ]
+
+
+def store_generated_research_hypotheses(
+    *,
+    cfg: Config,
+    parsed_response: dict[str, Any],
+    completed_steps: int,
+    checkpoint_dir: Path,
+    count: int,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection:
+    raw_hypotheses = parsed_response.get("hypotheses")
+    if not isinstance(raw_hypotheses, list) or not raw_hypotheses:
+        raise ValueError("Research response did not contain hypotheses.")
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    next_id = _next_hypothesis_number(source_dir)
+    agent_modes = _agent_modes_for_generated_hypothesis(cfg)
+    created_ids: list[str] = []
+    created_paths: list[Path] = []
+    for offset, raw_hypothesis in enumerate(raw_hypotheses[: max(0, count)]):
+        if not isinstance(raw_hypothesis, dict):
+            raise ValueError("Generated hypothesis must be a JSON object.")
+        hypothesis_id = f"{next_id + offset:06d}"
+        output_path = _hypothesis_file_path(source_dir, hypothesis_id)
+        if output_path.exists():
+            raise FileExistsError(f"Refusing to overwrite hypothesis {output_path}")
+        payload = _normalize_generated_hypothesis(
+            raw_hypothesis,
+            agent_modes=agent_modes,
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(output_path, payload)
+        created_ids.append(hypothesis_id)
+        created_paths.append(output_path)
+    if not created_ids:
+        raise ValueError("No generated hypotheses were persisted.")
+    _append_generated_hypothesis_record(
+        cfg=cfg,
+        completed_steps=completed_steps,
+        checkpoint_dir=checkpoint_dir,
+        created_ids=created_ids,
+        created_paths=created_paths,
+    )
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    return ManualHypothesisSelection(
+        completed_steps=completed_steps,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[by_id[hypothesis_id] for hypothesis_id in created_ids],
+    )
+
+
+def generate_research_hypotheses_for_pipeline(
+    *,
+    cfg: Config,
+    task_desc: Any,
+    journal: Journal,
+    completed_steps: int,
+    count: int,
+    runner: Runner = subprocess.run,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection:
+    context = collect_research_context(
+        cfg=cfg,
+        task_desc=task_desc,
+        journal=journal,
+        completed_steps=completed_steps,
+    )
+    context["hypothesis_count"] = count
+    result = run_research_checkpoint(cfg=cfg, context=context, runner=runner)
+    if result.get("status") != "completed":
+        raise ValueError(f"Research hypothesis generation failed: {result}")
+    response = result.get("response", {})
+    parsed_response = (
+        response.get("parsed_response") if isinstance(response, dict) else None
+    )
+    if not isinstance(parsed_response, dict):
+        raise ValueError("Research hypothesis generation did not return parsed JSON.")
+    checkpoint_dir = Path(str(result["checkpoint_dir"]))
+    return store_generated_research_hypotheses(
+        cfg=cfg,
+        parsed_response=parsed_response,
+        completed_steps=completed_steps,
+        checkpoint_dir=checkpoint_dir,
+        count=count,
+        repo_root=repo_root,
+    )
+
+
 def record_hypothesis_only_selection(
     *,
     cfg: Config,
@@ -1235,6 +1445,13 @@ def _hypothesis_candidates_for_node_from_library(
         return forced_child_candidates
 
     if parent_node is None:
+        generated_ids = _unmaterialized_generated_root_ids(
+            cfg,
+            journal=journal,
+            compatible_by_id=by_id,
+        )
+        if generated_ids:
+            return [by_id[hypothesis_id] for hypothesis_id in generated_ids]
         if _hypothesis_root_pool_complete(
             cfg,
             journal=journal,
@@ -1555,7 +1772,8 @@ def reserve_hypothesis_roots(
     failures = _load_root_generation_failures(cfg)
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
     compatible_by_id = {
-        hypothesis.id: hypothesis for hypothesis in _compatible_manual_hypotheses(cfg, library)
+        hypothesis.id: hypothesis
+        for hypothesis in _compatible_manual_hypotheses(cfg, library)
     }
 
     if forced_hypothesis_ids:
@@ -1624,6 +1842,18 @@ def reserve_hypothesis_roots(
         return reservations
 
     retry_ids = sorted(failures)
+    seen_retry_ids = set(retry_ids)
+    retry_ids.extend(
+        retry_id
+        for retry_id in _unmaterialized_generated_root_ids(
+            cfg,
+            journal=journal,
+            compatible_by_id=compatible_by_id,
+            reserved_hypothesis_ids=reserved_hypothesis_ids,
+        )
+        if retry_id not in seen_retry_ids
+    )
+    seen_retry_ids = set(retry_ids)
     retry_ids.extend(
         retry_id
         for retry_id in _unmaterialized_root_offer_ids(
@@ -1632,7 +1862,7 @@ def reserve_hypothesis_roots(
             compatible_by_id=compatible_by_id,
             reserved_hypothesis_ids=reserved_hypothesis_ids,
         )
-        if retry_id not in failures
+        if retry_id not in seen_retry_ids
     )
 
     for retry_id in retry_ids:
@@ -2248,6 +2478,11 @@ def collect_research_context(
 
 
 def build_research_prompt(context: dict[str, Any]) -> str:
+    try:
+        hypothesis_count = int(context.get("hypothesis_count", 5) or 5)
+    except (TypeError, ValueError):
+        hypothesis_count = 5
+    hypothesis_count = max(1, hypothesis_count)
     prompt_context = {
         key: context.get(key)
         for key in [
@@ -2257,6 +2492,7 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "best_working_solutions",
             "worst_working_solutions",
             "previous_research_summaries",
+            "hypothesis_count",
         ]
         if key in context and context.get(key) is not None
     }
@@ -2271,7 +2507,7 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "that are relevant to this competition or closely related machine "
         "learning problems.\n\n"
         "# Output contract\n"
-        "Return exactly 5 concise new solution ideas. Do not target a specific "
+        f"Return exactly {hypothesis_count} concise new solution ideas. Do not target a specific "
         "previous node or code block. Use the prior results only to avoid "
         "repeating approaches that have already been tried. Do not debug broken "
         "code.\n\n"
@@ -2291,10 +2527,11 @@ def build_research_prompt(context: dict[str, Any]) -> str:
         "node. Use these examples only to understand what has already been tried "
         "and what performed well or poorly.\n\n"
         "# Required JSON output shape\n"
-        "Return JSON with: summary; hypotheses[].title; hypotheses[].rationale; "
-        "hypotheses[].implementation_hint; hypotheses[].expected_effect; "
-        "hypotheses[].risk; hypotheses[].sources. The hypotheses array must "
-        "contain exactly 5 items.\n\n"
+        "Return JSON with: summary; hypotheses[].title; hypotheses[].summary; "
+        "hypotheses[].rationale; hypotheses[].implementation_hint; "
+        "hypotheses[].expected_effect; hypotheses[].risk; "
+        "hypotheses[].sources. The hypotheses array must "
+        f"contain exactly {hypothesis_count} items.\n\n"
         "# Compact AIDE run context\n"
         f"```json\n{context_json}\n```\n"
     )
