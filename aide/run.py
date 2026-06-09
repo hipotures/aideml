@@ -26,6 +26,7 @@ from .journal import Journal, Node
 from .journal2report import journal2report
 from .research import (
     HypothesisRootReservation,
+    ManualHypothesisSelection,
     ResearchAdvisor,
     _compatible_manual_hypotheses,
     clear_hypothesis_root_generation_failure,
@@ -1028,7 +1029,11 @@ def journal_to_rich_tree(
         suffix = _node_hypothesis_suffix(node)
         runtime_suffix = _node_runtime_suffix(node)
         if node.status == "generated":
-            s = f"[cyan]● generated{suffix}[/cyan]"
+            hypothesis_id = hypothesis_id_for_node(node)
+            if hypothesis_id is not None:
+                s = f"[cyan]● {hypothesis_id}[/cyan]"
+            else:
+                s = f"[cyan]● generated{suffix}[/cyan]"
         elif node.status == "failed" and suffix:
             s = f"[red]failed{suffix}{runtime_suffix}[/red]"
         elif synthesis_root and (
@@ -1153,6 +1158,8 @@ def _tree_node_label(
     suffix = _node_hypothesis_suffix(node)
     runtime_suffix = _node_runtime_suffix(node)
     if node.status == "generated":
+        if hypothesis_id_for_node(node) is not None:
+            return Text(f"● {hypothesis_id_for_node(node)}", style="cyan")
         return Text(f"● generated{suffix}", style="cyan")
     if node.is_terminal_failure:
         return Text(f"● failed{suffix}{runtime_suffix}", style="red")
@@ -1234,8 +1241,12 @@ def _tree_active_node_label(
         public_bonus_node_ids=public_bonus_node_ids,
     )
     if node.status == "generated":
-        suffix = _node_hypothesis_suffix(node)
-        line.append(f"generated{suffix}", style="cyan")
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is not None:
+            line.append(hypothesis_id, style="cyan")
+        else:
+            suffix = _node_hypothesis_suffix(node)
+            line.append(f"generated{suffix}", style="cyan")
     else:
         line.append_text(label)
     return line
@@ -1281,6 +1292,8 @@ def synthesis_injected_node_ids(log_dir: Path | str) -> set[str]:
 def build_tree_view(
     journal: Journal,
     *,
+    cfg: Config | None = None,
+    repo_root: Path | None = None,
     active_node: Node | None = None,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
@@ -1495,6 +1508,76 @@ def build_tree_view(
         if node is active_parent_node:
             append_active(node.id, next_ancestors)
 
+    def append_virtual_hypothesis_root(
+        row: dict[str, object],
+        *,
+        is_last: bool,
+        has_active_after_roots: bool,
+    ) -> None:
+        nonlocal active_item_id
+        hypothesis_id = str(row["hypothesis_id"])
+        status_text = str(row.get("status") or "hypothesis")
+        score = row.get("score")
+        prefix = "└── " if is_last and not has_active_after_roots else "├── "
+        status_style = {
+            "score": TUI_METRIC_VALUE_STYLE,
+            "code": "cyan",
+            "generated": "cyan",
+            "hypothesis": TUI_INACTIVE_VALUE_STYLE,
+            "bug": "red",
+            "failed": "red",
+        }.get(status_text, TUI_INACTIVE_VALUE_STYLE)
+        marker = {
+            "score": "●",
+            "code": "●",
+            "generated": "●",
+            "hypothesis": "○",
+            "bug": "×",
+            "failed": "×",
+        }.get(status_text, "○")
+        line = Text(prefix, style=TUI_INACTIVE_VALUE_STYLE)
+        line.append(f"{marker} ", style=status_style)
+        if status_text == "score" and isinstance(score, float):
+            line.append(f"{score:.5f}·{hypothesis_id}", style=TUI_METRIC_VALUE_STYLE)
+        elif status_text in {"bug", "failed"}:
+            line.append(f"bug·{hypothesis_id}", style="red")
+        else:
+            line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
+        append_item(
+            TreeViewItem(
+                f"hypothesis-root:{hypothesis_id}",
+                "header",
+                line,
+                focus_start=len(prefix),
+            )
+        )
+        if (
+            active_stage is not None
+            and active_existing_node is None
+            and active_parent_node is None
+            and active_hypothesis_id == hypothesis_id
+        ):
+            child_prefix = "    " if is_last and not has_active_after_roots else "│   "
+            child_prefix += "└── "
+            active_line = Text(child_prefix, style=TUI_INACTIVE_VALUE_STYLE)
+            active_line.append_text(
+                _tree_active_placeholder_line(
+                    active_stage=active_stage,
+                    active_hypothesis_id=None,
+                    blink_on=blink_on,
+                )
+            )
+            item_id = f"active:{hypothesis_id}"
+            append_item(
+                TreeViewItem(
+                    item_id,
+                    f"hypothesis-root:{hypothesis_id}",
+                    active_line,
+                    focus_start=len(child_prefix),
+                )
+            )
+            active_item_id = item_id
+
     roots = [
         node
         for node in journal.draft_nodes
@@ -1507,23 +1590,57 @@ def build_tree_view(
             or not node.is_submission_contract_error
         )
     ]
+    virtual_hypothesis_roots: list[dict[str, object]] = []
+    if cfg is not None:
+        existing_hypothesis_ids = {
+            hypothesis_id_for_node(node)
+            for node in roots
+            if hypothesis_id_for_node(node) is not None
+        }
+        virtual_hypothesis_roots = [
+            row
+            for row in _hypothesis_root_inventory_rows(
+                cfg,
+                journal,
+                repo_root=repo_root,
+            )
+            if str(row["hypothesis_id"]) not in existing_hypothesis_ids
+        ]
+    active_virtual_root = (
+        active_hypothesis_id is not None
+        and any(
+            str(row["hypothesis_id"]) == active_hypothesis_id
+            for row in virtual_hypothesis_roots
+        )
+    )
     has_root_active = (
         active_parent_node is None
         and active_stage is not None
         and active_existing_node is None
         and not active_root_generations
+        and not active_virtual_root
     )
-    for index, node in enumerate(roots):
+    all_root_count = len(roots) + len(virtual_hypothesis_roots)
+    root_position = 0
+    for node in roots:
+        root_position += 1
         has_active_after_roots = has_root_active or bool(active_root_generations)
         append_rec(
             node,
             "header",
             [],
-            index == len(roots) - 1 and not has_active_after_roots,
+            root_position == all_root_count and not has_active_after_roots,
+        )
+    for row in virtual_hypothesis_roots:
+        root_position += 1
+        append_virtual_hypothesis_root(
+            row,
+            is_last=root_position == all_root_count,
+            has_active_after_roots=has_root_active or bool(active_root_generations),
         )
     if active_parent_node is None and active_root_generations:
         append_active_root_generations("header")
-    elif active_parent_node is None:
+    elif has_root_active:
         append_active("header", [])
 
     return TreeView(
@@ -1778,6 +1895,53 @@ def _hypothesis_root_inventory_rows(
     return rows
 
 
+def _next_unfinished_library_root_selection(
+    cfg: Config,
+    journal: Journal,
+    *,
+    completed_steps: int,
+    repo_root: Path | None = None,
+) -> ManualHypothesisSelection | None:
+    try:
+        library = (
+            load_manual_hypothesis_library(cfg)
+            if repo_root is None
+            else load_manual_hypothesis_library(cfg, repo_root=repo_root)
+        )
+    except (OSError, ValueError):
+        return None
+
+    used_root_ids = {
+        hypothesis_id_for_node(node)
+        for node in journal.nodes
+        if node.parent is None and hypothesis_id_for_node(node) is not None
+    }
+    for hypothesis in sorted(
+        _compatible_manual_hypotheses(cfg, library),
+        key=lambda item: item.id,
+    ):
+        if hypothesis.id in used_root_ids:
+            continue
+        scored_code = (
+            load_scored_hypothesis_root_code(cfg, hypothesis.id)
+            if repo_root is None
+            else load_scored_hypothesis_root_code(
+                cfg,
+                hypothesis.id,
+                repo_root=repo_root,
+            )
+        )
+        if scored_code is not None:
+            continue
+        return ManualHypothesisSelection(
+            completed_steps=completed_steps,
+            source_hash=library.source_hash,
+            source_dir=library.source_dir,
+            hypotheses=[hypothesis],
+        )
+    return None
+
+
 def _has_hypothesis_root_inventory(cfg: Config) -> bool:
     try:
         return bool(load_manual_hypothesis_library(cfg).hypotheses)
@@ -1831,14 +1995,8 @@ def build_root_hypotheses_view(
     lines: list[Text] = []
     for index, row in enumerate(rows, start=1):
         hypothesis_id = str(row["hypothesis_id"])
-        step = row.get("step")
-        step_text = f"{step:03d}" if isinstance(step, int) else f"{index:03d}"
         score = row.get("score")
-        score_text = f"{score:.5f}" if isinstance(score, float) else "n/a"
         status_text = str(row.get("status") or "hypothesis")
-        title_text = str(row.get("title") or "")
-        if len(title_text) > 44:
-            title_text = title_text[:41] + "..."
         prefix = "└── " if index == len(rows) else "├── "
         line = Text()
         line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
@@ -1859,15 +2017,12 @@ def build_root_hypotheses_view(
             "failed": "×",
         }.get(status_text, "○")
         line.append(f"{marker} ", style=status_style)
-        line.append(f"{hypothesis_id:<8}", style=TUI_NEUTRAL_VALUE_STYLE)
-        line.append(f"{status_text:<11}", style=status_style)
-        line.append(f"{score_text:<9}", style=TUI_METRIC_VALUE_STYLE)
-        line.append(
-            f"{str(row.get('mode') or 'n/a'):<7}",
-            style=TUI_INACTIVE_VALUE_STYLE,
-        )
-        line.append(f"{step_text:<5}", style=TUI_INACTIVE_VALUE_STYLE)
-        line.append(title_text, style=TUI_INACTIVE_VALUE_STYLE)
+        if status_text == "score" and isinstance(score, float):
+            line.append(f"{score:.5f}·{hypothesis_id}", style=TUI_METRIC_VALUE_STYLE)
+        elif status_text in {"bug", "failed"}:
+            line.append(f"bug·{hypothesis_id}", style="red")
+        else:
+            line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
         lines.append(line)
     if not rows:
         lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
@@ -4968,6 +5123,7 @@ def run(argv: list[str] | None = None):
     def current_tree_view(*, blink_on: bool) -> TreeView:
         return build_tree_view(
             journal,
+            cfg=cfg,
             active_node=agent.active_node,
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
@@ -5601,6 +5757,15 @@ def run(argv: list[str] | None = None):
                                 ),
                             )
                         )
+                        root_selection = (
+                            None
+                            if pipeline_skip_execution()
+                            else _next_unfinished_library_root_selection(
+                                cfg,
+                                journal,
+                                completed_steps=global_step,
+                            )
+                        )
                         if pending_generated_node is not None:
                             result_node = pending_generated_node
                             display_node = result_node
@@ -5616,6 +5781,56 @@ def run(argv: list[str] | None = None):
                                 node=result_node,
                                 extra={"global_step": global_step},
                             )
+                        elif root_selection is not None:
+                            (
+                                node_ctime,
+                                artifact_dir_name,
+                                pending_artifact_dir,
+                            ) = allocate_node_artifact_slot(
+                                cfg.log_dir,
+                                step=global_step,
+                                workspace_dir=cfg.workspace_dir,
+                            )
+
+                            def generate_library_root_node() -> Node:
+                                hypothesis_id = root_selection.hypotheses[0].id
+                                debug_log(
+                                    "before_generate_library_hypothesis_root",
+                                    phase="generate",
+                                    extra={
+                                        "hypothesis_id": hypothesis_id,
+                                        "node_ctime": node_ctime,
+                                        "llm_log_dir": str(pending_artifact_dir),
+                                    },
+                                )
+                                node = agent.generate_preselected_hypothesis_root(
+                                    root_selection,
+                                    node_ctime=node_ctime,
+                                    llm_log_dir=pending_artifact_dir,
+                                    artifact_dir_name=artifact_dir_name,
+                                )
+                                debug_log(
+                                    "after_generate_library_hypothesis_root",
+                                    phase="generate",
+                                    node=node,
+                                    extra={
+                                        "hypothesis_id": hypothesis_id,
+                                        "llm_log_dir": str(pending_artifact_dir),
+                                    },
+                                )
+                                return node
+
+                            result_node = run_with_live_refresh(
+                                live,
+                                generate_live,
+                                generate_library_root_node,
+                                tick=lambda: drain_left_panel_navigation(
+                                    current_left_panel_view(blink_on=True)
+                                ),
+                            )
+                            if result_node.artifact_dir_name is None:
+                                result_node.artifact_dir_name = artifact_dir_name
+                            display_node = result_node
                         elif cfg.synthesis.enabled and not pipeline_skip_execution():
                             agent.active_parent_node = None
                             agent.set_active_stage("generating")

@@ -12,6 +12,7 @@ from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
     _sparkline,
+    _next_unfinished_library_root_selection,
     ActiveRootGeneration,
     active_run_log_path,
     build_all_hypotheses_view,
@@ -460,7 +461,7 @@ def test_journal_tree_renders_generated_only_node_as_pending_code():
 
     output = _render_text(journal_to_rich_tree(journal))
 
-    assert "generated·000123" in output
+    assert "● 000123" in output
     assert "bug·000123" not in output
 
 
@@ -473,7 +474,7 @@ def test_journal_tree_renders_generated_node_with_stale_submission_error():
 
     output = _render_text(journal_to_rich_tree(journal))
 
-    assert "generated·000123" in output
+    assert "● 000123" in output
 
 
 def test_tree_view_marks_existing_generated_node_active_without_placeholder():
@@ -502,7 +503,7 @@ def test_tree_view_marks_existing_generated_node_active_without_placeholder():
         )
     )
 
-    assert "[*] generated·000123" in output
+    assert "[*] 000123" in output
     assert "[*]·000123" not in output
     assert output.count("[*]") == 1
     assert active_tree_item_id(view) == active.id
@@ -526,7 +527,7 @@ def test_tree_view_ignores_generated_only_node_when_selecting_best():
     )
 
     assert "● 0.94100·000111" in output
-    assert "generated·000123" in output
+    assert "● 000123" in output
 
 
 def test_final_tree_renderable_prints_complete_tree_without_focus():
@@ -906,8 +907,8 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     )
 
     assert "Root hypotheses" in output
-    assert "├── ● 000222  score      0.95200  ag,leg 002" in output
-    assert "└── ● 000111  score      0.95000  leg    001" in output
+    assert "├── ● 0.95200·000222" in output
+    assert "└── ● 0.95000·000111" in output
     assert output.index("000222") < output.index("000111")
     assert "000333" not in output
     assert "0.99000" not in output
@@ -1972,12 +1973,145 @@ def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
 
     assert "AutoGluon only" not in output
     assert "000000" not in output
-    assert "○ 000001  hypothesis n/a      leg    001" in output
-    assert "● 000002  code       n/a      leg    002" in output
-    assert "● 000003  score      0.96321  leg    000" in output
-    assert "Only hypothesis" in output
-    assert "Has code" in output
-    assert "Has score" in output
+    assert "○ 000001" in output
+    assert "● 000002" in output
+    assert "● 0.96321·000003" in output
+    assert "Only hypothesis" not in output
+    assert "Has code" not in output
+    assert "Has score" not in output
+
+
+def test_solution_tree_shows_virtual_root_hypotheses_when_journal_is_empty(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-view-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-view-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(
+        tmp_path,
+        task,
+        "000000",
+        title="AutoGluon only",
+        agent_modes=["autogluon"],
+    )
+    _write_root_hypothesis(tmp_path, task, "000011", title="Only hypothesis")
+    code_dir = _write_root_hypothesis(tmp_path, task, "000014", title="Has code")
+    code_path = code_dir / "legacy-001.py"
+    code_path.write_text("print('code')\n", encoding="utf-8")
+    (code_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {"legacy": [{"file": "legacy-001.py", "buggy": False}]},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    view = build_tree_view(Journal(), cfg=cfg, repo_root=tmp_path)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "Solution tree" in output
+    assert "AutoGluon only" not in output
+    assert "000000" not in output
+    assert "○ 000011" in output
+    assert "● 000014" in output
+    assert "hypothesis" not in output
+    assert "code" not in output
+
+
+def test_solution_tree_places_active_marker_under_virtual_root_hypothesis(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-active-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-active-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000011", title="First root")
+    _write_root_hypothesis(tmp_path, task, "000012", title="Second root")
+
+    view = build_tree_view(
+        Journal(),
+        cfg=cfg,
+        repo_root=tmp_path,
+        active_stage="generating",
+        active_hypothesis_id="000011",
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id=active_tree_item_id(view) or "header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "○ 000011" in output
+    assert "[*]" in output
+    assert output.index("000011") < output.index("[*]") < output.index("000012")
+    assert active_tree_item_id(view) == "active:000011"
+
+
+def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-root-selection-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-root-selection-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000011", title="Used")
+    _write_root_hypothesis(
+        tmp_path,
+        task,
+        "000012",
+        title="AutoGluon only",
+        agent_modes=["autogluon"],
+    )
+    scored_dir = _write_root_hypothesis(tmp_path, task, "000013", title="Scored")
+    (scored_dir / "legacy-001.py").write_text("print('scored')\n", encoding="utf-8")
+    (scored_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                            "status": "ok",
+                            "score": 0.94,
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_root_hypothesis(tmp_path, task, "000014", title="Next")
+
+    journal = Journal()
+    journal.append(_hypothesis_node(_good_node(0.91), "000011"))
+
+    selection = _next_unfinished_library_root_selection(
+        cfg,
+        journal,
+        completed_steps=1,
+        repo_root=tmp_path,
+    )
+
+    assert selection is not None
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000014"]
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
