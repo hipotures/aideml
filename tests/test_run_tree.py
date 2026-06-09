@@ -2413,7 +2413,7 @@ def test_model_settings_and_agent_summary_show_refactor_when_enabled(tmp_path):
     assert "refactor" in models_output
     assert "refactor-model - medium" in models_output
     assert "refactor" in agent_output
-    assert "on (300s)" in agent_output
+    assert "on" in agent_output
 
 
 def test_run_data_hides_resources_when_code_is_not_executing(tmp_path):
@@ -2637,6 +2637,14 @@ def test_stage_status_message_names_review_stage():
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
     assert (
         stage_status_message("generating", 65) == "[green]Generating code... (1m 05s)"
+    )
+    assert (
+        stage_status_message("generating", 40, stage_timeout_s=300)
+        == "[green]Generating code... (40s/300s)"
+    )
+    assert (
+        stage_status_message("refactoring", 40, stage_timeout_s=300)
+        == "[green]Refactoring code... (40s/300s)"
     )
 
 

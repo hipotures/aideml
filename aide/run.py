@@ -3218,11 +3218,7 @@ def build_agent_mode_summary(
     refactor_line = Text()
     refactor_line.append("▶ refactor  ", style=TUI_ROW_LABEL_STYLE)
     refactor_enabled = bool(getattr(getattr(cfg, "refactor", None), "enabled", False))
-    refactor_timeout = getattr(getattr(cfg, "refactor", None), "timeout", None)
-    refactor_value = "on" if refactor_enabled else "off"
-    if refactor_enabled and refactor_timeout is not None:
-        refactor_value = f"{refactor_value} ({refactor_timeout}s)"
-    refactor_line.append(refactor_value, style=TUI_NEUTRAL_VALUE_STYLE)
+    refactor_line.append("on" if refactor_enabled else "off", style=TUI_NEUTRAL_VALUE_STYLE)
     lines = [
         Text("Agent", style=TUI_ROW_LABEL_STYLE),
         mode_line,
@@ -3899,6 +3895,19 @@ def _format_elapsed(seconds: float | None) -> str:
     return f" ({seconds}s)"
 
 
+def _format_elapsed_with_timeout(
+    seconds: float | None,
+    timeout_seconds: int | float | None,
+) -> str:
+    if seconds is None:
+        return ""
+    if timeout_seconds is None:
+        return _format_elapsed(seconds)
+    elapsed_seconds = max(0, int(seconds))
+    timeout = max(0, int(timeout_seconds))
+    return f" ({elapsed_seconds}s/{timeout}s)"
+
+
 def stage_status_message(
     active_stage: str | None,
     elapsed: float | None = None,
@@ -3907,6 +3916,7 @@ def stage_status_message(
     active_artifact_dir: Path | None = None,
     active_hypothesis_id: str | None = None,
     active_hypothesis_ids: list[str] | None = None,
+    stage_timeout_s: int | float | None = None,
 ) -> str:
     elapsed_text = _format_elapsed(elapsed)
     if active_hypothesis_ids:
@@ -3916,7 +3926,11 @@ def stage_status_message(
             f" @ {active_hypothesis_id}" if active_hypothesis_id is not None else ""
         )
     if active_stage == "generating":
+        elapsed_text = _format_elapsed_with_timeout(elapsed, stage_timeout_s)
         return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
+    if active_stage == "refactoring":
+        elapsed_text = _format_elapsed_with_timeout(elapsed, stage_timeout_s)
+        return f"[green]Refactoring code...{elapsed_text}"
     if active_stage == "executing":
         if agent_mode == AGENT_MODE:
             autogluon_log = (
@@ -3930,6 +3944,7 @@ def stage_status_message(
         return f"[magenta]Executing code...{elapsed_text}"
     if active_stage == "reviewing":
         return f"[cyan]Reviewing result...{elapsed_text}"
+    elapsed_text = _format_elapsed_with_timeout(elapsed, stage_timeout_s)
     return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
 
 
@@ -4167,6 +4182,13 @@ def run(argv: list[str] | None = None):
 
     def completed_work_units() -> int:
         return len(journal) + generated_only_evaluations
+
+    def active_stage_timeout_s() -> int | None:
+        if agent.active_stage == "generating":
+            return cfg.agent.code.timeout
+        if agent.active_stage == "refactoring":
+            return cfg.refactor.timeout
+        return None
 
     prog = Progress(
         TextColumn(f"[{TUI_ROW_LABEL_STYLE}]" + "{task.description}"),
@@ -4559,11 +4581,7 @@ def run(argv: list[str] | None = None):
                     ),
                     WebRunDatum(
                         "refactor",
-                        (
-                            f"on ({cfg.refactor.timeout}s)"
-                            if cfg.refactor.enabled
-                            else "off"
-                        ),
+                        "on" if cfg.refactor.enabled else "off",
                     ),
                 ],
             ),
@@ -4757,12 +4775,28 @@ def run(argv: list[str] | None = None):
             scroll_top=scroll_top,
             viewport_height=tree_viewport_height(),
         )
-        prog.update(prog.task_ids[0], completed=completed_work_units())
         elapsed = (
             time.monotonic() - agent.active_stage_started_at
             if agent.active_stage_started_at is not None
             else None
         )
+        stage_timeout = active_stage_timeout_s()
+        if stage_timeout is not None and elapsed is not None:
+            prog.update(
+                prog.task_ids[0],
+                description=(
+                    "Refactor:" if agent.active_stage == "refactoring" else "Generate:"
+                ),
+                total=stage_timeout,
+                completed=min(int(elapsed), int(stage_timeout)),
+            )
+        else:
+            prog.update(
+                prog.task_ids[0],
+                description="Progress:",
+                total=cfg.agent.steps,
+                completed=completed_work_units(),
+            )
         active_artifact_dir = (
             _node_artifact_dir(cfg, agent.active_node)
             if agent.active_node is not None
@@ -4775,6 +4809,7 @@ def run(argv: list[str] | None = None):
                 active_artifact_dir=active_artifact_dir,
                 active_hypothesis_id=active_hypothesis_id_for_display(),
                 active_hypothesis_ids=active_root_hypothesis_ids_for_display(),
+                stage_timeout_s=stage_timeout,
             )
         status.update(status_text)
         publish_web_snapshot(

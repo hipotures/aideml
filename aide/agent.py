@@ -1607,6 +1607,7 @@ class Agent:
                 model=self.acfg.code.model,
                 reasoning_effort=self.acfg.code.reasoning_effort,
                 temperature=self.acfg.code.temp,
+                timeout=self.acfg.code.timeout,
                 llm_log_dir=self._pending_llm_log_dir,
                 llm_log_context=self._generation_log_context(),
             )
@@ -1662,12 +1663,17 @@ class Agent:
             )
             return output if isinstance(output, str) else json.dumps(output)
 
-        maybe_refactor_response_py(
-            response_py_path=artifact_dir / "response.py",
-            artifact_dir=artifact_dir,
-            call_model=call_model,
-            config=config,
-        )
+        previous_stage = self.active_stage
+        self.set_active_stage("refactoring")
+        try:
+            maybe_refactor_response_py(
+                response_py_path=artifact_dir / "response.py",
+                artifact_dir=artifact_dir,
+                call_model=call_model,
+                config=config,
+            )
+        finally:
+            self.set_active_stage(previous_stage)
 
     def _draft(self, *, hypothesis_selection: Any | None = None) -> Node:
         if is_autogluon_preprocess_mode(self.cfg):

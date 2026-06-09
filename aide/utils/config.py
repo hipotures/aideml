@@ -100,6 +100,7 @@ class StageConfig:
     model: str
     temp: float | None
     reasoning_effort: str | None = None
+    timeout: int | None = None
 
 
 @dataclass(frozen=True)
@@ -357,6 +358,26 @@ def _apply_project_env_defaults(cfg: Config) -> None:
         desc_file = os.getenv("AIDE_PROJECT_DESC_FILE", "").strip()
         if desc_file:
             cfg.desc_file = desc_file
+    refactor_enabled = os.getenv("AIDE_REFACTOR_ENABLED", "").strip().lower()
+    if refactor_enabled in {"1", "true", "yes", "on"}:
+        cfg.refactor.enabled = True
+    elif refactor_enabled in {"0", "false", "no", "off"}:
+        cfg.refactor.enabled = False
+    refactor_model = os.getenv("AIDE_REFACTOR_MODEL", "").strip()
+    if refactor_model:
+        cfg.refactor.model = refactor_model
+    refactor_timeout = os.getenv("AIDE_REFACTOR_TIMEOUT_S", "").strip()
+    if refactor_timeout:
+        try:
+            cfg.refactor.timeout = int(refactor_timeout)
+        except ValueError:
+            pass
+    refactor_max_input = os.getenv("AIDE_REFACTOR_MAX_INPUT_CHARS", "").strip()
+    if refactor_max_input:
+        try:
+            cfg.refactor.max_input_chars = int(refactor_max_input)
+        except ValueError:
+            pass
 
 
 def _validate_cli_model_effort_conflicts(cli_args: Sequence[str]) -> None:
@@ -384,6 +405,7 @@ def _model_config_keys() -> list[str]:
         "report.model",
         "research.model",
         "synthesis.model",
+        "refactor.model",
     ]
 
 

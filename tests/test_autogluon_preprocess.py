@@ -65,6 +65,35 @@ def test_prep_cfg_reads_project_paths_from_env(tmp_path, monkeypatch):
     assert Path(cfg.desc_file) == desc_file.resolve()
 
 
+def test_prep_cfg_reads_refactor_settings_from_env(tmp_path, monkeypatch):
+    data_dir = tmp_path / "project-data"
+    data_dir.mkdir()
+    desc_file = tmp_path / "project.md"
+    desc_file.write_text("project goal\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "AIDE_PROJECT_DATA_DIR=project-data\n"
+        "AIDE_PROJECT_DESC_FILE=project.md\n"
+        "AIDE_REFACTOR_ENABLED=true\n"
+        "AIDE_REFACTOR_MODEL=gpt-refactor\n"
+        "AIDE_REFACTOR_TIMEOUT_S=301\n"
+        "AIDE_REFACTOR_MAX_INPUT_CHARS=12345\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "env-refactor-test"
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.refactor.enabled is True
+    assert cfg.refactor.model == "gpt-refactor"
+    assert cfg.refactor.timeout == 301
+    assert cfg.refactor.max_input_chars == 12345
+
+
 def _assert_cpu_boost_hyperparameters(settings):
     assert settings["use_gpu"] is False
     assert settings["included_model_types"][0] == "XGB"

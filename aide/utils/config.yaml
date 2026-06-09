@@ -132,6 +132,7 @@ agent:
     model: gpt-5.4-mini
     temp: 0.5
     reasoning_effort: low
+    timeout: 300
 
   # LLM settings for evaluating program output / tracebacks
   feedback:
