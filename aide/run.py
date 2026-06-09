@@ -2508,7 +2508,7 @@ def render_tree_view(
     lines: list[Text] = []
     for item in visible_items:
         line = item.line.copy()
-        if item.item_id == focused_item_id:
+        if item.item_id == focused_item_id and item.item_id != "header":
             line.stylize("reverse", item.focus_start, len(line.plain))
         lines.append(line)
     return Group(*lines)
@@ -6121,6 +6121,7 @@ def run(argv: list[str] | None = None):
                                     live,
                                 ),
                             )
+                            status_override = None
                             node_already_in_journal = True
                             persisted_node_before_execution = True
                             debug_log(

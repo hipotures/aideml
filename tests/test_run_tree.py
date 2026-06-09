@@ -1256,6 +1256,24 @@ def test_render_tree_view_highlights_focused_line_and_slices_viewport():
     assert "\x1b[7;" in output
 
 
+def test_render_tree_view_does_not_highlight_header_focus():
+    journal = Journal()
+    journal.append(_good_node(0.90))
+    view = build_tree_view(journal)
+
+    output = _render_ansi(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=3,
+        )
+    )
+
+    assert "Solution tree" in output
+    assert "\x1b[7" not in output
+
+
 def test_render_tree_view_highlights_node_marker_and_score_not_tree_guides():
     journal = Journal()
     root = _good_node(0.90)
