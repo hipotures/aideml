@@ -3572,8 +3572,13 @@ def test_legacy_agent_prompt_forbids_data_directory_discovery(tmp_path):
 
     guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
     contract = "\n".join(guidelines)
-    assert 'Path("./input")' in contract
-    assert 'Path("./working")' in contract
+    assert "aide_solution_helpers" in contract
+    assert "load_competition_data" in contract
+    assert "working_dir" in contract
+    assert "write_submission" in contract
+    assert "write_validation_predictions" in contract
+    assert "train, test, sample_sub = load_competition_data()" in contract
+    assert "Do not read train/test/sample_submission manually" in contract
     assert "data-directory discovery code" in contract
     assert "find_data_dir()" in contract
     assert "Path.cwd()" in contract

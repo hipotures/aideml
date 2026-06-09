@@ -97,6 +97,33 @@ def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
     assert (artifact_dir / "solution.py").read_text() == "print('current node')"
 
 
+def test_save_run_archives_solution_helper_when_available(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "working").mkdir(parents=True)
+    (workspace_dir / "aide_solution_helpers.py").write_text(
+        "def load_competition_data():\n    pass\n",
+        encoding="utf-8",
+    )
+
+    cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
+    journal = Journal()
+    node = Node(code="print('current node')", plan="plan")
+    node.is_buggy = False
+    node._term_out = ["ok\n"]
+    node.exec_time = 1.0
+    node.exc_type = None
+    node.analysis = "ran successfully"
+    journal.append(node)
+
+    save_run(cfg, journal, current_node=node)
+
+    artifact_dir = next((log_dir / "artifacts").iterdir())
+    helper_path = artifact_dir / "aide_solution_helpers.py"
+    assert helper_path.exists()
+    assert "load_competition_data" in helper_path.read_text(encoding="utf-8")
+
+
 def test_load_json_hydrates_code_from_solution_artifact(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"

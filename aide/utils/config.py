@@ -92,6 +92,15 @@ def _copy_prediction_dir(source_dir: Path, destination_dir: Path) -> None:
         shutil.copy2(source, destination_dir / source.name)
 
 
+def _solution_helper_source_path() -> Path:
+    return _repo_root() / "aide" / "solution_helpers.py"
+
+
+def _copy_solution_helper(destination_dir: Path) -> None:
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(_solution_helper_source_path(), destination_dir / "aide_solution_helpers.py")
+
+
 """ these dataclasses are just for type hinting, the actual config is in config.yaml """
 
 
@@ -737,6 +746,7 @@ def prep_agent_workspace(cfg: Config):
     """Setup the agent's workspace and preprocess data if necessary."""
     (cfg.workspace_dir / "input").mkdir(parents=True, exist_ok=True)
     (cfg.workspace_dir / "working").mkdir(parents=True, exist_ok=True)
+    _copy_solution_helper(cfg.workspace_dir)
 
     mode = aux_mode(cfg)
     if mode == "merged":
@@ -881,6 +891,10 @@ def _save_node_artifacts(cfg: Config, node) -> None:
 
     with open(artifact_dir / "solution.py", "w") as f:
         f.write(node.code)
+
+    workspace_helper = cfg.workspace_dir / "aide_solution_helpers.py"
+    if workspace_helper.exists():
+        shutil.copy2(workspace_helper, artifact_dir / "aide_solution_helpers.py")
 
     submission_path = cfg.workspace_dir / "working" / "submission.csv"
     if submission_path.exists() and submission_path.stat().st_mtime >= node.ctime:

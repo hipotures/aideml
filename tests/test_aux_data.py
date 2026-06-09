@@ -25,6 +25,24 @@ def _cfg(tmp_path: Path):
     return prep_cfg(cfg)
 
 
+def test_prep_agent_workspace_copies_solution_helpers(tmp_path):
+    data_dir = tmp_path / "data" / "playground-series-s6e5"
+    data_dir.mkdir(parents=True)
+    (data_dir / "train.csv").write_text("id,x,target\n1,2,0\n", encoding="utf-8")
+    (data_dir / "test.csv").write_text("id,x\n10,4\n", encoding="utf-8")
+    (data_dir / "sample_submission.csv").write_text(
+        "id,target\n10,0\n",
+        encoding="utf-8",
+    )
+    cfg = _cfg(tmp_path)
+
+    prep_agent_workspace(cfg)
+
+    helper_path = Path(cfg.workspace_dir) / "aide_solution_helpers.py"
+    assert helper_path.exists()
+    assert "def load_competition_data" in helper_path.read_text(encoding="utf-8")
+
+
 def test_agent_aux_materializes_merged_train_and_hides_raw_aux_dataset(tmp_path):
     data_dir = tmp_path / "data" / "playground-series-s6e5"
     _write_csv_gz(
