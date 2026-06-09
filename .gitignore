@@ -162,6 +162,7 @@ cython_debug/
 
 workspaces
 logs
+tmp/
 experiments/
 
 .DS_STORE
