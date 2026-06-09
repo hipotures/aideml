@@ -3215,13 +3215,21 @@ def build_agent_mode_summary(
         "generate-only" if skip_execution else "execute",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
+    refactor_line = Text()
+    refactor_line.append("▶ refactor  ", style=TUI_ROW_LABEL_STYLE)
+    refactor_enabled = bool(getattr(getattr(cfg, "refactor", None), "enabled", False))
+    refactor_timeout = getattr(getattr(cfg, "refactor", None), "timeout", None)
+    refactor_value = "on" if refactor_enabled else "off"
+    if refactor_enabled and refactor_timeout is not None:
+        refactor_value = f"{refactor_value} ({refactor_timeout}s)"
+    refactor_line.append(refactor_value, style=TUI_NEUTRAL_VALUE_STYLE)
     lines = [
         Text("Agent", style=TUI_ROW_LABEL_STYLE),
         mode_line,
     ]
     if ag_profile_line is not None:
         lines.append(ag_profile_line)
-    lines.extend([aux_line, gpu_line, run_line])
+    lines.extend([aux_line, gpu_line, run_line, refactor_line])
     if skip_execution:
         workers_line = Text()
         workers_line.append("▶ workers   ", style=TUI_ROW_LABEL_STYLE)
@@ -3344,6 +3352,8 @@ def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
         settings.append(
             ("synthesis", cfg.synthesis.model, cfg.synthesis.reasoning_effort)
         )
+    if cfg.refactor.enabled:
+        settings.append(("refactor", cfg.refactor.model, cfg.refactor.reasoning_effort))
     return settings
 
 
@@ -4546,6 +4556,14 @@ def run(argv: list[str] | None = None):
                     WebRunDatum(
                         "run",
                         "generate only" if runtime_options.skip_execution else "execute",
+                    ),
+                    WebRunDatum(
+                        "refactor",
+                        (
+                            f"on ({cfg.refactor.timeout}s)"
+                            if cfg.refactor.enabled
+                            else "off"
+                        ),
                     ),
                 ],
             ),

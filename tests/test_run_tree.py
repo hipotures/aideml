@@ -15,6 +15,7 @@ from aide.run import (
     ActiveRootGeneration,
     active_run_log_path,
     build_all_hypotheses_view,
+    build_agent_mode_summary,
     build_best_branch_view,
     build_path_summary,
     build_model_summary,
@@ -2391,6 +2392,28 @@ def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
     assert "report" in output
     assert "research" not in output
     assert "unused-research-model" not in output
+
+
+def test_model_settings_and_agent_summary_show_refactor_when_enabled(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "refactor-settings-test"
+    cfg.refactor.enabled = True
+    cfg.refactor.model = "refactor-model"
+    cfg.refactor.reasoning_effort = "medium"
+    cfg.refactor.timeout = 300
+    cfg = prep_cfg(cfg)
+
+    models_output = _render_text(build_model_summary(model_settings_for_run(cfg)))
+    agent_output = _render_text(build_agent_mode_summary(cfg))
+
+    assert "refactor" in models_output
+    assert "refactor-model - medium" in models_output
+    assert "refactor" in agent_output
+    assert "on (300s)" in agent_output
 
 
 def test_run_data_hides_resources_when_code_is_not_executing(tmp_path):
