@@ -18,7 +18,7 @@ import tty
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Callable, Literal, cast
+from typing import Any, Callable, Iterable, Literal, cast
 
 from .agent import Agent
 from .interpreter import ExecutionInterrupted, Interpreter
@@ -136,6 +136,35 @@ logger = logging.getLogger("aide")
 
 
 DEFAULT_PUBLIC_TREE_SCORE_BONUS_WEIGHT = 0.5
+
+
+def format_hypothesis_only_finish_message(
+    count: int,
+    hypotheses: Iterable[Any],
+    *,
+    repo_root: Path | None = None,
+) -> str:
+    message = (
+        f"Hypothesis-only mode finished creating {count} initial hypotheses; "
+        "no code was materialized or executed."
+    )
+    hypotheses = list(hypotheses)
+    if not hypotheses:
+        return message
+    lines = [message, "Created hypotheses:"]
+    root = (repo_root or Path.cwd()).resolve()
+    for hypothesis in hypotheses:
+        hypothesis_id = str(getattr(hypothesis, "id", ""))
+        title = str(getattr(hypothesis, "title", "")).strip()
+        raw_path = getattr(hypothesis, "path", "")
+        path = Path(raw_path)
+        try:
+            path_text = path.resolve().relative_to(root).as_posix()
+        except (OSError, ValueError):
+            path_text = str(raw_path)
+        label = f"{hypothesis_id}: {title}" if title else hypothesis_id
+        lines.append(f"- {label} -> {path_text}")
+    return "\n".join(lines)
 
 
 @dataclass(frozen=True)
@@ -4211,7 +4240,19 @@ def run(argv: list[str] | None = None):
     global_step = len(journal)
     generated_only_evaluations = 0
     hypothesis_only_root_count = 0
+    hypothesis_only_created: list[Any] = []
     pipeline_hypothesis_generation_attempted = False
+
+    def remember_hypothesis_only_selection(selection: Any) -> None:
+        seen = {
+            str(getattr(hypothesis, "id", ""))
+            for hypothesis in hypothesis_only_created
+        }
+        for hypothesis in getattr(selection, "hypotheses", []) or []:
+            hypothesis_id = str(getattr(hypothesis, "id", ""))
+            if hypothesis_id and hypothesis_id not in seen:
+                hypothesis_only_created.append(hypothesis)
+                seen.add(hypothesis_id)
 
     def completed_work_units() -> int:
         return len(journal) + generated_only_evaluations
@@ -5239,6 +5280,7 @@ def run(argv: list[str] | None = None):
                                     parent_node=None,
                                     completed_steps=global_step,
                                 )
+                                remember_hypothesis_only_selection(generated_selection)
                                 created_count = len(generated_selection.hypotheses)
                                 hypothesis_only_root_count += created_count
                                 generated_only_evaluations += created_count
@@ -5251,10 +5293,9 @@ def run(argv: list[str] | None = None):
                                     ),
                                 )
                                 interrupted = True
-                                interrupt_message = (
-                                    "Hypothesis-only mode finished creating "
-                                    f"{hypothesis_only_root_count} ROOT hypotheses; "
-                                    "no code was materialized or executed."
+                                interrupt_message = format_hypothesis_only_finish_message(
+                                    hypothesis_only_root_count,
+                                    hypothesis_only_created,
                                 )
                                 break
 
@@ -5388,7 +5429,7 @@ def run(argv: list[str] | None = None):
                                 interrupted = True
                                 interrupt_message = (
                                     "Generate-only hypothesis mode finished "
-                                    f"materializing {root_quota} ROOT hypotheses; "
+                                    f"materializing {root_quota} initial hypotheses; "
                                     "no code was executed, so no scored nodes are "
                                     "available for child hypotheses."
                                 )
@@ -5426,6 +5467,7 @@ def run(argv: list[str] | None = None):
                                     parent_node=parent_node,
                                     completed_steps=global_step,
                                 )
+                                remember_hypothesis_only_selection(selection)
                                 if parent_node is None:
                                     hypothesis_only_root_count += 1
                                 generated_only_evaluations += 1
@@ -5447,9 +5489,10 @@ def run(argv: list[str] | None = None):
                                 ):
                                     interrupted = True
                                     interrupt_message = (
-                                        "Hypothesis-only mode finished creating "
-                                        f"{hypothesis_only_root_count} ROOT hypotheses; "
-                                        "no code was materialized or executed."
+                                        format_hypothesis_only_finish_message(
+                                            hypothesis_only_root_count,
+                                            hypothesis_only_created,
+                                        )
                                     )
                                     break
                                 live.update(generate_live(), refresh=True)

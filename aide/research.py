@@ -53,9 +53,13 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                 "properties": {
                     "title": {"type": "string"},
                     "summary": {"type": "string"},
-                    "rationale": {"type": "string"},
-                    "implementation_hint": {"type": "string"},
-                    "expected_effect": {"type": "string"},
+                    "feature_family": {"type": "string"},
+                    "feature_strategy": {"type": "string"},
+                    "baseline_model_panel": {"type": "string"},
+                    "model_panel_rationale": {"type": "string"},
+                    "validation_strategy": {"type": "string"},
+                    "materialization_hint": {"type": "string"},
+                    "expected_signal": {"type": "string"},
                     "risk": {"type": "string"},
                     "sources": {
                         "type": "array",
@@ -65,9 +69,13 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                 "required": [
                     "title",
                     "summary",
-                    "rationale",
-                    "implementation_hint",
-                    "expected_effect",
+                    "feature_family",
+                    "feature_strategy",
+                    "baseline_model_panel",
+                    "model_panel_rationale",
+                    "validation_strategy",
+                    "materialization_hint",
+                    "expected_signal",
                     "risk",
                     "sources",
                 ],
@@ -81,6 +89,13 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 PROMPT_SCORE_DECIMALS = 5
 REPO_ROOT = Path(__file__).resolve().parent.parent
+RUNTIME_ROOT_PROMPT_PATH = (
+    REPO_ROOT
+    / "assets"
+    / "prompts"
+    / "research_hypotheses"
+    / "runtime_root_prompt.md"
+)
 MANUAL_HYPOTHESIS_PATTERN = re.compile(r"^hypothesis-(\d{6})\.json$")
 MANUAL_HYPOTHESIS_AGENT_MODES = {"legacy", "autogluon"}
 MANUAL_USAGE_RESEARCH_MODES = {"manual", "hypothesis"}
@@ -913,19 +928,36 @@ def _normalize_generated_hypothesis(
     for field in (
         "title",
         "summary",
-        "rationale",
-        "implementation_hint",
-        "expected_effect",
+        "feature_family",
+        "feature_strategy",
+        "baseline_model_panel",
+        "model_panel_rationale",
+        "validation_strategy",
+        "materialization_hint",
+        "expected_signal",
         "risk",
     ):
         value = raw.get(field)
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"Generated hypothesis missing required field {field!r}.")
         payload[field] = value.strip()
+    payload["rationale"] = "\n".join(
+        [
+            f"Feature family: {payload['feature_family']}",
+            f"Feature strategy: {payload['feature_strategy']}",
+            f"Baseline model panel: {payload['baseline_model_panel']}",
+            f"Model panel rationale: {payload['model_panel_rationale']}",
+            f"Validation strategy: {payload['validation_strategy']}",
+        ]
+    )
+    payload["implementation_hint"] = payload["materialization_hint"]
+    payload["expected_effect"] = payload["expected_signal"]
     sources = raw.get("sources", [])
     if not isinstance(sources, list):
         raise ValueError("Generated hypothesis sources must be a list.")
-    payload["sources"] = [str(source).strip() for source in sources if str(source).strip()]
+    payload["sources"] = [
+        str(source).strip() for source in sources if str(source).strip()
+    ]
     return payload
 
 
@@ -2499,41 +2531,12 @@ def build_research_prompt(context: dict[str, Any]) -> str:
     context_json = json.dumps(
         prompt_context, indent=2, ensure_ascii=False, default=_json_default
     )
+    prompt = RUNTIME_ROOT_PROMPT_PATH.read_text(encoding="utf-8")
     return (
-        f"{RESEARCH_PROMPT_INTRO}\n\n"
-        "# Research task\n"
-        "Use live web search to identify techniques, validation traps, feature "
-        "engineering ideas, model families, and ensemble/calibration strategies "
-        "that are relevant to this competition or closely related machine "
-        "learning problems.\n\n"
-        "# Output contract\n"
-        f"Return exactly {hypothesis_count} concise new solution ideas. Do not target a specific "
-        "previous node or code block. Use the prior results only to avoid "
-        "repeating approaches that have already been tried. Do not debug broken "
-        "code.\n\n"
-        "# Prior research history\n"
-        "If previous_research_summaries is present, it lists recent completed "
-        "research proposals. Each entry includes its summary plus the maximum "
-        "local CV score and Kaggle public score observed afterwards when "
-        "available. Try to propose ideas that are unique relative to those "
-        "earlier summaries, or explicitly develop the strongest methods from "
-        "them into a new testable direction.\n\n"
-        "# Context field meanings\n"
-        "best_working_solutions contains the highest-scoring code snippets that "
-        "ran successfully. worst_working_solutions contains the lowest-scoring "
-        "code snippets that still ran successfully. local_cv_score is the "
-        "validation metric. kaggle_public_score is included only when a "
-        "completed Kaggle public leaderboard score is available for that exact "
-        "node. Use these examples only to understand what has already been tried "
-        "and what performed well or poorly.\n\n"
-        "# Required JSON output shape\n"
-        "Return JSON with: summary; hypotheses[].title; hypotheses[].summary; "
-        "hypotheses[].rationale; hypotheses[].implementation_hint; "
-        "hypotheses[].expected_effect; hypotheses[].risk; "
-        "hypotheses[].sources. The hypotheses array must "
-        f"contain exactly {hypothesis_count} items.\n\n"
-        "# Compact AIDE run context\n"
-        f"```json\n{context_json}\n```\n"
+        prompt.replace("{{HYPOTHESIS_COUNT}}", str(hypothesis_count)).replace(
+            "{{CONTEXT_JSON}}",
+            context_json,
+        )
     )
 
 

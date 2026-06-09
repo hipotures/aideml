@@ -14,10 +14,10 @@ from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.run import (
     ParallelRootJob,
+    format_hypothesis_only_finish_message,
     generate_reserved_hypothesis_root,
 )
 from aide.research import (
-    RESEARCH_PROMPT_INTRO,
     ResearchAdvisor,
     build_data_overview,
     build_research_prompt,
@@ -166,9 +166,27 @@ def _generated_hypothesis_payload(
     return {
         "title": title,
         "summary": summary,
-        "rationale": "A broad root should test many plausible tabular signals.",
-        "implementation_hint": "Use leak-free CV and a compact tree model ensemble.",
-        "expected_effect": "A stronger diverse root for later local improvements.",
+        "feature_family": "broad_tabular_feature_expansion",
+        "feature_strategy": (
+            "Build numerical transformations, categorical counts, missingness "
+            "indicators, and fold-safe statistical features."
+        ),
+        "baseline_model_panel": (
+            "Use a compact panel of simple tree-boosting, bagging, and linear "
+            "baselines when compatible with the task."
+        ),
+        "model_panel_rationale": (
+            "Boosting and bagging baselines expose whether the feature family has "
+            "nonlinear or robust tree signal."
+        ),
+        "validation_strategy": "Use leak-free 5-fold CV appropriate for the task.",
+        "materialization_hint": (
+            "Materialize as staged load, feature build, per-fold model panel, "
+            "diagnostics, and standard AIDE outputs."
+        ),
+        "expected_signal": (
+            "At least one simple tree model should improve over raw-feature roots."
+        ),
         "risk": "The broad feature set can overfit if validation is weak.",
         "sources": ["https://example.com/tabular-root"],
     }
@@ -633,6 +651,49 @@ def test_record_hypothesis_only_selection_writes_artifact_without_node(tmp_path)
     assert len(journal.nodes) == 0
 
 
+def test_format_hypothesis_only_finish_message_lists_created_hypotheses(tmp_path):
+    source_dir = tmp_path / "research_hypotheses" / "playground-series-s6e5"
+    hypotheses = [
+        research.ManualHypothesis(
+            id="000001",
+            enabled=True,
+            agent_modes=["legacy"],
+            title="Broad photometry ratios",
+            summary="summary",
+            rationale="rationale",
+            implementation_hint="hint",
+            expected_effect="effect",
+            risk="risk",
+            sources=[],
+            path=source_dir / "000001" / "hypothesis-000001.json",
+        ),
+        research.ManualHypothesis(
+            id="000002",
+            enabled=True,
+            agent_modes=["legacy"],
+            title="Fold-safe group stats",
+            summary="summary",
+            rationale="rationale",
+            implementation_hint="hint",
+            expected_effect="effect",
+            risk="risk",
+            sources=[],
+            path=source_dir / "000002" / "hypothesis-000002.json",
+        ),
+    ]
+
+    message = format_hypothesis_only_finish_message(
+        2,
+        hypotheses,
+        repo_root=tmp_path,
+    )
+
+    assert "creating 2 initial hypotheses" in message
+    assert "ROOT" not in message
+    assert "- 000001: Broad photometry ratios -> research_hypotheses" in message
+    assert "- 000002: Fold-safe group stats -> research_hypotheses" in message
+
+
 def test_store_generated_research_hypotheses_persists_library_and_run_record(
     tmp_path,
 ):
@@ -675,6 +736,11 @@ def test_store_generated_research_hypotheses_persists_library_and_run_record(
     assert first_payload["summary"] == (
         "Build a broad tabular baseline with rich feature coverage."
     )
+    assert first_payload["feature_family"] == "broad_tabular_feature_expansion"
+    assert "simple tree-boosting" in first_payload["baseline_model_panel"]
+    assert first_payload["implementation_hint"] == first_payload["materialization_hint"]
+    assert first_payload["expected_effect"] == first_payload["expected_signal"]
+    assert "Feature family: broad_tabular_feature_expansion" in first_payload["rationale"]
     generated_log = (
         Path(cfg.log_dir) / "research_hypotheses" / "generated_hypotheses.jsonl"
     )
@@ -1686,9 +1752,12 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     )
 
     prompt = build_research_prompt(context)
+    compact_prompt = " ".join(prompt.split())
 
-    assert prompt.startswith(RESEARCH_PROMPT_INTRO)
-    assert "Return only structured JSON" in prompt
+    assert prompt.startswith(
+        "You are a research scientist and Kaggle competition strategist."
+    )
+    assert "Return only structured JSON" in compact_prompt
     assert "task" in prompt
     assert '"data_overview"' in prompt
     assert '"run_id"' not in prompt
@@ -1700,8 +1769,17 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert '"parent_node_id"' not in prompt
     assert '"parent_step"' not in prompt
     assert "hypotheses[].target" not in prompt
-    assert "Return exactly 5 concise new solution ideas" in prompt
+    assert "Generate initial hypotheses for feature search" in prompt
+    assert (
+        "Return exactly 5 concise new initial feature-search hypotheses"
+        in compact_prompt
+    )
     assert "hypotheses[].summary" in prompt
+    assert "hypotheses[].feature_family" in prompt
+    assert "hypotheses[].baseline_model_panel" in prompt
+    assert "basic algorithm families fit the engineered features best" in compact_prompt
+    assert "not as a fixed magic list of model names" in prompt
+    assert "Do not propose heavy ensembling" in prompt
     assert "Do not target a specific previous node or code block" in prompt
 
 
@@ -1714,8 +1792,12 @@ def test_research_prompt_uses_requested_hypothesis_count():
             "hypothesis_count": 3,
         }
     )
+    compact_prompt = " ".join(prompt.split())
 
-    assert "Return exactly 3 concise new solution ideas" in prompt
+    assert (
+        "Return exactly 3 concise new initial feature-search hypotheses"
+        in compact_prompt
+    )
     assert "contain exactly 3 items" in prompt
 
 
@@ -1765,9 +1847,19 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
                         {
                             "title": "Try calibrated LightGBM",
                             "summary": "Test calibrated LightGBM probabilities.",
-                            "rationale": "AUC often benefits from calibration checks.",
-                            "implementation_hint": "Add calibrated CV probabilities.",
-                            "expected_effect": "small AUC gain",
+                            "feature_family": "probability_shape_features",
+                            "feature_strategy": "Build probability-shape features.",
+                            "baseline_model_panel": (
+                                "Use a compact mix of simple tree and linear "
+                                "baselines when compatible."
+                            ),
+                            "model_panel_rationale": (
+                                "Different simple model families expose whether "
+                                "the feature representation is broadly useful."
+                            ),
+                            "validation_strategy": "Use leak-free 5-fold CV.",
+                            "materialization_hint": "Build staged features and model panel.",
+                            "expected_signal": "small AUC gain",
                             "risk": "overfitting",
                             "sources": ["https://example.com"],
                         }
@@ -1801,7 +1893,9 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert command[command.index("--sandbox") + 1] == "read-only"
     assert command[command.index("--model") + 1] == "gpt-5.4-mini"
     assert 'model_reasoning_effort="low"' in command
-    assert seen["stdin"].startswith(RESEARCH_PROMPT_INTRO)
+    assert seen["stdin"].startswith(
+        "You are a research scientist and Kaggle competition strategist."
+    )
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (
