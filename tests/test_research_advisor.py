@@ -3556,6 +3556,32 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     )
 
 
+def test_legacy_agent_prompt_forbids_data_directory_discovery(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.data_preview = False
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._draft()
+
+    guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
+    contract = "\n".join(guidelines)
+    assert 'Path("./input")' in contract
+    assert 'Path("./working")' in contract
+    assert "data-directory discovery code" in contract
+    assert "find_data_dir()" in contract
+    assert "Path.cwd()" in contract
+    assert "../input" in contract
+    assert "logs/" in contract
+    assert "workspaces/" in contract
+
+
 def test_agent_prompt_only_lists_importable_packages(tmp_path, monkeypatch):
     available = {"numpy", "pandas", "sklearn", "catboost"}
     monkeypatch.setattr(
