@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from aide.journal import Node
+from aide.journal import Journal, Node
 from aide.utils.artifact_manifest import (
     RESULT_MANIFEST_NAME,
     SEEDED_BASE_PLAN_PREFIX,
@@ -232,6 +232,23 @@ def test_seeded_single_node_can_be_exported_to_tree_struct(tmp_path):
 
     assert tree["layout"] == [[0.5, 1.0]]
     assert tree["term_out"] == [""]
+
+
+def test_empty_journal_can_be_exported_to_tree_struct(tmp_path):
+    cfg = DummyConfig(
+        log_dir=tmp_path / "logs" / "empty-run",
+        workspace_dir=tmp_path / "workspaces" / "empty-run",
+    )
+
+    tree = cfg_to_tree_struct(cfg, Journal())
+
+    assert tree["edges"] == []
+    assert tree["layout"] == []
+    assert tree["plan"] == []
+    assert tree["code"] == []
+    assert tree["term_out"] == []
+    assert tree["analysis"] == []
+    assert tree["metrics"] == []
 
 
 def test_seed_source_is_autogluon_when_solution_has_ag_config(tmp_path):
