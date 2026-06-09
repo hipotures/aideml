@@ -2006,6 +2006,7 @@ def test_solution_tree_shows_virtual_root_hypotheses_when_journal_is_empty(tmp_p
     cfg.log_dir = str(tmp_path / "logs" / "2-tree-view-test")
     cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-view-test")
     cfg.agent.mode = "legacy"
+    cfg.agent.gpu = False
 
     _write_root_hypothesis(
         tmp_path,
@@ -2045,6 +2046,31 @@ def test_solution_tree_shows_virtual_root_hypotheses_when_journal_is_empty(tmp_p
     assert "● 000014" in output
     assert "hypothesis" not in output
     assert "code" not in output
+
+
+def test_final_solution_tree_uses_hypothesis_inventory(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-final-tree-view-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-final-tree-view-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000011", title="First root")
+    _write_root_hypothesis(tmp_path, task, "000012", title="Second root")
+
+    journal = Journal()
+    node = _hypothesis_node(_good_node(0.0), "000011")
+    mark_node_generated_only(node)
+    journal.append(node)
+
+    output = _render_text(
+        build_final_tree_renderable(journal, cfg=cfg, repo_root=tmp_path)
+    )
+
+    assert "Solution tree" in output
+    assert "● 000011" in output
+    assert "○ 000012" in output
 
 
 def test_solution_tree_marks_virtual_root_hypothesis_active_on_same_line(tmp_path):

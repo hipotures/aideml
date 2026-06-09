@@ -2569,6 +2569,8 @@ def render_tree_view(
 def build_final_tree_renderable(
     journal: Journal,
     *,
+    cfg: Config | None = None,
+    repo_root: Path | None = None,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
@@ -2579,6 +2581,8 @@ def build_final_tree_renderable(
 ) -> Group:
     view = build_tree_view(
         journal,
+        cfg=cfg,
+        repo_root=repo_root,
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
@@ -2593,6 +2597,8 @@ def build_final_tree_renderable(
 def print_final_tree(
     journal: Journal,
     *,
+    cfg: Config | None = None,
+    repo_root: Path | None = None,
     log_dir: Path | str | None = None,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -2605,6 +2611,8 @@ def print_final_tree(
     Console().print(
         build_final_tree_renderable(
             journal,
+            cfg=cfg,
+            repo_root=repo_root,
             show_invalid_submission_branches=show_invalid_submission_branches,
             disable_oom_saturated_parents=disable_oom_saturated_parents,
             plateau_block_epsilon=plateau_block_epsilon,
@@ -5181,6 +5189,7 @@ def run(argv: list[str] | None = None):
                     tree_title="Solution tree",
                     tree_lines=build_web_tree_lines(
                         journal,
+                        virtual_root_rows=_hypothesis_root_inventory_rows(cfg, journal),
                         active_parent_node=agent.active_parent_node,
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
@@ -6502,6 +6511,7 @@ def run(argv: list[str] | None = None):
 
     print_final_tree(
         journal,
+        cfg=cfg,
         log_dir=cfg.log_dir,
         show_invalid_submission_branches=runtime_options.show_invalid_submission_branches,
         disable_oom_saturated_parents=cfg.agent.search.disable_oom_saturated_parents,

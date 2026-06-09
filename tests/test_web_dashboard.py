@@ -58,6 +58,29 @@ def test_web_tree_lines_include_compact_and_desktop_text_prefixes():
     ]
 
 
+def test_web_tree_lines_include_virtual_root_hypotheses():
+    journal = Journal()
+    root = _scored_node(0.0)
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000011"]
+    root.status = "generated"
+    root.metric = None
+    journal.append(root)
+
+    lines = build_web_tree_lines(
+        journal,
+        virtual_root_rows=[
+            {"hypothesis_id": "000011", "status": "generated"},
+            {"hypothesis_id": "000012", "status": "hypothesis"},
+        ],
+    )
+
+    assert [(line.prefix, line.label, line.kind) for line in lines] == [
+        ("├", "generated·000011", "generated"),
+        ("└", "hypothesis·000012", "hypothesis"),
+    ]
+
+
 def test_web_tree_lines_keep_tiny_improving_child_unblocked():
     journal = Journal()
     parent = _scored_node(0.967787)

@@ -168,6 +168,7 @@ def _line_for_node(
 def build_web_tree_lines(
     journal: Journal,
     *,
+    virtual_root_rows: list[dict[str, object]] | None = None,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
@@ -281,10 +282,52 @@ def build_web_tree_lines(
         if has_active_child:
             append_active(next_prefix, next_desktop_prefix, True)
 
+    def append_virtual_root(row: dict[str, object], *, is_last: bool) -> None:
+        hypothesis_id = str(row.get("hypothesis_id") or "")
+        status = str(row.get("status") or "hypothesis")
+        score = row.get("score")
+        if status == "score" and isinstance(score, int | float):
+            label = f"{float(score):.5f}·{hypothesis_id}"
+            kind = "ok"
+        elif status in {"code", "generated"}:
+            label = f"generated·{hypothesis_id}"
+            kind = "generated"
+        elif status in {"bug", "failed"}:
+            label = f"{status}·{hypothesis_id}"
+            kind = "bug"
+        else:
+            label = f"hypothesis·{hypothesis_id}"
+            kind = "hypothesis"
+        branch = "└" if is_last else "├"
+        lines.append(
+            WebTreeLine(
+                prefix=branch,
+                label=label,
+                kind=kind,
+                desktop_prefix=f"{branch}── ",
+            )
+        )
+
     roots = sorted(journal.draft_nodes, key=lambda node: _node_order_key(journal, node))
+    existing_hypothesis_ids = {
+        node.research_hypotheses_offered[0]
+        for node in roots
+        if len(node.research_hypotheses_offered) == 1
+    }
+    virtual_roots = [
+        row
+        for row in virtual_root_rows or []
+        if str(row.get("hypothesis_id") or "") not in existing_hypothesis_ids
+    ]
     has_root_active = active_parent_node is None and active_stage is not None
+    total_roots = len(roots) + len(virtual_roots)
+    root_index = 0
     for index, node in enumerate(roots):
-        append_rec(node, "", "", index == len(roots) - 1 and not has_root_active)
+        root_index += 1
+        append_rec(node, "", "", root_index == total_roots and not has_root_active)
+    for row in virtual_roots:
+        root_index += 1
+        append_virtual_root(row, is_last=root_index == total_roots and not has_root_active)
     if has_root_active:
         append_active("", "", True)
     return lines
