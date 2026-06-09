@@ -2084,6 +2084,8 @@ class Agent:
         llm_log_dir: Path,
         artifact_dir_name: str,
     ) -> Node:
+        if not self.journal.nodes or self.data_preview is None:
+            self.update_data_preview()
         self.set_active_stage("generating")
         self.active_parent_node = None
         self.active_research_hypothesis_id = selection.hypotheses[0].id
