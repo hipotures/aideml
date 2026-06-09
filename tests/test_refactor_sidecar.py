@@ -229,9 +229,11 @@ def test_agent_refactor_pass_writes_prefixed_llm_artifacts_without_replacing_cod
     cfg.log_dir = str(tmp_path / "logs")
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "refactor-test"
+    cfg.refactor.enabled = True
+    cfg.refactor.model = "mock-refactor-model"
     cfg = prep_cfg(cfg)
 
-    monkeypatch.setenv("AIDE_REFACTOR_ENABLED", "true")
+    monkeypatch.delenv("AIDE_REFACTOR_ENABLED", raising=False)
     monkeypatch.delenv("AIDE_REFACTOR_MODEL", raising=False)
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.setitem(Agent.plan_and_code_query.__globals__["query"].__globals__, "_llm_call_counter", 0)
@@ -239,7 +241,7 @@ def test_agent_refactor_pass_writes_prefixed_llm_artifacts_without_replacing_cod
 
     def fake_query_func(**kwargs):
         if "Refactor `response.py`" in str(kwargs.get("system_message")):
-            assert kwargs["model"] == cfg.agent.code.model
+            assert kwargs["model"] == cfg.refactor.model
             output = f"```python\n{VALID_REFACTORED_CODE}```"
         else:
             output = "I will keep this simple.\n\n```python\nprint('original')\n```"

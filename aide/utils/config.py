@@ -258,6 +258,15 @@ class SynthesisConfig:
 
 
 @dataclass
+class RefactorConfig:
+    enabled: bool = False
+    timeout: int = 300
+    max_input_chars: int = 240_000
+    model: str = "gpt-5.4-mini"
+    reasoning_effort: str | None = "low"
+
+
+@dataclass
 class WebDashboardConfig:
     enabled: bool = False
     host: str = "0.0.0.0"
@@ -287,6 +296,7 @@ class Config(Hashable):
     agent: AgentConfig
     research: ResearchConfig = field(default_factory=ResearchConfig)
     synthesis: SynthesisConfig = field(default_factory=SynthesisConfig)
+    refactor: RefactorConfig = field(default_factory=RefactorConfig)
     web: WebDashboardConfig = field(default_factory=WebDashboardConfig)
 
 
@@ -517,6 +527,7 @@ def _resolve_all_model_configs(cfg: Config) -> None:
     _resolve_stage_config(cfg.report)
     _resolve_model_attrs(cfg.research)
     _resolve_model_attrs(cfg.synthesis)
+    _resolve_model_attrs(cfg.refactor)
 
 
 def _best_solution_node(journal):

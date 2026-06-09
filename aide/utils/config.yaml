@@ -81,6 +81,14 @@ synthesis:
   model: gpt-5.4-mini
   reasoning_effort: low
 
+# optional non-invasive refactor pass after legacy response.py generation
+refactor:
+  enabled: False
+  timeout: 300
+  max_input_chars: 240000
+  model: gpt-5.4-mini
+  reasoning_effort: low
+
 # optional read-only live web dashboard for the current run
 web:
   enabled: False

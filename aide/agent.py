@@ -1634,10 +1634,13 @@ class Agent:
             return
 
         config = RefactorConfig.from_env()
+        config.enabled = bool(self.cfg.refactor.enabled) or config.enabled
         if not config.enabled:
             return
         if not config.model:
-            config.model = self.acfg.code.model
+            config.model = self.cfg.refactor.model
+        config.timeout_s = int(self.cfg.refactor.timeout)
+        config.max_input_chars = int(self.cfg.refactor.max_input_chars)
 
         artifact_dir = Path(self._pending_llm_log_dir)
 
@@ -1650,7 +1653,7 @@ class Agent:
                 system_message=prompt_text,
                 user_message=None,
                 model=model,
-                reasoning_effort=self.acfg.code.reasoning_effort,
+                reasoning_effort=self.cfg.refactor.reasoning_effort,
                 temperature=None,
                 llm_log_dir=artifact_dir,
                 llm_log_prefix="refactor",
