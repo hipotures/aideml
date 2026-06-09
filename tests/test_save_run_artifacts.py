@@ -74,6 +74,7 @@ def test_save_run_archives_current_node_code_and_submission_with_same_timestamp(
 def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "input").mkdir(parents=True)
     (workspace_dir / "working").mkdir(parents=True)
 
     cfg = DummyConfig(log_dir=log_dir, workspace_dir=workspace_dir)
@@ -95,6 +96,8 @@ def test_save_run_uses_explicit_artifact_dir_name(tmp_path):
 
     artifact_dir = cfg.log_dir / "artifacts" / "20260523T220603-a1b2c3d4"
     assert (artifact_dir / "solution.py").read_text() == "print('current node')"
+    assert (artifact_dir / "input").is_symlink()
+    assert (artifact_dir / "input").resolve() == (workspace_dir / "input").resolve()
 
 
 def test_save_run_archives_solution_helper_when_available(tmp_path):

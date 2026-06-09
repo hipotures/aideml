@@ -104,6 +104,14 @@ def copy_solution_helper(destination_dir: Path) -> None:
     )
 
 
+def link_artifact_input_dir(workspace_dir: Path | str, artifact_dir: Path | str) -> None:
+    source = Path(workspace_dir) / "input"
+    destination = Path(artifact_dir) / "input"
+    if not source.exists() or destination.exists() or destination.is_symlink():
+        return
+    destination.symlink_to(os.path.relpath(source, start=destination.parent))
+
+
 """ these dataclasses are just for type hinting, the actual config is in config.yaml """
 
 
@@ -891,6 +899,7 @@ def _node_error_text(node) -> str | None:
 def _save_node_artifacts(cfg: Config, node) -> None:
     artifact_dir = artifact_dir_for_node(cfg.log_dir, node)
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
 
     with open(artifact_dir / "solution.py", "w") as f:
         f.write(node.code)
@@ -933,6 +942,7 @@ def _ensure_node_artifact_slot(cfg: Config, node) -> Path:
         node.artifact_dir_name = node.artifact_dir_name.strip()
         artifact_dir = artifact_dir_for_node(cfg.log_dir, node)
         artifact_dir.mkdir(parents=True, exist_ok=True)
+        link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
     artifacts_dir = Path(cfg.log_dir) / "artifacts"
@@ -945,6 +955,7 @@ def _ensure_node_artifact_slot(cfg: Config, node) -> Path:
         except FileExistsError:
             continue
         node.artifact_dir_name = dir_name
+        link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
 

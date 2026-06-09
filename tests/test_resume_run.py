@@ -543,6 +543,20 @@ def test_allocate_node_artifact_slot_appends_step_to_explicit_name(tmp_path):
     assert (artifact_dir / "aide_solution_helpers.py").exists()
 
 
+def test_allocate_node_artifact_slot_links_workspace_input(tmp_path):
+    workspace_dir = tmp_path / "workspaces" / "run"
+    (workspace_dir / "input").mkdir(parents=True)
+
+    _ctime, _dir_name, artifact_dir = allocate_node_artifact_slot(
+        tmp_path / "logs" / "run",
+        workspace_dir=workspace_dir,
+    )
+
+    input_link = artifact_dir / "input"
+    assert input_link.is_symlink()
+    assert input_link.resolve() == (workspace_dir / "input").resolve()
+
+
 def test_ensure_node_artifact_slot_assigns_hash_name_to_legacy_node(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)

@@ -84,6 +84,7 @@ from .utils.config import (
     aux_file_name,
     aux_mode,
     copy_aux_file_input,
+    link_artifact_input_dir,
     copy_solution_helper,
     load_task_desc,
     prep_agent_workspace,
@@ -3745,6 +3746,7 @@ def allocate_node_artifact_slot(
     log_dir: Path | str,
     *,
     step: int | str | None = None,
+    workspace_dir: Path | str | None = None,
 ) -> tuple[float, str, Path]:
     ctime = time.time()
     artifacts_dir = Path(log_dir) / "artifacts"
@@ -3757,6 +3759,8 @@ def allocate_node_artifact_slot(
         except FileExistsError:
             continue
         copy_solution_helper(artifact_dir)
+        if workspace_dir is not None:
+            link_artifact_input_dir(workspace_dir, artifact_dir)
         return ctime, dir_name, artifact_dir
 
 
@@ -3764,6 +3768,7 @@ def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
     if node.artifact_dir_name is not None:
         artifact_dir = _node_artifact_dir(cfg, node)
         artifact_dir.mkdir(parents=True, exist_ok=True)
+        link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
     artifacts_dir = Path(cfg.log_dir) / "artifacts"
@@ -3776,6 +3781,7 @@ def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
         except FileExistsError:
             continue
         node.artifact_dir_name = dir_name
+        link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
 
@@ -3788,6 +3794,7 @@ def make_parallel_root_job(
     node_ctime, artifact_dir_name, artifact_dir = allocate_node_artifact_slot(
         cfg.log_dir,
         step=reservation.completed_steps,
+        workspace_dir=cfg.workspace_dir,
     )
     return ParallelRootJob(
         reservation=reservation,
@@ -5239,6 +5246,7 @@ def run(argv: list[str] | None = None):
                             ) = allocate_node_artifact_slot(
                                 cfg.log_dir,
                                 step=global_step,
+                                workspace_dir=cfg.workspace_dir,
                             )
 
                             def generate_current_node() -> Node:
