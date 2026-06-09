@@ -94,6 +94,41 @@ def test_prep_cfg_reads_refactor_settings_from_env(tmp_path, monkeypatch):
     assert cfg.refactor.max_input_chars == 12345
 
 
+def test_prep_cfg_reads_agent_and_research_settings_from_env(tmp_path, monkeypatch):
+    data_dir = tmp_path / "project-data"
+    data_dir.mkdir()
+    desc_file = tmp_path / "project.md"
+    desc_file.write_text("project goal\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "AIDE_PROJECT_DATA_DIR=project-data\n"
+        "AIDE_PROJECT_DESC_FILE=project.md\n"
+        "AIDE_AGENT_GPU=true\n"
+        "AIDE_AGENT_STEPS=7\n"
+        "AIDE_AGENT_HYPOTHESES=3\n"
+        "AIDE_RESEARCH_MATERIALIZE=false\n"
+        "AIDE_RESEARCH_EXECUTE=false\n"
+        "AIDE_GENERATE_REPORT=false\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "env-agent-test"
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.gpu is True
+    assert cfg.agent.steps == 7
+    assert cfg.agent.hypotheses == 3
+    assert cfg.research.enabled is True
+    assert cfg.research.mode == "hypothesis"
+    assert cfg.research.materialize is False
+    assert cfg.research.execute is False
+    assert cfg.generate_report is False
+
+
 def _assert_cpu_boost_hyperparameters(settings):
     assert settings["use_gpu"] is False
     assert settings["included_model_types"][0] == "XGB"

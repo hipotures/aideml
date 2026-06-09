@@ -573,6 +573,25 @@ def record_generated_only_node(
     )
 
 
+def persist_generated_node_before_execution(
+    *,
+    cfg: Config,
+    agent: Agent,
+    journal: Journal,
+    node: Node,
+    progress_callback: Callable[[str], None] | None = None,
+) -> None:
+    mark_node_generated_only(node)
+    agent.save_hypothesis_root_code_for_node(node, activate=False)
+    journal.append(node)
+    save_run(
+        cfg,
+        journal,
+        current_node=node,
+        progress_callback=progress_callback,
+    )
+
+
 GENERATE_ONLY_FINISHED_MESSAGE = (
     "Skip-execution mode finished generating root candidates; no code was executed."
 )
@@ -594,8 +613,19 @@ def save_parallel_generate_only_run(
     return GENERATE_ONLY_FINISHED_MESSAGE
 
 
-def should_cleanup_workspace_on_exit(*, is_resume: bool, journal: Journal) -> bool:
-    return not is_resume and len(journal) == 0
+def should_cleanup_workspace_on_exit(
+    *,
+    is_resume: bool,
+    journal: Journal,
+    log_dir: Path | str | None = None,
+) -> bool:
+    if is_resume or len(journal) > 0:
+        return False
+    if log_dir is not None:
+        artifacts_dir = Path(log_dir) / "artifacts"
+        if artifacts_dir.exists() and any(artifacts_dir.iterdir()):
+            return False
+    return True
 
 
 def maybe_seed_scored_hypothesis_roots(
@@ -4493,7 +4523,11 @@ def run(argv: list[str] | None = None):
                     save_run(cfg, journal)
 
     def cleanup():
-        if should_cleanup_workspace_on_exit(is_resume=is_resume, journal=journal):
+        if should_cleanup_workspace_on_exit(
+            is_resume=is_resume,
+            journal=journal,
+            log_dir=cfg.log_dir,
+        ):
             shutil.rmtree(cfg.workspace_dir)
 
     atexit.register(cleanup)
@@ -5605,6 +5639,7 @@ def run(argv: list[str] | None = None):
                     synthesized: SynthesisNode | None = None
                     result_node: Node | None = None
                     node_already_in_journal = False
+                    persisted_node_before_execution = False
                     display_node = None
                     try:
                         root_hypotheses_to_generate = (
@@ -6063,6 +6098,37 @@ def run(argv: list[str] | None = None):
                         pending_artifact_dir = None
                         assert result_node is not None
 
+                        should_execute_node = (
+                            not pipeline_skip_execution()
+                            and (
+                                synthesized is None
+                                or synthesized.ready_for_execution
+                            )
+                        )
+                        if should_execute_node and not node_already_in_journal:
+                            debug_log(
+                                "before_persist_generated_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+                            persist_generated_node_before_execution(
+                                cfg=cfg,
+                                agent=agent,
+                                journal=journal,
+                                node=result_node,
+                                progress_callback=lambda message: update_save_status(
+                                    message,
+                                    live,
+                                ),
+                            )
+                            node_already_in_journal = True
+                            persisted_node_before_execution = True
+                            debug_log(
+                                "after_persist_generated_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+
                         if pipeline_skip_execution() and not node_already_in_journal:
                             debug_log(
                                 "before_append_generated_only_node",
@@ -6163,15 +6229,29 @@ def run(argv: list[str] | None = None):
                                         phase="journal",
                                         node=result_node,
                                     )
-                                    append_node_with_best_score_notification(
-                                        journal=journal,
-                                        node=result_node,
-                                        experiment_id=cfg.exp_name,
-                                    )
+                                    if not node_already_in_journal:
+                                        append_node_with_best_score_notification(
+                                            journal=journal,
+                                            node=result_node,
+                                            experiment_id=cfg.exp_name,
+                                        )
                                     debug_log(
                                         "after_append_crashed_node",
                                         phase="journal",
                                         node=result_node,
+                                        extra={
+                                            "already_in_journal": node_already_in_journal
+                                        },
+                                    )
+                                    agent.save_hypothesis_root_code_for_node(result_node)
+                                    save_run(
+                                        cfg,
+                                        journal,
+                                        current_node=result_node,
+                                        progress_callback=lambda message: update_save_status(
+                                            message,
+                                            live,
+                                        ),
                                     )
                                     if synthesized is not None:
                                         synthesis_advisor.mark_injected(
@@ -6260,15 +6340,15 @@ def run(argv: list[str] | None = None):
                     except ExecutionInterrupted:
                         interrupted = True
                         interrupt_message = (
-                            "Execution stopped immediately by user. Current node was not saved; "
-                            "previous journal state is preserved."
+                            "Execution stopped immediately by user. Generated node was saved; "
+                            "resume will execute the existing code."
                         )
                         break
                     except KeyboardInterrupt:
                         interrupted = True
                         interrupt_message = (
-                            "Run interrupted by user. Current node was not saved; "
-                            "previous journal state is preserved."
+                            "Run interrupted by user. Generated node was saved; "
+                            "resume will execute the existing code."
                         )
                         break
                     finally:
@@ -6296,7 +6376,7 @@ def run(argv: list[str] | None = None):
                         extra={"global_step": global_step, "journal_size": len(journal)},
                     )
                     status_override = None
-                    if node_already_in_journal:
+                    if node_already_in_journal and not persisted_node_before_execution:
                         generated_only_evaluations += 1
                     else:
                         global_step = len(journal)

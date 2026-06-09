@@ -1,8 +1,35 @@
 from __future__ import annotations
 
+import contextlib
+import time
 from pathlib import Path
+from typing import Iterator
 
 import pandas as pd
+
+
+def log_stage(message: str) -> None:
+    print(f"AIDE_STAGE|{message}", flush=True)
+
+
+@contextlib.contextmanager
+def aide_stage(name: str) -> Iterator[None]:
+    start = time.monotonic()
+    log_stage(f"event=start|stage={name}")
+    try:
+        yield
+    except BaseException as exc:
+        elapsed = time.monotonic() - start
+        log_stage(
+            f"event=failed|stage={name}|elapsed_s={elapsed:.3f}|error_type={exc.__class__.__name__}"
+        )
+        raise
+    else:
+        elapsed = time.monotonic() - start
+        log_stage(f"event=end|stage={name}|elapsed_s={elapsed:.3f}")
+
+
+stage = aide_stage
 
 
 def input_dir() -> Path:
@@ -37,11 +64,12 @@ def load_input_csv(name: str) -> pd.DataFrame:
 
 
 def load_competition_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    return (
-        load_input_csv("train"),
-        load_input_csv("test"),
-        load_input_csv("sample_submission"),
-    )
+    with aide_stage("load_data_stage"):
+        return (
+            load_input_csv("train"),
+            load_input_csv("test"),
+            load_input_csv("sample_submission"),
+        )
 
 
 def write_submission(frame: pd.DataFrame) -> None:

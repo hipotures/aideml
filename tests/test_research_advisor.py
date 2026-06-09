@@ -3882,6 +3882,11 @@ def test_legacy_agent_prompt_forbids_data_directory_discovery(tmp_path):
     assert "aide_solution_helpers" in contract
     assert "load_competition_data" in contract
     assert "working_dir" in contract
+    assert "aide_stage" in contract
+    assert "log_stage" in contract
+    assert 'with aide_stage("fit_predict_fold_stage")' in contract
+    assert "Before each long model fit" in contract
+    assert "flush=True" in contract
     assert "write_submission" in contract
     assert "write_validation_predictions" in contract
     assert "train, test, sample_sub = load_competition_data()" in contract

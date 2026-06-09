@@ -342,6 +342,8 @@ def _load_cfg(
     cli_args: Sequence[str] | None = None,
 ) -> Config:
     cfg = OmegaConf.load(path)
+    load_dotenv(dotenv_path=Path(".env"), override=False)
+    _apply_env_aliases(cfg)
     if use_cli_args:
         raw_cli_args = list(sys.argv[1:] if cli_args is None else cli_args)
         _validate_cli_model_effort_conflicts(raw_cli_args)
@@ -371,8 +373,144 @@ def _is_missing_config_value(value) -> bool:
     return False
 
 
+def _env_bool(value: str) -> bool | None:
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
+def _env_int(value: str) -> int | None:
+    try:
+        return int(value.strip())
+    except ValueError:
+        return None
+
+
+def _env_float(value: str) -> float | None:
+    try:
+        return float(value.strip())
+    except ValueError:
+        return None
+
+
+def _apply_env_aliases(cfg: Config) -> None:
+    aliases = {
+        "AIDE_GENERATE_REPORT": ("generate_report", _env_bool),
+        "AIDE_PREPROCESS_DATA": ("preprocess_data", _env_bool),
+        "AIDE_COPY_DATA": ("copy_data", _env_bool),
+        "AIDE_AGENT_STEPS": ("agent.steps", _env_int),
+        "AIDE_AGENT_MODE": ("agent.mode", str.strip),
+        "AIDE_AGENT_AUX": ("agent.aux", str.strip),
+        "AIDE_AGENT_GPU": ("agent.gpu", _env_bool),
+        "AIDE_AGENT_HYPOTHESES": ("agent.hypotheses", _env_int),
+        "AIDE_AGENT_K_FOLD_VALIDATION": ("agent.k_fold_validation", _env_int),
+        "AIDE_AGENT_DATA_PREVIEW": ("agent.data_preview", _env_bool),
+        "AIDE_AGENT_INCLUDE_PARENT_PROCESS_STDOUT": (
+            "agent.include_parent_process_stdout",
+            _env_bool,
+        ),
+        "AIDE_AGENT_PARENT_PROCESS_STDOUT_MAX_BYTES": (
+            "agent.parent_process_stdout_max_bytes",
+            _env_int,
+        ),
+        "AIDE_AGENT_CODE_MODEL": ("agent.code.model", str.strip),
+        "AIDE_AGENT_CODE_REASONING_EFFORT": (
+            "agent.code.reasoning_effort",
+            str.strip,
+        ),
+        "AIDE_AGENT_FEEDBACK_MODEL": ("agent.feedback.model", str.strip),
+        "AIDE_AGENT_FEEDBACK_REASONING_EFFORT": (
+            "agent.feedback.reasoning_effort",
+            str.strip,
+        ),
+        "AIDE_AGENT_SEARCH_NUM_DRAFTS": ("agent.search.num_drafts", _env_int),
+        "AIDE_AGENT_SEARCH_MAX_DEBUG_DEPTH": (
+            "agent.search.max_debug_depth",
+            _env_int,
+        ),
+        "AIDE_AGENT_SEARCH_DEBUG_PROB": ("agent.search.debug_prob", _env_float),
+        "AIDE_AGENT_SEARCH_EXPLORATION_WEIGHT": (
+            "agent.search.exploration_weight",
+            _env_float,
+        ),
+        "AIDE_AGENT_SEARCH_FORCED_ROOT": ("agent.search.forced_root", str.strip),
+        "AIDE_AGENT_SEARCH_FORCED_HYPOTHESIS": (
+            "agent.search.forced_hypothesis",
+            str.strip,
+        ),
+        "AIDE_AGENT_AUTOGLUON_PROFILE": ("agent.autogluon.profile", str.strip),
+        "AIDE_AGENT_AUTOGLUON_TIME_LIMIT": (
+            "agent.autogluon.time_limit",
+            _env_int,
+        ),
+        "AIDE_AGENT_AUTOGLUON_PREPROCESS_TIMEOUT": (
+            "agent.autogluon.preprocess_timeout",
+            _env_int,
+        ),
+        "AIDE_AGENT_AUTOGLUON_USE_GPU": ("agent.autogluon.use_gpu", _env_bool),
+        "AIDE_EXEC_TIMEOUT": ("exec.timeout", _env_int),
+        "AIDE_EXEC_MEMORY_LIMIT_GB": ("exec.memory_limit_gb", _env_float),
+        "AIDE_RESEARCH_ENABLED": ("research.enabled", _env_bool),
+        "AIDE_RESEARCH_MODE": ("research.mode", str.strip),
+        "AIDE_RESEARCH_MATERIALIZE": ("research.materialize", _env_bool),
+        "AIDE_RESEARCH_EXECUTE": ("research.execute", _env_bool),
+        "AIDE_RESEARCH_TIMEOUT": ("research.timeout", _env_int),
+        "AIDE_RESEARCH_MODEL": ("research.model", str.strip),
+        "AIDE_RESEARCH_REASONING_EFFORT": (
+            "research.reasoning_effort",
+            str.strip,
+        ),
+        "AIDE_RESEARCH_HYPOTHESIS_ROOT_LIMIT": (
+            "research.hypothesis_root_limit",
+            _env_int,
+        ),
+        "AIDE_RESEARCH_HYPOTHESIS_ROOT_ORDER": (
+            "research.hypothesis_root_order",
+            str.strip,
+        ),
+        "AIDE_RESEARCH_HYPOTHESIS_ROOT_SCORE_MODE": (
+            "research.hypothesis_root_score_mode",
+            str.strip,
+        ),
+        "AIDE_RESEARCH_HYPOTHESIS_ROOT_GENERATE_WORKERS": (
+            "research.hypothesis_root_generate_workers",
+            _env_int,
+        ),
+        "AIDE_RESEARCH_SEED_SCORED_ROOTS": (
+            "research.seed_scored_roots",
+            _env_bool,
+        ),
+        "AIDE_RESEARCH_IGNORE_HYPOTHESIS_AGENT_MODES": (
+            "research.ignore_hypothesis_agent_modes",
+            _env_bool,
+        ),
+        "AIDE_SYNTHESIS_ENABLED": ("synthesis.enabled", _env_bool),
+        "AIDE_SYNTHESIS_TIMEOUT": ("synthesis.timeout", _env_int),
+        "AIDE_SYNTHESIS_MODEL": ("synthesis.model", str.strip),
+        "AIDE_SYNTHESIS_REASONING_EFFORT": (
+            "synthesis.reasoning_effort",
+            str.strip,
+        ),
+        "AIDE_REFACTOR_REASONING_EFFORT": ("refactor.reasoning_effort", str.strip),
+        "AIDE_WEB_ENABLED": ("web.enabled", _env_bool),
+        "AIDE_WEB_HOST": ("web.host", str.strip),
+        "AIDE_WEB_PORT": ("web.port", _env_int),
+    }
+    for env_name, (path, parser) in aliases.items():
+        raw = os.getenv(env_name, "").strip()
+        if not raw:
+            continue
+        value = parser(raw)
+        if value is None:
+            continue
+        OmegaConf.update(cfg, path, value, merge=False)
+
+
 def _apply_project_env_defaults(cfg: Config) -> None:
-    load_dotenv(dotenv_path=Path(".env"), override=True)
+    load_dotenv(dotenv_path=Path(".env"), override=False)
     if _is_missing_config_value(cfg.data_dir):
         data_dir = os.getenv("AIDE_PROJECT_DATA_DIR", "").strip()
         if data_dir:

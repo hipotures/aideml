@@ -408,6 +408,20 @@ def test_generated_only_journal_prevents_workspace_cleanup():
     assert should_cleanup_workspace_on_exit(is_resume=False, journal=journal) is False
 
 
+def test_artifacts_prevent_workspace_cleanup_with_empty_journal(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    (log_dir / "artifacts" / "20260101T000000-abcdef12-0").mkdir(parents=True)
+
+    assert (
+        should_cleanup_workspace_on_exit(
+            is_resume=False,
+            journal=Journal(),
+            log_dir=log_dir,
+        )
+        is False
+    )
+
+
 def test_recover_generated_only_root_artifacts_materializes_completed_orphans(
     tmp_path,
     monkeypatch,
