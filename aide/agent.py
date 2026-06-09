@@ -765,6 +765,7 @@ class Agent:
             metadata.get("research_hypotheses_offered", [])
         )
         node.research_source_hash = metadata.get("research_source_hash")
+        node.research_runtime_config = {"gpu": bool(self.acfg.gpu)}
         record_manual_prompt_node(self.cfg, node)
         return node
 
@@ -776,6 +777,7 @@ class Agent:
             "parent_node_id": parent.id if parent is not None else None,
             "parent_stage": parent.stage_name if parent is not None else None,
             "agent_mode": self.acfg.mode,
+            "agent_gpu": bool(self.acfg.gpu),
             "node_ctime": self._pending_node_ctime,
         }
 

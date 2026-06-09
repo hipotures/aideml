@@ -41,6 +41,7 @@ def _cfg(tmp_path: Path):
     cfg.exp_name = "research-test"
     cfg.research.enabled = True
     cfg = prep_cfg(cfg)
+    cfg.agent.gpu = False
     return cfg
 
 
@@ -2345,6 +2346,72 @@ def test_hypothesis_root_code_loader_uses_active_manifest_file(tmp_path):
     assert root_code.code == "print('one')\n"
 
 
+def test_hypothesis_root_code_loader_requires_matching_gpu_variant(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('cpu')\n")
+    (hypothesis_dir / "legacy-002.py").write_text("print('gpu')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {
+                    "legacy": [
+                        {"file": "legacy-001.py", "status": "ok", "gpu": False},
+                        {"file": "legacy-002.py", "status": "ok", "gpu": True},
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "legacy-002.py"
+    assert root_code.gpu is True
+    assert root_code.code == "print('gpu')\n"
+
+
+def test_hypothesis_root_code_loader_rejects_cpu_only_code_when_gpu_enabled(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    (hypothesis_dir / "legacy-001.py").write_text("print('cpu')\n")
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {
+                    "legacy": [
+                        {"file": "legacy-001.py", "status": "ok", "gpu": False}
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        research.load_hypothesis_root_code(cfg, "000001", repo_root=tmp_path)
+        is None
+    )
+
+
 def test_hypothesis_root_code_loader_uses_highest_legacy_file(tmp_path):
     cfg = _manual_cfg(tmp_path)
     _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
@@ -2369,6 +2436,7 @@ def test_hypothesis_root_code_loader_ignores_unexecuted_recovered_response(
     tmp_path,
 ):
     cfg = _manual_cfg(tmp_path)
+    cfg.agent.gpu = False
     _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
     hypothesis_dir = (
         tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
@@ -2901,6 +2969,68 @@ def test_generated_only_hypothesis_root_saves_single_file(tmp_path, monkeypatch)
     assert entry["buggy"] is None
     assert entry["status"] == "generated"
     assert manifest.get("active", {}).get("legacy") is None
+
+
+def test_hypothesis_root_code_save_creates_new_version_when_gpu_changes(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+
+    cpu_path = research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('cpu')\n",
+        is_buggy=False,
+        node_id="node-cpu",
+        score=None,
+        created_at="2026-06-10T00:00:00",
+        activate=False,
+        repo_root=tmp_path,
+    )
+    cfg.agent.gpu = True
+    gpu_path = research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('gpu')\n",
+        is_buggy=False,
+        node_id="node-gpu",
+        score=None,
+        created_at="2026-06-10T00:01:00",
+        activate=False,
+        repo_root=tmp_path,
+    )
+
+    assert cpu_path.name == "legacy-001.py"
+    assert gpu_path.name == "legacy-002.py"
+    assert cpu_path.read_text() == "print('cpu')\n"
+    assert gpu_path.read_text() == "print('gpu')\n"
+    manifest = json.loads((gpu_path.parent / "code_manifest.json").read_text())
+    entries = manifest["versions"]["legacy"]
+    assert entries[0]["gpu"] is False
+    assert entries[1]["gpu"] is True
+
+
+def test_hypothesis_candidates_ignore_mismatched_gpu_root(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    journal = Journal()
+    node = Node(code="print('cpu')", plan="generated")
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = ["000001"]
+    node.research_runtime_config = {"gpu": False}
+    node.status = "generated"
+    journal.append(node)
+
+    candidates = research.hypothesis_candidates_for_node(
+        cfg,
+        journal=journal,
+        parent_node=None,
+        repo_root=tmp_path,
+    )
+
+    assert [candidate.id for candidate in candidates] == ["000001"]
 
 
 def test_reviewed_generated_hypothesis_root_updates_manifest_score(

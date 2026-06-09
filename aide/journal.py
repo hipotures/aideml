@@ -162,6 +162,7 @@ class Node(DataClassJsonMixin):
     research_mode: str | None = field(default=None, kw_only=True)
     research_hypotheses_offered: list[str] = field(default_factory=list, kw_only=True)
     research_source_hash: str | None = field(default=None, kw_only=True)
+    research_runtime_config: dict | None = field(default=None, kw_only=True)
     research_hypotheses_llm_claimed_used: list[str] = field(
         default_factory=list,
         kw_only=True,

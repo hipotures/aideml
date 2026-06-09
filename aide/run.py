@@ -42,6 +42,7 @@ from .research import (
     record_hypothesis_only_selection,
     reserve_hypothesis_roots,
     scored_hypothesis_root_nodes,
+    select_hypothesis_by_id,
     select_hypothesis_for_node,
     _load_generated_root_ids,
 )
@@ -796,6 +797,7 @@ def recover_generated_only_root_artifacts(
         cfg,
         journal,
     ):
+        context = _artifact_context(artifact_dir)
         code = (artifact_dir / "response.py").read_text(
             encoding="utf-8",
             errors="replace",
@@ -821,6 +823,9 @@ def recover_generated_only_root_artifacts(
         node.research_mode = "hypothesis"
         node.research_hypotheses_offered = [hypothesis_id]
         node.research_source_hash = source_hashes.get(hypothesis_id)
+        node.research_runtime_config = {
+            "gpu": bool(context.get("agent_gpu", False)),
+        }
         record_manual_prompt_node(cfg, node)
         record_generated_only_node(
             agent=agent,
@@ -851,9 +856,20 @@ def _matches_forced_hypothesis(node: Node, forced_hypothesis: str | None) -> boo
     return hypothesis_id_for_node(node) == forced_hypothesis
 
 
+def node_runtime_matches_cfg(cfg: Config, node: Node) -> bool:
+    if getattr(node, "research_mode", None) != "hypothesis":
+        return True
+    runtime = getattr(node, "research_runtime_config", None)
+    node_gpu = False
+    if isinstance(runtime, dict):
+        node_gpu = bool(runtime.get("gpu", False))
+    return node_gpu == bool(getattr(cfg.agent, "gpu", False))
+
+
 def next_generated_only_node(
     journal: Journal,
     *,
+    cfg: Config | None = None,
     forced_root: str | None = None,
     forced_hypothesis: str | None = None,
 ) -> Node | None:
@@ -862,7 +878,41 @@ def next_generated_only_node(
             node,
             forced_root,
         ) and _matches_forced_hypothesis(node, forced_hypothesis):
+            if cfg is not None and not node_runtime_matches_cfg(cfg, node):
+                continue
             return node
+    return None
+
+
+def next_runtime_mismatched_generated_root_node(
+    cfg: Config,
+    journal: Journal,
+    *,
+    forced_root: str | None = None,
+    forced_hypothesis: str | None = None,
+) -> Node | None:
+    for node in journal.nodes:
+        if node.parent is not None or node.status != "generated":
+            continue
+        if not _matches_forced_hypothesis_root(node, forced_root):
+            continue
+        if not _matches_forced_hypothesis(node, forced_hypothesis):
+            continue
+        if node_runtime_matches_cfg(cfg, node):
+            continue
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None:
+            continue
+        has_matching_materialized_node = any(
+            other is not node
+            and other.parent is None
+            and hypothesis_id_for_node(other) == hypothesis_id
+            and node_runtime_matches_cfg(cfg, other)
+            for other in journal.nodes
+        )
+        if has_matching_materialized_node:
+            continue
+        return node
     return None
 
 
@@ -1944,7 +1994,9 @@ def _next_unfinished_library_root_selection(
     used_root_ids = {
         hypothesis_id_for_node(node)
         for node in journal.nodes
-        if node.parent is None and hypothesis_id_for_node(node) is not None
+        if node.parent is None
+        and hypothesis_id_for_node(node) is not None
+        and node_runtime_matches_cfg(cfg, node)
     }
     for hypothesis in sorted(
         _compatible_manual_hypotheses(cfg, library),
@@ -5780,6 +5832,7 @@ def run(argv: list[str] | None = None):
                             if pipeline_skip_execution()
                             else next_generated_only_node(
                                 journal,
+                                cfg=cfg,
                                 forced_root=getattr(
                                     cfg.agent.search,
                                     "forced_root",
@@ -5792,15 +5845,50 @@ def run(argv: list[str] | None = None):
                                 ),
                             )
                         )
-                        root_selection = (
+                        runtime_mismatched_generated_node = (
                             None
                             if pipeline_skip_execution()
-                            else _next_unfinished_library_root_selection(
+                            else next_runtime_mismatched_generated_root_node(
+                                cfg,
+                                journal,
+                                forced_root=getattr(
+                                    cfg.agent.search,
+                                    "forced_root",
+                                    None,
+                                ),
+                                forced_hypothesis=getattr(
+                                    cfg.agent.search,
+                                    "forced_hypothesis",
+                                    None,
+                                ),
+                            )
+                        )
+                        root_selection = None
+                        if runtime_mismatched_generated_node is not None:
+                            mismatched_hypothesis_id = hypothesis_id_for_node(
+                                runtime_mismatched_generated_node
+                            )
+                            if mismatched_hypothesis_id is not None:
+                                root_selection = select_hypothesis_by_id(
+                                    cfg,
+                                    hypothesis_id=mismatched_hypothesis_id,
+                                    completed_steps=global_step,
+                                )
+                                debug_log(
+                                    "rematerialize_runtime_mismatched_hypothesis",
+                                    phase="generate",
+                                    node=runtime_mismatched_generated_node,
+                                    extra={
+                                        "hypothesis_id": mismatched_hypothesis_id,
+                                        "agent_gpu": bool(cfg.agent.gpu),
+                                    },
+                                )
+                        elif not pipeline_skip_execution():
+                            root_selection = _next_unfinished_library_root_selection(
                                 cfg,
                                 journal,
                                 completed_steps=global_step,
                             )
-                        )
                         if pending_generated_node is not None:
                             result_node = pending_generated_node
                             display_node = result_node

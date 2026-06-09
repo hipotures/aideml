@@ -408,6 +408,37 @@ def test_generated_only_journal_prevents_workspace_cleanup():
     assert should_cleanup_workspace_on_exit(is_resume=False, journal=journal) is False
 
 
+def test_next_generated_only_node_requires_matching_gpu_runtime(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-generated-only-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-generated-only-run"
+    cfg.exp_name = "2-generated-only-run"
+    cfg.agent.gpu = True
+    cfg = prep_cfg(cfg)
+    cfg.agent.gpu = True
+
+    journal = Journal()
+    cpu_node = Node(code="print('cpu')", plan="generated")
+    cpu_node.research_mode = "hypothesis"
+    cpu_node.research_hypotheses_offered = ["000011"]
+    cpu_node.research_runtime_config = {"gpu": False}
+    mark_node_generated_only(cpu_node)
+    journal.append(cpu_node)
+
+    assert next_generated_only_node(journal, cfg=cfg) is None
+
+    gpu_node = Node(code="print('gpu')", plan="generated")
+    gpu_node.research_mode = "hypothesis"
+    gpu_node.research_hypotheses_offered = ["000012"]
+    gpu_node.research_runtime_config = {"gpu": True}
+    mark_node_generated_only(gpu_node)
+    journal.append(gpu_node)
+
+    assert next_generated_only_node(journal, cfg=cfg) is gpu_node
+
+
 def test_artifacts_prevent_workspace_cleanup_with_empty_journal(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     (log_dir / "artifacts" / "20260101T000000-abcdef12-0").mkdir(parents=True)

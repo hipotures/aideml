@@ -149,6 +149,7 @@ class HypothesisRootCode:
     path: Path
     code: str
     version: int
+    gpu: bool
 
 
 @dataclass(frozen=True)
@@ -381,6 +382,24 @@ def _manifest_active_file(manifest: dict[str, Any], agent_mode: str) -> str | No
     return None
 
 
+def _cfg_agent_gpu_enabled(cfg: Config) -> bool:
+    return bool(getattr(getattr(cfg, "agent", None), "gpu", False))
+
+
+def _manifest_entry_gpu(entry: dict[str, Any] | None) -> bool:
+    if entry is None:
+        return False
+    return bool(entry.get("gpu", False))
+
+
+def _manifest_entry_runtime_matches(
+    entry: dict[str, Any] | None,
+    *,
+    gpu: bool,
+) -> bool:
+    return _manifest_entry_gpu(entry) == bool(gpu)
+
+
 def load_hypothesis_root_code(
     cfg: Config,
     hypothesis_id: str,
@@ -399,14 +418,42 @@ def load_hypothesis_root_code(
         return None
 
     manifest = _load_code_manifest(hypothesis_dir)
+    required_gpu = _cfg_agent_gpu_enabled(cfg)
     active_file = _manifest_active_file(manifest, agent_mode)
     active_path = hypothesis_dir / active_file if active_file is not None else None
-    if active_path is not None and active_path in versions.values():
+    active_entry = (
+        _manifest_entry_for_file(
+            manifest,
+            agent_mode=agent_mode,
+            file_name=active_path.name,
+        )
+        if active_path is not None
+        else None
+    )
+    if (
+        active_path is not None
+        and active_path in versions.values()
+        and _manifest_entry_runtime_matches(active_entry, gpu=required_gpu)
+    ):
         path = active_path
         version = next(number for number, candidate in versions.items() if candidate == path)
     else:
-        version = max(versions)
-        path = versions[version]
+        compatible_versions = {
+            number: candidate
+            for number, candidate in versions.items()
+            if _manifest_entry_runtime_matches(
+                _manifest_entry_for_file(
+                    manifest,
+                    agent_mode=agent_mode,
+                    file_name=candidate.name,
+                ),
+                gpu=required_gpu,
+            )
+        }
+        if not compatible_versions:
+            return None
+        version = max(compatible_versions)
+        path = compatible_versions[version]
     entry = _manifest_entry_for_file(
         manifest,
         agent_mode=agent_mode,
@@ -420,6 +467,7 @@ def load_hypothesis_root_code(
         path=path,
         code=path.read_text(encoding="utf-8"),
         version=version,
+        gpu=required_gpu,
     )
 
 
@@ -457,6 +505,7 @@ def load_scored_hypothesis_root_code(
         path=root_code.path,
         code=root_code.code,
         version=root_code.version,
+        gpu=root_code.gpu,
         score=score,
         created_at=created_at if isinstance(created_at, str) else None,
         source_node_id=source_node_id if isinstance(source_node_id, str) else None,
@@ -507,6 +556,7 @@ def _scored_hypothesis_node(
     node.research_mode = "hypothesis"
     node.research_hypotheses_offered = [root_code.hypothesis_id]
     node.research_source_hash = source_hash
+    node.research_runtime_config = {"gpu": root_code.gpu}
     return node
 
 
@@ -608,6 +658,11 @@ def save_hypothesis_root_code(
     highest_is_buggy = (
         highest_entry.get("buggy") is True if highest_entry is not None else False
     )
+    current_gpu = _cfg_agent_gpu_enabled(cfg)
+    highest_runtime_matches = _manifest_entry_runtime_matches(
+        highest_entry,
+        gpu=current_gpu,
+    )
 
     status = "generated" if not activate else "bug" if is_buggy else "ok"
     metadata = {
@@ -616,6 +671,7 @@ def save_hypothesis_root_code(
         "node_id": node_id,
         "score": score,
         "created_at": created_at,
+        "gpu": current_gpu,
         "aux": bool(getattr(cfg.agent, "aux", False)),
     }
     versions = manifest.setdefault("versions", {})
@@ -628,12 +684,16 @@ def save_hypothesis_root_code(
     existing_entry = None
     if node_id is not None:
         for entry in mode_versions:
-            if isinstance(entry, dict) and entry.get("node_id") == node_id:
+            if (
+                isinstance(entry, dict)
+                and entry.get("node_id") == node_id
+                and _manifest_entry_runtime_matches(entry, gpu=current_gpu)
+            ):
                 existing_entry = entry
                 break
     if existing_entry is not None and isinstance(existing_entry.get("file"), str):
         path = hypothesis_dir / existing_entry["file"]
-    elif force_new_version:
+    elif force_new_version or (highest_path is not None and not highest_runtime_matches):
         next_version = highest_version + 1 if highest_path is not None else 1
         path = hypothesis_dir / f"{agent_mode}-{next_version:03d}.py"
         path.write_text(code, encoding="utf-8")
@@ -1017,7 +1077,7 @@ def _unmaterialized_generated_root_ids(
     compatible_by_id: dict[str, ManualHypothesis],
     reserved_hypothesis_ids: set[str] | None = None,
 ) -> list[str]:
-    blocked = _root_hypothesis_ids(journal)
+    blocked = _root_hypothesis_ids(journal, cfg)
     blocked |= set(reserved_hypothesis_ids or set())
     return [
         hypothesis_id
@@ -1307,10 +1367,22 @@ def _hypothesis_attempt_counts(cfg: Config, journal: Journal) -> dict[str, int]:
     return counts
 
 
-def _root_hypothesis_ids(journal: Journal) -> set[str]:
+def _node_runtime_matches_cfg(cfg: Config | None, node: Node) -> bool:
+    if cfg is None or getattr(node, "research_mode", None) != "hypothesis":
+        return True
+    runtime = getattr(node, "research_runtime_config", None)
+    node_gpu = False
+    if isinstance(runtime, dict):
+        node_gpu = bool(runtime.get("gpu", False))
+    return node_gpu == _cfg_agent_gpu_enabled(cfg)
+
+
+def _root_hypothesis_ids(journal: Journal, cfg: Config | None = None) -> set[str]:
     ids: set[str] = set()
     for node in journal.nodes:
         if node.parent is not None:
+            continue
+        if not _node_runtime_matches_cfg(cfg, node):
             continue
         hypothesis_id = hypothesis_id_for_node(node)
         if hypothesis_id is not None:
@@ -1328,7 +1400,7 @@ def _unmaterialized_root_offer_ids(
     path = _manual_run_dir(cfg) / "offers.jsonl"
     if not path.exists():
         return []
-    materialized_root_ids = _root_hypothesis_ids(journal)
+    materialized_root_ids = _root_hypothesis_ids(journal, cfg)
     retry_ids: list[str] = []
     seen: set[str] = set()
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -1392,7 +1464,7 @@ def _hypothesis_root_pool_complete(
     if not compatible:
         return True
     compatible_ids = {hypothesis.id for hypothesis in compatible}
-    used_root_ids = _root_hypothesis_ids(journal)
+    used_root_ids = _root_hypothesis_ids(journal, cfg)
     used_compatible_root_count = len(compatible_ids & used_root_ids)
     root_limit = effective_hypothesis_root_limit(
         cfg,
@@ -1490,7 +1562,7 @@ def _hypothesis_candidates_for_node_from_library(
             compatible=compatible,
         ):
             return []
-        blocked_ids = _root_hypothesis_ids(journal)
+        blocked_ids = _root_hypothesis_ids(journal, cfg)
     else:
         if forced_hypothesis is not None:
             return []
@@ -1775,6 +1847,51 @@ def select_hypothesis_for_node(
     )
 
 
+def select_hypothesis_by_id(
+    cfg: Config,
+    *,
+    hypothesis_id: str,
+    completed_steps: int,
+    repo_root: Path = REPO_ROOT,
+) -> ManualHypothesisSelection:
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    selected = next(
+        (
+            hypothesis
+            for hypothesis in library.hypotheses
+            if hypothesis.id == hypothesis_id
+            and _matches_manual_hypothesis_agent_mode(cfg, hypothesis)
+        ),
+        None,
+    )
+    if selected is None:
+        raise ValueError(
+            "Requested hypothesis id is not available for "
+            f"agent mode {_manual_agent_mode_key(cfg)}: {hypothesis_id}"
+        )
+    created_at = dt.datetime.now().isoformat(timespec="seconds")
+    _write_manual_source_ref(cfg=cfg, library=library, created_at=created_at)
+    _append_manual_offer(
+        cfg=cfg,
+        completed_steps=completed_steps,
+        offered_ids=[selected.id],
+        source_hash=library.source_hash,
+        created_at=created_at,
+    )
+    _record_manual_offer_usage(
+        cfg=cfg,
+        offered_ids=[selected.id],
+        completed_steps=completed_steps,
+        created_at=created_at,
+    )
+    return ManualHypothesisSelection(
+        completed_steps=completed_steps,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[selected],
+    )
+
+
 def _append_reserved_placeholder(
     journal: Journal,
     *,
@@ -1826,7 +1943,7 @@ def reserve_hypothesis_roots(
                 f"agent mode {getattr(cfg.agent, 'mode', 'legacy')!r}: "
                 + ", ".join(missing_ids)
             )
-        materialized_root_ids = _root_hypothesis_ids(journal)
+        materialized_root_ids = _root_hypothesis_ids(journal, cfg)
         for hypothesis_id in ordered_forced_ids:
             if hypothesis_id in materialized_root_ids:
                 continue
