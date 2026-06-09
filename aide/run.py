@@ -3926,10 +3926,10 @@ def stage_status_message(
             f" @ {active_hypothesis_id}" if active_hypothesis_id is not None else ""
         )
     if active_stage == "generating":
-        elapsed_text = _format_elapsed_with_timeout(elapsed, stage_timeout_s)
+        elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
     if active_stage == "refactoring":
-        elapsed_text = _format_elapsed_with_timeout(elapsed, stage_timeout_s)
+        elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Refactoring code...{elapsed_text}"
     if active_stage == "executing":
         if agent_mode == AGENT_MODE:

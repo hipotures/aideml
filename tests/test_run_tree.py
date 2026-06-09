@@ -2640,11 +2640,11 @@ def test_stage_status_message_names_review_stage():
     )
     assert (
         stage_status_message("generating", 40, stage_timeout_s=300)
-        == "[green]Generating code... (40s/300s)"
+        == "[green]Generating code..."
     )
     assert (
         stage_status_message("refactoring", 40, stage_timeout_s=300)
-        == "[green]Refactoring code... (40s/300s)"
+        == "[green]Refactoring code..."
     )
 
 
