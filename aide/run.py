@@ -33,7 +33,9 @@ from .research import (
     effective_hypothesis_root_limit,
     generate_research_hypotheses_for_pipeline,
     hypothesis_id_for_node,
+    load_hypothesis_root_code,
     load_manual_hypothesis_library,
+    load_scored_hypothesis_root_code,
     record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
     record_hypothesis_only_selection,
@@ -1680,38 +1682,187 @@ def _hypothesis_mode_labels(cfg: Config) -> dict[str, str]:
     }
 
 
+def _best_hypothesis_nodes_by_id(journal: Journal) -> dict[str, Node]:
+    best_by_id: dict[str, Node] = {}
+    for node in journal.nodes:
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is None:
+            continue
+        current = best_by_id.get(hypothesis_id)
+        if current is None:
+            best_by_id[hypothesis_id] = node
+            continue
+        if _is_scored_hypothesis_node(node) and not _is_scored_hypothesis_node(current):
+            best_by_id[hypothesis_id] = node
+            continue
+        if _is_scored_hypothesis_node(node) and _is_scored_hypothesis_node(current):
+            if _metric_sort_key(node) > _metric_sort_key(current):
+                best_by_id[hypothesis_id] = node
+    return best_by_id
+
+
+def _hypothesis_root_inventory_rows(
+    cfg: Config,
+    journal: Journal,
+    *,
+    repo_root: Path | None = None,
+) -> list[dict[str, object]]:
+    try:
+        library = (
+            load_manual_hypothesis_library(cfg)
+            if repo_root is None
+            else load_manual_hypothesis_library(cfg, repo_root=repo_root)
+        )
+    except (OSError, ValueError):
+        return []
+
+    best_by_id = _best_hypothesis_nodes_by_id(journal)
+    rows: list[dict[str, object]] = []
+    for hypothesis in library.hypotheses:
+        node = best_by_id.get(hypothesis.id)
+        status = "hypothesis"
+        score: float | None = None
+        step: int | None = None
+        created_at: float | None = None
+        if node is not None:
+            step = node.step
+            created_at = node.ctime
+            if _is_scored_hypothesis_node(node):
+                status = "score"
+                assert node.metric is not None
+                score = float(node.metric.value)
+            elif node.status == "generated":
+                status = "generated"
+            elif node.is_terminal_failure:
+                status = "failed"
+            elif node.is_buggy or node.status == "bug":
+                status = "bug"
+            else:
+                status = "code"
+        else:
+            scored_code = (
+                load_scored_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_scored_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            )
+            if scored_code is not None:
+                status = "score"
+                score = float(scored_code.score)
+            elif (
+                load_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            ) is not None:
+                status = "code"
+
+        rows.append(
+            {
+                "hypothesis_id": hypothesis.id,
+                "status": status,
+                "score": score,
+                "step": step,
+                "created_at": created_at,
+                "mode": _hypothesis_mode_label(hypothesis.agent_modes),
+                "title": hypothesis.title,
+            }
+        )
+    return rows
+
+
+def _has_hypothesis_root_inventory(cfg: Config) -> bool:
+    try:
+        return bool(load_manual_hypothesis_library(cfg).hypotheses)
+    except (OSError, ValueError):
+        return False
+
+
 def build_root_hypotheses_view(
     journal: Journal,
     *,
+    cfg: Config | None = None,
     hypothesis_mode_labels: dict[str, str] | None = None,
+    repo_root: Path | None = None,
 ) -> TreeView:
-    roots = [
-        node
-        for node in journal.nodes
-        if node.parent is None
-        and not _is_base_root(node)
-        and _is_scored_hypothesis_node(node)
-    ]
-    roots.sort(key=_metric_sort_key, reverse=True)
-    lines = [Text("#    score    hypothesis  time         mode", style=TUI_ROW_LABEL_STYLE)]
-    for node in roots:
-        hypothesis_id = hypothesis_id_for_node(node) or "n/a"
-        step = node.step if node.step is not None else "?"
-        step_text = f"{step:03d}" if isinstance(step, int) else str(step).rjust(3)
-        time_text = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
-        mode_text = (
-            hypothesis_mode_labels.get(hypothesis_id, "n/a")
-            if hypothesis_mode_labels is not None
-            else "n/a"
+    rows = (
+        _hypothesis_root_inventory_rows(cfg, journal, repo_root=repo_root)
+        if cfg is not None
+        else []
+    )
+    inventory_rows = bool(rows)
+    if not rows:
+        roots = [
+            node
+            for node in journal.nodes
+            if node.parent is None
+            and not _is_base_root(node)
+            and _is_scored_hypothesis_node(node)
+        ]
+        roots.sort(key=_metric_sort_key, reverse=True)
+        for node in roots:
+            hypothesis_id = hypothesis_id_for_node(node) or "n/a"
+            rows.append(
+                {
+                    "hypothesis_id": hypothesis_id,
+                    "status": "score",
+                    "score": (
+                        float(node.metric.value) if node.metric is not None else None
+                    ),
+                    "step": node.step,
+                    "created_at": node.ctime,
+                    "mode": (
+                        hypothesis_mode_labels.get(hypothesis_id, "n/a")
+                        if hypothesis_mode_labels is not None
+                        else "n/a"
+                    ),
+                    "title": "",
+                }
+            )
+    if inventory_rows:
+        rows.sort(key=lambda row: str(row["hypothesis_id"]))
+    lines = [
+        Text(
+            "#    state       score    hypothesis  mode  title",
+            style=TUI_ROW_LABEL_STYLE,
         )
+    ]
+    for index, row in enumerate(rows, start=1):
+        hypothesis_id = str(row["hypothesis_id"])
+        step = row.get("step")
+        step_text = f"{step:03d}" if isinstance(step, int) else f"{index:03d}"
+        score = row.get("score")
+        score_text = f"{score:.5f}" if isinstance(score, float) else "n/a"
+        status_text = str(row.get("status") or "hypothesis")
+        title_text = str(row.get("title") or "")
+        if len(title_text) > 44:
+            title_text = title_text[:41] + "..."
         line = Text()
         line.append(f"{step_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
-        line.append(f"{_score_text(node):<9}", style=TUI_METRIC_VALUE_STYLE)
+        status_style = {
+            "score": TUI_METRIC_VALUE_STYLE,
+            "code": "cyan",
+            "generated": "cyan",
+            "hypothesis": TUI_INACTIVE_VALUE_STYLE,
+            "bug": "red",
+            "failed": "red",
+        }.get(status_text, TUI_INACTIVE_VALUE_STYLE)
+        line.append(f"{status_text:<11}", style=status_style)
+        line.append(f"{score_text:<9}", style=TUI_METRIC_VALUE_STYLE)
         line.append(f"{hypothesis_id:<12}", style=TUI_NEUTRAL_VALUE_STYLE)
-        line.append(f"{time_text}  ", style=TUI_INACTIVE_VALUE_STYLE)
-        line.append(mode_text, style=TUI_INACTIVE_VALUE_STYLE)
+        line.append(
+            f"{str(row.get('mode') or 'n/a'):<5}",
+            style=TUI_INACTIVE_VALUE_STYLE,
+        )
+        line.append(title_text, style=TUI_INACTIVE_VALUE_STYLE)
         lines.append(line)
-    if not roots:
+    if not rows:
         lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))
     return _plain_line_view("Root hypotheses", lines)
 
@@ -4350,7 +4501,11 @@ def run(argv: list[str] | None = None):
     tree_scroll_top = 0
     tree_follow_mode = "off"
     search_debug_visible = False
-    left_panel_view: LeftPanelView = "tree"
+    left_panel_view: LeftPanelView = (
+        "root"
+        if _is_research_hypothesis_mode(cfg) or _has_hypothesis_root_inventory(cfg)
+        else "tree"
+    )
     focused_table_item_id = "header"
     focused_table_item_index = 0
     table_scroll_top = 0
@@ -4835,6 +4990,7 @@ def run(argv: list[str] | None = None):
         if left_panel_view == "root":
             return build_root_hypotheses_view(
                 journal,
+                cfg=cfg,
                 hypothesis_mode_labels=_hypothesis_mode_labels(cfg),
             )
         if left_panel_view == "all":

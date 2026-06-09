@@ -212,6 +212,35 @@ def _hypothesis_node(node: Node, hypothesis_id: str) -> Node:
     return node
 
 
+def _write_root_hypothesis(
+    root: Path,
+    task: str,
+    hypothesis_id: str,
+    *,
+    title: str,
+) -> Path:
+    hypothesis_dir = root / "research_hypotheses" / task / hypothesis_id
+    hypothesis_dir.mkdir(parents=True, exist_ok=True)
+    path = hypothesis_dir / f"hypothesis-{hypothesis_id}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "enabled": True,
+                "agent_modes": ["legacy"],
+                "title": title,
+                "summary": f"{title} summary",
+                "rationale": f"{title} rationale",
+                "implementation_hint": f"{title} implementation",
+                "expected_effect": f"{title} effect",
+                "risk": f"{title} risk",
+                "sources": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return hypothesis_dir
+
+
 def _bug_node(parent: Node | None = None) -> Node:
     node = Node(code="raise RuntimeError('bug')", plan="bug", parent=parent)
     node.metric = MetricValue(None, maximize=True)
@@ -876,9 +905,9 @@ def test_root_hypotheses_view_sorts_scored_roots_by_score():
     )
 
     assert "Root hypotheses" in output
-    assert "#    score    hypothesis  time         mode" in output
-    assert "002  0.95200  000222      05-18 05:59  ag,leg" in output
-    assert "001  0.95000  000111      05-18 03:12  leg" in output
+    assert "#    state       score    hypothesis  mode  title" in output
+    assert "002  score      0.95200  000222      ag,leg" in output
+    assert "001  score      0.95000  000111      leg" in output
     assert output.index("000222") < output.index("000111")
     assert "000333" not in output
     assert "0.99000" not in output
@@ -1896,6 +1925,50 @@ def test_hypothesis_phase_status_uses_selected_generate_only_ids(tmp_path):
 
     assert "⬢ Phase      exploration 39/39 · exploitation 0/1461" in output
     assert "202/202" not in output
+
+
+def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-root-view-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-root-view-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000001", title="Only hypothesis")
+    code_dir = _write_root_hypothesis(tmp_path, task, "000002", title="Has code")
+    code_path = code_dir / "legacy-001.py"
+    code_path.write_text("print('code')\n", encoding="utf-8")
+    (code_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"legacy": "legacy-001.py"},
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_root_hypothesis(tmp_path, task, "000003", title="Has score")
+    journal = Journal()
+    journal.append(_hypothesis_node(_good_node(0.96321), "000003"))
+
+    output = _render_text(
+        build_root_hypotheses_view(journal, cfg=cfg, repo_root=tmp_path)
+    )
+
+    assert "hypothesis n/a      000001" in output
+    assert "code       n/a      000002" in output
+    assert "score      0.96321  000003" in output
+    assert "Only hypothesis" in output
+    assert "Has code" in output
+    assert "Has score" in output
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
