@@ -36,6 +36,10 @@ report:
 research:
   enabled: False
   mode: llm
+  # Hypothesis pipeline phase gates. execute=true has no effect when
+  # materialize=false because no code exists to run.
+  materialize: True
+  execute: True
   every_steps: 10
   top_k_best: 5
   top_k_worst: 5
@@ -100,6 +104,9 @@ web:
 agent:
   # how many improvement iterations to run
   steps: 20
+  # Number of initial ROOT hypotheses to test before expanding scored nodes.
+  # When >0, research.mode=hypothesis is enabled automatically.
+  hypotheses: 0
   # code generation mode: legacy writes full ML scripts; autogluon_preprocess
   # asks the LLM for feature preprocessing only and uses a fixed AutoGluon runner
   mode: legacy

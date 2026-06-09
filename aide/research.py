@@ -872,6 +872,56 @@ def _append_manual_offer(
         f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
 
 
+def record_hypothesis_only_selection(
+    *,
+    cfg: Config,
+    selection: ManualHypothesisSelection,
+    parent_node: Node | None,
+    completed_steps: int,
+) -> Path:
+    path = _manual_run_dir(cfg) / "hypothesis_only.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    parent_payload = None
+    if parent_node is not None:
+        parent_payload = {
+            "id": parent_node.id,
+            "step": parent_node.step,
+            "status": parent_node.status,
+            "metric": (
+                None
+                if parent_node.metric is None
+                else sanitize_persisted_payload(parent_node.metric)
+            ),
+            "hypothesis_id": hypothesis_id_for_node(parent_node),
+        }
+    payload = {
+        "checkpoint_step": completed_steps,
+        "created_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "source_hash": selection.source_hash,
+        "source_dir": to_portable_path(selection.source_dir),
+        "parent": parent_payload,
+        "hypotheses": [
+            {
+                "id": hypothesis.id,
+                "title": hypothesis.title,
+                "summary": hypothesis.summary,
+                "rationale": hypothesis.rationale,
+                "implementation_hint": hypothesis.implementation_hint,
+                "expected_effect": hypothesis.expected_effect,
+                "risk": hypothesis.risk,
+                "sources": list(hypothesis.sources),
+                "path": to_portable_path(hypothesis.path),
+            }
+            for hypothesis in selection.hypotheses
+        ],
+        "materialized": False,
+        "executed": False,
+    }
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
+    return path
+
+
 def _record_manual_offer_usage(
     *,
     cfg: Config,
@@ -1079,9 +1129,16 @@ def effective_hypothesis_root_limit(cfg: Config, *, compatible_count: int) -> in
     if compatible_count == 0:
         return 0
     configured_limit = _configured_hypothesis_root_limit(cfg)
-    if configured_limit <= 0:
-        return compatible_count
-    return min(configured_limit, compatible_count)
+    limits = [compatible_count]
+    if configured_limit > 0:
+        limits.append(configured_limit)
+    try:
+        agent_root_quota = int(getattr(cfg.agent, "hypotheses", 0) or 0)
+    except (TypeError, ValueError):
+        agent_root_quota = 0
+    if agent_root_quota > 0:
+        limits.append(agent_root_quota)
+    return min(limits)
 
 
 def _hypothesis_root_pool_complete(

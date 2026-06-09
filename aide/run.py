@@ -35,8 +35,10 @@ from .research import (
     load_manual_hypothesis_library,
     record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
+    record_hypothesis_only_selection,
     reserve_hypothesis_roots,
     scored_hypothesis_root_nodes,
+    select_hypothesis_for_node,
 )
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
@@ -77,6 +79,7 @@ from .utils.config import (
     _drop_deprecated_config_keys,
     _load_cfg,
     _normalize_agent_mode_aliases,
+    _normalize_hypothesis_pipeline_config,
     _normalize_forced_root_cli_overrides,
     _resolve_all_model_configs,
     _normalize_model_effort_cli_overrides,
@@ -565,6 +568,22 @@ def maybe_seed_scored_hypothesis_roots(
     return len(nodes)
 
 
+def _is_research_hypothesis_mode(cfg: Config) -> bool:
+    return bool(getattr(cfg.research, "enabled", False)) and getattr(
+        cfg.research,
+        "mode",
+        "llm",
+    ) == "hypothesis"
+
+
+def _research_materialize_enabled(cfg: Config) -> bool:
+    return bool(getattr(cfg.research, "materialize", True))
+
+
+def _research_execute_enabled(cfg: Config) -> bool:
+    return bool(getattr(cfg.research, "execute", True))
+
+
 def _artifact_context(path: Path) -> dict[str, Any]:
     context_path = path / "context.json"
     if not context_path.exists():
@@ -858,6 +877,7 @@ def load_resume_state(
     _drop_deprecated_config_keys(cfg)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     _normalize_agent_mode_aliases(cfg)
+    _normalize_hypothesis_pipeline_config(cfg)
     _resolve_all_model_configs(cfg)
     if aux_mode(cfg) == "file":
         copy_aux_file_input(cfg)
@@ -4188,9 +4208,20 @@ def run(argv: list[str] | None = None):
 
     global_step = len(journal)
     generated_only_evaluations = 0
+    hypothesis_only_root_count = 0
 
     def completed_work_units() -> int:
         return len(journal) + generated_only_evaluations
+
+    def pipeline_skip_execution() -> bool:
+        return runtime_options.skip_execution or (
+            _is_research_hypothesis_mode(cfg) and not _research_execute_enabled(cfg)
+        )
+
+    def pipeline_materialize_enabled() -> bool:
+        return (not _is_research_hypothesis_mode(cfg)) or _research_materialize_enabled(
+            cfg
+        )
 
     def active_stage_timeout_s() -> int | None:
         if agent.active_stage == "generating":
@@ -4586,7 +4617,7 @@ def run(argv: list[str] | None = None):
                     WebRunDatum("gpu", str(cfg.agent.gpu).lower()),
                     WebRunDatum(
                         "run",
-                        "generate only" if runtime_options.skip_execution else "execute",
+                        "generate only" if pipeline_skip_execution() else "execute",
                     ),
                     WebRunDatum(
                         "refactor",
@@ -4850,8 +4881,8 @@ def run(argv: list[str] | None = None):
                 active_artifact_dir=active_artifact_dir,
                 cfg=cfg,
                 operator_notice=operator_notice or public_scores_notice,
-                include_generated_hypothesis_roots=runtime_options.skip_execution,
-                skip_execution=runtime_options.skip_execution,
+                include_generated_hypothesis_roots=pipeline_skip_execution(),
+                skip_execution=pipeline_skip_execution(),
                 hypothesis_root_generate_workers=hypothesis_root_generate_workers,
                 selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
             ),
@@ -4945,7 +4976,8 @@ def run(argv: list[str] | None = None):
 
     def parallel_root_workers_enabled() -> bool:
         return (
-            runtime_options.skip_execution
+            pipeline_skip_execution()
+            and pipeline_materialize_enabled()
             and cfg.research.mode == "hypothesis"
             and (
                 hypothesis_root_generate_workers > 1
@@ -5123,7 +5155,7 @@ def run(argv: list[str] | None = None):
                             break
                         pending_generated_node = (
                             None
-                            if runtime_options.skip_execution
+                            if pipeline_skip_execution()
                             else next_generated_only_node(
                                 journal,
                                 forced_root=getattr(
@@ -5153,7 +5185,7 @@ def run(argv: list[str] | None = None):
                                 node=result_node,
                                 extra={"global_step": global_step},
                             )
-                        elif cfg.synthesis.enabled and not runtime_options.skip_execution:
+                        elif cfg.synthesis.enabled and not pipeline_skip_execution():
                             agent.active_parent_node = None
                             agent.set_active_stage("generating")
 
@@ -5226,7 +5258,85 @@ def run(argv: list[str] | None = None):
                                 extra={"global_step": global_step},
                             )
                             parent_node = agent.prepare_step()
-                            if runtime_options.skip_execution and parent_node is not None:
+                            root_quota = int(getattr(cfg.agent, "hypotheses", 0) or 0)
+                            if (
+                                pipeline_skip_execution()
+                                and _is_research_hypothesis_mode(cfg)
+                                and root_quota > 0
+                                and len(_root_hypothesis_ids_in_journal(journal))
+                                >= root_quota
+                                and not journal.good_nodes
+                            ):
+                                interrupted = True
+                                interrupt_message = (
+                                    "Generate-only hypothesis mode finished "
+                                    f"materializing {root_quota} ROOT hypotheses; "
+                                    "no code was executed, so no scored nodes are "
+                                    "available for child hypotheses."
+                                )
+                                break
+                            if not pipeline_materialize_enabled():
+                                if parent_node is not None and (
+                                    parent_node.is_buggy
+                                    or parent_node.metric is None
+                                    or parent_node.metric.value is None
+                                ):
+                                    interrupted = True
+                                    interrupt_message = (
+                                        "Hypothesis-only mode stopped: selected source "
+                                        "node has no successful score to ground a new "
+                                        "hypothesis."
+                                    )
+                                    break
+                                try:
+                                    selection = select_hypothesis_for_node(
+                                        cfg,
+                                        journal=journal,
+                                        parent_node=parent_node,
+                                        completed_steps=global_step,
+                                    )
+                                except ValueError as exc:
+                                    interrupted = True
+                                    interrupt_message = (
+                                        "Hypothesis-only mode stopped: "
+                                        f"{exc}"
+                                    )
+                                    break
+                                record_hypothesis_only_selection(
+                                    cfg=cfg,
+                                    selection=selection,
+                                    parent_node=parent_node,
+                                    completed_steps=global_step,
+                                )
+                                if parent_node is None:
+                                    hypothesis_only_root_count += 1
+                                generated_only_evaluations += 1
+                                save_run(
+                                    cfg,
+                                    journal,
+                                    progress_callback=lambda message: update_save_status(
+                                        message,
+                                        live,
+                                    ),
+                                )
+                                root_quota = int(
+                                    getattr(cfg.agent, "hypotheses", 0) or 0
+                                )
+                                if (
+                                    root_quota > 0
+                                    and hypothesis_only_root_count >= root_quota
+                                    and not journal.good_nodes
+                                ):
+                                    interrupted = True
+                                    interrupt_message = (
+                                        "Hypothesis-only mode finished creating "
+                                        f"{hypothesis_only_root_count} ROOT hypotheses; "
+                                        "no code was materialized or executed."
+                                    )
+                                    break
+                                live.update(generate_live(), refresh=True)
+                                continue
+                            if pipeline_skip_execution() and parent_node is not None:
                                 interrupted = True
                                 interrupt_message = (
                                     "Skip-execution mode finished generating root "
@@ -5305,7 +5415,7 @@ def run(argv: list[str] | None = None):
                         pending_artifact_dir = None
                         assert result_node is not None
 
-                        if runtime_options.skip_execution and not node_already_in_journal:
+                        if pipeline_skip_execution() and not node_already_in_journal:
                             debug_log(
                                 "before_append_generated_only_node",
                                 phase="journal",

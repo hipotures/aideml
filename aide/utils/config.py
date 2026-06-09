@@ -226,6 +226,7 @@ class AgentConfig:
     memory_full_recent_steps: int = 10
     include_parent_process_stdout: bool = False
     parent_process_stdout_max_bytes: int = 5000
+    hypotheses: int = 0
     gpu: bool = False
     aux: bool | str | None = False
     mode: str = "legacy"
@@ -244,6 +245,8 @@ class ExecConfig:
 class ResearchConfig:
     enabled: bool = False
     mode: str = "llm"
+    materialize: bool = True
+    execute: bool = True
     every_steps: int = 10
     top_k_best: int = 5
     top_k_worst: int = 5
@@ -519,6 +522,7 @@ def prep_cfg(cfg: Config):
     _drop_deprecated_config_keys(cfg)
     cfg = OmegaConf.merge(cfg_schema, cfg)
     _normalize_agent_mode_aliases(cfg)
+    _normalize_hypothesis_pipeline_config(cfg)
     _resolve_all_model_configs(cfg)
 
     return cast(Config, cfg)
@@ -541,6 +545,18 @@ def _normalize_agent_mode_aliases(cfg: Config) -> None:
     mode = getattr(cfg.agent, "mode", None)
     if isinstance(mode, str) and mode in AGENT_MODE_ALIASES:
         cfg.agent.mode = AGENT_MODE_ALIASES[mode]
+
+
+def _normalize_hypothesis_pipeline_config(cfg: Config) -> None:
+    try:
+        root_quota = int(getattr(cfg.agent, "hypotheses", 0) or 0)
+    except (TypeError, ValueError):
+        root_quota = 0
+    cfg.agent.hypotheses = max(root_quota, 0)
+    if cfg.agent.hypotheses <= 0:
+        return
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
 
 
 def _resolve_stage_config(stage: StageConfig) -> None:

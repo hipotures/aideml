@@ -544,6 +544,61 @@ def test_select_hypothesis_for_root_excludes_root_ids_and_detects_exhaustion(tmp
     )
 
 
+def test_agent_hypotheses_enables_research_hypothesis_pipeline(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.exp_name = "hypothesis-pipeline"
+    cfg.agent.hypotheses = 3
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.hypotheses == 3
+    assert cfg.research.enabled is True
+    assert cfg.research.mode == "hypothesis"
+    assert cfg.research.materialize is True
+    assert cfg.research.execute is True
+
+
+def test_agent_hypotheses_caps_effective_root_limit(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.hypotheses = 2
+    cfg.research.hypothesis_root_limit = 100
+
+    assert research.effective_hypothesis_root_limit(cfg, compatible_count=7) == 2
+
+
+def test_record_hypothesis_only_selection_writes_artifact_without_node(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    journal = Journal()
+    selection = research.select_hypothesis_for_node(
+        cfg,
+        journal=journal,
+        parent_node=None,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    path = research.record_hypothesis_only_selection(
+        cfg=cfg,
+        selection=selection,
+        parent_node=None,
+        completed_steps=0,
+    )
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["hypotheses"][0]["id"] == "000001"
+    assert payload["materialized"] is False
+    assert payload["executed"] is False
+    assert len(journal.nodes) == 0
+
+
 def test_select_hypothesis_for_node_uses_forced_disabled_child_queue(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"
