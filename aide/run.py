@@ -36,6 +36,7 @@ from .research import (
     effective_hypothesis_root_limit,
     generate_research_hypotheses_for_pipeline,
     hypothesis_id_for_node,
+    load_failed_hypothesis_root_code,
     load_hypothesis_root_code,
     load_manual_hypothesis_library,
     load_scored_hypothesis_root_code,
@@ -1657,13 +1658,18 @@ def build_tree_view(
         if is_active_virtual_root:
             line = Text()
             line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
-            line.append_text(
-                _tree_active_placeholder_line(
-                    active_stage=active_stage,
-                    active_hypothesis_id=hypothesis_id,
-                    blink_on=blink_on,
+            if status_text in {"bug", "failed"}:
+                indicator = "[*]" if blink_on else "[ ]"
+                line.append(f"{indicator} ", style="bold yellow")
+                line.append(f"bug·{hypothesis_id}", style="red")
+            else:
+                line.append_text(
+                    _tree_active_placeholder_line(
+                        active_stage=active_stage,
+                        active_hypothesis_id=hypothesis_id,
+                        blink_on=blink_on,
+                    )
                 )
-            )
             item_id = f"hypothesis-root:{hypothesis_id}"
             append_item(
                 TreeViewItem(
@@ -2050,6 +2056,16 @@ def _hypothesis_root_inventory_rows(
                 status = "score"
                 score = float(scored_code.score)
                 metric_maximize = True
+            elif (
+                load_failed_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_failed_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            ) is not None:
+                status = "bug"
             elif (
                 load_hypothesis_root_code(cfg, hypothesis.id)
                 if repo_root is None

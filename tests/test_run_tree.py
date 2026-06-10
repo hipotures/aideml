@@ -2227,6 +2227,55 @@ def test_solution_tree_marks_manifest_scored_root_as_best_when_highest(tmp_path)
     assert "\x1b[1;33m0.96113·000011" not in tree_output
 
 
+def test_solution_tree_marks_manifest_buggy_root_as_bug(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-bug-manifest-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-bug-manifest-test")
+    cfg.agent.mode = "legacy"
+    cfg.agent.gpu = True
+
+    manifest_dir = _write_root_hypothesis(tmp_path, task, "000021", title="Buggy")
+    (manifest_dir / "legacy-001.py").write_text("print('buggy')\n", encoding="utf-8")
+    (manifest_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                            "status": "bug",
+                            "score": None,
+                            "gpu": True,
+                            "exception_type": "RuntimeError",
+                            "exception_info": {"args": ["LightGBM CUDA crash"]},
+                            "terminal_output": "RuntimeError: crash",
+                            "analysis": "LightGBM CUDA crash",
+                        }
+                    ]
+                },
+                "active": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    journal = Journal()
+    output = _render_text(
+        render_tree_view(
+            build_tree_view(journal, cfg=cfg, repo_root=tmp_path),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "bug·000021" in output
+    assert "[ ]·000021" not in output
+
+
 def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
