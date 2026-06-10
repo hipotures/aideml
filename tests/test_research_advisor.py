@@ -2178,6 +2178,38 @@ def test_hypothesis_search_policy_debugs_buggy_root_before_opening_next_root(
     assert agent.last_search_decision["reason"] == "debugging_buggy_hypothesis_root"
 
 
+def test_filter_hypothesis_candidate_parents_blocks_disabled_root_branch(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000013",
+        enabled=False,
+    )
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000014")
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000015")
+    disabled_root = _node(0.96321, code="print('ok')", plan="disabled")
+    disabled_root.research_mode = "hypothesis"
+    disabled_root.research_hypotheses_offered = ["000013"]
+    enabled_root = _node(0.96113, code="print('ok')", plan="enabled")
+    enabled_root.research_mode = "hypothesis"
+    enabled_root.research_hypotheses_offered = ["000014"]
+    journal = Journal()
+    journal.append(disabled_root)
+    journal.append(enabled_root)
+
+    parents = research.filter_hypothesis_candidate_parents(
+        cfg,
+        journal=journal,
+        parent_nodes=[disabled_root, enabled_root],
+        repo_root=tmp_path,
+    )
+
+    assert disabled_root not in parents
+    assert enabled_root in parents
+
+
 def test_hypothesis_research_advisor_status_text_shows_latest_hypothesis(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

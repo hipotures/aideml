@@ -1336,6 +1336,25 @@ def _compatible_manual_hypotheses(
     ]
 
 
+def disabled_hypothesis_ids(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> set[str]:
+    try:
+        library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    except (OSError, ValueError):
+        return set()
+    return {hypothesis.id for hypothesis in library.hypotheses if not hypothesis.enabled}
+
+
+def root_hypothesis_id_for_node(node: Node) -> str | None:
+    root = node
+    while root.parent is not None:
+        root = root.parent
+    return hypothesis_id_for_node(root)
+
+
 def _matches_manual_hypothesis_agent_mode(
     cfg: Config,
     hypothesis: ManualHypothesis,
@@ -1626,9 +1645,13 @@ def filter_hypothesis_candidate_parents(
     if not parent_nodes:
         return []
     library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    disabled_ids = {
+        hypothesis.id for hypothesis in library.hypotheses if not hypothesis.enabled
+    }
     return [
         node
         for node in parent_nodes
+        if root_hypothesis_id_for_node(node) not in disabled_ids
         if _hypothesis_candidates_for_node_from_library(
             cfg,
             journal=journal,

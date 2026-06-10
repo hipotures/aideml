@@ -27,10 +27,12 @@ from .journal2report import journal2report
 from .research import (
     HypothesisRootReservation,
     ManualHypothesisSelection,
+    REPO_ROOT,
     ResearchAdvisor,
     _compatible_manual_hypotheses,
     clear_hypothesis_root_generation_failure,
     count_scored_working_nodes,
+    disabled_hypothesis_ids,
     effective_hypothesis_root_limit,
     generate_research_hypotheses_for_pipeline,
     hypothesis_id_for_node,
@@ -41,6 +43,7 @@ from .research import (
     record_hypothesis_root_generation_failure,
     record_hypothesis_only_selection,
     reserve_hypothesis_roots,
+    root_hypothesis_id_for_node,
     scored_hypothesis_root_nodes,
     select_hypothesis_by_id,
     select_hypothesis_for_node,
@@ -1035,6 +1038,8 @@ def confirm_resume_latest(run_id: str, completed_steps: int, total_steps: int) -
 def journal_to_rich_tree(
     journal: Journal,
     *,
+    cfg: Config | None = None,
+    repo_root: Path | None = None,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
@@ -1044,6 +1049,11 @@ def journal_to_rich_tree(
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     synthesis_node_ids: set[str] | None = None,
 ):
+    disabled_root_ids = (
+        disabled_hypothesis_ids(cfg, repo_root=repo_root or REPO_ROOT)
+        if cfg is not None
+        else set()
+    )
     if show_invalid_submission_branches:
         best_node = journal.get_best_node()
     else:
@@ -1055,6 +1065,7 @@ def journal_to_rich_tree(
                 node,
                 epsilon=plateau_block_epsilon,
             )
+            and root_hypothesis_id_for_node(node) not in disabled_root_ids
             and (
                 not disable_oom_saturated_parents
                 or not node.is_oom_blocked_parent
@@ -1130,7 +1141,7 @@ def journal_to_rich_tree(
             if is_plateau_blocked_descendant(
                 node,
                 epsilon=plateau_block_epsilon,
-            ):
+            ) or root_hypothesis_id_for_node(node) in disabled_root_ids:
                 s = f"[bright_black]◉ {metric_text}{suffix}{runtime_suffix}"
             elif disable_oom_saturated_parents and node.is_oom_blocked_parent:
                 s = f"[bright_black]✕ {metric_text}{suffix}{runtime_suffix}"
@@ -1161,6 +1172,7 @@ def _visible_best_node(
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    disabled_hypothesis_root_ids: set[str] | None = None,
     score_fn: Callable[[Node], float] | None = None,
 ) -> Node | None:
     if show_invalid_submission_branches:
@@ -1176,6 +1188,8 @@ def _visible_best_node(
             node,
             epsilon=plateau_block_epsilon,
         )
+        and root_hypothesis_id_for_node(node)
+        not in (disabled_hypothesis_root_ids or set())
         and (
             not disable_oom_saturated_parents
             or not node.is_oom_blocked_parent
@@ -1193,6 +1207,7 @@ def _visible_public_best_node(
     show_invalid_submission_branches: bool,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    disabled_hypothesis_root_ids: set[str] | None = None,
 ) -> Node | None:
     candidates = [
         node
@@ -1208,6 +1223,8 @@ def _visible_public_best_node(
             node,
             epsilon=plateau_block_epsilon,
         )
+        and root_hypothesis_id_for_node(node)
+        not in (disabled_hypothesis_root_ids or set())
         and (
             not disable_oom_saturated_parents
             or not node.is_oom_blocked_parent
@@ -1231,6 +1248,7 @@ def _tree_node_label(
     public_best_node: Node | None = None,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    disabled_hypothesis_root_ids: set[str] | None = None,
     synthesis_node_ids: set[str] | None = None,
     public_node_ids: set[str] | None = None,
     public_bonus_node_ids: set[str] | None = None,
@@ -1259,7 +1277,11 @@ def _tree_node_label(
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text(f"● bug{suffix}{runtime_suffix}", style="red")
 
-    if is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon):
+    if (
+        is_plateau_blocked_descendant(node, epsilon=plateau_block_epsilon)
+        or root_hypothesis_id_for_node(node)
+        in (disabled_hypothesis_root_ids or set())
+    ):
         return Text(
             f"◉ {node.metric.value:.5f}{suffix}{runtime_suffix}",
             style="bright_black",
@@ -1300,6 +1322,7 @@ def _tree_active_node_label(
     public_best_node: Node | None = None,
     disable_oom_saturated_parents: bool = False,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
+    disabled_hypothesis_root_ids: set[str] | None = None,
     synthesis_node_ids: set[str] | None = None,
     public_node_ids: set[str] | None = None,
     public_bonus_node_ids: set[str] | None = None,
@@ -1316,6 +1339,7 @@ def _tree_active_node_label(
         public_best_node=public_best_node,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
+        disabled_hypothesis_root_ids=disabled_hypothesis_root_ids,
         synthesis_node_ids=synthesis_node_ids,
         public_node_ids=public_node_ids,
         public_bonus_node_ids=public_bonus_node_ids,
@@ -1388,6 +1412,11 @@ def build_tree_view(
     public_score_bonus_weight: float = 0.0,
     public_score_bonus_cap: float = 0.0,
 ) -> TreeView:
+    disabled_root_ids = (
+        disabled_hypothesis_ids(cfg, repo_root=repo_root or REPO_ROOT)
+        if cfg is not None
+        else set()
+    )
     items: list[TreeViewItem] = [
         TreeViewItem(
             "header",
@@ -1431,6 +1460,7 @@ def build_tree_view(
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
+        disabled_hypothesis_root_ids=disabled_root_ids,
     )
     public_best_node = _visible_public_best_node(
         journal,
@@ -1438,6 +1468,7 @@ def build_tree_view(
         show_invalid_submission_branches=show_invalid_submission_branches,
         disable_oom_saturated_parents=disable_oom_saturated_parents,
         plateau_block_epsilon=plateau_block_epsilon,
+        disabled_hypothesis_root_ids=disabled_root_ids,
     )
 
     def node_order_key(node: Node):
@@ -1532,6 +1563,7 @@ def build_tree_view(
                     public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
+                    disabled_hypothesis_root_ids=disabled_root_ids,
                     synthesis_node_ids=synthesis_node_ids,
                     public_node_ids=public_node_ids,
                     public_bonus_node_ids=public_bonus_node_ids,
@@ -1545,6 +1577,7 @@ def build_tree_view(
                     public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
+                    disabled_hypothesis_root_ids=disabled_root_ids,
                     synthesis_node_ids=synthesis_node_ids,
                     public_node_ids=public_node_ids,
                     public_bonus_node_ids=public_bonus_node_ids,

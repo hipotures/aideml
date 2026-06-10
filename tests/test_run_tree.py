@@ -221,6 +221,7 @@ def _write_root_hypothesis(
     *,
     title: str,
     agent_modes: list[str] | None = None,
+    enabled: bool = True,
 ) -> Path:
     hypothesis_dir = root / "research_hypotheses" / task / hypothesis_id
     hypothesis_dir.mkdir(parents=True, exist_ok=True)
@@ -228,7 +229,7 @@ def _write_root_hypothesis(
     path.write_text(
         json.dumps(
             {
-                "enabled": True,
+                "enabled": enabled,
                 "agent_modes": agent_modes or ["legacy"],
                 "title": title,
                 "summary": f"{title} summary",
@@ -740,6 +741,29 @@ def test_tree_view_marks_non_improving_plateau_child_as_blocked():
 
     assert "◉ 0.96778" in output
     assert "● 0.96778" not in output
+
+
+def test_tree_view_marks_disabled_hypothesis_root_as_blocked(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-disabled-root-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-disabled-root-test")
+    cfg.agent.mode = "legacy"
+    _write_root_hypothesis(
+        tmp_path,
+        task,
+        "000013",
+        title="Disabled root",
+        enabled=False,
+    )
+    journal = Journal()
+    journal.append(_hypothesis_node(_good_node(0.96321), "000013"))
+
+    output = _render_text(build_tree_view(journal, cfg=cfg, repo_root=tmp_path))
+
+    assert "◉ 0.96321·000013" in output
+    assert "● 0.96321·000013" not in output
 
 
 def test_tree_view_keeps_child_outside_plateau_epsilon_unblocked():
