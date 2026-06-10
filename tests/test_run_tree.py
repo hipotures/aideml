@@ -347,6 +347,19 @@ def test_journal_tree_uses_step_suffix_when_hypothesis_id_is_missing():
     assert "● 0.94600·1" in output
 
 
+def test_journal_tree_uses_root_hypothesis_prefix_for_child_step_suffix():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.945), "000015")
+    child = _good_node(0.946, parent=root)
+    journal.append(root)
+    journal.append(child)
+
+    output = _render_text(journal_to_rich_tree(journal))
+
+    assert "0.94500·000015" in output
+    assert "● 0.94600·000015.1" in output
+
+
 def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
     journal = Journal()
     root = _good_node(0.945)
@@ -1742,7 +1755,7 @@ def test_run_data_shows_hypothesis_status_and_best_score_hypothesis(tmp_path):
     )
 
     assert "◆ Research   030 @ 000122 ✓" in output
-    assert "★ Best Score 000 @ 05-08 19:13 0.95115 · 000122" in output
+    assert "★ Best Score 000122 @ 05-08 19:13 0.95115" in output
 
 
 def test_run_data_shows_operator_notice_before_last_error(tmp_path):

@@ -22,6 +22,12 @@ def _node(score: float | None) -> Node:
     return node
 
 
+def _hypothesis_node(node: Node, hypothesis_id: str) -> Node:
+    node.research_mode = "hypothesis"
+    node.research_hypotheses_offered = [hypothesis_id]
+    return node
+
+
 def test_append_node_notifies_new_best_score(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "chat-id")
@@ -41,7 +47,7 @@ def test_append_node_notifies_new_best_score(monkeypatch):
             [
                 "Best score: 0.95108",
                 "Old best score: 0.95101",
-                "Step: 1",
+                "Node: 1",
                 "Id: 2-sarcastic-skilled-echidna",
             ]
         )
@@ -107,8 +113,37 @@ def test_existing_node_notifies_when_updated_to_new_best_score(monkeypatch):
             [
                 "Best score: 0.96259",
                 "Old best score: 0.96113",
-                "Step: 1",
+                "Node: 1",
                 "Id: 2-lumpy-yellow-raptor",
+            ]
+        )
+    ]
+
+
+def test_notification_labels_hypothesis_child_by_root_and_step(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "chat-id")
+    journal = Journal()
+    root = _hypothesis_node(_node(0.96412), "000015")
+    journal.append(root)
+    child = _node(0.96469)
+    child.parent = root
+    sent_messages: list[str] = []
+
+    append_node_with_best_score_notification(
+        journal=journal,
+        node=child,
+        experiment_id="2-indigo-leech-of-pleasure",
+        send_message=sent_messages.append,
+    )
+
+    assert sent_messages == [
+        "\n".join(
+            [
+                "Best score: 0.96469",
+                "Old best score: 0.96412",
+                "Node: 000015.1",
+                "Id: 2-indigo-leech-of-pleasure",
             ]
         )
     ]

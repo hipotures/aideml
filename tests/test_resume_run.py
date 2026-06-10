@@ -246,6 +246,33 @@ def test_seed_scored_hypothesis_roots_appends_only_for_new_hypothesis_runs(
     assert seeded.step == 0
 
 
+def test_seed_scored_hypothesis_roots_keeps_manifest_runtime(monkeypatch):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = True
+    cfg.research.mode = "hypothesis"
+    cfg.research.seed_scored_roots = True
+    journal = Journal()
+    seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.status = "ok"
+    seeded.exec_time = 399.0
+    seeded.run_stats = {"seeded_from_manifest": True}
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=False,
+    )
+
+    assert count == 1
+    assert journal.nodes == [seeded]
+    assert seeded.exec_time == 399.0
+
+
 def test_submission_contract_skips_seeded_scored_roots_without_artifacts(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.workspace_dir = tmp_path / "workspace"

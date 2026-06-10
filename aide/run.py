@@ -499,6 +499,9 @@ def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
     if hypothesis_id is not None:
         return f"·{hypothesis_id}"
+    root_hypothesis_id = root_hypothesis_id_for_node(node)
+    if root_hypothesis_id is not None and node.step is not None:
+        return f"·{root_hypothesis_id}.{node.step}"
     if node.step is not None:
         return f"·{node.step}"
     return ""
@@ -570,8 +573,6 @@ def _is_seeded_scored_root_node(node: Node) -> bool:
     if node.parent is not None:
         return False
     if node.status != "ok":
-        return False
-    if node.exec_time != 0.0:
         return False
     if node.artifact_dir_name is not None:
         return False
@@ -3318,14 +3319,18 @@ def build_best_score_status(journal: Journal) -> Text | None:
     node = _best_scored_node(journal)
     if node is None:
         return None
-    step = node.step if node.step is not None else "?"
-    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
     hypothesis_id = hypothesis_id_for_node(node)
-    suffix = f" · {hypothesis_id}" if hypothesis_id is not None else ""
+    root_hypothesis_id = root_hypothesis_id_for_node(node)
+    if hypothesis_id is not None:
+        label = hypothesis_id
+    elif root_hypothesis_id is not None and node.step is not None:
+        label = f"{root_hypothesis_id}.{node.step}"
+    else:
+        label = _format_run_status_step(node.step if node.step is not None else "?")
+    timestamp = dt.datetime.fromtimestamp(node.ctime).strftime("%m-%d %H:%M")
     line = _run_status_line_prefix(TUI_BEST_SCORE_ICON, "Best Score")
     line.append(
-        f" {_format_run_status_step(step)} @ {timestamp} {node.metric.value:.5f}"
-        f"{suffix}",
+        f" {label} @ {timestamp} {node.metric.value:.5f}",
         style=TUI_METRIC_VALUE_STYLE,
     )
     return line
@@ -4893,7 +4898,10 @@ def run(argv: list[str] | None = None):
                 seen.add(hypothesis_id)
 
     def completed_work_units() -> int:
-        return len(journal) + generated_only_evaluations
+        seeded_roots = sum(
+            1 for node in journal.nodes if _is_seeded_scored_root_node(node)
+        )
+        return len(journal) - seeded_roots + generated_only_evaluations
 
     def pipeline_root_hypothesis_quota() -> int:
         try:
@@ -5761,7 +5769,7 @@ def run(argv: list[str] | None = None):
             nonlocal exhausted
             if failure_state.stop_refill or exhausted:
                 return 0
-            remaining_steps = cfg.agent.steps - len(journal) - len(futures)
+            remaining_steps = cfg.agent.steps - completed_work_units() - len(futures)
             slots = min(hypothesis_root_generate_workers - len(futures), remaining_steps)
             if slots <= 0:
                 return 0

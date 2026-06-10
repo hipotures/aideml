@@ -11,6 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 from .journal import Journal, Node
+from .research import hypothesis_id_for_node, root_hypothesis_id_for_node
 from .utils.metric import MetricValue
 
 logger = logging.getLogger("aide")
@@ -47,6 +48,16 @@ def _format_score(value: float | int | None) -> str:
     return "-" if value is None else f"{float(value):.5f}"
 
 
+def _node_label(node: Node) -> str:
+    hypothesis_id = hypothesis_id_for_node(node)
+    if hypothesis_id is not None:
+        return hypothesis_id
+    root_hypothesis_id = root_hypothesis_id_for_node(node)
+    if root_hypothesis_id is not None and node.step is not None:
+        return f"{root_hypothesis_id}.{node.step}"
+    return str(node.step if node.step is not None else "?")
+
+
 def _best_score_message(
     *,
     node: Node,
@@ -63,7 +74,7 @@ def _best_score_message(
         [
             f"Best score: {_format_score(node.metric.value)}",
             f"Old best score: {_format_score(previous_value)}",
-            f"Step: {node.step if node.step is not None else '?'}",
+            f"Node: {_node_label(node)}",
             f"Id: {experiment_id}",
         ]
     )

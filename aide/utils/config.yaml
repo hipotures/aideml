@@ -60,8 +60,9 @@ research:
   hypothesis_root_generate_workers: 1
   # If true, a new hypothesis run starts with already executed/scored ROOT code
   # from code_manifest.json materialized as completed tree nodes. Ignored on
-  # --resume. Default false preserves empty-run behavior.
-  seed_scored_roots: False
+  # --resume. Seeded ROOTs are selectable by the scheduler but do not consume
+  # agent.steps.
+  seed_scored_roots: True
   # If true, manual hypothesis selection treats every enabled hypothesis as
   # compatible with the current agent mode. Useful for deriving AutoGluon
   # experiments from legacy-only hypotheses.
@@ -124,7 +125,7 @@ agent:
   memory_full_recent_steps: 10
   # Include the tail of the selected parent node's process_stdout.log in legacy
   # improvement prompts as empirical context from the previous execution.
-  include_parent_process_stdout: False
+  include_parent_process_stdout: True
   parent_process_stdout_max_bytes: 5000
   # whether legacy full-script prompts should prefer CUDA/GPU-capable tabular models
   gpu: false

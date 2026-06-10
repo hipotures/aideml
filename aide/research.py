@@ -621,6 +621,7 @@ def _scored_hypothesis_node(
         )
     ]
     node.exec_time = root_code.exec_time if root_code.exec_time is not None else 0.0
+    node.run_stats = {"seeded_from_manifest": True}
     node.exc_type = None
     node.exc_info = None
     node.exc_stack = None

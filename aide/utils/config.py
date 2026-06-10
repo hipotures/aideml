@@ -224,7 +224,7 @@ class AgentConfig:
     search: SearchConfig
     memory_recent_steps: int = 50
     memory_full_recent_steps: int = 10
-    include_parent_process_stdout: bool = False
+    include_parent_process_stdout: bool = True
     parent_process_stdout_max_bytes: int = 5000
     hypotheses: int = 0
     gpu: bool = False
@@ -260,7 +260,7 @@ class ResearchConfig:
     hypothesis_root_order: str = "default"
     hypothesis_root_score_mode: str = "autogluon"
     hypothesis_root_generate_workers: int = 1
-    seed_scored_roots: bool = False
+    seed_scored_roots: bool = True
     ignore_hypothesis_agent_modes: bool = False
 
 
