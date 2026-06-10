@@ -2937,6 +2937,49 @@ def test_scored_hypothesis_root_node_recovers_exec_time_from_journal(tmp_path):
     assert nodes[0].exec_time == 377.2
 
 
+def test_scored_hypothesis_root_node_recovers_term_out_from_journal(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = "legacy"
+    cfg.log_dir = tmp_path / "logs" / "2-current-run"
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        agent_mode="legacy",
+        file_name="legacy-001.py",
+        score=0.951,
+    )
+    journal_dir = tmp_path / "logs" / "2-previous-run"
+    journal_dir.mkdir(parents=True)
+    (journal_dir / "journal.json").write_text(
+        json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node-000001",
+                        "_term_out": [
+                            "Fold 1 balanced_accuracy=0.95\n",
+                            "OOF balanced_accuracy=0.951\n",
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    nodes = research.scored_hypothesis_root_nodes(cfg, repo_root=tmp_path)
+
+    assert len(nodes) == 1
+    assert nodes[0]._term_out == [
+        "Fold 1 balanced_accuracy=0.95\n",
+        "OOF balanced_accuracy=0.951\n",
+    ]
+    assert nodes[0].run_stats["source_process_stdout_recovered"] is True
+
+
 def test_scored_hypothesis_root_nodes_skip_unscored_or_buggy_code(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

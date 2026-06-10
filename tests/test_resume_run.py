@@ -360,6 +360,113 @@ def test_seed_scored_hypothesis_roots_refreshes_broken_seeded_root(monkeypatch):
     assert existing in journal.good_nodes
 
 
+def test_seed_scored_hypothesis_roots_persists_recovered_process_stdout(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.log_dir = tmp_path / "logs" / "2-current-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-current-run"
+    (cfg.workspace_dir / "input").mkdir(parents=True)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+    cfg.research.seed_scored_roots = False
+    journal = Journal()
+    existing = Node(code="print('existing')", plan="existing")
+    existing.research_mode = "hypothesis"
+    existing.research_hypotheses_offered = ["000011"]
+    journal.append(existing)
+    seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
+    seeded.status = "ok"
+    seeded.is_buggy = False
+    seeded.metric = MetricValue(0.966515, maximize=True)
+    seeded._term_out = [
+        "Fold 1 balanced_accuracy=0.967258\n",
+        "OOF balanced_accuracy=0.966515\n",
+    ]
+    seeded.run_stats = {
+        "seeded_from_manifest": True,
+        "source_process_stdout_recovered": True,
+    }
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    stdout_path = (
+        cfg.log_dir / "artifacts" / seeded.artifact_dir_name / "process_stdout.log"
+    )
+    assert count == 1
+    assert stdout_path.read_text(encoding="utf-8") == (
+        "Fold 1 balanced_accuracy=0.967258\n"
+        "OOF balanced_accuracy=0.966515\n"
+    )
+
+
+def test_seed_scored_hypothesis_roots_refreshes_existing_ok_node_for_recovered_log(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.log_dir = tmp_path / "logs" / "2-current-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-current-run"
+    (cfg.workspace_dir / "input").mkdir(parents=True)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+    cfg.research.seed_scored_roots = False
+    journal = Journal()
+    existing = Node(code="print('seeded')", plan="Seeded scored ROOT hypothesis 000019")
+    existing.research_mode = "hypothesis"
+    existing.research_hypotheses_offered = ["000019"]
+    existing.status = "ok"
+    existing.is_buggy = False
+    existing.metric = MetricValue(0.966515, maximize=True)
+    existing._term_out = ["Seeded from code_manifest.json; score=0.96652.\n"]
+    existing.run_stats = {"seeded_from_manifest": True}
+    journal.append(existing)
+    ensure_node_artifact_slot(cfg, existing)
+
+    seeded = Node(code="print('seeded')", plan="Seeded scored ROOT hypothesis 000019")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
+    seeded.status = "ok"
+    seeded.is_buggy = False
+    seeded.metric = MetricValue(0.966515, maximize=True)
+    seeded._term_out = ["OOF balanced_accuracy=0.966515\n"]
+    seeded.run_stats = {
+        "seeded_from_manifest": True,
+        "source_process_stdout_recovered": True,
+    }
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    stdout_path = (
+        cfg.log_dir / "artifacts" / existing.artifact_dir_name / "process_stdout.log"
+    )
+    assert count == 1
+    assert existing._term_out == ["OOF balanced_accuracy=0.966515\n"]
+    assert existing.run_stats["source_process_stdout_recovered"] is True
+    assert stdout_path.read_text(encoding="utf-8") == "OOF balanced_accuracy=0.966515\n"
+
+
 def test_seed_scored_hypothesis_roots_keeps_manifest_runtime(monkeypatch):
     cfg = _load_cfg(use_cli_args=False)
     cfg.research.enabled = True

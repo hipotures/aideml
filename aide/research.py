@@ -163,6 +163,7 @@ class ScoredHypothesisRootCode(HypothesisRootCode):
     created_at: str | None
     source_node_id: str | None
     exec_time: float | None
+    term_out: list[str] | None
 
 
 @dataclass(frozen=True)
@@ -514,6 +515,7 @@ def load_scored_hypothesis_root_code(
     created_at = entry.get("created_at")
     source_node_id = entry.get("node_id")
     exec_time = _manifest_exec_time_with_journal_fallback(cfg, entry)
+    term_out = _manifest_term_out_from_source_journal(cfg, entry)
     return ScoredHypothesisRootCode(
         hypothesis_id=root_code.hypothesis_id,
         agent_mode=root_code.agent_mode,
@@ -525,6 +527,7 @@ def load_scored_hypothesis_root_code(
         created_at=created_at if isinstance(created_at, str) else None,
         source_node_id=source_node_id if isinstance(source_node_id, str) else None,
         exec_time=exec_time,
+        term_out=term_out,
     )
 
 
@@ -614,14 +617,13 @@ def _scored_hypothesis_node(
     node.metric = MetricValue(root_code.score, maximize=True)
     node.is_buggy = False
     node.status = "ok"
-    node._term_out = [
-        (
-            "Seeded from code_manifest.json; "
-            f"score={root_code.score:.5f}; file={root_code.path.name}."
-        )
-    ]
+    node._term_out = list(root_code.term_out or [])
     node.exec_time = root_code.exec_time if root_code.exec_time is not None else 0.0
-    node.run_stats = {"seeded_from_manifest": True}
+    node.run_stats = {
+        "seeded_from_manifest": True,
+        "source_node_id": root_code.source_node_id,
+        "source_process_stdout_recovered": bool(root_code.term_out),
+    }
     node.exc_type = None
     node.exc_info = None
     node.exc_stack = None
@@ -1918,17 +1920,18 @@ def _numeric_manifest_duration(value: Any) -> float | None:
 
 
 _JOURNAL_EXEC_TIME_CACHE: dict[Path, dict[str, float]] = {}
+_JOURNAL_NODE_CACHE: dict[Path, dict[str, dict[str, Any]]] = {}
 
 
-def _journal_exec_times_by_node_id(log_root: Path) -> dict[str, float]:
+def _journal_nodes_by_node_id(log_root: Path) -> dict[str, dict[str, Any]]:
     log_root = log_root.resolve()
-    cached = _JOURNAL_EXEC_TIME_CACHE.get(log_root)
+    cached = _JOURNAL_NODE_CACHE.get(log_root)
     if cached is not None:
         return cached
 
-    result: dict[str, float] = {}
+    result: dict[str, dict[str, Any]] = {}
     if not log_root.exists():
-        _JOURNAL_EXEC_TIME_CACHE[log_root] = result
+        _JOURNAL_NODE_CACHE[log_root] = result
         return result
 
     for journal_path in sorted(log_root.glob("*/journal.json")):
@@ -1943,10 +1946,24 @@ def _journal_exec_times_by_node_id(log_root: Path) -> dict[str, float]:
             if not isinstance(node, dict):
                 continue
             node_id = node.get("id")
-            exec_time = _numeric_manifest_duration(node.get("exec_time"))
-            if isinstance(node_id, str) and exec_time is not None:
-                result[node_id] = exec_time
+            if isinstance(node_id, str):
+                result[node_id] = node
 
+    _JOURNAL_NODE_CACHE[log_root] = result
+    return result
+
+
+def _journal_exec_times_by_node_id(log_root: Path) -> dict[str, float]:
+    log_root = log_root.resolve()
+    cached = _JOURNAL_EXEC_TIME_CACHE.get(log_root)
+    if cached is not None:
+        return cached
+
+    result: dict[str, float] = {}
+    for node_id, node in _journal_nodes_by_node_id(log_root).items():
+        exec_time = _numeric_manifest_duration(node.get("exec_time"))
+        if exec_time is not None:
+            result[node_id] = exec_time
     _JOURNAL_EXEC_TIME_CACHE[log_root] = result
     return result
 
@@ -1963,6 +1980,24 @@ def _manifest_exec_time_with_journal_fallback(
         return None
     log_root = Path(getattr(cfg, "log_dir", "logs")).parent
     return _journal_exec_times_by_node_id(log_root).get(node_id)
+
+
+def _manifest_term_out_from_source_journal(
+    cfg: Config,
+    entry: dict[str, Any],
+) -> list[str] | None:
+    node_id = entry.get("node_id")
+    if not isinstance(node_id, str):
+        return None
+    log_root = Path(getattr(cfg, "log_dir", "logs")).parent
+    node = _journal_nodes_by_node_id(log_root).get(node_id)
+    if node is None:
+        return None
+    term_out = node.get("_term_out")
+    if not isinstance(term_out, list):
+        return None
+    lines = [line for line in term_out if isinstance(line, str)]
+    return lines if lines else None
 
 
 def _best_manifest_score_for_mode(

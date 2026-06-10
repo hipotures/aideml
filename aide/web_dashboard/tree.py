@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aide.journal import Journal, Node
+from aide.research import root_hypothesis_id_for_node
 from aide.utils.metric import MetricValue
 from aide.utils.plateau import (
     DEFAULT_PLATEAU_BLOCK_EPSILON,
@@ -22,9 +23,14 @@ def _node_order_key(journal: Journal, node: Node) -> tuple[bool, int, float, str
 
 def _hypothesis_or_step_suffix(node: Node) -> str:
     if len(node.research_hypotheses_offered) == 1:
+        if node.step is not None:
+            return f"·{node.research_hypotheses_offered[0]}#{node.step}"
         return f"·{node.research_hypotheses_offered[0]}"
+    root_hypothesis_id = root_hypothesis_id_for_node(node)
+    if root_hypothesis_id is not None and node.step is not None:
+        return f"·{root_hypothesis_id}#{node.step}"
     if node.step is not None:
-        return f"·{node.step}"
+        return f"·step-{node.step:06d}"
     return ""
 
 
@@ -232,8 +238,15 @@ def build_web_tree_lines(
             label = "reviewing result..."
         else:
             label = f"{stage}..."
-        if active_hypothesis_id:
-            return f"{label}·{active_hypothesis_id}"
+        label_hypothesis_id = active_hypothesis_id
+        if (
+            active_parent_node is not None
+            and label_hypothesis_id
+            == root_hypothesis_id_for_node(active_parent_node)
+        ):
+            label_hypothesis_id = None
+        if label_hypothesis_id:
+            return f"{label}·{label_hypothesis_id}"
         return label
 
     def append_active(prefix: str, desktop_prefix: str, is_last: bool) -> None:
@@ -288,20 +301,24 @@ def build_web_tree_lines(
 
     def append_virtual_root(row: dict[str, object], *, is_last: bool) -> None:
         hypothesis_id = str(row.get("hypothesis_id") or "")
+        row_step = row.get("step")
+        hypothesis_label = (
+            f"{hypothesis_id}#{row_step}" if isinstance(row_step, int) else hypothesis_id
+        )
         status = str(row.get("status") or "hypothesis")
         score = row.get("score")
         runtime_suffix = _runtime_suffix_from_value(row.get("exec_time"))
         if status == "score" and isinstance(score, int | float):
-            label = f"{float(score):.5f}·{hypothesis_id}{runtime_suffix}"
+            label = f"{float(score):.5f}·{hypothesis_label}{runtime_suffix}"
             kind = "ok"
         elif status in {"code", "generated"}:
-            label = f"generated·{hypothesis_id}"
+            label = f"generated·{hypothesis_label}"
             kind = "generated"
         elif status in {"bug", "failed"}:
-            label = f"{status}·{hypothesis_id}{runtime_suffix}"
+            label = f"{status}·{hypothesis_label}{runtime_suffix}"
             kind = "bug"
         else:
-            label = f"hypothesis·{hypothesis_id}"
+            label = f"hypothesis·{hypothesis_label}"
             kind = "hypothesis"
         branch = "└" if is_last else "├"
         lines.append(

@@ -343,8 +343,8 @@ def test_journal_tree_uses_step_suffix_when_hypothesis_id_is_missing():
 
     output = _render_text(journal_to_rich_tree(journal))
 
-    assert "0.94500·0" in output
-    assert "● 0.94600·1" in output
+    assert "0.94500·step-000000" in output
+    assert "● 0.94600·step-000001" in output
 
 
 def test_journal_tree_uses_root_hypothesis_prefix_for_child_step_suffix():
@@ -356,8 +356,8 @@ def test_journal_tree_uses_root_hypothesis_prefix_for_child_step_suffix():
 
     output = _render_text(journal_to_rich_tree(journal))
 
-    assert "0.94500·000015" in output
-    assert "● 0.94600·000015.1" in output
+    assert "0.94500·000015#0" in output
+    assert "● 0.94600·000015#1" in output
 
 
 def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
@@ -376,8 +376,8 @@ def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
         )
     )
 
-    assert "0.94500·0" in output
-    assert "● 0.94600·1" in output
+    assert "0.94500·step-000000" in output
+    assert "● 0.94600·step-000001" in output
 
 
 def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
@@ -402,12 +402,12 @@ def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
         )
     )
 
-    assert "0.94500·0·16m" in rich_output
-    assert "● 0.94600·1·47m" in rich_output
-    assert "bug·2·0m" not in rich_output
-    assert "0.94500·0·16m" in view_output
-    assert "● 0.94600·1·47m" in view_output
-    assert "bug·2·0m" not in view_output
+    assert "0.94500·step-000000·16m" in rich_output
+    assert "● 0.94600·step-000001·47m" in rich_output
+    assert "bug·step-000002·0m" not in rich_output
+    assert "0.94500·step-000000·16m" in view_output
+    assert "● 0.94600·step-000001·47m" in view_output
+    assert "bug·step-000002·0m" not in view_output
 
 
 def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
@@ -426,6 +426,25 @@ def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
     output = _render_text(tree)
 
     assert "[*]·000348" in output
+
+
+def test_journal_tree_suppresses_root_hypothesis_id_on_child_placeholder():
+    journal = Journal()
+    parent = _hypothesis_node(_good_node(0.945), "000111")
+    journal.append(parent)
+
+    tree = journal_to_rich_tree(
+        journal,
+        active_parent_node=parent,
+        active_stage="generating",
+        active_hypothesis_id="000111",
+        blink_on=True,
+    )
+
+    output = _render_text(tree)
+
+    assert "[*]" in output
+    assert "[*]·000111" not in output
 
 
 def test_journal_tree_colors_active_placeholder_by_stage():
@@ -1385,6 +1404,31 @@ def test_tree_view_renders_active_hypothesis_id_on_placeholder():
     )
 
     assert "└── [*]·000348" in output
+
+
+def test_tree_view_suppresses_root_hypothesis_id_on_child_placeholder():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.90), "000111")
+    journal.append(root)
+
+    view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+        active_hypothesis_id="000111",
+        blink_on=True,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "└── [*]" in output
+    assert "[*]·000111" not in output
 
 
 def test_tree_view_uses_score_icons_for_baseline_nodes():

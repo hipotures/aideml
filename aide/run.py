@@ -498,12 +498,14 @@ def _node_has_public_score(
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
     if hypothesis_id is not None:
+        if node.step is not None:
+            return f"·{hypothesis_id}#{node.step}"
         return f"·{hypothesis_id}"
     root_hypothesis_id = root_hypothesis_id_for_node(node)
     if root_hypothesis_id is not None and node.step is not None:
-        return f"·{root_hypothesis_id}.{node.step}"
+        return f"·{root_hypothesis_id}#{node.step}"
     if node.step is not None:
-        return f"·{node.step}"
+        return f"·step-{node.step:06d}"
     return ""
 
 
@@ -574,15 +576,14 @@ def _is_seeded_scored_root_node(node: Node) -> bool:
         return False
     if node.status != "ok":
         return False
-    if node.artifact_dir_name is not None:
-        return False
     if isinstance(node.run_stats, dict) and node.run_stats.get("seeded_from_manifest"):
         return True
+    if node.artifact_dir_name is not None:
+        return False
     plan = str(node.plan or "")
     if not plan.startswith("Seeded scored ROOT hypothesis "):
         return False
-    term_out = "".join(getattr(node, "_term_out", []) or [])
-    return "Seeded from code_manifest.json;" in term_out
+    return True
 
 
 def record_generated_only_node(
@@ -687,9 +688,11 @@ def maybe_seed_scored_hypothesis_roots(
         existing = existing_roots_by_id.get(hypothesis_id)
         if existing is not None:
             if _refresh_existing_seeded_hypothesis_root(existing, node):
+                _persist_seeded_process_stdout(cfg, existing)
                 seeded_count += 1
             continue
         journal.append(node)
+        _persist_seeded_process_stdout(cfg, node)
         existing_roots_by_id[hypothesis_id] = node
         seeded_count += 1
     return seeded_count
@@ -699,11 +702,21 @@ def _refresh_existing_seeded_hypothesis_root(existing: Node, seeded: Node) -> bo
     run_stats = getattr(existing, "run_stats", None) or {}
     if not run_stats.get("seeded_from_manifest"):
         return False
+    seeded_run_stats = getattr(seeded, "run_stats", None) or {}
+    existing_has_recovered_stdout = bool(
+        run_stats.get("source_process_stdout_recovered")
+        and getattr(existing, "_term_out", None)
+    )
+    seeded_has_recovered_stdout = bool(
+        seeded_run_stats.get("source_process_stdout_recovered")
+        and getattr(seeded, "_term_out", None)
+    )
     if (
         existing.metric is not None
         and existing.metric.value is not None
         and existing.is_buggy is False
         and existing.status == "ok"
+        and (existing_has_recovered_stdout or not seeded_has_recovered_stdout)
     ):
         return False
 
@@ -724,6 +737,22 @@ def _refresh_existing_seeded_hypothesis_root(existing: Node, seeded: Node) -> bo
     existing.research_source_hash = seeded.research_source_hash
     existing.research_runtime_config = dict(seeded.research_runtime_config or {})
     return True
+
+
+def _persist_seeded_process_stdout(cfg: Config, node: Node) -> None:
+    run_stats = getattr(node, "run_stats", None) or {}
+    if not run_stats.get("seeded_from_manifest"):
+        return
+    if not run_stats.get("source_process_stdout_recovered"):
+        return
+    term_out = getattr(node, "_term_out", None)
+    if not term_out:
+        return
+    text = "".join(line for line in term_out if isinstance(line, str))
+    if not text:
+        return
+    artifact_dir = ensure_node_artifact_slot(cfg, node)
+    (artifact_dir / "process_stdout.log").write_text(text, encoding="utf-8")
 
 
 def _is_research_hypothesis_mode(cfg: Config) -> bool:
@@ -1161,8 +1190,18 @@ def journal_to_rich_tree(
             return
         indicator = "[*]" if blink_on else "[ ]"
         placeholder = Text(indicator, style=active_placeholder_style())
-        if active_hypothesis_id:
-            placeholder.append(f"·{active_hypothesis_id}", style=active_placeholder_style())
+        placeholder_hypothesis_id = active_hypothesis_id
+        if (
+            active_parent_node is not None
+            and placeholder_hypothesis_id
+            == root_hypothesis_id_for_node(active_parent_node)
+        ):
+            placeholder_hypothesis_id = None
+        if placeholder_hypothesis_id:
+            placeholder.append(
+                f"·{placeholder_hypothesis_id}",
+                style=active_placeholder_style(),
+            )
         tree.add(placeholder)
 
     def node_order_key(node: Node):
@@ -1195,7 +1234,12 @@ def journal_to_rich_tree(
         if node.status == "generated":
             hypothesis_id = hypothesis_id_for_node(node)
             if hypothesis_id is not None:
-                s = f"[cyan]● {hypothesis_id}[/cyan]"
+                hypothesis_label = (
+                    f"{hypothesis_id}#{node.step}"
+                    if node.step is not None
+                    else hypothesis_id
+                )
+                s = f"[cyan]● {hypothesis_label}[/cyan]"
             else:
                 s = f"[cyan]● generated{suffix}[/cyan]"
         elif node.status == "failed" and suffix:
@@ -1329,8 +1373,14 @@ def _tree_node_label(
     suffix = _node_hypothesis_suffix(node)
     runtime_suffix = _node_runtime_suffix(node)
     if node.status == "generated":
-        if hypothesis_id_for_node(node) is not None:
-            return Text(f"● {hypothesis_id_for_node(node)}", style="cyan")
+        hypothesis_id = hypothesis_id_for_node(node)
+        if hypothesis_id is not None:
+            hypothesis_label = (
+                f"{hypothesis_id}#{node.step}"
+                if node.step is not None
+                else hypothesis_id
+            )
+            return Text(f"● {hypothesis_label}", style="cyan")
         return Text(f"● generated{suffix}", style="cyan")
     if node.is_terminal_failure:
         return Text(f"● failed{suffix}{runtime_suffix}", style="red")
@@ -1573,11 +1623,18 @@ def build_tree_view(
             for has_next in ancestor_has_next
         )
         prefix += "└── "
+        placeholder_hypothesis_id = active_hypothesis_id
+        if (
+            active_parent_node is not None
+            and placeholder_hypothesis_id
+            == root_hypothesis_id_for_node(active_parent_node)
+        ):
+            placeholder_hypothesis_id = None
         line = Text(prefix)
         line.append_text(
             _tree_active_placeholder_line(
                 active_stage=active_stage,
-                active_hypothesis_id=active_hypothesis_id,
+                active_hypothesis_id=placeholder_hypothesis_id,
                 blink_on=blink_on,
             )
         )
@@ -1704,6 +1761,10 @@ def build_tree_view(
     ) -> None:
         nonlocal active_item_id
         hypothesis_id = str(row["hypothesis_id"])
+        row_step = row.get("step")
+        hypothesis_label = (
+            f"{hypothesis_id}#{row_step}" if isinstance(row_step, int) else hypothesis_id
+        )
         status_text = str(row.get("status") or "hypothesis")
         score = row.get("score")
         runtime_suffix = _row_runtime_suffix(row)
@@ -1762,13 +1823,13 @@ def build_tree_view(
         if status_text == "score" and isinstance(score, float):
             metric_style = "bold yellow" if is_best_score else TUI_METRIC_VALUE_STYLE
             line.append(
-                f"{score:.5f}·{hypothesis_id}{runtime_suffix}",
+                f"{score:.5f}·{hypothesis_label}{runtime_suffix}",
                 style=metric_style,
             )
         elif status_text in {"bug", "failed"}:
-            line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
+            line.append(f"bug·{hypothesis_label}{runtime_suffix}", style="red")
         else:
-            line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
+            line.append(hypothesis_label, style=TUI_NEUTRAL_VALUE_STYLE)
         append_item(
             TreeViewItem(
                 f"hypothesis-root:{hypothesis_id}",
