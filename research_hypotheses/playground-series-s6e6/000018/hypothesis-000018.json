@@ -1,0 +1,32 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Photometric-Redshift Consistency Features",
+  "summary": "Add fold-safe predicted-redshift and redshift-residual features that measure how well each object's ugriz colors explain its observed redshift.",
+  "feature_family": "self_supervised_photoz_residual_features",
+  "feature_strategy": "Keep the already useful raw magnitudes, colors, categorical one-hots, and redshift, but add a staged self-supervised representation: within each training fold, fit a modest regressor to predict redshift from ugriz magnitudes, color indices, alpha/delta, spectral_type, and galaxy_population, then create OOF features such as predicted_redshift, redshift_minus_predicted, absolute_residual, squared_residual, residual divided by observed redshift scale, and coarse residual-sign/magnitude flags. For test rows, fit the same redshift regressor on the full training set and generate the same features. Do not use class labels in this feature stage.",
+  "baseline_model_panel": "Reuse a simple balanced multiclass panel: a regularized linear classifier on standardized numeric/encoded features, a class-weighted shallow random-forest or extra-trees style model, and one class-balanced gradient-boosted tree model such as CatBoost or LightGBM with the competition's balanced-class setting.",
+  "model_panel_rationale": "The linear model checks whether the residual features create additive class signal, while tree models can exploit nonlinear thresholds and interactions between redshift consistency, colors, and categorical fields without making algorithm choice the main novelty.",
+  "validation_strategy": "Use 5-fold StratifiedKFold scored by balanced accuracy; generate predicted-redshift and residual features strictly out-of-fold for validation rows, and report per-class recall changes, especially QSO versus GALAXY confusion.",
+  "materialization_hint": "Implement the feature builder as two stages: first derive color/categorical inputs for the redshift regressor, then append OOF/test redshift-consistency columns before fitting the classifier panel. Keep the redshift regressor small enough for one CV pass, and log whether residual columns rank highly in tree feature importance.",
+  "expected_signal": "If valuable, CV balanced accuracy should improve over the color-stack baseline, with the largest gain in QSO/GALAXY separation where observed redshift is high but photometric colors imply a different redshift locus; tree models should show residual magnitude or signed residual among useful features.",
+  "novelty_confidence": "medium",
+  "risk": "This partly overlaps with the executed color/redshift feature family because it reuses the same physical columns, so the novelty depends on the learned fold-safe residual representation adding signal beyond raw redshift and colors. A too-powerful redshift regressor may collapse residual variance, while a leaky implementation that fits on validation redshift targets would overstate CV.",
+  "rationale": "Feature family: self_supervised_photoz_residual_features\nFeature strategy: Keep the already useful raw magnitudes, colors, categorical one-hots, and redshift, but add a staged self-supervised representation: within each training fold, fit a modest regressor to predict redshift from ugriz magnitudes, color indices, alpha/delta, spectral_type, and galaxy_population, then create OOF features such as predicted_redshift, redshift_minus_predicted, absolute_residual, squared_residual, residual divided by observed redshift scale, and coarse residual-sign/magnitude flags. For test rows, fit the same redshift regressor on the full training set and generate the same features. Do not use class labels in this feature stage.\nBaseline model panel: Reuse a simple balanced multiclass panel: a regularized linear classifier on standardized numeric/encoded features, a class-weighted shallow random-forest or extra-trees style model, and one class-balanced gradient-boosted tree model such as CatBoost or LightGBM with the competition's balanced-class setting.\nModel panel rationale: The linear model checks whether the residual features create additive class signal, while tree models can exploit nonlinear thresholds and interactions between redshift consistency, colors, and categorical fields without making algorithm choice the main novelty.\nValidation strategy: Use 5-fold StratifiedKFold scored by balanced accuracy; generate predicted-redshift and residual features strictly out-of-fold for validation rows, and report per-class recall changes, especially QSO versus GALAXY confusion.\nNovelty confidence: medium",
+  "implementation_hint": "Implement the feature builder as two stages: first derive color/categorical inputs for the redshift regressor, then append OOF/test redshift-consistency columns before fitting the classifier panel. Keep the redshift regressor small enough for one CV pass, and log whether residual columns rank highly in tree feature importance.",
+  "expected_effect": "If valuable, CV balanced accuracy should improve over the color-stack baseline, with the largest gain in QSO/GALAXY separation where observed redshift is high but photometric colors imply a different redshift locus; tree models should show residual magnitude or signed residual among useful features.",
+  "sources": [
+    "https://arxiv.org/abs/2204.02080",
+    "https://arxiv.org/abs/0711.2477",
+    "https://arxiv.org/abs/1909.10963"
+  ],
+  "source_run": "2-stalwart-ancient-gharial",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000018",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000018/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000018/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000018/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000018/response_raw.txt"
+}

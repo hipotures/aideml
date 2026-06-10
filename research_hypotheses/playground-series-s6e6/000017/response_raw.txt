@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Proposed one new initial feature-search direction that avoids prior color, categorical, auxiliary-label, id, sky, and redshift-gate hypotheses by testing unsupervised manifold/proximity features from the competition feature distribution.
+
+Prioritized hypotheses:
+1. Unsupervised Photometric Locus Features
+   Risk: Cluster features may duplicate existing color information or overfit synthetic train/test distribution quirks; kNN density can be runtime-heavy on 824k rows, so approximate neighbors or subsampling may be needed if exac…

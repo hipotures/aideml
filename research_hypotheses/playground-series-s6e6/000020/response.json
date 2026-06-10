@@ -1,0 +1,19 @@
+{
+  "status": "failed",
+  "run_id": "2-enigmatic-chachalaca-of-influence",
+  "checkpoint_step": 0,
+  "exit_code": 1,
+  "duration_seconds": 38.10730237199459,
+  "timings_seconds": {
+    "build_prompt": 0.0002553589874878526,
+    "write_inputs": 0.0017296430305577815,
+    "codex_subprocess": 38.105151500029024,
+    "read_response": 0.000142509990837425,
+    "parse_response": 1.904997043311596e-05,
+    "total": 38.10730237199459
+  },
+  "raw_response": "",
+  "parsed_response": null,
+  "stderr": "",
+  "error": "Codex exited with status 1."
+}

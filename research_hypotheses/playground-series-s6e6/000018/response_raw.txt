@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live research suggests a next distinct initial direction: use redshift as a self-supervised consistency target rather than only as a raw astrophysical feature, inspired by photometric-redshift-aided SDSS classification work.
+
+Prioritized hypotheses:
+1. Photometric-Redshift Consistency Features
+   Risk: This partly overlaps with the executed color/redshift feature family because it reuses the same physical columns, so the novelty depends on the learned fold-safe residual representation adding signal beyond raw redshift…

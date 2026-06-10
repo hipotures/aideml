@@ -1,0 +1,6 @@
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "read-only"
+# This profile is archival. The actual invocation uses --ignore-user-config
+# plus explicit CLI overrides so no global MCP servers are loaded.
