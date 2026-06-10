@@ -54,21 +54,16 @@ Return exactly {{HYPOTHESIS_COUNT}} concise new initial feature-search
 hypotheses. Do not target a specific previous node or code block. Use the
 prior results only to avoid repeating approaches that have already been tried
 and, when scores are available, as evidence about which feature families and
-simple baseline algorithms look promising. Treat unexecuted hypotheses only as
-anti-duplication context. Treat buggy hypotheses as implementation warnings,
-not as evidence that the feature family is weak. Do not debug broken code.
+simple baseline algorithms look promising. Treat previous hypothesis text only
+as novelty and comparison context, not as execution evidence.
 Do not force weak novelty. If the requested number of hypotheses must be
 returned but only a weak or near-duplicate idea remains, still return the
 hypothesis, set novelty_confidence to "low", and explicitly describe the
 duplication or weak-novelty risk in risk.
 
-The prompt may include previous hypotheses split by execution state:
-Executed hypotheses include prior hypothesis text plus validation evidence;
-use them as evidence about which feature families and simple baseline panels
-look promising. Unexecuted hypotheses include hypothesis text only; use them as
-novelty context, not as performance evidence. Buggy hypotheses include intended
-hypothesis text plus implementation failure information; use them as
-implementation warnings, not as evidence that the feature family is weak.
+The prompt may include previously stored hypotheses as short Title, Summary,
+and Rationale text blocks. Use them only to understand what feature directions
+have already been proposed and to avoid near-duplicates.
 
 # Prior research history
 If recent research summaries are included, use them as context for choosing a
@@ -78,10 +73,9 @@ checkpoint.
 
 # Context section meanings
 The context below is plain text. It may include task details, data overview,
-runtime options, executed hypotheses, unexecuted hypotheses, buggy hypotheses,
-recent research summaries, and examples of working solution code. Use working
-solution examples only to understand what has already been tried and what
-performed well or poorly.
+runtime options, previous hypotheses, recent research summaries, and examples
+of working solution code. Use working solution examples only to understand what
+has already been tried and what performed well or poorly.
 
 # Required JSON output shape
 Return JSON with: summary; hypotheses[].title; hypotheses[].summary;

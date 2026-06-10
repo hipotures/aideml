@@ -1987,13 +1987,13 @@ def test_research_prompt_uses_requested_hypothesis_count():
     assert "contain exactly 3 items" in prompt
 
 
-def test_research_context_splits_hypotheses_by_execution_state(tmp_path):
+def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.agent.mode = "legacy"
     for hypothesis_id, title in [
-        ("000001", "Executed feature family"),
-        ("000002", "Buggy feature family"),
-        ("000003", "Unexecuted feature family"),
+        ("000001", "First feature family"),
+        ("000002", "Second feature family"),
+        ("000003", "Third feature family"),
     ]:
         _write_manual_hypothesis(
             tmp_path,
@@ -2009,15 +2009,6 @@ def test_research_context_splits_hypotheses_by_execution_state(tmp_path):
         file_name="legacy-001.py",
         score=0.91234,
     )
-    _write_code_manifest(
-        tmp_path,
-        "playground-series-s6e5",
-        "000002",
-        agent_mode="legacy",
-        file_name="legacy-001.py",
-        score=None,
-        buggy=True,
-    )
 
     context = collect_research_context(
         cfg=cfg,
@@ -2028,43 +2019,17 @@ def test_research_context_splits_hypotheses_by_execution_state(tmp_path):
     )
     prompt = build_research_prompt(context)
 
-    assert "Executed feature family" in context["executed_hypotheses"][0]
-    assert "Validation metric: 0.91234" in context["executed_hypotheses"][0]
-    assert "Buggy feature family" in context["buggy_hypotheses"][0]
-    assert "implementation warning" in context["buggy_hypotheses"][0]
-    assert "Unexecuted feature family" in context["unexecuted_hypotheses"][0]
-    assert "novelty context only" in context["unexecuted_hypotheses"][0]
-    assert "## Executed hypotheses" in prompt
-    assert "## Buggy hypotheses" in prompt
-    assert "## Unexecuted hypotheses" in prompt
-    assert "## Existing hypotheses" not in prompt
-
-
-def test_research_prompt_includes_current_run_hypotheses():
-    prompt = build_research_prompt(
-        {
-            "task_desc": "task",
-            "best_working_solutions": [],
-            "worst_working_solutions": [],
-            "current_run_hypotheses": [
-                "\n".join(
-                    [
-                        "Title: Photometric Color Stack",
-                        "Summary: Add color-index features.",
-                        "Rationale: Color-color boundaries separate classes.",
-                    ]
-                )
-            ],
-            "hypothesis_count": 1,
-        }
-    )
-
-    assert "## Current-run hypotheses" in prompt
-    assert "Photometric Color Stack" in prompt
-    assert '"current_run_hypotheses"' not in prompt
-    assert "```json" not in prompt
-    assert "novelty context" in prompt
-
+    assert len(context["existing_hypotheses"]) == 3
+    assert "First feature family" in context["existing_hypotheses"][0]
+    assert "Second feature family" in context["existing_hypotheses"][1]
+    assert "Third feature family" in context["existing_hypotheses"][2]
+    assert "Validation metric" not in prompt
+    assert "Evidence type" not in prompt
+    assert "Status:" not in prompt
+    assert "## Existing hypotheses" in prompt
+    assert "## Executed hypotheses" not in prompt
+    assert "## Buggy hypotheses" not in prompt
+    assert "## Unexecuted hypotheses" not in prompt
 
 def test_research_prompt_includes_previous_research_summaries(tmp_path):
     context = {
