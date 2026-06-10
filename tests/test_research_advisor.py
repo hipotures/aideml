@@ -1930,7 +1930,9 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     )
     assert "Return only structured JSON" in compact_prompt
     assert "task" in prompt
-    assert '"data_overview"' in prompt
+    assert "## Data overview" in prompt
+    assert '"data_overview"' not in prompt
+    assert "```json" not in prompt
     assert '"run_id"' not in prompt
     assert '"checkpoint_step"' not in prompt
     assert '"created_at"' not in prompt
@@ -1979,19 +1981,22 @@ def test_research_prompt_includes_current_run_hypotheses():
             "best_working_solutions": [],
             "worst_working_solutions": [],
             "current_run_hypotheses": [
-                {
-                    "id": "000014",
-                    "title": "Photometric Color Stack",
-                    "summary": "Add color-index features.",
-                    "code_status": "hypothesis_only",
-                }
+                "\n".join(
+                    [
+                        "Title: Photometric Color Stack",
+                        "Summary: Add color-index features.",
+                        "Rationale: Color-color boundaries separate classes.",
+                    ]
+                )
             ],
             "hypothesis_count": 1,
         }
     )
 
-    assert '"current_run_hypotheses"' in prompt
+    assert "## Current-run hypotheses" in prompt
     assert "Photometric Color Stack" in prompt
+    assert '"current_run_hypotheses"' not in prompt
+    assert "```json" not in prompt
     assert "materially different" in prompt
 
 
@@ -2012,10 +2017,12 @@ def test_research_prompt_includes_previous_research_summaries(tmp_path):
 
     prompt = build_research_prompt(context)
 
-    assert '"previous_research_summaries"' in prompt
+    assert "## Previous research summaries" in prompt
+    assert '"previous_research_summaries"' not in prompt
+    assert "```json" not in prompt
     assert '"label"' not in prompt
     assert "Try pit-window features" in prompt
-    assert "unique relative to those earlier summaries" in prompt
+    assert "context for choosing a distinct next direction" in " ".join(prompt.split())
 
 
 def test_run_research_checkpoint_logs_request_and_response(tmp_path):

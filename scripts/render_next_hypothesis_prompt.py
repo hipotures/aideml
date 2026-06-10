@@ -64,11 +64,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Replace the output directory if it already exists.",
-    )
-    parser.add_argument(
         "overrides",
         nargs="*",
         help="Extra AIDE config overrides, e.g. data_dir=... desc_file=...",
@@ -146,10 +141,6 @@ def main(argv: list[str] | None = None) -> int:
 
         out_dir = args.out_dir or _default_out_dir(cfg, hypothesis_id)
         if out_dir.exists():
-            if not args.force:
-                raise FileExistsError(
-                    f"Output directory already exists: {out_dir}. Use --force."
-                )
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True)
 

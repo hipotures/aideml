@@ -2489,6 +2489,20 @@ def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
     return text[: max_chars - 1].rstrip() + "…"
 
 
+def _compact_prompt_multiline_text(value: Any, max_chars: int = 1200) -> str:
+    text = (
+        str(value or "")
+        .replace("\\n", " ")
+        .replace("\\r", " ")
+        .replace("\\t", " ")
+    )
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    text = "\n".join(line for line in lines if line)
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "…"
+
+
 def build_data_overview(cfg: Config) -> str | None:
     candidate_dirs = [Path(cfg.data_dir)]
     workspace_input_dir = Path(cfg.workspace_dir) / "input"
@@ -2698,31 +2712,18 @@ def _current_run_generated_hypothesis_payloads(
         hypothesis = by_id.get(hypothesis_id)
         if hypothesis is None:
             continue
-        scored_code = load_scored_hypothesis_root_code(
-            cfg,
-            hypothesis_id,
-            repo_root=repo_root,
-        )
-        root_code = (
-            None
-            if scored_code is not None
-            else load_hypothesis_root_code(cfg, hypothesis_id, repo_root=repo_root)
-        )
-        parts = [
-            f"{hypothesis.title}: "
-            f"{_compact_prompt_text(hypothesis.summary, max_chars=260)}",
-        ]
-        if scored_code is not None:
-            parts.append(f"status=executed, score={_prompt_score(scored_code.score)}")
-        elif root_code is not None:
-            parts.append("status=code_generated_not_scored")
-        else:
-            parts.append("status=hypothesis_only")
-        expected = _compact_prompt_text(hypothesis.expected_effect, max_chars=220)
-        if expected:
-            parts.append(f"expected={expected}")
-        payloads.append("; ".join(parts))
+        payloads.append(_hypothesis_text_for_prompt(hypothesis))
     return payloads
+
+
+def _hypothesis_text_for_prompt(hypothesis: ManualHypothesis) -> str:
+    return "\n".join(
+        [
+            f"Title: {hypothesis.title}",
+            f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
+            f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
+        ]
+    )
 
 
 def _existing_hypothesis_payloads(
@@ -2739,14 +2740,7 @@ def _existing_hypothesis_payloads(
     for hypothesis in library.hypotheses:
         if not hypothesis.enabled or agent_mode not in hypothesis.agent_modes:
             continue
-        text = "\n".join(
-            [
-                f"Title: {hypothesis.title}",
-                f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
-                f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
-            ]
-        )
-        payloads.append(text)
+        payloads.append(_hypothesis_text_for_prompt(hypothesis))
     return payloads
 
 
@@ -2891,32 +2885,185 @@ def build_research_prompt(context: dict[str, Any]) -> str:
     except (TypeError, ValueError):
         hypothesis_count = 5
     hypothesis_count = max(1, hypothesis_count)
-    prompt_context = {
-        key: context.get(key)
-        for key in [
-            "task_desc",
-            "data_overview",
-            "metric_direction",
-            "best_working_solutions",
-            "worst_working_solutions",
-            "previous_research_summaries",
-            "existing_hypotheses",
-            "current_run_hypotheses",
-            "runtime_options",
-            "hypothesis_count",
-        ]
-        if key in context and context.get(key) is not None
-    }
-    context_json = json.dumps(
-        prompt_context, indent=2, ensure_ascii=False, default=_json_default
-    )
+    context_text = _format_research_context_for_prompt(context)
     prompt = RUNTIME_ROOT_PROMPT_PATH.read_text(encoding="utf-8")
     return (
         prompt.replace("{{HYPOTHESIS_COUNT}}", str(hypothesis_count)).replace(
-            "{{CONTEXT_JSON}}",
-            context_json,
+            "{{CONTEXT_TEXT}}",
+            context_text,
         )
     )
+
+
+def _format_scalar_for_prompt(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float, str)):
+        return str(value)
+    return str(value)
+
+
+def _format_code_for_prompt(code: Any) -> str:
+    text = _compact_prompt_multiline_text(code, max_chars=6000)
+    if not text:
+        return ""
+    return "```python\n" + text.replace("```", "'''") + "\n```"
+
+
+def _append_text_section(lines: list[str], title: str, body: Any) -> None:
+    text = _compact_prompt_multiline_text(body, max_chars=12000)
+    if not text:
+        return
+    lines.extend(["", f"## {title}", text])
+
+
+def _append_text_list_section(lines: list[str], title: str, values: Any) -> None:
+    if not isinstance(values, list) or not values:
+        return
+    lines.extend(["", f"## {title}"])
+    for index, value in enumerate(values, start=1):
+        text = _render_text_list_item_for_prompt(value)
+        if text:
+            lines.extend([f"### {index}", text])
+
+
+def _render_text_list_item_for_prompt(value: Any) -> str:
+    if isinstance(value, dict):
+        parts: list[str] = []
+        title = _compact_prompt_text(value.get("title"), max_chars=220)
+        summary = _compact_prompt_text(value.get("summary"), max_chars=360)
+        rationale = _compact_prompt_text(
+            value.get("rationale") or value.get("expected_effect"),
+            max_chars=620,
+        )
+        if title:
+            parts.append(f"Title: {title}")
+        if summary:
+            parts.append(f"Summary: {summary}")
+        if rationale:
+            parts.append(f"Rationale: {rationale}")
+        return "\n".join(parts)
+    return _compact_prompt_multiline_text(value, max_chars=1200)
+
+
+def _append_runtime_options_section(lines: list[str], runtime_options: Any) -> None:
+    if not isinstance(runtime_options, dict):
+        return
+    lines.extend(["", "## Runtime options"])
+    agent = runtime_options.get("agent")
+    if isinstance(agent, dict):
+        lines.extend(
+            [
+                f"- agent mode: {_format_scalar_for_prompt(agent.get('mode'))}",
+                f"- gpu: {_format_scalar_for_prompt(agent.get('gpu'))}",
+                f"- aux: {_format_scalar_for_prompt(agent.get('aux'))}",
+                f"- aux file: {_format_scalar_for_prompt(agent.get('aux_file_name'))}",
+            ]
+        )
+    research = runtime_options.get("research")
+    if isinstance(research, dict):
+        lines.extend(
+            [
+                f"- research model: {_format_scalar_for_prompt(research.get('model'))}",
+                "- research reasoning effort: "
+                f"{_format_scalar_for_prompt(research.get('reasoning_effort'))}",
+                f"- materialize after hypothesis: {_format_scalar_for_prompt(research.get('materialize'))}",
+                f"- execute after materialization: {_format_scalar_for_prompt(research.get('execute'))}",
+            ]
+        )
+
+
+def _append_solution_examples_section(
+    lines: list[str],
+    title: str,
+    solutions: Any,
+) -> None:
+    if not isinstance(solutions, list) or not solutions:
+        return
+    lines.extend(["", f"## {title}"])
+    for index, solution in enumerate(solutions, start=1):
+        if not isinstance(solution, dict):
+            continue
+        lines.append(f"### Solution {index}")
+        if "local_cv_score" in solution:
+            lines.append(
+                f"Local CV score: {_format_scalar_for_prompt(solution.get('local_cv_score'))}"
+            )
+        if "kaggle_public_score" in solution:
+            lines.append(
+                "Kaggle public score: "
+                f"{_format_scalar_for_prompt(solution.get('kaggle_public_score'))}"
+            )
+        code = _format_code_for_prompt(solution.get("code"))
+        if code:
+            lines.extend(["Code:", code])
+
+
+def _append_previous_research_section(lines: list[str], summaries: Any) -> None:
+    if not isinstance(summaries, list) or not summaries:
+        return
+    lines.extend(["", "## Previous research summaries"])
+    for index, summary in enumerate(summaries, start=1):
+        if not isinstance(summary, dict):
+            continue
+        lines.append(f"### Summary {index}")
+        text = _compact_prompt_text(summary.get("summary"), max_chars=800)
+        if text:
+            lines.append(text)
+        if "max_local_cv_score_after" in summary:
+            lines.append(
+                "Max local CV after: "
+                f"{_format_scalar_for_prompt(summary.get('max_local_cv_score_after'))}"
+            )
+        if "max_kaggle_public_score_after" in summary:
+            lines.append(
+                "Max public score after: "
+                f"{_format_scalar_for_prompt(summary.get('max_kaggle_public_score_after'))}"
+            )
+
+
+def _format_research_context_for_prompt(context: dict[str, Any]) -> str:
+    lines: list[str] = []
+    _append_text_section(lines, "Task description", context.get("task_desc"))
+    _append_text_section(lines, "Data overview", context.get("data_overview"))
+    if context.get("metric_direction") is not None:
+        lines.extend(
+            [
+                "",
+                "## Metric direction",
+                _format_scalar_for_prompt(context.get("metric_direction")),
+            ]
+        )
+    _append_runtime_options_section(lines, context.get("runtime_options"))
+    _append_text_list_section(
+        lines,
+        "Existing hypotheses",
+        context.get("existing_hypotheses"),
+    )
+    _append_text_list_section(
+        lines,
+        "Current-run hypotheses",
+        context.get("current_run_hypotheses"),
+    )
+    _append_previous_research_section(
+        lines,
+        context.get("previous_research_summaries"),
+    )
+    _append_solution_examples_section(
+        lines,
+        "Best working solutions",
+        context.get("best_working_solutions"),
+    )
+    _append_solution_examples_section(
+        lines,
+        "Worst working solutions",
+        context.get("worst_working_solutions"),
+    )
+    if not lines:
+        return "No prior context is available."
+    return "\n".join(lines).lstrip()
 
 
 def _codex_profile_text(model: str, reasoning_effort: str | None) -> str:

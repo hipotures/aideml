@@ -38,31 +38,24 @@ simple baseline algorithms look promising. Treat unexecuted hypotheses only as
 anti-duplication context. Treat buggy hypotheses as implementation warnings,
 not as evidence that the feature family is weak. Do not debug broken code.
 
-When existing_hypotheses is present, it contains short title/summary/rationale
-texts for active hypotheses already stored for this task and current agent
-mode. Use it only as anti-duplication context: the new hypothesis must be
-materially different in feature family, preprocessing strategy, and expected
-signal. When current_run_hypotheses is present, it contains short descriptions
-of hypotheses already created earlier in this same run.
+The prompt may include previously stored hypotheses and hypotheses already
+created earlier in this same run. They are written as short Title, Summary, and
+Rationale text blocks. Use them only as anti-duplication context: the new
+hypothesis must be materially different in feature family, preprocessing
+strategy, and expected signal.
 
 # Prior research history
-If previous_research_summaries is present, it lists recent completed research
-proposals. Each entry includes its summary plus the maximum local CV score and
-Kaggle public score observed afterwards when available. Try to propose ideas
-that are unique relative to those earlier summaries, or explicitly develop the
-strongest methods from them into a new testable direction.
+If recent research summaries are included, use them as context for choosing a
+distinct next direction. When score summaries are present, treat them as weak
+evidence about which directions looked promising after that research
+checkpoint.
 
-# Context field meanings
-best_working_solutions contains the highest-scoring code snippets that ran
-successfully. worst_working_solutions contains the lowest-scoring code
-snippets that still ran successfully. local_cv_score is the validation metric.
-kaggle_public_score is included only when a completed Kaggle public
-leaderboard score is available for that exact node. Use these examples only to
+# Context section meanings
+The context below is plain text. It may include task details, data overview,
+runtime options, previous hypotheses, recent research summaries, and
+examples of working solution code. Use working solution examples only to
 understand what has already been tried and what performed well or poorly.
-existing_hypotheses and current_run_hypotheses are compact text lists for
-anti-duplication only. runtime_options records the current agent mode, GPU
-setting, auxiliary file selection, and research execution/materialization
-settings.
+Previous hypotheses are context for novelty and comparison.
 
 # Required JSON output shape
 Return JSON with: summary; hypotheses[].title; hypotheses[].summary;
@@ -101,6 +94,4 @@ hypotheses array must contain exactly {{HYPOTHESIS_COUNT}} items.
   when none are available.
 
 # Current task and prior-result summary
-```json
-{{CONTEXT_JSON}}
-```
+{{CONTEXT_TEXT}}
