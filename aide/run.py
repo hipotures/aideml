@@ -52,6 +52,7 @@ from .research import (
 from .synthesis import SYNTHESIS_PLAN_PREFIX, SynthesisAdvisor, SynthesisNode
 from .telegram_notifications import (
     append_node_with_best_score_notification,
+    notify_existing_node_with_best_score_notification,
     send_telegram_test_message,
 )
 from .autogluon_preprocess import AGENT_MODE, BASELINE_PLAN_PREFIX
@@ -6384,6 +6385,12 @@ def run(argv: list[str] | None = None):
                                             node=result_node,
                                             experiment_id=cfg.exp_name,
                                         )
+                                    else:
+                                        notify_existing_node_with_best_score_notification(
+                                            journal=journal,
+                                            node=result_node,
+                                            experiment_id=cfg.exp_name,
+                                        )
                                     debug_log(
                                         "after_append_crashed_node",
                                         phase="journal",
@@ -6471,6 +6478,12 @@ def run(argv: list[str] | None = None):
                             )
                             if not node_already_in_journal:
                                 append_node_with_best_score_notification(
+                                    journal=journal,
+                                    node=result_node,
+                                    experiment_id=cfg.exp_name,
+                                )
+                            else:
+                                notify_existing_node_with_best_score_notification(
                                     journal=journal,
                                     node=result_node,
                                     experiment_id=cfg.exp_name,

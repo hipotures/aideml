@@ -18,10 +18,16 @@ TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 DEFAULT_TELEGRAM_LOG_PATH = Path("/tmp/aideml/telegram.log")
 
 
-def _best_scored_node(journal: Journal) -> Node | None:
+def _best_scored_node(
+    journal: Journal,
+    *,
+    exclude_node: Node | None = None,
+) -> Node | None:
     candidates = [
         node
         for node in journal.good_nodes
+        if node is not exclude_node
+        and (exclude_node is None or node.id != exclude_node.id)
         if node.metric is not None and node.metric.value is not None
     ]
     return max(candidates, key=lambda node: node.metric, default=None)
@@ -173,6 +179,22 @@ def append_node_with_best_score_notification(
 ) -> None:
     previous_best = _best_scored_node(journal)
     journal.append(node)
+    notify_new_best_score(
+        node=node,
+        previous_best=previous_best,
+        experiment_id=experiment_id,
+        send_message=send_message,
+    )
+
+
+def notify_existing_node_with_best_score_notification(
+    *,
+    journal: Journal,
+    node: Node,
+    experiment_id: str,
+    send_message: Callable[[str], None] = send_telegram_message,
+) -> None:
+    previous_best = _best_scored_node(journal, exclude_node=node)
     notify_new_best_score(
         node=node,
         previous_best=previous_best,

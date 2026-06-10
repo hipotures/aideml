@@ -4,6 +4,7 @@ import pytest
 from aide.journal import Journal, Node
 from aide.telegram_notifications import (
     append_node_with_best_score_notification,
+    notify_existing_node_with_best_score_notification,
     send_telegram_message,
     send_telegram_test_message,
 )
@@ -62,6 +63,37 @@ def test_append_node_skips_notification_when_score_does_not_improve(monkeypatch)
     )
 
     assert sent_messages == []
+
+
+def test_existing_node_notifies_when_updated_to_new_best_score(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "chat-id")
+    journal = Journal()
+    journal.append(_node(0.96113))
+    generated = Node(code="print('ok')", plan="generated")
+    generated.metric = WorstMetricValue()
+    generated.is_buggy = False
+    journal.append(generated)
+    generated.metric = MetricValue(0.96259, maximize=True)
+    sent_messages: list[str] = []
+
+    notify_existing_node_with_best_score_notification(
+        journal=journal,
+        node=generated,
+        experiment_id="2-lumpy-yellow-raptor",
+        send_message=sent_messages.append,
+    )
+
+    assert sent_messages == [
+        "\n".join(
+            [
+                "Best score: 0.96259",
+                "Old best score: 0.96113",
+                "Step: 1",
+                "Id: 2-lumpy-yellow-raptor",
+            ]
+        )
+    ]
 
 
 def test_send_telegram_message_noops_without_token(monkeypatch, tmp_path):
