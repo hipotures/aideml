@@ -23,6 +23,10 @@ families, not as a fixed magic list of model names to copy every time. Include
 concrete model names only when they are clearly appropriate for the task and
 expected runtime. Do not make each hypothesis depend on a different arbitrary
 algorithm subset unless the feature family clearly requires it.
+The baseline model panel should normally be reused across initial hypotheses
+unless the feature family clearly requires a different estimator. Hypothesis
+novelty must come from the feature/preprocessing/data-representation strategy,
+not from changing panel composition.
 
 Do not propose heavy ensembling, stacking, calibration pipelines,
 hyperparameter search, seed search, or advanced model-specific tricks in

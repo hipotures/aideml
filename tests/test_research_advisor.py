@@ -1963,6 +1963,8 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "only the number of bins is not" in prompt
     assert "basic algorithm families fit the engineered features best" in compact_prompt
     assert "not as a fixed magic list of model names" in prompt
+    assert "baseline model panel should normally be reused" in prompt
+    assert "not from changing panel composition" in prompt
     assert "Do not propose heavy ensembling" in prompt
     assert "Do not target a specific previous node or code block" in prompt
 
