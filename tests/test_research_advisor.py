@@ -758,6 +758,22 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
     cfg = _manual_cfg(tmp_path)
     cfg.agent.gpu = True
     cfg.agent.aux = "star_classification.csv"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="AutoGluon-only idea",
+        summary="This must not enter a legacy hypothesis prompt.",
+        agent_modes=["autogluon"],
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        title="Disabled idea",
+        summary="This must not enter any hypothesis prompt.",
+        enabled=False,
+    )
     seen: list[tuple[str, str]] = []
 
     def fake_runner(cmd, *, input, text, capture_output, timeout, cwd):
@@ -790,25 +806,30 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
     )
 
     assert [hypothesis.id for hypothesis in selection.hypotheses] == [
-        "000001",
-        "000002",
+        "000003",
+        "000004",
     ]
     assert [hypothesis_id for hypothesis_id, _prompt in seen] == [
-        "000001",
-        "000002",
+        "000003",
+        "000004",
     ]
-    assert "Generated 000001" not in seen[0][1]
-    assert "Generated 000001" in seen[1][1]
+    assert "Generated 000003" not in seen[0][1]
+    assert "Generated 000003" in seen[1][1]
+    assert "AutoGluon-only idea" not in seen[1][1]
+    assert "Disabled idea" not in seen[1][1]
+    assert '"id"' not in seen[1][1]
+    assert '"enabled"' not in seen[1][1]
+    assert '"agent_modes"' not in seen[1][1]
 
     first_dir = (
-        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000003"
     )
     second_dir = (
-        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000002"
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000004"
     )
     for hypothesis_dir, hypothesis_id in [
-        (first_dir, "000001"),
-        (second_dir, "000002"),
+        (first_dir, "000003"),
+        (second_dir, "000004"),
     ]:
         assert (hypothesis_dir / "request.md").exists()
         assert (hypothesis_dir / "request.json").exists()
@@ -836,11 +857,11 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
         for line in generated_log.read_text(encoding="utf-8").splitlines()
     ]
     assert [record["hypothesis_ids"] for record in records] == [
-        ["000001"],
-        ["000002"],
+        ["000003"],
+        ["000004"],
     ]
     assert records[0]["checkpoint_dirs"][0].endswith(
-        "research_hypotheses/playground-series-s6e5/000001"
+        "research_hypotheses/playground-series-s6e5/000003"
     )
 
 

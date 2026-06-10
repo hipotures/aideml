@@ -4480,6 +4480,8 @@ def stage_status_message(
     if active_stage == "generating":
         elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
+    if active_stage == "researching":
+        return f"[green]Generating hypotheses...{elapsed_text}"
     if active_stage == "refactoring":
         elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Refactoring code...{elapsed_text}"
@@ -5806,6 +5808,7 @@ def run(argv: list[str] | None = None):
                                 return selection
 
                             try:
+                                agent.set_active_stage("researching")
                                 generated_selection = run_with_live_refresh(
                                     live,
                                     generate_live,
@@ -5824,6 +5827,7 @@ def run(argv: list[str] | None = None):
                             finally:
                                 operator_notice = None
                                 agent.clear_active_step()
+                                agent.set_active_stage(None)
 
                             if not pipeline_materialize_enabled():
                                 record_hypothesis_only_selection(

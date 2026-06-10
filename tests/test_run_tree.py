@@ -2943,6 +2943,10 @@ def test_stage_status_message_names_review_stage():
         )
         == "[green]Generating code @ 000253, 000324, 000386, 000901..."
     )
+    assert (
+        stage_status_message("researching", 65)
+        == "[green]Generating hypotheses... (1m 05s)"
+    )
     assert stage_status_message("executing") == "[magenta]Executing code..."
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
     assert (

@@ -1260,7 +1260,6 @@ def generate_research_hypotheses_for_pipeline(
             repo_root=repo_root,
         )
         context["hypothesis_count"] = 1
-        context["target_hypothesis_id"] = hypothesis_id
         result = run_research_checkpoint(
             cfg=cfg,
             context=context,
@@ -2682,7 +2681,7 @@ def _current_run_generated_hypothesis_payloads(
     cfg: Config,
     *,
     repo_root: Path = REPO_ROOT,
-) -> list[dict[str, Any]]:
+) -> list[str]:
     try:
         generated_ids = _load_generated_root_ids(cfg)
     except OSError:
@@ -2694,7 +2693,7 @@ def _current_run_generated_hypothesis_payloads(
     except ValueError:
         return []
     by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
-    payloads: list[dict[str, Any]] = []
+    payloads: list[str] = []
     for hypothesis_id in generated_ids:
         hypothesis = by_id.get(hypothesis_id)
         if hypothesis is None:
@@ -2709,27 +2708,20 @@ def _current_run_generated_hypothesis_payloads(
             if scored_code is not None
             else load_hypothesis_root_code(cfg, hypothesis_id, repo_root=repo_root)
         )
-        payload: dict[str, Any] = {
-            "id": hypothesis.id,
-            "title": hypothesis.title,
-            "summary": _compact_prompt_text(hypothesis.summary, max_chars=500),
-            "rationale": _compact_prompt_text(hypothesis.rationale, max_chars=900),
-            "expected_effect": _compact_prompt_text(
-                hypothesis.expected_effect,
-                max_chars=500,
-            ),
-            "risk": _compact_prompt_text(hypothesis.risk, max_chars=500),
-        }
+        parts = [
+            f"{hypothesis.title}: "
+            f"{_compact_prompt_text(hypothesis.summary, max_chars=260)}",
+        ]
         if scored_code is not None:
-            payload["code_status"] = "executed"
-            payload["score"] = _prompt_score(scored_code.score)
-            payload["code_file"] = scored_code.path.name
+            parts.append(f"status=executed, score={_prompt_score(scored_code.score)}")
         elif root_code is not None:
-            payload["code_status"] = "materialized_not_scored"
-            payload["code_file"] = root_code.path.name
+            parts.append("status=code_generated_not_scored")
         else:
-            payload["code_status"] = "hypothesis_only"
-        payloads.append(payload)
+            parts.append("status=hypothesis_only")
+        expected = _compact_prompt_text(hypothesis.expected_effect, max_chars=220)
+        if expected:
+            parts.append(f"expected={expected}")
+        payloads.append("; ".join(parts))
     return payloads
 
 
@@ -2737,32 +2729,24 @@ def _existing_hypothesis_payloads(
     cfg: Config,
     *,
     repo_root: Path = REPO_ROOT,
-) -> list[dict[str, Any]]:
+) -> list[str]:
     try:
         library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
     except ValueError:
         return []
     agent_mode = _manual_agent_mode_key(cfg)
-    payloads: list[dict[str, Any]] = []
+    payloads: list[str] = []
     for hypothesis in library.hypotheses:
-        payloads.append(
-            {
-                "id": hypothesis.id,
-                "enabled": hypothesis.enabled,
-                "agent_modes": hypothesis.agent_modes,
-                "compatible_with_current_agent": (
-                    hypothesis.enabled and agent_mode in hypothesis.agent_modes
-                ),
-                "title": hypothesis.title,
-                "summary": _compact_prompt_text(hypothesis.summary, max_chars=360),
-                "rationale": _compact_prompt_text(hypothesis.rationale, max_chars=700),
-                "expected_effect": _compact_prompt_text(
-                    hypothesis.expected_effect,
-                    max_chars=360,
-                ),
-                "risk": _compact_prompt_text(hypothesis.risk, max_chars=360),
-            }
+        if not hypothesis.enabled or agent_mode not in hypothesis.agent_modes:
+            continue
+        text = "\n".join(
+            [
+                f"Title: {hypothesis.title}",
+                f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
+                f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
+            ]
         )
+        payloads.append(text)
     return payloads
 
 
@@ -2919,7 +2903,6 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "existing_hypotheses",
             "current_run_hypotheses",
             "runtime_options",
-            "target_hypothesis_id",
             "hypothesis_count",
         ]
         if key in context and context.get(key) is not None
