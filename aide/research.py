@@ -2702,6 +2702,164 @@ def _max_public_score(
     return _prompt_score(max(scores)) if scores else None
 
 
+def _manifest_file_version(entry: dict[str, Any]) -> int:
+    file_name = entry.get("file")
+    if not isinstance(file_name, str):
+        return 0
+    match = ROOT_CODE_PATTERN.match(file_name)
+    return int(match.group(2)) if match is not None else 0
+
+
+def _latest_manifest_entry(
+    entries: list[dict[str, Any]],
+    predicate: Callable[[dict[str, Any]], bool],
+) -> dict[str, Any] | None:
+    matching = [entry for entry in entries if predicate(entry)]
+    if not matching:
+        return None
+    return max(matching, key=_manifest_file_version)
+
+
+def _hypothesis_manifest_entries_for_prompt(
+    *,
+    cfg: Config,
+    source_dir: Path,
+    hypothesis_id: str,
+    agent_mode: str,
+) -> list[dict[str, Any]]:
+    hypothesis_dir = _hypothesis_dir(source_dir, hypothesis_id)
+    try:
+        manifest = _load_code_manifest(hypothesis_dir)
+    except ValueError:
+        return []
+    versions = manifest.get("versions")
+    if not isinstance(versions, dict):
+        return []
+    mode_versions = versions.get(agent_mode)
+    if not isinstance(mode_versions, list):
+        return []
+    required_gpu = _cfg_agent_gpu_enabled(cfg)
+    return [
+        entry
+        for entry in mode_versions
+        if isinstance(entry, dict)
+        and _manifest_entry_runtime_matches(entry, gpu=required_gpu)
+    ]
+
+
+def _manifest_runtime_text(entry: dict[str, Any]) -> str | None:
+    for key in ("runtime_seconds", "exec_time", "elapsed_s", "duration_s"):
+        value = entry.get(key)
+        if isinstance(value, (int, float)):
+            return f"{float(value):.1f}s"
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _manifest_warning_text(entry: dict[str, Any]) -> str | None:
+    for key in ("validation_warning", "warning", "error_type", "exc_type"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _hypothesis_text_for_prompt(
+    hypothesis: ManualHypothesis,
+    *,
+    manifest_entry: dict[str, Any] | None = None,
+    evidence_kind: str | None = None,
+) -> str:
+    lines = [
+        f"Title: {hypothesis.title}",
+        f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
+        f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
+    ]
+    if evidence_kind:
+        lines.append(f"Evidence type: {evidence_kind}")
+    if manifest_entry is not None:
+        score = _numeric_manifest_score(manifest_entry.get("score"))
+        if score is not None:
+            lines.append(f"Validation metric: {_prompt_score(score)}")
+        status = manifest_entry.get("status")
+        if isinstance(status, str) and status.strip():
+            lines.append(f"Status: {status.strip()}")
+        runtime = _manifest_runtime_text(manifest_entry)
+        if runtime:
+            lines.append(f"Runtime: {runtime}")
+        warning = _manifest_warning_text(manifest_entry)
+        if warning:
+            lines.append(f"Warning: {warning}")
+    return "\n".join(lines)
+
+
+def _hypothesis_prompt_payloads_by_state(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, list[str]]:
+    try:
+        library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    except ValueError:
+        return {
+            "executed_hypotheses": [],
+            "unexecuted_hypotheses": [],
+            "buggy_hypotheses": [],
+        }
+    agent_mode = _manual_agent_mode_key(cfg)
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    grouped: dict[str, list[str]] = {
+        "executed_hypotheses": [],
+        "unexecuted_hypotheses": [],
+        "buggy_hypotheses": [],
+    }
+    for hypothesis in library.hypotheses:
+        if not hypothesis.enabled or agent_mode not in hypothesis.agent_modes:
+            continue
+        entries = _hypothesis_manifest_entries_for_prompt(
+            cfg=cfg,
+            source_dir=source_dir,
+            hypothesis_id=hypothesis.id,
+            agent_mode=agent_mode,
+        )
+        scored_entry = _latest_manifest_entry(
+            entries,
+            lambda entry: entry.get("buggy") is not True
+            and entry.get("status") != "bug"
+            and _numeric_manifest_score(entry.get("score")) is not None,
+        )
+        if scored_entry is not None:
+            grouped["executed_hypotheses"].append(
+                _hypothesis_text_for_prompt(
+                    hypothesis,
+                    manifest_entry=scored_entry,
+                    evidence_kind="executed evidence",
+                )
+            )
+            continue
+        buggy_entry = _latest_manifest_entry(
+            entries,
+            lambda entry: entry.get("buggy") is True or entry.get("status") == "bug",
+        )
+        if buggy_entry is not None:
+            grouped["buggy_hypotheses"].append(
+                _hypothesis_text_for_prompt(
+                    hypothesis,
+                    manifest_entry=buggy_entry,
+                    evidence_kind="implementation warning",
+                )
+            )
+            continue
+        grouped["unexecuted_hypotheses"].append(
+            _hypothesis_text_for_prompt(
+                hypothesis,
+                evidence_kind="novelty context only",
+            )
+        )
+    return grouped
+
+
 def _current_run_generated_hypothesis_payloads(
     cfg: Config,
     *,
@@ -2725,16 +2883,6 @@ def _current_run_generated_hypothesis_payloads(
             continue
         payloads.append(_hypothesis_text_for_prompt(hypothesis))
     return payloads
-
-
-def _hypothesis_text_for_prompt(hypothesis: ManualHypothesis) -> str:
-    return "\n".join(
-        [
-            f"Title: {hypothesis.title}",
-            f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
-            f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
-        ]
-    )
 
 
 def _existing_hypothesis_payloads(
@@ -2850,6 +2998,10 @@ def collect_research_context(
     best_node = journal.get_best_node()
     registry_entries = _load_submission_registry(cfg)
     preprocess_only = is_autogluon_preprocess_mode(cfg)
+    hypothesis_payloads = _hypothesis_prompt_payloads_by_state(
+        cfg,
+        repo_root=repo_root,
+    )
     return {
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,
@@ -2878,14 +3030,7 @@ def collect_research_context(
             journal=journal,
             completed_steps=completed_steps,
         ),
-        "existing_hypotheses": _existing_hypothesis_payloads(
-            cfg,
-            repo_root=repo_root,
-        ),
-        "current_run_hypotheses": _current_run_generated_hypothesis_payloads(
-            cfg,
-            repo_root=repo_root,
-        ),
+        **hypothesis_payloads,
         "runtime_options": _research_request_cfg_snapshot(cfg),
     }
 
@@ -3048,6 +3193,21 @@ def _format_research_context_for_prompt(context: dict[str, Any]) -> str:
             ]
         )
     _append_runtime_options_section(lines, context.get("runtime_options"))
+    _append_text_list_section(
+        lines,
+        "Executed hypotheses",
+        context.get("executed_hypotheses"),
+    )
+    _append_text_list_section(
+        lines,
+        "Unexecuted hypotheses",
+        context.get("unexecuted_hypotheses"),
+    )
+    _append_text_list_section(
+        lines,
+        "Buggy hypotheses",
+        context.get("buggy_hypotheses"),
+    )
     _append_text_list_section(
         lines,
         "Existing hypotheses",

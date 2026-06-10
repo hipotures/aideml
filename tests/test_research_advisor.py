@@ -1980,6 +1980,59 @@ def test_research_prompt_uses_requested_hypothesis_count():
     assert "contain exactly 3 items" in prompt
 
 
+def test_research_context_splits_hypotheses_by_execution_state(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    for hypothesis_id, title in [
+        ("000001", "Executed feature family"),
+        ("000002", "Buggy feature family"),
+        ("000003", "Unexecuted feature family"),
+    ]:
+        _write_manual_hypothesis(
+            tmp_path,
+            "playground-series-s6e5",
+            hypothesis_id,
+            title=title,
+        )
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        agent_mode="legacy",
+        file_name="legacy-001.py",
+        score=0.91234,
+    )
+    _write_code_manifest(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        agent_mode="legacy",
+        file_name="legacy-001.py",
+        score=None,
+        buggy=True,
+    )
+
+    context = collect_research_context(
+        cfg=cfg,
+        task_desc="task",
+        journal=Journal(),
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+    prompt = build_research_prompt(context)
+
+    assert "Executed feature family" in context["executed_hypotheses"][0]
+    assert "Validation metric: 0.91234" in context["executed_hypotheses"][0]
+    assert "Buggy feature family" in context["buggy_hypotheses"][0]
+    assert "implementation warning" in context["buggy_hypotheses"][0]
+    assert "Unexecuted feature family" in context["unexecuted_hypotheses"][0]
+    assert "novelty context only" in context["unexecuted_hypotheses"][0]
+    assert "## Executed hypotheses" in prompt
+    assert "## Buggy hypotheses" in prompt
+    assert "## Unexecuted hypotheses" in prompt
+    assert "## Existing hypotheses" not in prompt
+
+
 def test_research_prompt_includes_current_run_hypotheses():
     prompt = build_research_prompt(
         {
@@ -2003,7 +2056,7 @@ def test_research_prompt_includes_current_run_hypotheses():
     assert "Photometric Color Stack" in prompt
     assert '"current_run_hypotheses"' not in prompt
     assert "```json" not in prompt
-    assert "materially different" in prompt
+    assert "novelty context" in prompt
 
 
 def test_research_prompt_includes_previous_research_summaries(tmp_path):
