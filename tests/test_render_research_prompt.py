@@ -14,6 +14,7 @@ from scripts.render_research_prompt import (
     repo_root,
     write_prompt,
 )
+from scripts.render_next_hypothesis_prompt import main as render_next_hypothesis_main
 
 
 def test_render_prompt_replaces_all_placeholders():
@@ -88,6 +89,50 @@ def test_write_prompt_renders_to_explicit_output_path(tmp_path: Path):
 
     assert result == output_path
     assert output_path.read_text() == "Use demo with ROC AUC."
+
+
+def test_render_next_hypothesis_prompt_writes_dry_run_request(tmp_path: Path):
+    data_dir = tmp_path / "demo-task"
+    data_dir.mkdir()
+    (data_dir / "train.csv").write_text("id,x,target\n1,2,0\n", encoding="utf-8")
+    (data_dir / "test.csv").write_text("id,x\n2,3\n", encoding="utf-8")
+    (data_dir / "sample_submission.csv").write_text(
+        "id,target\n2,0\n",
+        encoding="utf-8",
+    )
+    (data_dir / "external.csv").write_text("id,x,target\n3,4,1\n", encoding="utf-8")
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("Predict target.\n", encoding="utf-8")
+    out_dir = tmp_path / "rendered-next"
+
+    status = render_next_hypothesis_main(
+        [
+            "--mode",
+            "legacy",
+            "--gpu",
+            "true",
+            "--aux",
+            "external.csv",
+            "--out-dir",
+            str(out_dir),
+            f"data_dir={data_dir}",
+            f"desc_file={desc_file}",
+            f"log_dir={tmp_path / 'logs'}",
+            f"workspace_dir={tmp_path / 'workspaces'}",
+        ]
+    )
+
+    assert status == 0
+    assert (out_dir / "request.md").exists()
+    request = json.loads((out_dir / "request.json").read_text(encoding="utf-8"))
+    assert request["dry_run"] is True
+    runtime_options = request["context"]["runtime_options"]
+    assert runtime_options["agent"]["mode"] == "legacy"
+    assert runtime_options["agent"]["gpu"] is True
+    assert runtime_options["agent"]["aux"] == "external.csv"
+    assert runtime_options["research"]["materialize"] is False
+    assert runtime_options["research"]["execute"] is False
+    assert "Return exactly 1 concise new initial feature-search" in request["prompt"]
 
 
 def test_write_prompt_applies_value_overrides(tmp_path: Path):
