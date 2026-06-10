@@ -2947,6 +2947,10 @@ def test_stage_status_message_names_review_stage():
         stage_status_message("researching", 65)
         == "[green]Generating hypotheses... (1m 05s)"
     )
+    assert (
+        stage_status_message("researching", 40, stage_timeout_s=900)
+        == "[green]Generating hypotheses..."
+    )
     assert stage_status_message("executing") == "[magenta]Executing code..."
     assert stage_status_message("reviewing") == "[cyan]Reviewing result..."
     assert (

@@ -4481,6 +4481,7 @@ def stage_status_message(
         elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Generating code{hypothesis_text}...{elapsed_text}"
     if active_stage == "researching":
+        elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Generating hypotheses...{elapsed_text}"
     if active_stage == "refactoring":
         elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
@@ -4793,6 +4794,8 @@ def run(argv: list[str] | None = None):
     def active_stage_timeout_s() -> int | None:
         if agent.active_stage == "generating":
             return cfg.agent.code.timeout
+        if agent.active_stage == "researching":
+            return cfg.research.timeout
         if agent.active_stage == "refactoring":
             return cfg.refactor.timeout
         return None
@@ -5395,7 +5398,11 @@ def run(argv: list[str] | None = None):
             prog.update(
                 prog.task_ids[0],
                 description=(
-                    "Refactor:" if agent.active_stage == "refactoring" else "Generate:"
+                    "Refactor:"
+                    if agent.active_stage == "refactoring"
+                    else "Research:"
+                    if agent.active_stage == "researching"
+                    else "Generate:"
                 ),
                 total=stage_timeout,
                 completed=min(int(elapsed), int(stage_timeout)),
