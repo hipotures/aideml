@@ -2038,6 +2038,7 @@ def _next_unfinished_library_root_selection(
     except (OSError, ValueError):
         return None
 
+    forced_hypothesis = getattr(cfg.agent.search, "forced_hypothesis", None)
     used_root_ids = {
         hypothesis_id_for_node(node)
         for node in journal.nodes
@@ -2045,10 +2046,14 @@ def _next_unfinished_library_root_selection(
         and hypothesis_id_for_node(node) is not None
         and node_runtime_matches_cfg(cfg, node)
     }
-    for hypothesis in sorted(
-        _compatible_manual_hypotheses(cfg, library),
-        key=lambda item: item.id,
-    ):
+    compatible = _compatible_manual_hypotheses(cfg, library)
+    if forced_hypothesis is not None:
+        compatible = [
+            hypothesis
+            for hypothesis in compatible
+            if hypothesis.id == forced_hypothesis
+        ]
+    for hypothesis in sorted(compatible, key=lambda item: item.id):
         if hypothesis.id in used_root_ids:
             continue
         scored_code = (
@@ -4775,6 +4780,8 @@ def run(argv: list[str] | None = None):
         if not _is_research_hypothesis_mode(cfg):
             return 0
         if runtime_options.generate_only_hypothesis_ids:
+            return 0
+        if getattr(cfg.agent.search, "forced_hypothesis", None):
             return 0
         root_quota = pipeline_root_hypothesis_quota()
         if root_quota <= 0:

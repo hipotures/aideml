@@ -2191,6 +2191,29 @@ def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000014"]
 
 
+def test_next_unfinished_library_root_selection_respects_forced_hypothesis(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-root-selection-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-root-selection-test")
+    cfg.agent.mode = "legacy"
+    cfg.agent.search.forced_hypothesis = "000014"
+
+    _write_root_hypothesis(tmp_path, task, "000012", title="Earlier")
+    _write_root_hypothesis(tmp_path, task, "000014", title="Forced")
+
+    selection = _next_unfinished_library_root_selection(
+        cfg,
+        Journal(),
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert selection is not None
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000014"]
+
+
 def test_debuggable_hypothesis_root_blocks_next_library_root(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
