@@ -2179,6 +2179,7 @@ def test_solution_tree_marks_manifest_scored_root_as_best_when_highest(tmp_path)
     cfg.log_dir = str(tmp_path / "logs" / "2-tree-best-manifest-test")
     cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-best-manifest-test")
     cfg.agent.mode = "legacy"
+    cfg.agent.gpu = False
 
     _write_root_hypothesis(tmp_path, task, "000011", title="Journal scored")
     manifest_dir = _write_root_hypothesis(tmp_path, task, "000019", title="Manifest scored")
@@ -2193,6 +2194,9 @@ def test_solution_tree_marks_manifest_scored_root_as_best_when_highest(tmp_path)
                             "buggy": False,
                             "status": "ok",
                             "score": 0.966515,
+                            "exec_time": 6 * 60 + 20,
+                            "gpu": False,
+                            "aux": False,
                         }
                     ]
                 },
@@ -2224,6 +2228,14 @@ def test_solution_tree_marks_manifest_scored_root_as_best_when_highest(tmp_path)
 
     assert "\x1b[1;33m0.96652·000019" in tree_output
     assert "\x1b[1;33m0.96652·000019" in roots_output
+    assert "0.96652·000019·6m" in _render_text(
+        render_tree_view(
+            build_tree_view(journal, cfg=cfg, repo_root=tmp_path),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
     assert "\x1b[1;33m0.96113·000011" not in tree_output
 
 

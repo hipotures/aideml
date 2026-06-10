@@ -65,6 +65,24 @@ def test_append_node_skips_notification_when_score_does_not_improve(monkeypatch)
     assert sent_messages == []
 
 
+def test_append_node_skips_notification_below_manifest_best_floor(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "chat-id")
+    journal = Journal()
+    journal.append(_node(0.96113))
+    sent_messages: list[str] = []
+
+    append_node_with_best_score_notification(
+        journal=journal,
+        node=_node(0.96366),
+        experiment_id="2-logical-chirpy-caracal",
+        previous_best_floor=MetricValue(0.96652, maximize=True),
+        send_message=sent_messages.append,
+    )
+
+    assert sent_messages == []
+
+
 def test_existing_node_notifies_when_updated_to_new_best_score(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "chat-id")

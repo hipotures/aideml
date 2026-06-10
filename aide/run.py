@@ -504,9 +504,9 @@ def _node_hypothesis_suffix(node: Node) -> str:
     return ""
 
 
-def _node_runtime_suffix(node: Node) -> str:
+def _runtime_suffix_from_seconds(value: object) -> str:
     try:
-        seconds = float(node.exec_time)
+        seconds = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return ""
     if seconds <= 0:
@@ -515,6 +515,14 @@ def _node_runtime_suffix(node: Node) -> str:
     if minutes <= 0:
         return ""
     return f"·{minutes}m"
+
+
+def _node_runtime_suffix(node: Node) -> str:
+    return _runtime_suffix_from_seconds(node.exec_time)
+
+
+def _row_runtime_suffix(row: dict[str, object]) -> str:
+    return _runtime_suffix_from_seconds(row.get("exec_time"))
 
 
 def _is_timeout_node(node: Node) -> bool:
@@ -1648,6 +1656,7 @@ def build_tree_view(
         hypothesis_id = str(row["hypothesis_id"])
         status_text = str(row.get("status") or "hypothesis")
         score = row.get("score")
+        runtime_suffix = _row_runtime_suffix(row)
         prefix = "└── " if is_last and not has_active_after_roots else "├── "
         is_active_virtual_root = (
             active_stage is not None
@@ -1661,7 +1670,7 @@ def build_tree_view(
             if status_text in {"bug", "failed"}:
                 indicator = "[*]" if blink_on else "[ ]"
                 line.append(f"{indicator} ", style="bold yellow")
-                line.append(f"bug·{hypothesis_id}", style="red")
+                line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
             else:
                 line.append_text(
                     _tree_active_placeholder_line(
@@ -1702,9 +1711,12 @@ def build_tree_view(
         line.append(f"{marker} ", style=status_style)
         if status_text == "score" and isinstance(score, float):
             metric_style = "bold yellow" if is_best_score else TUI_METRIC_VALUE_STYLE
-            line.append(f"{score:.5f}·{hypothesis_id}", style=metric_style)
+            line.append(
+                f"{score:.5f}·{hypothesis_id}{runtime_suffix}",
+                style=metric_style,
+            )
         elif status_text in {"bug", "failed"}:
-            line.append(f"bug·{hypothesis_id}", style="red")
+            line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
         else:
             line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
         append_item(
@@ -2026,9 +2038,13 @@ def _hypothesis_root_inventory_rows(
         metric_maximize: bool | None = None
         step: int | None = None
         created_at: float | None = None
+        exec_time: float | None = None
         if node is not None:
             step = node.step
             created_at = node.ctime
+            exec_time = (
+                node.exec_time if isinstance(node.exec_time, int | float) else None
+            )
             if _is_scored_hypothesis_node(node):
                 status = "score"
                 assert node.metric is not None
@@ -2056,6 +2072,7 @@ def _hypothesis_root_inventory_rows(
                 status = "score"
                 score = float(scored_code.score)
                 metric_maximize = True
+                exec_time = scored_code.exec_time
             elif (
                 load_failed_hypothesis_root_code(cfg, hypothesis.id)
                 if repo_root is None
@@ -2083,6 +2100,7 @@ def _hypothesis_root_inventory_rows(
                 "status": status,
                 "score": score,
                 "metric_maximize": metric_maximize,
+                "exec_time": exec_time,
                 "step": step,
                 "created_at": created_at,
                 "mode": _hypothesis_mode_label(hypothesis.agent_modes),
@@ -2232,6 +2250,7 @@ def build_root_hypotheses_view(
         hypothesis_id = str(row["hypothesis_id"])
         score = row.get("score")
         status_text = str(row.get("status") or "hypothesis")
+        runtime_suffix = _row_runtime_suffix(row)
         prefix = "└── " if index == len(rows) else "├── "
         row_is_best = (
             (current_score_key := row_score_key(row)) is not None
@@ -2258,9 +2277,12 @@ def build_root_hypotheses_view(
         line.append(f"{marker} ", style=status_style)
         if status_text == "score" and isinstance(score, float):
             metric_style = "bold yellow" if row_is_best else TUI_METRIC_VALUE_STYLE
-            line.append(f"{score:.5f}·{hypothesis_id}", style=metric_style)
+            line.append(
+                f"{score:.5f}·{hypothesis_id}{runtime_suffix}",
+                style=metric_style,
+            )
         elif status_text in {"bug", "failed"}:
-            line.append(f"bug·{hypothesis_id}", style="red")
+            line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
         else:
             line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
         lines.append(line)
@@ -3268,6 +3290,28 @@ def _best_scored_node(journal: Journal) -> Node | None:
         and node.metric.value is not None
     ]
     return max(candidates, key=lambda node: node.metric, default=None)
+
+
+def _best_manifest_score_metric_excluding_node(
+    cfg: Config,
+    *,
+    exclude_node: Node | None = None,
+) -> MetricValue | None:
+    try:
+        library = load_manual_hypothesis_library(cfg)
+    except (OSError, ValueError):
+        return None
+
+    metrics: list[MetricValue] = []
+    exclude_node_id = exclude_node.id if exclude_node is not None else None
+    for hypothesis in _compatible_manual_hypotheses(cfg, library):
+        scored_code = load_scored_hypothesis_root_code(cfg, hypothesis.id)
+        if scored_code is None:
+            continue
+        if exclude_node_id is not None and scored_code.source_node_id == exclude_node_id:
+            continue
+        metrics.append(MetricValue(scored_code.score, maximize=True))
+    return max(metrics, default=None)
 
 
 def build_best_score_status(journal: Journal) -> Text | None:
@@ -6456,6 +6500,10 @@ def run(argv: list[str] | None = None):
                                 journal=journal,
                                 node=result_node,
                                 experiment_id=cfg.exp_name,
+                                previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                    cfg,
+                                    exclude_node=result_node,
+                                ),
                             )
                             node_already_in_journal = True
                             debug_log(
@@ -6493,6 +6541,10 @@ def run(argv: list[str] | None = None):
                                 journal=journal,
                                 node=result_node,
                                 experiment_id=cfg.exp_name,
+                                previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                    cfg,
+                                    exclude_node=result_node,
+                                ),
                             )
                             debug_log(
                                 "after_append_nonexecuted_synthesis_node",
@@ -6568,12 +6620,20 @@ def run(argv: list[str] | None = None):
                                             journal=journal,
                                             node=result_node,
                                             experiment_id=cfg.exp_name,
+                                            previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                                cfg,
+                                                exclude_node=result_node,
+                                            ),
                                         )
                                     else:
                                         notify_existing_node_with_best_score_notification(
                                             journal=journal,
                                             node=result_node,
                                             experiment_id=cfg.exp_name,
+                                            previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                                cfg,
+                                                exclude_node=result_node,
+                                            ),
                                         )
                                     debug_log(
                                         "after_append_crashed_node",
@@ -6665,12 +6725,20 @@ def run(argv: list[str] | None = None):
                                     journal=journal,
                                     node=result_node,
                                     experiment_id=cfg.exp_name,
+                                    previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                        cfg,
+                                        exclude_node=result_node,
+                                    ),
                                 )
                             else:
                                 notify_existing_node_with_best_score_notification(
                                     journal=journal,
                                     node=result_node,
                                     experiment_id=cfg.exp_name,
+                                    previous_best_floor=_best_manifest_score_metric_excluding_node(
+                                        cfg,
+                                        exclude_node=result_node,
+                                    ),
                                 )
                             debug_log(
                                 "after_append_node",

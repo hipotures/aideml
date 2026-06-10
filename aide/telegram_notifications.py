@@ -11,6 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 from .journal import Journal, Node
+from .utils.metric import MetricValue
 
 logger = logging.getLogger("aide")
 
@@ -50,12 +51,13 @@ def _best_score_message(
     *,
     node: Node,
     previous_best: Node | None,
+    previous_best_metric: MetricValue | None = None,
     experiment_id: str,
 ) -> str:
+    if previous_best_metric is None and previous_best is not None:
+        previous_best_metric = previous_best.metric
     previous_value = (
-        previous_best.metric.value
-        if previous_best is not None and previous_best.metric is not None
-        else None
+        previous_best_metric.value if previous_best_metric is not None else None
     )
     return "\n".join(
         [
@@ -154,17 +156,28 @@ def notify_new_best_score(
     node: Node,
     previous_best: Node | None,
     experiment_id: str,
+    previous_best_floor: MetricValue | None = None,
     send_message: Callable[[str], None] = send_telegram_message,
 ) -> None:
     if not _is_scored_node(node):
         return
-    if previous_best is not None and not node.metric > previous_best.metric:
+    previous_best_metric = (
+        previous_best.metric
+        if previous_best is not None and previous_best.metric is not None
+        else None
+    )
+    if previous_best_floor is not None and (
+        previous_best_metric is None or previous_best_floor > previous_best_metric
+    ):
+        previous_best_metric = previous_best_floor
+    if previous_best_metric is not None and not node.metric > previous_best_metric:
         return
     _send_message(
         send_message,
         _best_score_message(
             node=node,
             previous_best=previous_best,
+            previous_best_metric=previous_best_metric,
             experiment_id=experiment_id,
         ),
     )
@@ -175,6 +188,7 @@ def append_node_with_best_score_notification(
     journal: Journal,
     node: Node,
     experiment_id: str,
+    previous_best_floor: MetricValue | None = None,
     send_message: Callable[[str], None] = send_telegram_message,
 ) -> None:
     previous_best = _best_scored_node(journal)
@@ -183,6 +197,7 @@ def append_node_with_best_score_notification(
         node=node,
         previous_best=previous_best,
         experiment_id=experiment_id,
+        previous_best_floor=previous_best_floor,
         send_message=send_message,
     )
 
@@ -192,6 +207,7 @@ def notify_existing_node_with_best_score_notification(
     journal: Journal,
     node: Node,
     experiment_id: str,
+    previous_best_floor: MetricValue | None = None,
     send_message: Callable[[str], None] = send_telegram_message,
 ) -> None:
     previous_best = _best_scored_node(journal, exclude_node=node)
@@ -199,5 +215,6 @@ def notify_existing_node_with_best_score_notification(
         node=node,
         previous_best=previous_best,
         experiment_id=experiment_id,
+        previous_best_floor=previous_best_floor,
         send_message=send_message,
     )

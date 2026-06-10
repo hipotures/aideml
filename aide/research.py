@@ -162,6 +162,7 @@ class ScoredHypothesisRootCode(HypothesisRootCode):
     score: float
     created_at: str | None
     source_node_id: str | None
+    exec_time: float | None
 
 
 @dataclass(frozen=True)
@@ -512,6 +513,7 @@ def load_scored_hypothesis_root_code(
         return None
     created_at = entry.get("created_at")
     source_node_id = entry.get("node_id")
+    exec_time = _numeric_manifest_duration(entry.get("exec_time"))
     return ScoredHypothesisRootCode(
         hypothesis_id=root_code.hypothesis_id,
         agent_mode=root_code.agent_mode,
@@ -522,6 +524,7 @@ def load_scored_hypothesis_root_code(
         score=score,
         created_at=created_at if isinstance(created_at, str) else None,
         source_node_id=source_node_id if isinstance(source_node_id, str) else None,
+        exec_time=exec_time,
     )
 
 
@@ -617,7 +620,7 @@ def _scored_hypothesis_node(
             f"score={root_code.score:.5f}; file={root_code.path.name}."
         )
     ]
-    node.exec_time = 0.0
+    node.exec_time = root_code.exec_time if root_code.exec_time is not None else 0.0
     node.exc_type = None
     node.exc_info = None
     node.exc_stack = None
@@ -698,6 +701,7 @@ def save_hypothesis_root_code(
     node_id: str | None = None,
     score: float | None = None,
     created_at: str | None = None,
+    exec_time: float | None = None,
     exception_type: str | None = None,
     exception_info: dict[str, Any] | None = None,
     terminal_output: str | None = None,
@@ -747,6 +751,7 @@ def save_hypothesis_root_code(
         "node_id": node_id,
         "score": score,
         "created_at": created_at,
+        "exec_time": _numeric_manifest_duration(exec_time),
         "gpu": current_gpu,
         "aux": bool(getattr(cfg.agent, "aux", False)),
     }
@@ -1902,6 +1907,13 @@ def _numeric_manifest_score(value: Any) -> float | None:
         return None
     score = float(value)
     return score if math.isfinite(score) else None
+
+
+def _numeric_manifest_duration(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    duration = float(value)
+    return duration if math.isfinite(duration) and duration >= 0 else None
 
 
 def _best_manifest_score_for_mode(

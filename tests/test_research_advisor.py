@@ -3499,6 +3499,7 @@ def test_reviewed_generated_hypothesis_root_updates_manifest_score(
     assert entry["buggy"] is False
     assert entry["node_id"] == node.id
     assert entry["score"] == 0.94783
+    assert entry["exec_time"] == 1.0
     assert manifest["active"]["legacy"] == "legacy-001.py"
 
 

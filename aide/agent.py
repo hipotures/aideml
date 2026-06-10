@@ -2259,6 +2259,7 @@ class Agent:
             node_id=node.id,
             score=score,
             created_at=created_at,
+            exec_time=node.exec_time,
             exception_type=node.exc_type,
             exception_info=node.exc_info,
             terminal_output=node.term_out if node.is_buggy else None,

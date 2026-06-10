@@ -29,8 +29,12 @@ def _hypothesis_or_step_suffix(node: Node) -> str:
 
 
 def _runtime_suffix(node: Node) -> str:
+    return _runtime_suffix_from_value(node.exec_time)
+
+
+def _runtime_suffix_from_value(value: object) -> str:
     try:
-        seconds = float(node.exec_time)
+        seconds = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return ""
     if seconds <= 0:
@@ -286,14 +290,15 @@ def build_web_tree_lines(
         hypothesis_id = str(row.get("hypothesis_id") or "")
         status = str(row.get("status") or "hypothesis")
         score = row.get("score")
+        runtime_suffix = _runtime_suffix_from_value(row.get("exec_time"))
         if status == "score" and isinstance(score, int | float):
-            label = f"{float(score):.5f}·{hypothesis_id}"
+            label = f"{float(score):.5f}·{hypothesis_id}{runtime_suffix}"
             kind = "ok"
         elif status in {"code", "generated"}:
             label = f"generated·{hypothesis_id}"
             kind = "generated"
         elif status in {"bug", "failed"}:
-            label = f"{status}·{hypothesis_id}"
+            label = f"{status}·{hypothesis_id}{runtime_suffix}"
             kind = "bug"
         else:
             label = f"hypothesis·{hypothesis_id}"
