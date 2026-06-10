@@ -819,6 +819,7 @@ class Agent:
         self,
         *,
         forced_hypothesis_root: str | None = None,
+        include_hypothesis_roots: bool = False,
     ) -> Node | None:
         search_cfg = self.acfg.search
         if search_cfg.debug_prob <= 0:
@@ -831,6 +832,11 @@ class Agent:
             for n in self.journal.buggy_nodes
             if (
                 n.is_leaf
+                and (
+                    include_hypothesis_roots
+                    or n.parent is not None
+                    or hypothesis_id_for_node(n) is None
+                )
                 and n.debug_depth < search_cfg.max_debug_depth
                 and not n.is_submission_contract_error
                 and not n.is_terminal_failure

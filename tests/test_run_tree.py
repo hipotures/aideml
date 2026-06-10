@@ -2329,7 +2329,10 @@ def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
                             "file": "legacy-001.py",
                             "buggy": False,
                             "status": "ok",
+                            "node_id": "node-000013",
                             "score": 0.94,
+                            "created_at": "2026-06-10T00:00:00",
+                            "gpu": bool(cfg.agent.gpu),
                         }
                     ]
                 },
@@ -2340,7 +2343,9 @@ def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
     _write_root_hypothesis(tmp_path, task, "000014", title="Next")
 
     journal = Journal()
-    journal.append(_hypothesis_node(_good_node(0.91), "000011"))
+    used_node = _hypothesis_node(_good_node(0.91), "000011")
+    used_node.research_runtime_config = {"gpu": bool(cfg.agent.gpu)}
+    journal.append(used_node)
 
     selection = _next_unfinished_library_root_selection(
         cfg,

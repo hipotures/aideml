@@ -662,19 +662,68 @@ def maybe_seed_scored_hypothesis_roots(
     *,
     is_resume: bool,
 ) -> int:
-    if is_resume:
-        return 0
-    if not getattr(cfg.research, "seed_scored_roots", False):
-        return 0
-    if not getattr(cfg.research, "enabled", False):
-        return 0
-    if getattr(cfg.research, "mode", None) != "hypothesis":
+    should_seed = bool(getattr(cfg.research, "seed_scored_roots", False))
+    should_seed = should_seed or (
+        bool(getattr(cfg.research, "enabled", False))
+        and getattr(cfg.research, "mode", None) == "hypothesis"
+    )
+    should_seed = should_seed or any(
+        node.parent is None and hypothesis_id_for_node(node) is not None
+        for node in journal.nodes
+    )
+    if not should_seed:
         return 0
 
     nodes = scored_hypothesis_root_nodes(cfg)
+    existing_roots_by_id = {
+        hypothesis_id_for_node(node): node
+        for node in journal.nodes
+        if node.parent is None
+        and hypothesis_id_for_node(node) is not None
+    }
+    seeded_count = 0
     for node in nodes:
+        hypothesis_id = hypothesis_id_for_node(node)
+        existing = existing_roots_by_id.get(hypothesis_id)
+        if existing is not None:
+            if _refresh_existing_seeded_hypothesis_root(existing, node):
+                seeded_count += 1
+            continue
         journal.append(node)
-    return len(nodes)
+        existing_roots_by_id[hypothesis_id] = node
+        seeded_count += 1
+    return seeded_count
+
+
+def _refresh_existing_seeded_hypothesis_root(existing: Node, seeded: Node) -> bool:
+    run_stats = getattr(existing, "run_stats", None) or {}
+    if not run_stats.get("seeded_from_manifest"):
+        return False
+    if (
+        existing.metric is not None
+        and existing.metric.value is not None
+        and existing.is_buggy is False
+        and existing.status == "ok"
+    ):
+        return False
+
+    existing.code = seeded.code
+    existing.plan = seeded.plan
+    existing.metric = seeded.metric
+    existing.is_buggy = seeded.is_buggy
+    existing.status = seeded.status
+    existing._term_out = list(seeded._term_out)
+    existing.exec_time = seeded.exec_time
+    existing.run_stats = dict(seeded.run_stats or {})
+    existing.exc_type = seeded.exc_type
+    existing.exc_info = seeded.exc_info
+    existing.exc_stack = seeded.exc_stack
+    existing.analysis = seeded.analysis
+    existing.research_mode = seeded.research_mode
+    existing.research_hypotheses_offered = list(seeded.research_hypotheses_offered)
+    existing.research_source_hash = seeded.research_source_hash
+    existing.research_runtime_config = dict(seeded.research_runtime_config or {})
+    return True
 
 
 def _is_research_hypothesis_mode(cfg: Config) -> bool:
@@ -4791,6 +4840,15 @@ def run(argv: list[str] | None = None):
                 )
                 if seeded_count:
                     save_run(cfg, journal)
+    else:
+        with Status("Seeding run from scored hypothesis roots ..."):
+            seeded_count = maybe_seed_scored_hypothesis_roots(
+                cfg,
+                journal,
+                is_resume=is_resume,
+            )
+            if seeded_count:
+                save_run(cfg, journal)
 
     def cleanup():
         if should_cleanup_workspace_on_exit(
@@ -6115,10 +6173,7 @@ def run(argv: list[str] | None = None):
                                         "agent_gpu": bool(cfg.agent.gpu),
                                     },
                                 )
-                        elif not pipeline_skip_execution() and not _has_debuggable_hypothesis_root(
-                            journal,
-                            cfg,
-                        ):
+                        elif not pipeline_skip_execution():
                             root_selection = _next_unfinished_library_root_selection(
                                 cfg,
                                 journal,

@@ -33,6 +33,12 @@ from aide.utils.metric import MetricValue
 from aide.utils import serialize
 
 
+@pytest.fixture(autouse=True)
+def _isolate_repo_dotenv(monkeypatch, tmp_path):
+    # These unit tests assert default config behavior; repo .env is production input.
+    monkeypatch.chdir(tmp_path)
+
+
 def _write_run(tmp_path: Path, run_id: str, *, steps: int, mtime: float) -> None:
     log_dir = tmp_path / "logs" / run_id
     workspace_dir = tmp_path / "workspaces" / run_id
@@ -197,13 +203,15 @@ def test_generate_only_parallel_workers_require_no_forced_ids():
     )
 
 
-def test_seed_scored_hypothesis_roots_ignores_resume(monkeypatch):
+def test_seed_scored_hypothesis_roots_appends_missing_on_resume(monkeypatch):
     cfg = _load_cfg(use_cli_args=False)
     cfg.research.enabled = True
     cfg.research.mode = "hypothesis"
     cfg.research.seed_scored_roots = True
     journal = Journal()
     seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
 
     monkeypatch.setattr(
         "aide.run.scored_hypothesis_root_nodes",
@@ -216,8 +224,8 @@ def test_seed_scored_hypothesis_roots_ignores_resume(monkeypatch):
         is_resume=True,
     )
 
-    assert count == 0
-    assert len(journal) == 0
+    assert count == 1
+    assert journal.nodes == [seeded]
 
 
 def test_seed_scored_hypothesis_roots_appends_only_for_new_hypothesis_runs(
@@ -244,6 +252,112 @@ def test_seed_scored_hypothesis_roots_appends_only_for_new_hypothesis_runs(
     assert count == 1
     assert journal.nodes == [seeded]
     assert seeded.step == 0
+
+
+def test_seed_scored_hypothesis_roots_skips_existing_resume_root(monkeypatch):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+    cfg.research.seed_scored_roots = False
+    journal = Journal()
+    existing = Node(code="print('existing')", plan="existing")
+    existing.research_mode = "hypothesis"
+    existing.research_hypotheses_offered = ["000019"]
+    journal.append(existing)
+    seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    assert count == 0
+    assert journal.nodes == [existing]
+
+
+def test_seed_scored_hypothesis_roots_recovers_manifest_roots_for_old_resume(
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+    cfg.research.seed_scored_roots = False
+    journal = Journal()
+    existing = Node(code="print('existing')", plan="existing")
+    existing.research_mode = "hypothesis"
+    existing.research_hypotheses_offered = ["000011"]
+    journal.append(existing)
+    seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    assert count == 1
+    assert journal.nodes == [existing, seeded]
+
+
+def test_seed_scored_hypothesis_roots_refreshes_broken_seeded_root(monkeypatch):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+    cfg.research.seed_scored_roots = False
+    journal = Journal()
+    existing = Node(code="print('broken')", plan="broken")
+    existing.research_mode = "hypothesis"
+    existing.research_hypotheses_offered = ["000019"]
+    existing.research_runtime_config = {"gpu": bool(cfg.agent.gpu)}
+    existing.status = "ok"
+    existing.is_buggy = True
+    existing.metric = None
+    existing.run_stats = {"seeded_from_manifest": True}
+    journal.append(existing)
+    seeded = Node(code="print('seeded')", plan="seeded")
+    seeded.research_mode = "hypothesis"
+    seeded.research_hypotheses_offered = ["000019"]
+    seeded.research_runtime_config = {"gpu": bool(cfg.agent.gpu)}
+    seeded.status = "ok"
+    seeded.is_buggy = False
+    seeded.metric = MetricValue(0.966515, maximize=True)
+    seeded.run_stats = {"seeded_from_manifest": True}
+    seeded._term_out = ["score=0.966515"]
+    seeded.exec_time = 670.84
+    seeded.analysis = "seeded ok"
+
+    monkeypatch.setattr(
+        "aide.run.scored_hypothesis_root_nodes",
+        lambda _cfg: [seeded],
+    )
+
+    count = maybe_seed_scored_hypothesis_roots(
+        cfg,
+        journal,
+        is_resume=True,
+    )
+
+    assert count == 1
+    assert len(journal.nodes) == 1
+    assert existing.code == "print('seeded')"
+    assert existing.is_buggy is False
+    assert existing.metric.value == 0.966515
+    assert existing in journal.good_nodes
 
 
 def test_seed_scored_hypothesis_roots_keeps_manifest_runtime(monkeypatch):
@@ -854,9 +968,10 @@ def test_load_resume_state_rebases_remote_repo_data_dir_for_aux_file(tmp_path):
 
 
 def test_save_run_serializes_repo_paths_relative(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
     cfg = _load_cfg(use_cli_args=False)
-    cfg.data_dir = Path.cwd() / "aide" / "example_tasks" / "house_prices"
-    cfg.desc_file = Path.cwd() / "aide" / "example_tasks" / "house_prices.md"
+    cfg.data_dir = repo_root / "aide" / "example_tasks" / "house_prices"
+    cfg.desc_file = repo_root / "aide" / "example_tasks" / "house_prices.md"
     cfg.goal = None
     cfg.log_dir = tmp_path / "logs" / "2-existing-run"
     cfg.workspace_dir = tmp_path / "workspaces" / "2-existing-run"
@@ -875,7 +990,7 @@ def test_save_run_serializes_repo_paths_relative(tmp_path):
     saved = (tmp_path / "logs" / "2-existing-run" / "config.yaml").read_text(
         encoding="utf-8"
     )
-    assert str(Path.cwd() / "aide" / "example_tasks") not in saved
+    assert str(repo_root / "aide" / "example_tasks") not in saved
     assert "aide/example_tasks/house_prices" in saved
     assert "aide/example_tasks/house_prices.md" in saved
 
