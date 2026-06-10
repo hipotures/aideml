@@ -513,7 +513,7 @@ def load_scored_hypothesis_root_code(
         return None
     created_at = entry.get("created_at")
     source_node_id = entry.get("node_id")
-    exec_time = _numeric_manifest_duration(entry.get("exec_time"))
+    exec_time = _manifest_exec_time_with_journal_fallback(cfg, entry)
     return ScoredHypothesisRootCode(
         hypothesis_id=root_code.hypothesis_id,
         agent_mode=root_code.agent_mode,
@@ -1915,6 +1915,54 @@ def _numeric_manifest_duration(value: Any) -> float | None:
         return None
     duration = float(value)
     return duration if math.isfinite(duration) and duration >= 0 else None
+
+
+_JOURNAL_EXEC_TIME_CACHE: dict[Path, dict[str, float]] = {}
+
+
+def _journal_exec_times_by_node_id(log_root: Path) -> dict[str, float]:
+    log_root = log_root.resolve()
+    cached = _JOURNAL_EXEC_TIME_CACHE.get(log_root)
+    if cached is not None:
+        return cached
+
+    result: dict[str, float] = {}
+    if not log_root.exists():
+        _JOURNAL_EXEC_TIME_CACHE[log_root] = result
+        return result
+
+    for journal_path in sorted(log_root.glob("*/journal.json")):
+        try:
+            payload = json.loads(journal_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        nodes = payload.get("nodes") if isinstance(payload, dict) else None
+        if not isinstance(nodes, list):
+            continue
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_id = node.get("id")
+            exec_time = _numeric_manifest_duration(node.get("exec_time"))
+            if isinstance(node_id, str) and exec_time is not None:
+                result[node_id] = exec_time
+
+    _JOURNAL_EXEC_TIME_CACHE[log_root] = result
+    return result
+
+
+def _manifest_exec_time_with_journal_fallback(
+    cfg: Config,
+    entry: dict[str, Any],
+) -> float | None:
+    exec_time = _numeric_manifest_duration(entry.get("exec_time"))
+    if exec_time is not None:
+        return exec_time
+    node_id = entry.get("node_id")
+    if not isinstance(node_id, str):
+        return None
+    log_root = Path(getattr(cfg, "log_dir", "logs")).parent
+    return _journal_exec_times_by_node_id(log_root).get(node_id)
 
 
 def _best_manifest_score_for_mode(
