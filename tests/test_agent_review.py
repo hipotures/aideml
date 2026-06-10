@@ -406,6 +406,41 @@ def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_p
     assert "Use public score only as reliability context" in context
 
 
+def test_hypothesis_branch_context_ignores_global_memory_when_mode_disabled(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.research.mode = "llm"
+
+    journal = Journal()
+    root = Node(code="root", plan="Root hypothesis plan")
+    root.metric = MetricValue(0.91, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000101"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child branch plan", parent=root)
+    child.metric = MetricValue(0.92, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    unrelated = Node(code="other", plan="Unrelated global winner")
+    unrelated.metric = MetricValue(0.99, maximize=True)
+    unrelated.is_buggy = False
+    journal.append(unrelated)
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    prompt = {"Instructions": {}}
+
+    agent._add_memory_or_branch_context(prompt, parent_node=child)
+
+    assert "Memory" not in prompt
+    assert "Branch context" in prompt
+    assert "Root hypothesis plan" in prompt["Branch context"]
+    assert "Child branch plan" in prompt["Branch context"]
+    assert "Unrelated global winner" not in prompt["Branch context"]
+
+
 def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(
     tmp_path,
     monkeypatch,

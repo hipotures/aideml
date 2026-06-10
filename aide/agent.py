@@ -252,6 +252,14 @@ def _has_hypothesis_ancestor(node: Node, hypothesis_id: str) -> bool:
     return False
 
 
+def _is_hypothesis_branch(node: Node | None) -> bool:
+    while node is not None:
+        if hypothesis_id_for_node(node) is not None:
+            return True
+        node = node.parent
+    return False
+
+
 def _is_in_forced_hypothesis_root(node: Node, forced_root: str | None) -> bool:
     if forced_root is None:
         return True
@@ -1557,7 +1565,7 @@ class Agent:
         parent_node: Node | None,
         include_global_memory: bool = True,
     ) -> None:
-        if self._is_hypothesis_mode():
+        if self._is_hypothesis_mode() or _is_hypothesis_branch(parent_node):
             if parent_node is not None:
                 prompt["Branch context"] = self.journal.generate_branch_context(
                     parent_node,
@@ -1903,8 +1911,8 @@ class Agent:
                 "The solution sketch should be a brief natural language description of how the previous solution can be improved.",
                 "You should be very specific and should only propose a single actionable improvement.",
                 "This improvement should be atomic so that we can experimentally evaluate the effect of the proposed change.",
-                "Take the Memory section into consideration when proposing the improvement.",
-                "Use the recent Memory and Previous attempts sections as a partial record of what has already been tried. Avoid near-duplicate changes when the same feature family, model setup, or training idea already appears there. If the recent record is dominated by small feature tweaks with marginal score movement, choose a more distinct controlled experiment instead: a different model family, ensembling strategy, calibration, feature selection, training setup, or a clearly new feature family. Make the proposed change easy to distinguish from the listed attempts, and preserve the required metric and output artifacts.",
+                "Take the Memory or Branch context section into consideration when proposing the improvement.",
+                "Use the recent Memory/Branch context and Previous attempts sections as a partial record of what has already been tried. Avoid near-duplicate changes when the same feature family, model setup, or training idea already appears there. If the recent record is dominated by small feature tweaks with marginal score movement, choose a more distinct controlled experiment instead: a different model family, ensembling strategy, calibration, feature selection, training setup, or a clearly new feature family. Make the proposed change easy to distinguish from the listed attempts, and preserve the required metric and output artifacts.",
                 "The solution sketch should be 3-5 sentences.",
                 "Don't suggest to do EDA.",
             ],
