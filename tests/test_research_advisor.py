@@ -188,6 +188,7 @@ def _generated_hypothesis_payload(
         "expected_signal": (
             "At least one simple tree model should improve over raw-feature roots."
         ),
+        "novelty_confidence": "high",
         "risk": "The broad feature set can overfit if validation is weak.",
         "sources": ["https://example.com/tabular-root"],
     }
@@ -741,6 +742,7 @@ def test_store_generated_research_hypotheses_persists_library_and_run_record(
     assert "simple tree-boosting" in first_payload["baseline_model_panel"]
     assert first_payload["implementation_hint"] == first_payload["materialization_hint"]
     assert first_payload["expected_effect"] == first_payload["expected_signal"]
+    assert first_payload["novelty_confidence"] == "high"
     assert "Feature family: broad_tabular_feature_expansion" in first_payload["rationale"]
     generated_log = (
         Path(cfg.log_dir) / "research_hypotheses" / "generated_hypotheses.jsonl"
@@ -1398,6 +1400,7 @@ def test_reserve_hypothesis_roots_uses_generated_hypotheses_not_generated_nodes(
                 "validation_strategy": "5-fold stratified CV.",
                 "materialization_hint": "Create feature-first root code.",
                 "expected_signal": f"Effect {idx}",
+                "novelty_confidence": "medium",
                 "risk": f"Risk {idx}",
                 "sources": [],
             }
@@ -1950,6 +1953,9 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "hypotheses[].summary" in prompt
     assert "hypotheses[].feature_family" in prompt
     assert "hypotheses[].baseline_model_panel" in prompt
+    assert "hypotheses[].novelty_confidence" in prompt
+    assert "Do not force weak novelty" in prompt
+    assert "novelty_confidence to \"low\"" in prompt
     assert "basic algorithm families fit the engineered features best" in compact_prompt
     assert "not as a fixed magic list of model names" in prompt
     assert "Do not propose heavy ensembling" in prompt
@@ -2061,6 +2067,7 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
                             "validation_strategy": "Use leak-free 5-fold CV.",
                             "materialization_hint": "Build staged features and model panel.",
                             "expected_signal": "small AUC gain",
+                            "novelty_confidence": "medium",
                             "risk": "overfitting",
                             "sources": ["https://example.com"],
                         }

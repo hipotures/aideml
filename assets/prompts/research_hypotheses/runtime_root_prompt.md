@@ -37,6 +37,10 @@ and, when scores are available, as evidence about which feature families and
 simple baseline algorithms look promising. Treat unexecuted hypotheses only as
 anti-duplication context. Treat buggy hypotheses as implementation warnings,
 not as evidence that the feature family is weak. Do not debug broken code.
+Do not force weak novelty. If the requested number of hypotheses must be
+returned but only a weak or near-duplicate idea remains, still return the
+hypothesis, set novelty_confidence to "low", and explicitly describe the
+duplication or weak-novelty risk in risk.
 
 The prompt may include previously stored hypotheses and hypotheses already
 created earlier in this same run. They are written as short Title, Summary, and
@@ -62,8 +66,9 @@ Return JSON with: summary; hypotheses[].title; hypotheses[].summary;
 hypotheses[].feature_family; hypotheses[].feature_strategy;
 hypotheses[].baseline_model_panel; hypotheses[].model_panel_rationale;
 hypotheses[].validation_strategy; hypotheses[].materialization_hint;
-hypotheses[].expected_signal; hypotheses[].risk; hypotheses[].sources. The
-hypotheses array must contain exactly {{HYPOTHESIS_COUNT}} items.
+hypotheses[].expected_signal; hypotheses[].novelty_confidence;
+hypotheses[].risk; hypotheses[].sources. The hypotheses array must contain
+exactly {{HYPOTHESIS_COUNT}} items.
 
 # Field meanings
 - title: short human-readable name for this initial hypothesis.
@@ -89,7 +94,12 @@ hypotheses array must contain exactly {{HYPOTHESIS_COUNT}} items.
   code or repeat global artifact/cache contracts.
 - expected_signal: what should be visible in CV, per-model diagnostics,
   runtime, or output logs if the feature family has value.
+- novelty_confidence: one of high, medium, or low. Use low when the idea is
+  weakly novel, partly redundant with previous hypotheses, or mainly a
+  fallback because the system requires another hypothesis.
 - risk: leakage, overfitting, runtime, data availability, or no-op risks.
+  When novelty_confidence is low, risk must explicitly describe the overlap or
+  duplication risk.
 - sources: concise URLs or source names used for this idea; use an empty array
   when none are available.
 

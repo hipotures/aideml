@@ -60,6 +60,10 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                     "validation_strategy": {"type": "string"},
                     "materialization_hint": {"type": "string"},
                     "expected_signal": {"type": "string"},
+                    "novelty_confidence": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"],
+                    },
                     "risk": {"type": "string"},
                     "sources": {
                         "type": "array",
@@ -76,6 +80,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
                     "validation_strategy",
                     "materialization_hint",
                     "expected_signal",
+                    "novelty_confidence",
                     "risk",
                     "sources",
                 ],
@@ -999,12 +1004,17 @@ def _normalize_generated_hypothesis(
         "validation_strategy",
         "materialization_hint",
         "expected_signal",
+        "novelty_confidence",
         "risk",
     ):
         value = raw.get(field)
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"Generated hypothesis missing required field {field!r}.")
         payload[field] = value.strip()
+    if payload["novelty_confidence"] not in {"high", "medium", "low"}:
+        raise ValueError(
+            "Generated hypothesis novelty_confidence must be high, medium, or low."
+        )
     payload["rationale"] = "\n".join(
         [
             f"Feature family: {payload['feature_family']}",
@@ -1012,6 +1022,7 @@ def _normalize_generated_hypothesis(
             f"Baseline model panel: {payload['baseline_model_panel']}",
             f"Model panel rationale: {payload['model_panel_rationale']}",
             f"Validation strategy: {payload['validation_strategy']}",
+            f"Novelty confidence: {payload['novelty_confidence']}",
         ]
     )
     payload["implementation_hint"] = payload["materialization_hint"]
