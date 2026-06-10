@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Color-engineered two-stage classifier",
+  "summary": "Build explicit color indices and piecewise features from `u,g,r,i,z,redshift`, then train a hierarchical model that first separates `STAR` vs non-`STAR`, and only then splits `GALAXY` vs `QSO`.",
+  "rationale": "Astrophysical classification is strongly driven by color-color structure and redshift; literature on SDSS star/galaxy/QSO work repeatedly shows that compact, physically meaningful features outperform raw magnitudes alone. A hierarchical decision boundary also matches the known class geometry better than forcing a single flat 3-way split.",
+  "implementation_hint": "Create features such as `u-g`, `g-r`, `r-i`, `i-z`, `u-r`, `g-i`, `r-z`, plus simple nonlinear transforms of `redshift`. Train balanced CatBoost or LightGBM in two stages with out-of-fold probabilities; the second stage only sees rows the first stage sends to the non-star branch.",
+  "expected_effect": "Higher recall on the minority/confusable classes, especially `QSO`, without sacrificing the easy `STAR` region.",
+  "risk": "If the synthetic train/test distribution differs from the original SDSS geometry, hand-crafted splits may overfit a visually intuitive but suboptimal boundary.",
+  "sources": [
+    "https://arxiv.org/abs/1811.03740",
+    "https://arxiv.org/abs/1909.10963",
+    "competition context: balanced-accuracy stellar-classification task with `u,g,r,i,z,redshift`"
+  ]
+}

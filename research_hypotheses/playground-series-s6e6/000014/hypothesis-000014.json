@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Photometric Color Stack",
+  "summary": "Convert the ugriz magnitudes into physically meaningful color and slope features to expose the main class-separating signal.",
+  "feature_family": "numeric_ratios_logs",
+  "feature_strategy": "Keep the raw magnitudes and add a dense set of pairwise color indices and simple spectral-shape summaries such as u-g, g-r, r-i, i-z, u-r, g-i, r-z, u-z, adjacent-band slopes, brightness summaries like mean/min/max/std across ugriz, and a few robust nonlinear transforms of redshift and the color gaps; do not use id or any target-derived feature.",
+  "baseline_model_panel": "Balanced logistic regression, a shallow tree ensemble, and a class-weighted gradient-boosted tree model.",
+  "model_panel_rationale": "This feature family should be close to linearly separable in parts but still benefit from nonlinearity, so a linear model, a tree ensemble, and a boosted tree are enough to tell whether the new representation helps and which bias matches it best.",
+  "validation_strategy": "5-fold StratifiedKFold on class with fold-local preprocessing fit only on the training split.",
+  "materialization_hint": "Build a small feature block from the five magnitudes first, then append color differences and aggregate summaries, standardize only the numeric block inside each fold, and keep the pipeline otherwise minimal so score changes are attributable to the engineered representation.",
+  "expected_signal": "CV should improve mainly from stronger STAR/QSO separation and from fewer confident but wrong GALAXY predictions; tree models should gain more than a plain linear baseline if the colors are useful.",
+  "risk": "If the synthetic data already encodes class almost directly in redshift and one or two magnitudes, the extra color features may be redundant; overly aggressive nonlinear transforms can also add noise.",
+  "rationale": "Feature family: numeric_ratios_logs\nFeature strategy: Keep the raw magnitudes and add a dense set of pairwise color indices and simple spectral-shape summaries such as u-g, g-r, r-i, i-z, u-r, g-i, r-z, u-z, adjacent-band slopes, brightness summaries like mean/min/max/std across ugriz, and a few robust nonlinear transforms of redshift and the color gaps; do not use id or any target-derived feature.\nBaseline model panel: Balanced logistic regression, a shallow tree ensemble, and a class-weighted gradient-boosted tree model.\nModel panel rationale: This feature family should be close to linearly separable in parts but still benefit from nonlinearity, so a linear model, a tree ensemble, and a boosted tree are enough to tell whether the new representation helps and which bias matches it best.\nValidation strategy: 5-fold StratifiedKFold on class with fold-local preprocessing fit only on the training split.",
+  "implementation_hint": "Build a small feature block from the five magnitudes first, then append color differences and aggregate summaries, standardize only the numeric block inside each fold, and keep the pipeline otherwise minimal so score changes are attributable to the engineered representation.",
+  "expected_effect": "CV should improve mainly from stronger STAR/QSO separation and from fewer confident but wrong GALAXY predictions; tree models should gain more than a plain linear baseline if the colors are useful.",
+  "sources": [
+    "Competition brief",
+    "https://arxiv.org/abs/astro-ph/0012449",
+    "SDSS photometric system background"
+  ]
+}

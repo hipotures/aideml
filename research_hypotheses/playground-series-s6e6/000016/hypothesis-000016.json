@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Auxiliary SDSS Transfer Features",
+  "summary": "Use the provided original SDSS table as an auxiliary labeled source to build robust, merged representation features for the competition rows.",
+  "feature_family": "auxiliary_data_features",
+  "feature_strategy": "Explicitly clean the original SDSS magnitudes, align the shared columns with the competition schema, and derive a compact feature set from the auxiliary table such as class-conditional centroid distances, fold-safe nearest-class prototype scores, and distributional priors for redshift and color patterns; avoid direct row-level identity joins and use the auxiliary data only through stable aggregate mappings.",
+  "baseline_model_panel": "Balanced logistic regression, a balanced tree ensemble, and a class-weighted gradient-boosted tree model.",
+  "model_panel_rationale": "If the auxiliary table adds real transfer signal, even simple models should pick it up because the added features are structured summaries rather than high-capacity embeddings.",
+  "validation_strategy": "5-fold StratifiedKFold on the competition train set, with any auxiliary-derived statistics frozen before the fold loop or recomputed only from the non-holdout auxiliary source.",
+  "materialization_hint": "First standardize the shared photometric columns and label mapping, then compute a few compact auxiliary statistics per class and merge them by nearest-neighbor or prototype lookup into train and test; keep the auxiliary transform deterministic and auditable.",
+  "expected_signal": "A real gain should appear as a consistent bump across folds with modest variance, especially on confusing QSO versus STAR regions where external SDSS structure may help.",
+  "risk": "The auxiliary dataset may have domain shift relative to the synthetic competition data, and careless use of labels or merges can create leakage or brittle features that do not transfer to test.",
+  "rationale": "Feature family: auxiliary_data_features\nFeature strategy: Explicitly clean the original SDSS magnitudes, align the shared columns with the competition schema, and derive a compact feature set from the auxiliary table such as class-conditional centroid distances, fold-safe nearest-class prototype scores, and distributional priors for redshift and color patterns; avoid direct row-level identity joins and use the auxiliary data only through stable aggregate mappings.\nBaseline model panel: Balanced logistic regression, a balanced tree ensemble, and a class-weighted gradient-boosted tree model.\nModel panel rationale: If the auxiliary table adds real transfer signal, even simple models should pick it up because the added features are structured summaries rather than high-capacity embeddings.\nValidation strategy: 5-fold StratifiedKFold on the competition train set, with any auxiliary-derived statistics frozen before the fold loop or recomputed only from the non-holdout auxiliary source.",
+  "implementation_hint": "First standardize the shared photometric columns and label mapping, then compute a few compact auxiliary statistics per class and merge them by nearest-neighbor or prototype lookup into train and test; keep the auxiliary transform deterministic and auditable.",
+  "expected_effect": "A real gain should appear as a consistent bump across folds with modest variance, especially on confusing QSO versus STAR regions where external SDSS structure may help.",
+  "sources": [
+    "original_sdss17/star_classification.csv",
+    "original_sdss17/star_classification.txt",
+    "https://arxiv.org/abs/1207.7326"
+  ]
+}

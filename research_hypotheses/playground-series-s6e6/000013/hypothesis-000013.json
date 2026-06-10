@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Calibrated weighted ensemble with per-class decision tuning",
+  "summary": "Ensemble multiple balanced tree models, then calibrate their probabilities on out-of-fold predictions and tune class decisions to maximize balanced accuracy rather than raw log loss.",
+  "rationale": "Boosted tree outputs are often miscalibrated, and balanced accuracy is sensitive to per-class recall rather than probability quality. A calibrated OOF ensemble can reduce overconfident errors and make the final argmax more reliable, especially when class frequencies and class confusions are asymmetric.",
+  "implementation_hint": "Train at least CatBoost, LightGBM, and XGBoost with class balancing enabled; blend OOF probabilities, then apply multinomial calibration or a simple logistic/temperature-style recalibration on the OOF logits. If beneficial, search a small grid of per-class bias offsets on OOF to maximize balanced accuracy before freezing the submission rule.",
+  "expected_effect": "Small but consistent gain from better error allocation across classes, particularly on the harder minority class and on borderline `GALAXY`/`QSO` cases.",
+  "risk": "Calibration can help only if the base models are already strong; if the ensemble is weak, recalibration may polish probabilities without improving classification recall.",
+  "sources": [
+    "https://arxiv.org/abs/1910.12656",
+    "https://arxiv.org/abs/2102.12182",
+    "https://arxiv.org/abs/0606541"
+  ]
+}

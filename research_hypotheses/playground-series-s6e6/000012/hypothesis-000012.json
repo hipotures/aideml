@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Auxiliary SDSS pretrain then domain-stack",
+  "summary": "Treat `original_sdss17/star_classification.csv` as a second supervised domain, pretrain on the original SDSS rows using only shared columns, then fine-tune or stack on the synthetic competition train set.",
+  "rationale": "The original SDSS file is a natural auxiliary label source with the same target semantics and overlapping feature space. Domain shift is likely real because the competition data includes synthetic categorical fields and altered value ranges, so a two-domain strategy can learn stable astrophysical structure from the real data while adapting to the competition distribution.",
+  "implementation_hint": "Train the same balanced model family twice: first on the original SDSS rows using only `alpha, delta, u, g, r, i, z, redshift`, then refit on the competition train set with the full feature set. If using stacking, include the original-trained model's OOF probabilities as meta-features for the competition fold model.",
+  "expected_effect": "Better generalization on ambiguous objects and improved robustness on rare boundary cases, especially if the synthetic data preserves the original class semantics but shifts feature distributions.",
+  "risk": "Negative transfer is possible if the synthetic generation process warps the joint distribution enough that the original SDSS signal is only weakly aligned.",
+  "sources": [
+    "competition context: `original_sdss17/star_classification.csv` auxiliary data",
+    "https://arxiv.org/abs/0711.2477",
+    "https://arxiv.org/abs/1909.10963"
+  ]
+}

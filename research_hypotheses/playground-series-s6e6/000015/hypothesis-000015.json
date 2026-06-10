@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Fold-Safe Categorical and Binned Features",
+  "summary": "Treat the small categorical columns and coarse numeric bins as first-class signals instead of leaving them as raw text or continuous values only.",
+  "feature_family": "group_statistics_fold_safe",
+  "feature_strategy": "One-hot encode spectral_type and galaxy_population, add fold-safe frequency/likelihood encodings for those categories, bin redshift and selected magnitudes into quantiles, and create small cross features such as spectral_type x redshift_bin and galaxy_population x color_bin; keep all encodings out-of-fold to avoid leakage.",
+  "baseline_model_panel": "Balanced logistic regression, categorical-boosting style trees, and a class-weighted gradient-boosted tree model.",
+  "model_panel_rationale": "These features are deliberately low-dimensional and tabular, so a linear baseline checks whether the bins/encodings already separate classes while tree models test whether the categorical interactions matter.",
+  "validation_strategy": "5-fold StratifiedKFold with all frequency/target-like encodings computed strictly on the training folds only.",
+  "materialization_hint": "Materialize the categorical block separately from the numeric block, compute bin boundaries and any count-based transforms inside each fold, and keep the set of interactions small so the experiment isolates whether coarse segmentation helps the classifier.",
+  "expected_signal": "If useful, the fold-local encodings should lift validation without large runtime cost, especially on the minority class recall that balanced accuracy rewards; gains should be visible even before complex models are introduced.",
+  "risk": "Any leakage in the encodings will inflate CV, and overly fine bins may fragment the data enough to hurt balanced accuracy more than they help.",
+  "rationale": "Feature family: group_statistics_fold_safe\nFeature strategy: One-hot encode spectral_type and galaxy_population, add fold-safe frequency/likelihood encodings for those categories, bin redshift and selected magnitudes into quantiles, and create small cross features such as spectral_type x redshift_bin and galaxy_population x color_bin; keep all encodings out-of-fold to avoid leakage.\nBaseline model panel: Balanced logistic regression, categorical-boosting style trees, and a class-weighted gradient-boosted tree model.\nModel panel rationale: These features are deliberately low-dimensional and tabular, so a linear baseline checks whether the bins/encodings already separate classes while tree models test whether the categorical interactions matter.\nValidation strategy: 5-fold StratifiedKFold with all frequency/target-like encodings computed strictly on the training folds only.",
+  "implementation_hint": "Materialize the categorical block separately from the numeric block, compute bin boundaries and any count-based transforms inside each fold, and keep the set of interactions small so the experiment isolates whether coarse segmentation helps the classifier.",
+  "expected_effect": "If useful, the fold-local encodings should lift validation without large runtime cost, especially on the minority class recall that balanced accuracy rewards; gains should be visible even before complex models are introduced.",
+  "sources": [
+    "Competition brief",
+    "https://arxiv.org/abs/1909.10963",
+    "SDSS classification literature"
+  ]
+}
