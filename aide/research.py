@@ -164,6 +164,14 @@ class ScoredHypothesisRootCode(HypothesisRootCode):
     source_node_id: str | None
 
 
+@dataclass(frozen=True)
+class FailedHypothesisRootCode(HypothesisRootCode):
+    exception_type: str | None
+    exception_info: dict[str, Any] | None
+    terminal_output: str | None
+    analysis: str | None
+
+
 def _json_default(value: Any) -> str:
     if isinstance(value, Path):
         return to_portable_path(value)
@@ -517,6 +525,65 @@ def load_scored_hypothesis_root_code(
     )
 
 
+def load_failed_hypothesis_root_code(
+    cfg: Config,
+    hypothesis_id: str,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> FailedHypothesisRootCode | None:
+    """Load the latest failed ROOT code for a hypothesis and agent mode."""
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    hypothesis_dir = _hypothesis_dir(source_dir, hypothesis_id)
+    if not hypothesis_dir.exists():
+        return None
+
+    agent_mode = _manual_agent_mode_key(cfg)
+    versions = _code_versions(hypothesis_dir, agent_mode)
+    if not versions:
+        return None
+
+    manifest = _load_code_manifest(hypothesis_dir)
+    required_gpu = _cfg_agent_gpu_enabled(cfg)
+    failed_candidates: list[tuple[int, Path, dict[str, Any]]] = []
+    for version, path in versions.items():
+        entry = _manifest_entry_for_file(
+            manifest,
+            agent_mode=agent_mode,
+            file_name=path.name,
+        )
+        if entry is None:
+            continue
+        if not _manifest_entry_runtime_matches(entry, gpu=required_gpu):
+            continue
+        if entry.get("buggy") is True or entry.get("status") in {"bug", "failed"}:
+            failed_candidates.append((version, path, entry))
+    if not failed_candidates:
+        return None
+
+    version, path, entry = max(failed_candidates, key=lambda item: item[0])
+    exception_info = entry.get("exception_info")
+    return FailedHypothesisRootCode(
+        hypothesis_id=hypothesis_id,
+        agent_mode=agent_mode,
+        path=path,
+        code=path.read_text(encoding="utf-8"),
+        version=version,
+        gpu=required_gpu,
+        exception_type=(
+            entry.get("exception_type")
+            if isinstance(entry.get("exception_type"), str)
+            else None
+        ),
+        exception_info=exception_info if isinstance(exception_info, dict) else None,
+        terminal_output=(
+            entry.get("terminal_output")
+            if isinstance(entry.get("terminal_output"), str)
+            else None
+        ),
+        analysis=entry.get("analysis") if isinstance(entry.get("analysis"), str) else None,
+    )
+
+
 def _manifest_created_at_timestamp(created_at: str | None) -> float | None:
     if not created_at:
         return None
@@ -631,6 +698,10 @@ def save_hypothesis_root_code(
     node_id: str | None = None,
     score: float | None = None,
     created_at: str | None = None,
+    exception_type: str | None = None,
+    exception_info: dict[str, Any] | None = None,
+    terminal_output: str | None = None,
+    analysis: str | None = None,
     force_new_version: bool = False,
     activate: bool = True,
     repo_root: Path = REPO_ROOT,
@@ -679,6 +750,15 @@ def save_hypothesis_root_code(
         "gpu": current_gpu,
         "aux": bool(getattr(cfg.agent, "aux", False)),
     }
+    if is_buggy:
+        metadata.update(
+            {
+                "exception_type": exception_type,
+                "exception_info": sanitize_persisted_payload(exception_info),
+                "terminal_output": sanitize_text(terminal_output or ""),
+                "analysis": sanitize_text(analysis or ""),
+            }
+        )
     versions = manifest.setdefault("versions", {})
     if not isinstance(versions, dict):
         manifest["versions"] = versions = {}

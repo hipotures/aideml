@@ -3236,6 +3236,107 @@ def test_generated_only_hypothesis_root_saves_single_file(tmp_path, monkeypatch)
     assert manifest.get("active", {}).get("legacy") is None
 
 
+def test_buggy_hypothesis_root_manifest_stores_exception_context(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+
+    message = (
+        "REPL child process died unexpectedly\n\n"
+        "LightGBM CUDA native crash likely terminated the REPL child process "
+        "before Python could raise an exception."
+    )
+    research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('buggy root')\n",
+        is_buggy=True,
+        node_id="node-bug",
+        score=None,
+        created_at="2026-06-10T00:00:00",
+        exception_type="RuntimeError",
+        exception_info={"args": [message]},
+        terminal_output=f"RuntimeError: {message}",
+        analysis=message,
+        activate=True,
+        repo_root=tmp_path,
+    )
+
+    failed = research.load_failed_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert failed is not None
+    assert failed.code == "print('buggy root')\n"
+    assert failed.exception_type == "RuntimeError"
+    assert failed.exception_info == {"args": [message]}
+    assert "LightGBM CUDA native crash" in (failed.terminal_output or "")
+    assert "LightGBM CUDA native crash" in (failed.analysis or "")
+
+
+def test_hypothesis_materialization_prompt_includes_previous_bug_context(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    message = (
+        "REPL child process died unexpectedly\n\n"
+        "LightGBM CUDA native crash likely terminated the REPL child process "
+        "before Python could raise an exception."
+    )
+    research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code="print('buggy root')\n",
+        is_buggy=True,
+        node_id="node-bug",
+        score=None,
+        created_at="2026-06-10T00:00:00",
+        exception_type="RuntimeError",
+        exception_info={"args": [message]},
+        terminal_output=f"RuntimeError: {message}",
+        analysis=message,
+        activate=True,
+        repo_root=tmp_path,
+    )
+    selection = research.select_hypothesis_by_id(
+        cfg,
+        hypothesis_id="000001",
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_plan_and_code_query(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('fixed')\n"
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    monkeypatch.setattr(agent, "plan_and_code_query", fake_plan_and_code_query)
+
+    agent._draft(hypothesis_selection=selection)
+
+    prompt = captured["prompt"]
+    assert isinstance(prompt, dict)
+    failed_context = prompt["Previous failed implementation for assigned hypothesis"]
+    gpu_hint = prompt["Previous failure GPU/CUDA hint"]
+    assert "Exception type:\nRuntimeError" in failed_context
+    assert "Exception info:" in failed_context
+    assert "Terminal output:" in failed_context
+    assert "Analysis:" in failed_context
+    assert "LightGBM CUDA native crash" in failed_context
+    assert "Previous failed code:" in failed_context
+    assert "print('buggy root')" in failed_context
+    assert "keep LightGBM on CPU" in gpu_hint
+    assert 'device="cuda"' in gpu_hint
+
+
 def test_hypothesis_root_code_save_creates_new_version_when_gpu_changes(
     tmp_path,
 ):

@@ -36,8 +36,10 @@ from .research import (
     hypothesis_root_pool_exhausted,
     hypothesis_id_for_node,
     ManualHypothesisSelection,
+    REPO_ROOT,
     load_latest_manual_research_hints,
     load_latest_research_hints,
+    load_failed_hypothesis_root_code,
     load_hypothesis_root_code,
     record_manual_claimed_usage,
     record_manual_prompt_node,
@@ -1294,10 +1296,10 @@ class Agent:
         if self.acfg.gpu:
             impl_guideline.extend(
                 [
-                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models whenever the chosen library supports it.",
+                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models only where it is stable in this environment.",
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
-                    'For LightGBM, when GPU is enabled, native CUDA training may terminate the Python process before `try/except` can run. Always try LightGBM CUDA first with `device_type="cuda"` or `device="cuda"` inside an isolated subprocess or subprocess smoke test, then use CPU LightGBM fallback only after that subprocess exits nonzero or reports a CUDA failure. Do not choose CPU LightGBM before attempting the isolated CUDA path. Do not use `device_type="gpu"` or `device="gpu"` unless explicitly targeting an OpenCL LightGBM build.',
+                    'For LightGBM, use CPU training by default even when `agent.gpu=true`. Do not set `device_type="cuda"`, `device="cuda"`, `device_type="gpu"`, or `device="gpu"` for LightGBM unless the assigned hypothesis explicitly tests LightGBM GPU stability. LightGBM CUDA can terminate the Python process before `try/except` can run, so ordinary solution code should keep LightGBM on CPU.',
                 ]
             )
 
@@ -1409,6 +1411,14 @@ class Agent:
         prompt["Hypothesis under verification"] = format_hypothesis_for_prompt(
             selection
         )
+        failed_context = self._failed_hypothesis_implementation_for_prompt(selection)
+        if failed_context is not None:
+            prompt["Previous failed implementation for assigned hypothesis"] = (
+                failed_context
+            )
+            gpu_hint = self._failed_hypothesis_gpu_hint(failed_context)
+            if gpu_hint is not None:
+                prompt["Previous failure GPU/CUDA hint"] = gpu_hint
         if parent_node is not None:
             reference = self._hypothesis_reference_implementation_for_prompt(selection)
             if reference is not None:
@@ -1420,6 +1430,67 @@ class Agent:
             ],
             "research_source_hash": selection.source_hash,
         }
+
+    def _failed_hypothesis_implementation_for_prompt(
+        self,
+        selection: Any,
+    ) -> str | None:
+        if not selection.hypotheses:
+            return None
+        hypothesis_id = selection.hypotheses[0].id
+        source_dir = Path(selection.source_dir)
+        repo_root = source_dir.parents[1] if len(source_dir.parents) >= 2 else REPO_ROOT
+        failed_code = load_failed_hypothesis_root_code(
+            self.cfg,
+            hypothesis_id,
+            repo_root=repo_root,
+        )
+        if failed_code is None:
+            return None
+
+        exception_info = (
+            json.dumps(failed_code.exception_info, indent=2, ensure_ascii=False)
+            if failed_code.exception_info is not None
+            else "{}"
+        )
+        terminal_output = failed_code.terminal_output or ""
+        analysis = failed_code.analysis or ""
+        return (
+            f"Hypothesis ID: {hypothesis_id}\n"
+            f"Mode: {failed_code.agent_mode}; file: {failed_code.path.name}.\n\n"
+            "The previous implementation for this same hypothesis failed. "
+            "Use this as bug context and do not repeat the same failure.\n\n"
+            "Exception type:\n"
+            f"{failed_code.exception_type or 'unknown'}\n\n"
+            "Exception info:\n"
+            f"{exception_info}\n\n"
+            "Terminal output:\n"
+            f"{terminal_output}\n\n"
+            "Analysis:\n"
+            f"{analysis}\n\n"
+            "Previous failed code:\n"
+            f"{wrap_code(failed_code.code)}"
+        )
+
+    def _failed_hypothesis_gpu_hint(self, failed_context: str) -> str | None:
+        text = failed_context.lower()
+        if "cuda" not in text and "gpu" not in text:
+            return None
+        if "lightgbm" in text or "repl child process died" in text:
+            return (
+                "The previous failure indicates a native GPU/CUDA backend crash. "
+                "Disable GPU/CUDA for the failing library in the new implementation. "
+                "In particular, keep LightGBM on CPU: do not set "
+                '`device="cuda"`, `device_type="cuda"`, `device="gpu"`, or '
+                '`device_type="gpu"` for LightGBM. CatBoost/XGBoost may still use '
+                "GPU if stable, but the previous LightGBM CUDA path must not be "
+                "repeated."
+            )
+        return (
+            "The previous failure mentions GPU/CUDA. Prefer a conservative fix that "
+            "disables GPU/CUDA for the failing component or provides a CPU fallback "
+            "before long training starts."
+        )
 
     def _hypothesis_reference_implementation_for_prompt(
         self,
@@ -2174,6 +2245,10 @@ class Agent:
             node_id=node.id,
             score=score,
             created_at=created_at,
+            exception_type=node.exc_type,
+            exception_info=node.exc_info,
+            terminal_output=node.term_out if node.is_buggy else None,
+            analysis=node.analysis,
             force_new_version=force_new_version,
             activate=activate,
         )
