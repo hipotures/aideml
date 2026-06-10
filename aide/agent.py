@@ -1693,18 +1693,24 @@ class Agent:
             "Task description": self.task_desc,
             "Instructions": {},
         }
-        self._add_memory_or_branch_context(prompt, parent_node=None)
+        if hypothesis_selection is None:
+            self._add_memory_or_branch_context(prompt, parent_node=None)
         prompt["Instructions"] |= self._prompt_resp_fmt
-        prompt["Instructions"] |= {
-            "Solution sketch guideline": [
-                "This first solution design should be relatively simple, without ensembling or hyper-parameter optimization.",
+        solution_sketch_guideline = [
+            "This first solution design should be relatively simple, without ensembling or hyper-parameter optimization.",
+            "The solution sketch should be 3-5 sentences.",
+            "Propose an evaluation metric that is reasonable for this task.",
+            "Don't suggest to do EDA.",
+            "The data is already prepared and available in the `./input` directory. There is no need to unzip any files.",
+        ]
+        if hypothesis_selection is None:
+            solution_sketch_guideline.insert(
+                1,
                 "Take the Memory section into consideration when proposing the design,"
                 " don't propose the same modelling solution but keep the evaluation the same.",
-                "The solution sketch should be 3-5 sentences.",
-                "Propose an evaluation metric that is reasonable for this task.",
-                "Don't suggest to do EDA.",
-                "The data is already prepared and available in the `./input` directory. There is no need to unzip any files.",
-            ],
+            )
+        prompt["Instructions"] |= {
+            "Solution sketch guideline": solution_sketch_guideline,
         }
         prompt["Instructions"] |= self._prompt_impl_guideline
         prompt["Instructions"] |= self._prompt_environment
@@ -1740,14 +1746,16 @@ class Agent:
             "Task description": self._autogluon_prompt_text(self.task_desc),
             "Instructions": {},
         }
-        self._add_memory_or_branch_context(prompt, parent_node=None)
+        if hypothesis_selection is None:
+            self._add_memory_or_branch_context(prompt, parent_node=None)
         prompt["Instructions"] |= self._prompt_resp_fmt
+        preprocessing_sketch_guideline = [
+            "The solution sketch should be 3-5 sentences describing the feature engineering idea.",
+            "Keep the first solution relatively simple and deterministic.",
+            "Don't suggest to do EDA.",
+        ]
         prompt["Instructions"] |= {
-            "Preprocessing sketch guideline": [
-                "The solution sketch should be 3-5 sentences describing the feature engineering idea.",
-                "Keep the first solution relatively simple and deterministic.",
-                "Don't suggest to do EDA.",
-            ],
+            "Preprocessing sketch guideline": preprocessing_sketch_guideline,
         }
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
         prompt["Instructions"] |= self._prompt_environment

@@ -3780,6 +3780,60 @@ def test_hypothesis_root_prompt_omits_global_memory_and_branch_context(
     assert "Hypothesis under verification" in captured["prompt"]
 
 
+def test_preselected_hypothesis_root_prompt_omits_global_memory(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "llm"
+    cfg.agent.data_preview = False
+    previous = _node(
+        0.99,
+        code="print('unrelated')",
+        plan="Unrelated global winner",
+    )
+    journal = Journal()
+    journal.append(previous)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=1,
+        source_hash="sha256:test",
+        source_dir=tmp_path,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000015",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Assigned feature hypothesis",
+                summary="Add fold-safe categorical and binned features.",
+                rationale="This validates the selected root feature family.",
+                implementation_hint="Build categorical bins inside each fold.",
+                expected_effect="May improve balanced accuracy.",
+                risk="Avoid target leakage in encodings.",
+                sources=[],
+                path=tmp_path / "hypothesis-000015.json",
+            )
+        ],
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "I will verify the assigned feature hypothesis.", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent.generate_preselected_hypothesis_root(
+        selection,
+        node_ctime=1.0,
+        llm_log_dir=tmp_path / "artifacts" / "node",
+        artifact_dir_name="node",
+    )
+
+    assert "Memory" not in captured["prompt"]
+    assert "Branch context" not in captured["prompt"]
+    assert "Hypothesis under verification" in captured["prompt"]
+    sketch_guideline = captured["prompt"]["Instructions"]["Solution sketch guideline"]
+    assert not any("Memory section" in item for item in sketch_guideline)
+
+
 def test_hypothesis_child_prompt_uses_branch_context_not_global_memory(
     tmp_path,
     monkeypatch,
