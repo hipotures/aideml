@@ -1956,6 +1956,11 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "hypotheses[].novelty_confidence" in prompt
     assert "Do not force weak novelty" in prompt
     assert "novelty_confidence to \"low\"" in prompt
+    assert "# Novelty dimensions" in prompt
+    assert "feature representation family" in prompt
+    assert "physical or domain-specific representation" in prompt
+    assert "Changing only the model panel" in prompt
+    assert "only the number of bins is not" in prompt
     assert "basic algorithm families fit the engineered features best" in compact_prompt
     assert "not as a fixed magic list of model names" in prompt
     assert "Do not propose heavy ensembling" in prompt
