@@ -1310,10 +1310,11 @@ class Agent:
         if self.acfg.gpu:
             impl_guideline.extend(
                 [
-                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models only where it is stable in this environment.",
+                    "A CUDA-capable NVIDIA GPU is available. Use GPU-enabled training for tabular tree models. Do not silently switch a GPU-capable model to CPU when `agent.gpu=true`.",
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
-                    'For LightGBM, use CPU training by default even when `agent.gpu=true`. Do not set `device_type="cuda"`, `device="cuda"`, `device_type="gpu"`, or `device="gpu"` for LightGBM unless the assigned hypothesis explicitly tests LightGBM GPU stability. LightGBM CUDA can terminate the Python process before `try/except` can run, so ordinary solution code should keep LightGBM on CPU.',
+                    'For LightGBM, try GPU training first with `device_type="cuda"` or `device="cuda"` when `agent.gpu=true`. CPU LightGBM fallback is allowed only after an actual LightGBM GPU failure is observed in this implementation, or when a previous failed implementation for this same hypothesis explicitly says to keep LightGBM on CPU.',
+                    "If any model falls back from GPU to CPU, print a short explicit reason before continuing so the execution log shows why GPU was not used.",
                 ]
             )
 

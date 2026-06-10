@@ -4520,7 +4520,10 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
         and "Use GPU-enabled training" in line
         for line in gpu_guidelines
     )
-    assert not any("Prefer GPU-enabled training" in line for line in gpu_guidelines)
+    assert any(
+        "Do not silently switch a GPU-capable model to CPU" in line
+        for line in gpu_guidelines
+    )
     assert not any(line.startswith("If a GPU-specific") for line in gpu_guidelines)
     assert not any("If you cannot isolate" in line for line in gpu_guidelines)
     assert any('task_type="GPU"' in line for line in gpu_guidelines)
@@ -4530,17 +4533,18 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     )
     assert any(
         "For LightGBM" in line
-        and "Always try LightGBM CUDA first" in line
-        and "CPU LightGBM fallback only after" in line
-        and "Do not choose CPU LightGBM before attempting" in line
+        and "try GPU training first" in line
+        and "CPU LightGBM fallback is allowed only after" in line
+        and "previous failed implementation for this same hypothesis" in line
         for line in gpu_guidelines
     )
     assert any(
         'device_type="cuda"' in line
         and 'device="cuda"' in line
-        and 'device_type="gpu"' in line
-        and 'device="gpu"' in line
-        and "OpenCL" in line
+        for line in gpu_guidelines
+    )
+    assert any(
+        "falls back from GPU to CPU" in line and "print" in line
         for line in gpu_guidelines
     )
 
