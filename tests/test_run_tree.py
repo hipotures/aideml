@@ -2139,6 +2139,39 @@ def test_solution_tree_marks_virtual_root_hypothesis_active_on_same_line(tmp_pat
     assert active_tree_item_id(view) == "hypothesis-root:000011"
 
 
+def test_solution_tree_orders_real_and_virtual_hypothesis_roots_by_id(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-order-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-order-test")
+    cfg.agent.mode = "legacy"
+
+    for hypothesis_id in ("000011", "000012", "000019", "000021"):
+        _write_root_hypothesis(tmp_path, task, hypothesis_id, title=hypothesis_id)
+
+    journal = Journal()
+    journal.append(_hypothesis_node(_good_node(0.0), "000019"))
+
+    view = build_tree_view(
+        journal,
+        cfg=cfg,
+        repo_root=tmp_path,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert output.index("000011") < output.index("000012")
+    assert output.index("000012") < output.index("000019")
+    assert output.index("000019") < output.index("000021")
+
+
 def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)

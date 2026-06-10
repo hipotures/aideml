@@ -2432,19 +2432,19 @@ def format_hypothesis_for_prompt(
         f"Title: {hypothesis.title}",
         f"Summary: {_compact_prompt_text(hypothesis.summary, 420)}",
     ]
-    rationale = _compact_prompt_text(hypothesis.rationale, 520)
+    rationale = _compact_prompt_text(hypothesis.rationale, 2000)
     if rationale:
         lines.append(f"Rationale: {rationale}")
     implementation_hint = _compact_prompt_text(
         hypothesis.implementation_hint,
-        700,
+        5000,
     )
     if implementation_hint:
         lines.append(f"Implementation: {implementation_hint}")
-    expected_effect = _compact_prompt_text(hypothesis.expected_effect, 320)
+    expected_effect = _compact_prompt_text(hypothesis.expected_effect, 700)
     if expected_effect:
         lines.append(f"Expected effect: {expected_effect}")
-    risk = _compact_prompt_text(hypothesis.risk, 320)
+    risk = _compact_prompt_text(hypothesis.risk, 700)
     if risk:
         lines.append(f"Risk: {risk}")
     return "\n".join(lines)

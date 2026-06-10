@@ -1747,24 +1747,43 @@ def build_tree_view(
         and not active_root_generations
         and not active_virtual_root
     )
-    all_root_count = len(roots) + len(virtual_hypothesis_roots)
+    def root_entry_sort_key(entry: tuple[str, Node | dict[str, object]]):
+        kind, value = entry
+        if kind == "node":
+            assert isinstance(value, Node)
+            hypothesis_id = hypothesis_id_for_node(value)
+            if hypothesis_id is not None:
+                return (0, hypothesis_id)
+            return (1, node_order_key(value))
+        assert isinstance(value, dict)
+        return (0, str(value["hypothesis_id"]))
+
+    root_entries: list[tuple[str, Node | dict[str, object]]] = [
+        ("node", node) for node in roots
+    ]
+    root_entries.extend(("virtual", row) for row in virtual_hypothesis_roots)
+    root_entries.sort(key=root_entry_sort_key)
+
+    all_root_count = len(root_entries)
     root_position = 0
-    for node in roots:
+    for kind, value in root_entries:
         root_position += 1
         has_active_after_roots = has_root_active or bool(active_root_generations)
-        append_rec(
-            node,
-            "header",
-            [],
-            root_position == all_root_count and not has_active_after_roots,
-        )
-    for row in virtual_hypothesis_roots:
-        root_position += 1
-        append_virtual_hypothesis_root(
-            row,
-            is_last=root_position == all_root_count,
-            has_active_after_roots=has_root_active or bool(active_root_generations),
-        )
+        if kind == "node":
+            assert isinstance(value, Node)
+            append_rec(
+                value,
+                "header",
+                [],
+                root_position == all_root_count and not has_active_after_roots,
+            )
+        else:
+            assert isinstance(value, dict)
+            append_virtual_hypothesis_root(
+                value,
+                is_last=root_position == all_root_count,
+                has_active_after_roots=has_active_after_roots,
+            )
     if active_parent_node is None and active_root_generations:
         append_active_root_generations("header")
     elif has_root_active:
