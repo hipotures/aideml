@@ -3325,7 +3325,6 @@ def test_hypothesis_materialization_prompt_includes_previous_bug_context(
     prompt = captured["prompt"]
     assert isinstance(prompt, dict)
     failed_context = prompt["Previous failed implementation for assigned hypothesis"]
-    gpu_hint = prompt["Previous failure GPU/CUDA hint"]
     assert "Exception type:\nRuntimeError" in failed_context
     assert "Exception info:" in failed_context
     assert "Terminal output:" in failed_context
@@ -3333,8 +3332,61 @@ def test_hypothesis_materialization_prompt_includes_previous_bug_context(
     assert "LightGBM CUDA native crash" in failed_context
     assert "Previous failed code:" in failed_context
     assert "print('buggy root')" in failed_context
-    assert "keep LightGBM on CPU" in gpu_hint
-    assert 'device="cuda"' in gpu_hint
+    assert "Bug-fix instruction for the latest failure:" in failed_context
+    assert "keep LightGBM on CPU" in failed_context
+    assert 'device="cuda"' in failed_context
+    assert "Previous failure GPU/CUDA hint" not in prompt
+
+
+def test_hypothesis_materialization_prompt_does_not_infer_cuda_from_failed_code(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.gpu = True
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code='print("previous code mentions LightGBM CUDA but did not crash there")\n',
+        is_buggy=True,
+        node_id="node-bug",
+        score=None,
+        created_at="2026-06-10T00:00:00",
+        exception_type="TypeError",
+        exception_info={"args": ["Cannot interpret 'string[python]' as a data type"]},
+        terminal_output="TypeError: Cannot interpret 'string[python]' as a data type",
+        analysis="XGBoost could not ingest a pandas string dtype column.",
+        activate=True,
+        repo_root=tmp_path,
+    )
+    selection = research.select_hypothesis_by_id(
+        cfg,
+        hypothesis_id="000001",
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_plan_and_code_query(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('fixed')\n"
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    monkeypatch.setattr(agent, "plan_and_code_query", fake_plan_and_code_query)
+
+    agent._draft(hypothesis_selection=selection)
+
+    prompt = captured["prompt"]
+    assert isinstance(prompt, dict)
+    failed_context = prompt["Previous failed implementation for assigned hypothesis"]
+    assert "Exception type:\nTypeError" in failed_context
+    assert "Cannot interpret 'string[python]' as a data type" in failed_context
+    assert "previous code mentions LightGBM CUDA" in failed_context
+    assert "Bug-fix instruction for the latest failure:" not in failed_context
+    assert "keep LightGBM on CPU" not in failed_context
+    assert "Previous failure GPU/CUDA hint" not in prompt
 
 
 def test_hypothesis_root_code_save_creates_new_version_when_gpu_changes(

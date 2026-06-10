@@ -1416,9 +1416,6 @@ class Agent:
             prompt["Previous failed implementation for assigned hypothesis"] = (
                 failed_context
             )
-            gpu_hint = self._failed_hypothesis_gpu_hint(failed_context)
-            if gpu_hint is not None:
-                prompt["Previous failure GPU/CUDA hint"] = gpu_hint
         if parent_node is not None:
             reference = self._hypothesis_reference_implementation_for_prompt(selection)
             if reference is not None:
@@ -1455,6 +1452,13 @@ class Agent:
         )
         terminal_output = failed_code.terminal_output or ""
         analysis = failed_code.analysis or ""
+        bug_fix_instruction = self._failed_hypothesis_bug_fix_instruction(failed_code)
+        bug_fix_text = (
+            "\n\nBug-fix instruction for the latest failure:\n"
+            f"{bug_fix_instruction}\n"
+            if bug_fix_instruction is not None
+            else ""
+        )
         return (
             f"Hypothesis ID: {hypothesis_id}\n"
             f"Mode: {failed_code.agent_mode}; file: {failed_code.path.name}.\n\n"
@@ -1467,16 +1471,30 @@ class Agent:
             "Terminal output:\n"
             f"{terminal_output}\n\n"
             "Analysis:\n"
-            f"{analysis}\n\n"
+            f"{analysis}"
+            f"{bug_fix_text}\n\n"
             "Previous failed code:\n"
             f"{wrap_code(failed_code.code)}"
         )
 
-    def _failed_hypothesis_gpu_hint(self, failed_context: str) -> str | None:
-        text = failed_context.lower()
-        if "cuda" not in text and "gpu" not in text:
+    def _failed_hypothesis_bug_fix_instruction(self, failed_code: Any) -> str | None:
+        latest_failure_text = "\n".join(
+            str(part or "")
+            for part in (
+                failed_code.exception_type,
+                json.dumps(failed_code.exception_info or {}, ensure_ascii=False),
+                failed_code.terminal_output,
+                failed_code.analysis,
+            )
+        ).lower()
+        if "cuda" not in latest_failure_text and "gpu" not in latest_failure_text:
             return None
-        if "lightgbm" in text or "repl child process died" in text:
+        if (
+            "lightgbm cuda" in latest_failure_text
+            or "repl child process died" in latest_failure_text
+            or "native gpu/cuda" in latest_failure_text
+            or "native cuda" in latest_failure_text
+        ):
             return (
                 "The previous failure indicates a native GPU/CUDA backend crash. "
                 "Disable GPU/CUDA for the failing library in the new implementation. "
@@ -1486,11 +1504,7 @@ class Agent:
                 "GPU if stable, but the previous LightGBM CUDA path must not be "
                 "repeated."
             )
-        return (
-            "The previous failure mentions GPU/CUDA. Prefer a conservative fix that "
-            "disables GPU/CUDA for the failing component or provides a CPU fallback "
-            "before long training starts."
-        )
+        return None
 
     def _hypothesis_reference_implementation_for_prompt(
         self,
