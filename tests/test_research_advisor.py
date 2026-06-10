@@ -453,7 +453,8 @@ def test_format_manual_research_hints_for_prompt_includes_usage_instruction(tmp_
     assert "Build Race_Year groups" in rendered
     assert "Expected effect: More reliable model selection." in rendered
     assert "Risk: Grouped CV can be noisy" in rendered
-    assert "Sources: https://example.com/grouped-validation" in rendered
+    assert "Sources:" not in rendered
+    assert "https://example.com/grouped-validation" not in rendered
 
 
 def test_select_manual_hypotheses_skips_disabled_hypotheses(tmp_path):
@@ -1682,6 +1683,7 @@ def test_format_hypothesis_for_prompt_omits_self_report_contract(tmp_path):
     assert "research_hypotheses_llm_claimed_used" not in rendered
     assert "Do not add hypothesis-id bookkeeping" in rendered
     assert "Research source hash" not in rendered
+    assert "Sources:" not in rendered
 
 
 def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):

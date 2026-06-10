@@ -2407,10 +2407,6 @@ def format_manual_research_hints_for_prompt(
         risk = _compact_prompt_text(hypothesis.risk, 260)
         if risk:
             lines.append(f"   Risk: {risk}")
-        if hypothesis.sources:
-            lines.append(
-                "   Sources: " + _compact_prompt_text(", ".join(hypothesis.sources), 360)
-            )
     return "\n".join(lines)
 
 
@@ -2451,10 +2447,6 @@ def format_hypothesis_for_prompt(
     risk = _compact_prompt_text(hypothesis.risk, 320)
     if risk:
         lines.append(f"Risk: {risk}")
-    if hypothesis.sources:
-        lines.append(
-            "Sources: " + _compact_prompt_text(", ".join(hypothesis.sources), 420)
-        )
     return "\n".join(lines)
 
 
