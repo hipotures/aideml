@@ -935,6 +935,14 @@ class Agent:
             self._record_search_decision(trace)
             return selected
 
+        if self._is_hypothesis_mode():
+            root_debug_node = self._select_buggy_hypothesis_root(
+                forced_hypothesis_root=forced_hypothesis_root,
+            )
+            if root_debug_node is not None:
+                logger.debug("[search policy] debugging buggy hypothesis root")
+                return finish(root_debug_node, "debugging_buggy_hypothesis_root")
+
         if self._is_hypothesis_mode() and self._should_open_hypothesis_root():
             if len(self.journal.draft_nodes) < search_cfg.num_drafts:
                 logger.debug("[search policy] drafting new hypothesis root")
@@ -949,14 +957,6 @@ class Agent:
         ):
             logger.debug("[search policy] drafting new node (not enough drafts)")
             return finish(None, "not_enough_drafts")
-
-        if self._is_hypothesis_mode():
-            root_debug_node = self._select_buggy_hypothesis_root(
-                forced_hypothesis_root=forced_hypothesis_root,
-            )
-            if root_debug_node is not None:
-                logger.debug("[search policy] debugging buggy hypothesis root")
-                return finish(root_debug_node, "debugging_buggy_hypothesis_root")
 
         # debugging
         debug_node = self._select_debuggable_node(

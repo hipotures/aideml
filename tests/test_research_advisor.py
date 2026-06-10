@@ -2156,6 +2156,28 @@ def test_hypothesis_research_advisor_does_not_start_llm_checkpoint(tmp_path):
     assert not (Path(cfg.log_dir) / "research" / "checkpoint-000001").exists()
 
 
+def test_hypothesis_search_policy_debugs_buggy_root_before_opening_next_root(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = "legacy"
+    cfg.agent.hypotheses = 2
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000002")
+    bug = _node(None, code="raise RuntimeError('bug')", plan="bug")
+    bug.research_mode = "hypothesis"
+    bug.research_hypotheses_offered = ["000001"]
+    journal = Journal()
+    journal.append(bug)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is bug
+    assert agent.last_search_decision["reason"] == "debugging_buggy_hypothesis_root"
+
+
 def test_hypothesis_research_advisor_status_text_shows_latest_hypothesis(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

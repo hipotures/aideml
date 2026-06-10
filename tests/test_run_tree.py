@@ -12,6 +12,7 @@ from aide.interpreter import ExecutionInterrupted
 from aide.journal import Journal, Node
 from aide.run import (
     _sparkline,
+    _has_debuggable_hypothesis_root,
     _next_unfinished_library_root_selection,
     ActiveRootGeneration,
     active_run_log_path,
@@ -2157,6 +2158,23 @@ def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
 
     assert selection is not None
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000014"]
+
+
+def test_debuggable_hypothesis_root_blocks_next_library_root(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-root-debug-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-root-debug-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000011", title="Buggy")
+    _write_root_hypothesis(tmp_path, task, "000012", title="Next")
+
+    journal = Journal()
+    journal.append(_hypothesis_node(_bug_node(), "000011"))
+
+    assert _has_debuggable_hypothesis_root(journal, cfg)
 
 
 def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():

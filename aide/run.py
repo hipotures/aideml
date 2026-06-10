@@ -2024,6 +2024,21 @@ def _next_unfinished_library_root_selection(
     return None
 
 
+def _has_debuggable_hypothesis_root(journal: Journal, cfg: Config) -> bool:
+    max_debug_depth = int(getattr(cfg.agent.search, "max_debug_depth", 3))
+    for node in journal.buggy_nodes:
+        if (
+            node.parent is None
+            and hypothesis_id_for_node(node) is not None
+            and node.is_leaf
+            and node.debug_depth < max_debug_depth
+            and not node.is_submission_contract_error
+            and not node.is_terminal_failure
+        ):
+            return True
+    return False
+
+
 def _has_hypothesis_root_inventory(cfg: Config) -> bool:
     try:
         return bool(load_manual_hypothesis_library(cfg).hypotheses)
@@ -5892,7 +5907,10 @@ def run(argv: list[str] | None = None):
                                         "agent_gpu": bool(cfg.agent.gpu),
                                     },
                                 )
-                        elif not pipeline_skip_execution():
+                        elif not pipeline_skip_execution() and not _has_debuggable_hypothesis_root(
+                            journal,
+                            cfg,
+                        ):
                             root_selection = _next_unfinished_library_root_selection(
                                 cfg,
                                 journal,
