@@ -22,7 +22,7 @@ from .autogluon_preprocess import (
 )
 from .journal import Journal, Node
 from .utils import data_preview
-from .utils.config import Config
+from .utils.config import Config, aux_file_name
 from .utils.metric import MetricValue
 from .utils.path_portability import (
     sanitize_persisted_payload,
@@ -960,6 +960,10 @@ def _generated_hypotheses_path(cfg: Config) -> Path:
 
 def _next_hypothesis_number(source_dir: Path) -> int:
     max_id = 0
+    if source_dir.exists():
+        for path in source_dir.iterdir():
+            if path.is_dir() and path.name.isdigit():
+                max_id = max(max_id, int(path.name))
     for path in _new_layout_hypothesis_files(source_dir):
         max_id = max(max_id, int(path.parent.name))
     for path in _legacy_layout_hypothesis_files(source_dir):
@@ -1021,6 +1025,75 @@ def _normalize_generated_hypothesis(
     return payload
 
 
+def _research_request_cfg_snapshot(cfg: Config) -> dict[str, Any]:
+    return {
+        "data_dir": str(cfg.data_dir),
+        "agent": {
+            "mode": getattr(cfg.agent, "mode", None),
+            "gpu": bool(getattr(cfg.agent, "gpu", False)),
+            "aux": getattr(cfg.agent, "aux", None),
+            "aux_file_name": aux_file_name(cfg),
+        },
+        "research": {
+            "mode": getattr(cfg.research, "mode", None),
+            "model": getattr(cfg.research, "model", None),
+            "reasoning_effort": getattr(cfg.research, "reasoning_effort", None),
+            "timeout": getattr(cfg.research, "timeout", None),
+            "materialize": bool(getattr(cfg.research, "materialize", True)),
+            "execute": bool(getattr(cfg.research, "execute", True)),
+        },
+    }
+
+
+def _generated_hypothesis_source_metadata(
+    *,
+    cfg: Config,
+    completed_steps: int,
+    checkpoint_dir: Path,
+) -> dict[str, Any]:
+    return {
+        "source_run": cfg.exp_name,
+        "source_checkpoint_step": completed_steps,
+        "source_checkpoint_dir": to_portable_path(checkpoint_dir),
+        "source_request_path": to_portable_path(checkpoint_dir / "request.md"),
+        "source_request_json_path": to_portable_path(checkpoint_dir / "request.json"),
+        "source_response_path": to_portable_path(checkpoint_dir / "response.json"),
+        "source_response_raw_path": to_portable_path(
+            checkpoint_dir / "response_raw.txt"
+        ),
+    }
+
+
+def _persist_generated_hypothesis(
+    *,
+    cfg: Config,
+    raw_hypothesis: dict[str, Any],
+    hypothesis_id: str,
+    completed_steps: int,
+    checkpoint_dir: Path,
+    source_dir: Path,
+) -> Path:
+    output_path = _hypothesis_file_path(source_dir, hypothesis_id)
+    if output_path.exists():
+        raise FileExistsError(f"Refusing to overwrite hypothesis {output_path}")
+    if output_path.parent != checkpoint_dir:
+        raise ValueError(
+            "Generated hypothesis checkpoint directory must be the hypothesis "
+            f"directory: {checkpoint_dir} != {output_path.parent}"
+        )
+    payload = _normalize_generated_hypothesis(
+        raw_hypothesis,
+        agent_modes=_agent_modes_for_generated_hypothesis(cfg),
+    )
+    payload |= _generated_hypothesis_source_metadata(
+        cfg=cfg,
+        completed_steps=completed_steps,
+        checkpoint_dir=checkpoint_dir,
+    )
+    _write_json(output_path, payload)
+    return output_path
+
+
 def _append_generated_hypothesis_record(
     *,
     cfg: Config,
@@ -1028,6 +1101,7 @@ def _append_generated_hypothesis_record(
     checkpoint_dir: Path,
     created_ids: list[str],
     created_paths: list[Path],
+    checkpoint_dirs: list[Path] | None = None,
 ) -> None:
     path = _generated_hypotheses_path(cfg)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1040,6 +1114,10 @@ def _append_generated_hypothesis_record(
         "hypothesis_ids": created_ids,
         "paths": [to_portable_path(path) for path in created_paths],
     }
+    if checkpoint_dirs is not None:
+        payload["checkpoint_dirs"] = [
+            to_portable_path(path) for path in checkpoint_dirs
+        ]
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(payload, ensure_ascii=False, default=_json_default) + "\n")
 
@@ -1154,30 +1232,88 @@ def generate_research_hypotheses_for_pipeline(
     runner: Runner = subprocess.run,
     repo_root: Path = REPO_ROOT,
 ) -> ManualHypothesisSelection:
-    context = collect_research_context(
-        cfg=cfg,
-        task_desc=task_desc,
-        journal=journal,
+    requested_count = max(0, int(count))
+    if requested_count <= 0:
+        raise ValueError("Hypothesis generation count must be positive.")
+
+    source_dir = _manual_library_dir(cfg, repo_root=repo_root)
+    created_ids: list[str] = []
+    created_paths: list[Path] = []
+    checkpoint_dirs: list[Path] = []
+
+    for _ in range(requested_count):
+        hypothesis_id = f"{_next_hypothesis_number(source_dir):06d}"
+        checkpoint_dir = _hypothesis_dir(source_dir, hypothesis_id)
+        output_path = _hypothesis_file_path(source_dir, hypothesis_id)
+        if output_path.exists():
+            raise FileExistsError(f"Refusing to overwrite hypothesis {output_path}")
+        if checkpoint_dir.exists() and any(checkpoint_dir.iterdir()):
+            raise FileExistsError(
+                f"Refusing to overwrite non-empty hypothesis directory {checkpoint_dir}"
+            )
+
+        context = collect_research_context(
+            cfg=cfg,
+            task_desc=task_desc,
+            journal=journal,
+            completed_steps=completed_steps,
+            repo_root=repo_root,
+        )
+        context["hypothesis_count"] = 1
+        context["target_hypothesis_id"] = hypothesis_id
+        result = run_research_checkpoint(
+            cfg=cfg,
+            context=context,
+            runner=runner,
+            checkpoint_dir=checkpoint_dir,
+        )
+        if result.get("status") != "completed":
+            raise ValueError(f"Research hypothesis generation failed: {result}")
+        response = result.get("response", {})
+        parsed_response = (
+            response.get("parsed_response") if isinstance(response, dict) else None
+        )
+        if not isinstance(parsed_response, dict):
+            raise ValueError(
+                "Research hypothesis generation did not return parsed JSON."
+            )
+        raw_hypotheses = parsed_response.get("hypotheses")
+        if not isinstance(raw_hypotheses, list) or len(raw_hypotheses) != 1:
+            raise ValueError(
+                "Single-hypothesis generation must return exactly one hypothesis."
+            )
+        raw_hypothesis = raw_hypotheses[0]
+        if not isinstance(raw_hypothesis, dict):
+            raise ValueError("Generated hypothesis must be a JSON object.")
+
+        created_path = _persist_generated_hypothesis(
+            cfg=cfg,
+            raw_hypothesis=raw_hypothesis,
+            hypothesis_id=hypothesis_id,
+            completed_steps=completed_steps,
+            checkpoint_dir=checkpoint_dir,
+            source_dir=source_dir,
+        )
+        created_ids.append(hypothesis_id)
+        created_paths.append(created_path)
+        checkpoint_dirs.append(checkpoint_dir)
+
+        _append_generated_hypothesis_record(
+            cfg=cfg,
+            completed_steps=completed_steps,
+            checkpoint_dir=checkpoint_dir,
+            created_ids=[hypothesis_id],
+            created_paths=[created_path],
+            checkpoint_dirs=[checkpoint_dir],
+        )
+
+    library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    by_id = {hypothesis.id: hypothesis for hypothesis in library.hypotheses}
+    return ManualHypothesisSelection(
         completed_steps=completed_steps,
-    )
-    context["hypothesis_count"] = count
-    result = run_research_checkpoint(cfg=cfg, context=context, runner=runner)
-    if result.get("status") != "completed":
-        raise ValueError(f"Research hypothesis generation failed: {result}")
-    response = result.get("response", {})
-    parsed_response = (
-        response.get("parsed_response") if isinstance(response, dict) else None
-    )
-    if not isinstance(parsed_response, dict):
-        raise ValueError("Research hypothesis generation did not return parsed JSON.")
-    checkpoint_dir = Path(str(result["checkpoint_dir"]))
-    return store_generated_research_hypotheses(
-        cfg=cfg,
-        parsed_response=parsed_response,
-        completed_steps=completed_steps,
-        checkpoint_dir=checkpoint_dir,
-        count=count,
-        repo_root=repo_root,
+        source_hash=library.source_hash,
+        source_dir=library.source_dir,
+        hypotheses=[by_id[hypothesis_id] for hypothesis_id in created_ids],
     )
 
 
@@ -2597,6 +2733,39 @@ def _current_run_generated_hypothesis_payloads(
     return payloads
 
 
+def _existing_hypothesis_payloads(
+    cfg: Config,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> list[dict[str, Any]]:
+    try:
+        library = load_manual_hypothesis_library(cfg, repo_root=repo_root)
+    except ValueError:
+        return []
+    agent_mode = _manual_agent_mode_key(cfg)
+    payloads: list[dict[str, Any]] = []
+    for hypothesis in library.hypotheses:
+        payloads.append(
+            {
+                "id": hypothesis.id,
+                "enabled": hypothesis.enabled,
+                "agent_modes": hypothesis.agent_modes,
+                "compatible_with_current_agent": (
+                    hypothesis.enabled and agent_mode in hypothesis.agent_modes
+                ),
+                "title": hypothesis.title,
+                "summary": _compact_prompt_text(hypothesis.summary, max_chars=360),
+                "rationale": _compact_prompt_text(hypothesis.rationale, max_chars=700),
+                "expected_effect": _compact_prompt_text(
+                    hypothesis.expected_effect,
+                    max_chars=360,
+                ),
+                "risk": _compact_prompt_text(hypothesis.risk, max_chars=360),
+            }
+        )
+    return payloads
+
+
 def _completed_research_checkpoints(
     *, cfg: Config, before_step: int
 ) -> list[tuple[int, Path]]:
@@ -2678,6 +2847,7 @@ def collect_research_context(
     task_desc: Any,
     journal: Journal,
     completed_steps: int,
+    repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
     good_nodes = [
         node for node in journal.good_nodes if _metric_value(node) is not None
@@ -2719,7 +2889,15 @@ def collect_research_context(
             journal=journal,
             completed_steps=completed_steps,
         ),
-        "current_run_hypotheses": _current_run_generated_hypothesis_payloads(cfg),
+        "existing_hypotheses": _existing_hypothesis_payloads(
+            cfg,
+            repo_root=repo_root,
+        ),
+        "current_run_hypotheses": _current_run_generated_hypothesis_payloads(
+            cfg,
+            repo_root=repo_root,
+        ),
+        "runtime_options": _research_request_cfg_snapshot(cfg),
     }
 
 
@@ -2738,7 +2916,10 @@ def build_research_prompt(context: dict[str, Any]) -> str:
             "best_working_solutions",
             "worst_working_solutions",
             "previous_research_summaries",
+            "existing_hypotheses",
             "current_run_hypotheses",
+            "runtime_options",
+            "target_hypothesis_id",
             "hypothesis_count",
         ]
         if key in context and context.get(key) is not None
@@ -2812,9 +2993,11 @@ def run_research_checkpoint(
     cfg: Config,
     context: dict[str, Any],
     runner: Runner = subprocess.run,
+    checkpoint_dir: Path | None = None,
 ) -> dict[str, Any]:
     completed_steps = int(context["checkpoint_step"])
-    checkpoint_dir = checkpoint_dir_for(cfg, completed_steps)
+    if checkpoint_dir is None:
+        checkpoint_dir = checkpoint_dir_for(cfg, completed_steps)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     started_at = time.monotonic()
     timings_seconds: dict[str, float] = dict(context.get("timings_seconds", {}))
@@ -2845,6 +3028,7 @@ def run_research_checkpoint(
             "command": command,
             "model": cfg.research.model,
             "reasoning_effort": cfg.research.reasoning_effort,
+            "cfg_snapshot": _research_request_cfg_snapshot(cfg),
             "prompt": prompt,
         },
     )

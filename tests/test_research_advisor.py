@@ -752,6 +752,98 @@ def test_store_generated_research_hypotheses_persists_library_and_run_record(
     assert record["checkpoint_step"] == 0
 
 
+def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.gpu = True
+    cfg.agent.aux = "star_classification.csv"
+    seen: list[tuple[str, str]] = []
+
+    def fake_runner(cmd, *, input, text, capture_output, timeout, cwd):
+        del text, capture_output, timeout
+        hypothesis_id = Path(cwd).name
+        seen.append((hypothesis_id, input))
+        response = {
+            "summary": f"generated {hypothesis_id}",
+            "hypotheses": [
+                _generated_hypothesis_payload(
+                    title=f"Generated {hypothesis_id}",
+                    summary=f"Summary {hypothesis_id}",
+                )
+            ],
+        }
+        (Path(cwd) / "response_raw.txt").write_text(
+            json.dumps(response),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    selection = research.generate_research_hypotheses_for_pipeline(
+        cfg=cfg,
+        task_desc="task",
+        journal=Journal(),
+        completed_steps=0,
+        count=2,
+        runner=fake_runner,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.id for hypothesis in selection.hypotheses] == [
+        "000001",
+        "000002",
+    ]
+    assert [hypothesis_id for hypothesis_id, _prompt in seen] == [
+        "000001",
+        "000002",
+    ]
+    assert "Generated 000001" not in seen[0][1]
+    assert "Generated 000001" in seen[1][1]
+
+    first_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    second_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000002"
+    )
+    for hypothesis_dir, hypothesis_id in [
+        (first_dir, "000001"),
+        (second_dir, "000002"),
+    ]:
+        assert (hypothesis_dir / "request.md").exists()
+        assert (hypothesis_dir / "request.json").exists()
+        assert (hypothesis_dir / "response_raw.txt").exists()
+        assert (hypothesis_dir / "response.json").exists()
+        hypothesis_path = hypothesis_dir / f"hypothesis-{hypothesis_id}.json"
+        payload = json.loads(hypothesis_path.read_text(encoding="utf-8"))
+        assert payload["source_request_path"].endswith(
+            f"research_hypotheses/playground-series-s6e5/{hypothesis_id}/request.md"
+        )
+        assert payload["source_response_path"].endswith(
+            f"research_hypotheses/playground-series-s6e5/{hypothesis_id}/response.json"
+        )
+        request = json.loads((hypothesis_dir / "request.json").read_text())
+        assert request["cfg_snapshot"]["agent"]["gpu"] is True
+        assert request["cfg_snapshot"]["agent"]["aux"] == "star_classification.csv"
+        assert request["cfg_snapshot"]["research"]["materialize"] is True
+        assert request["cfg_snapshot"]["research"]["execute"] is True
+
+    generated_log = (
+        Path(cfg.log_dir) / "research_hypotheses" / "generated_hypotheses.jsonl"
+    )
+    records = [
+        json.loads(line)
+        for line in generated_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["hypothesis_ids"] for record in records] == [
+        ["000001"],
+        ["000002"],
+    ]
+    assert records[0]["checkpoint_dirs"][0].endswith(
+        "research_hypotheses/playground-series-s6e5/000001"
+    )
+
+
 def test_select_hypothesis_for_root_prioritizes_generated_run_hypotheses(
     tmp_path,
 ):

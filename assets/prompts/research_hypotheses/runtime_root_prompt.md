@@ -38,11 +38,13 @@ simple baseline algorithms look promising. Treat unexecuted hypotheses only as
 anti-duplication context. Treat buggy hypotheses as implementation warnings,
 not as evidence that the feature family is weak. Do not debug broken code.
 
-When current_run_hypotheses is present, it contains hypotheses already created
-earlier in this same run. Use it to avoid duplicates and to make this new
-hypothesis materially different. If an earlier hypothesis has code_status,
-score, or code_file fields, treat those as evidence about whether that
-hypothesis has already been materialized or scored.
+When existing_hypotheses is present, it contains hypotheses already stored for
+this task. Use it as anti-duplication context: the new hypothesis must be
+materially different in feature family, preprocessing strategy, and expected
+signal. When current_run_hypotheses is present, it contains hypotheses already
+created earlier in this same run, optionally with materialization and score
+metadata. Use it to avoid duplicates and to understand what has already been
+materialized or scored.
 
 # Prior research history
 If previous_research_summaries is present, it lists recent completed research
@@ -61,6 +63,12 @@ understand what has already been tried and what performed well or poorly.
 current_run_hypotheses contains earlier hypotheses from this same run, including
 their id, title, summary, rationale, expected_effect, risk, and optional
 materialization/score metadata.
+existing_hypotheses contains previously stored task hypotheses, including
+disabled hypotheses; disabled entries are still anti-duplication context, not
+recommendations. runtime_options records the current agent mode, GPU setting,
+auxiliary file selection, and research execution/materialization settings.
+target_hypothesis_id, when present, is the ID that will be assigned to this
+single generated hypothesis.
 
 # Required JSON output shape
 Return JSON with: summary; hypotheses[].title; hypotheses[].summary;
