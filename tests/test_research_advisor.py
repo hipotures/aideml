@@ -1265,6 +1265,63 @@ def test_reserve_hypothesis_roots_retries_unmaterialized_offers_first(tmp_path):
     ]
 
 
+def test_reserve_hypothesis_roots_uses_generated_hypotheses_not_generated_nodes(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    checkpoint_dir = tmp_path / "logs" / "research" / "checkpoint-000000"
+    checkpoint_dir.mkdir(parents=True)
+    parsed = {
+        "hypotheses": [
+            {
+                "title": f"Root {idx}",
+                "summary": f"Summary {idx}",
+                "rationale": f"Rationale {idx}",
+                "feature_family": f"Feature family {idx}",
+                "feature_strategy": f"Feature strategy {idx}",
+                "baseline_model_panel": "CatBoost, LightGBM, XGBoost.",
+                "model_panel_rationale": "Use a simple GPU-capable tree panel.",
+                "validation_strategy": "5-fold stratified CV.",
+                "materialization_hint": "Create feature-first root code.",
+                "expected_signal": f"Effect {idx}",
+                "risk": f"Risk {idx}",
+                "sources": [],
+            }
+            for idx in range(3)
+        ]
+    }
+    selection = research.store_generated_research_hypotheses(
+        cfg=cfg,
+        parsed_response=parsed,
+        completed_steps=0,
+        checkpoint_dir=checkpoint_dir,
+        count=3,
+        repo_root=tmp_path,
+    )
+    journal = Journal()
+    for hypothesis in selection.hypotheses:
+        node = Node(code="", plan="generated")
+        node.research_mode = "hypothesis"
+        node.research_hypotheses_offered = [hypothesis.id]
+        node.status = "generated"
+        journal.append(node)
+
+    reservations = research.reserve_hypothesis_roots(
+        cfg,
+        journal=journal,
+        count=3,
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert [reservation.hypothesis_id for reservation in reservations] == [
+        "000001",
+        "000002",
+        "000003",
+    ]
+
+
 def test_reserve_hypothesis_roots_excludes_inflight_reserved_ids(tmp_path):
     cfg = _manual_cfg(tmp_path)
     cfg.research.mode = "hypothesis"

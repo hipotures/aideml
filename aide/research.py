@@ -1077,7 +1077,14 @@ def _unmaterialized_generated_root_ids(
     compatible_by_id: dict[str, ManualHypothesis],
     reserved_hypothesis_ids: set[str] | None = None,
 ) -> list[str]:
-    blocked = _root_hypothesis_ids(journal, cfg)
+    blocked = {
+        hypothesis_id_for_node(node)
+        for node in journal.nodes
+        if node.parent is None
+        and node.status != "generated"
+        and _node_runtime_matches_cfg(cfg, node)
+        and hypothesis_id_for_node(node) is not None
+    }
     blocked |= set(reserved_hypothesis_ids or set())
     return [
         hypothesis_id
