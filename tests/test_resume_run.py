@@ -968,6 +968,36 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert journal.nodes[0].metric.value == 0.9
 
 
+def test_load_resume_state_applies_env_model_over_saved_config(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    monkeypatch.setenv("AIDE_AGENT_CODE_MODEL", "gpt-5.3-codex-spark:medium")
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.agent.code.model == "gpt-5.3-codex-spark"
+    assert cfg.agent.code.reasoning_effort == "medium"
+
+
+def test_load_resume_state_cli_model_override_wins_over_env(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    monkeypatch.setenv("AIDE_AGENT_CODE_MODEL", "gpt-5.3-codex-spark:medium")
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.code.model=gpt-5.4"],
+    )
+
+    assert cfg.agent.code.model == "gpt-5.4"
+    assert cfg.agent.code.reasoning_effort is None
+
+
 def test_load_resume_state_migrates_legacy_memory_prompt_defaults(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"

@@ -87,6 +87,7 @@ from rich.tree import Tree
 from .utils import serialize
 from .utils.config import (
     Config,
+    _apply_env_aliases,
     _drop_deprecated_config_keys,
     _load_cfg,
     _normalize_agent_mode_aliases,
@@ -1089,6 +1090,7 @@ def load_resume_state(
     forced_root_overridden = _cli_sets_key(cli_overrides, "agent.search.forced_root")
     cfg = OmegaConf.load(config_path)
     _migrate_resume_memory_prompt_defaults(cfg)
+    _apply_env_aliases(cfg)
     if (
         not forced_root_overridden
         and "agent" in cfg
