@@ -1476,6 +1476,7 @@ def build_tree_view(
         plateau_block_epsilon=plateau_block_epsilon,
         disabled_hypothesis_root_ids=disabled_root_ids,
     )
+    display_best_node = best_node
     public_best_node = _visible_public_best_node(
         journal,
         public_scores_by_node_id=public_scores_by_node_id,
@@ -1573,7 +1574,7 @@ def build_tree_view(
                     node,
                     active_stage=active_stage,
                     blink_on=blink_on,
-                    best_node=best_node,
+                    best_node=display_best_node,
                     public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
@@ -1587,7 +1588,7 @@ def build_tree_view(
             line.append_text(
                 _tree_node_label(
                     node,
-                    best_node=best_node,
+                    best_node=display_best_node,
                     public_best_node=public_best_node,
                     disable_oom_saturated_parents=disable_oom_saturated_parents,
                     plateau_block_epsilon=plateau_block_epsilon,
@@ -1640,6 +1641,7 @@ def build_tree_view(
         *,
         is_last: bool,
         has_active_after_roots: bool,
+        is_best_score: bool,
     ) -> None:
         nonlocal active_item_id
         hypothesis_id = str(row["hypothesis_id"])
@@ -1653,7 +1655,8 @@ def build_tree_view(
             and active_hypothesis_id == hypothesis_id
         )
         if is_active_virtual_root:
-            line = Text(prefix, style=TUI_INACTIVE_VALUE_STYLE)
+            line = Text()
+            line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
             line.append_text(
                 _tree_active_placeholder_line(
                     active_stage=active_stage,
@@ -1688,10 +1691,12 @@ def build_tree_view(
             "bug": "×",
             "failed": "×",
         }.get(status_text, "○")
-        line = Text(prefix, style=TUI_INACTIVE_VALUE_STYLE)
+        line = Text()
+        line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
         line.append(f"{marker} ", style=status_style)
         if status_text == "score" and isinstance(score, float):
-            line.append(f"{score:.5f}·{hypothesis_id}", style=TUI_METRIC_VALUE_STYLE)
+            metric_style = "bold yellow" if is_best_score else TUI_METRIC_VALUE_STYLE
+            line.append(f"{score:.5f}·{hypothesis_id}", style=metric_style)
         elif status_text in {"bug", "failed"}:
             line.append(f"bug·{hypothesis_id}", style="red")
         else:
@@ -1764,6 +1769,28 @@ def build_tree_view(
     root_entries.extend(("virtual", row) for row in virtual_hypothesis_roots)
     root_entries.sort(key=root_entry_sort_key)
 
+    def virtual_row_score_key(row: dict[str, object]) -> float | None:
+        if str(row.get("status") or "") != "score":
+            return None
+        score = row.get("score")
+        if not isinstance(score, float):
+            return None
+        return score if row.get("metric_maximize") is not False else -score
+
+    visible_best_score_key: float | None = (
+        _metric_sort_key(best_node) if best_node is not None else None
+    )
+    for kind, value in root_entries:
+        if kind != "virtual":
+            continue
+        assert isinstance(value, dict)
+        row_score_key = virtual_row_score_key(value)
+        if row_score_key is not None and (
+            visible_best_score_key is None or row_score_key > visible_best_score_key
+        ):
+            visible_best_score_key = row_score_key
+            display_best_node = None
+
     all_root_count = len(root_entries)
     root_position = 0
     for kind, value in root_entries:
@@ -1783,6 +1810,10 @@ def build_tree_view(
                 value,
                 is_last=root_position == all_root_count,
                 has_active_after_roots=has_active_after_roots,
+                is_best_score=(
+                    (row_score_key := virtual_row_score_key(value)) is not None
+                    and row_score_key == visible_best_score_key
+                ),
             )
     if active_parent_node is None and active_root_generations:
         append_active_root_generations("header")
@@ -1986,6 +2017,7 @@ def _hypothesis_root_inventory_rows(
         node = best_by_id.get(hypothesis.id)
         status = "hypothesis"
         score: float | None = None
+        metric_maximize: bool | None = None
         step: int | None = None
         created_at: float | None = None
         if node is not None:
@@ -1995,6 +2027,7 @@ def _hypothesis_root_inventory_rows(
                 status = "score"
                 assert node.metric is not None
                 score = float(node.metric.value)
+                metric_maximize = node.metric.maximize
             elif node.status == "generated":
                 status = "generated"
             elif node.is_terminal_failure:
@@ -2016,6 +2049,7 @@ def _hypothesis_root_inventory_rows(
             if scored_code is not None:
                 status = "score"
                 score = float(scored_code.score)
+                metric_maximize = True
             elif (
                 load_hypothesis_root_code(cfg, hypothesis.id)
                 if repo_root is None
@@ -2032,6 +2066,7 @@ def _hypothesis_root_inventory_rows(
                 "hypothesis_id": hypothesis.id,
                 "status": status,
                 "score": score,
+                "metric_maximize": metric_maximize,
                 "step": step,
                 "created_at": created_at,
                 "mode": _hypothesis_mode_label(hypothesis.agent_modes),
@@ -2148,6 +2183,9 @@ def build_root_hypotheses_view(
                     "score": (
                         float(node.metric.value) if node.metric is not None else None
                     ),
+                    "metric_maximize": (
+                        node.metric.maximize if node.metric is not None else None
+                    ),
                     "step": node.step,
                     "created_at": node.ctime,
                     "mode": (
@@ -2160,16 +2198,33 @@ def build_root_hypotheses_view(
             )
     if inventory_rows:
         rows.sort(key=lambda row: str(row["hypothesis_id"]))
+
+    def row_score_key(row: dict[str, object]) -> float | None:
+        if str(row.get("status") or "") != "score":
+            return None
+        score = row.get("score")
+        if not isinstance(score, float):
+            return None
+        return score if row.get("metric_maximize") is not False else -score
+
+    best_score_key = max(
+        (score_key for row in rows if (score_key := row_score_key(row)) is not None),
+        default=None,
+    )
     lines: list[Text] = []
     for index, row in enumerate(rows, start=1):
         hypothesis_id = str(row["hypothesis_id"])
         score = row.get("score")
         status_text = str(row.get("status") or "hypothesis")
         prefix = "└── " if index == len(rows) else "├── "
+        row_is_best = (
+            (current_score_key := row_score_key(row)) is not None
+            and current_score_key == best_score_key
+        )
         line = Text()
         line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
         status_style = {
-            "score": TUI_METRIC_VALUE_STYLE,
+            "score": "bold yellow" if row_is_best else TUI_METRIC_VALUE_STYLE,
             "code": "cyan",
             "generated": "cyan",
             "hypothesis": TUI_INACTIVE_VALUE_STYLE,
@@ -2186,7 +2241,8 @@ def build_root_hypotheses_view(
         }.get(status_text, "○")
         line.append(f"{marker} ", style=status_style)
         if status_text == "score" and isinstance(score, float):
-            line.append(f"{score:.5f}·{hypothesis_id}", style=TUI_METRIC_VALUE_STYLE)
+            metric_style = "bold yellow" if row_is_best else TUI_METRIC_VALUE_STYLE
+            line.append(f"{score:.5f}·{hypothesis_id}", style=metric_style)
         elif status_text in {"bug", "failed"}:
             line.append(f"bug·{hypothesis_id}", style="red")
         else:

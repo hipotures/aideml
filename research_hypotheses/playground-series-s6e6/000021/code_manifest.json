@@ -1,0 +1,17 @@
+{
+  "versions": {
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": null,
+        "status": "generated",
+        "node_id": "68288dd26c52481990aeb64f06bfc055",
+        "score": null,
+        "created_at": "2026-06-10T05:29:10",
+        "gpu": true,
+        "aux": true
+      }
+    ]
+  },
+  "active": {}
+}

@@ -2172,6 +2172,61 @@ def test_solution_tree_orders_real_and_virtual_hypothesis_roots_by_id(tmp_path):
     assert output.index("000019") < output.index("000021")
 
 
+def test_solution_tree_marks_manifest_scored_root_as_best_when_highest(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-best-manifest-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-best-manifest-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000011", title="Journal scored")
+    manifest_dir = _write_root_hypothesis(tmp_path, task, "000019", title="Manifest scored")
+    (manifest_dir / "legacy-001.py").write_text("print('ok')\n", encoding="utf-8")
+    (manifest_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": False,
+                            "status": "ok",
+                            "score": 0.966515,
+                        }
+                    ]
+                },
+                "active": {"legacy": "legacy-001.py"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    journal = Journal()
+    journal.append(_hypothesis_node(_good_node(0.96113), "000011"))
+
+    tree_output = _render_ansi(
+        render_tree_view(
+            build_tree_view(journal, cfg=cfg, repo_root=tmp_path),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+    roots_output = _render_ansi(
+        render_tree_view(
+            build_root_hypotheses_view(journal, cfg=cfg, repo_root=tmp_path),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "\x1b[1;33m0.96652·000019" in tree_output
+    assert "\x1b[1;33m0.96652·000019" in roots_output
+    assert "\x1b[1;33m0.96113·000011" not in tree_output
+
+
 def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
