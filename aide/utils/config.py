@@ -421,6 +421,7 @@ def _apply_env_aliases(cfg: Config) -> None:
             "agent.code.reasoning_effort",
             str.strip,
         ),
+        "AIDE_AGENT_CODE_TIMEOUT": ("agent.code.timeout", _env_int),
         "AIDE_AGENT_FEEDBACK_MODEL": ("agent.feedback.model", str.strip),
         "AIDE_AGENT_FEEDBACK_REASONING_EFFORT": (
             "agent.feedback.reasoning_effort",

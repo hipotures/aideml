@@ -105,6 +105,7 @@ def test_prep_cfg_reads_agent_and_research_settings_from_env(tmp_path, monkeypat
         "AIDE_AGENT_GPU=true\n"
         "AIDE_AGENT_STEPS=7\n"
         "AIDE_AGENT_HYPOTHESES=3\n"
+        "AIDE_AGENT_CODE_TIMEOUT=901\n"
         "AIDE_RESEARCH_MATERIALIZE=false\n"
         "AIDE_RESEARCH_EXECUTE=false\n"
         "AIDE_GENERATE_REPORT=false\n",
@@ -122,6 +123,7 @@ def test_prep_cfg_reads_agent_and_research_settings_from_env(tmp_path, monkeypat
     assert cfg.agent.gpu is True
     assert cfg.agent.steps == 7
     assert cfg.agent.hypotheses == 3
+    assert cfg.agent.code.timeout == 901
     assert cfg.research.enabled is True
     assert cfg.research.mode == "hypothesis"
     assert cfg.research.materialize is False

@@ -139,3 +139,31 @@ def test_codex_backend_reports_json_event_error_when_stderr_is_empty(
     assert "Codex CLI failed with exit code 1" in message
     assert "Switch to another model now" in message
     assert "codex_events.jsonl" not in message
+
+
+def test_codex_backend_reports_timeout_and_preserves_partial_logs(
+    tmp_path, monkeypatch
+):
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=cmd,
+            timeout=7,
+            output='{"event":"started"}\n',
+            stderr="still running\n",
+        )
+
+    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        backend_codex.query(
+            system_message="system",
+            user_message=None,
+            model="gpt-5.5",
+            timeout=7,
+            llm_log_dir=tmp_path,
+        )
+
+    message = str(exc_info.value)
+    assert "Codex CLI timed out after 7 seconds" in message
+    assert (tmp_path / "codex_events.jsonl").read_text() == '{"event":"started"}\n'
+    assert (tmp_path / "stderr.log").read_text() == "still running\n"

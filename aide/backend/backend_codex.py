@@ -103,6 +103,20 @@ def _codex_failure_message(stderr: str, stdout: str) -> str:
     return messages[-1] if messages else ""
 
 
+def _timeout_stream_text(value: str | bytes | None) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return ""
+
+
+def _format_timeout_seconds(timeout: object) -> str:
+    if isinstance(timeout, float) and timeout.is_integer():
+        return str(int(timeout))
+    return str(timeout)
+
+
 def query(
     system_message: str | None,
     user_message: str | None,
@@ -149,14 +163,34 @@ def query(
             command=command,
         )
         t0 = time.time()
-        result = subprocess.run(
-            command,
-            input=prompt,
-            text=True,
-            capture_output=True,
-            timeout=filtered_kwargs.get("timeout"),
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                command,
+                input=prompt,
+                text=True,
+                capture_output=True,
+                timeout=filtered_kwargs.get("timeout"),
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            req_time = time.time() - t0
+            stdout = _timeout_stream_text(exc.stdout)
+            stderr = _timeout_stream_text(exc.stderr)
+            (work_dir / _prefixed(log_prefix, "codex_events.jsonl")).write_text(
+                stdout,
+                encoding="utf-8",
+            )
+            (work_dir / _prefixed(log_prefix, "stderr.log")).write_text(
+                stderr,
+                encoding="utf-8",
+            )
+            timeout_seconds = _format_timeout_seconds(
+                filtered_kwargs.get("timeout", exc.timeout)
+            )
+            raise RuntimeError(
+                f"Codex CLI timed out after {timeout_seconds} seconds "
+                f"({req_time:.1f}s elapsed)."
+            ) from exc
         req_time = time.time() - t0
         (work_dir / _prefixed(log_prefix, "codex_events.jsonl")).write_text(
             result.stdout,

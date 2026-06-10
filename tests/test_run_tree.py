@@ -46,6 +46,7 @@ from aide.run import (
     journal_to_rich_tree,
     last_error_lines,
     mark_node_generated_only,
+    _mark_node_generation_failure,
     move_tree_focus,
     _mark_node_execution_crash,
     next_left_panel_view,
@@ -3071,6 +3072,24 @@ def test_mark_node_execution_crash_records_bug_result():
     assert node.exc_info == {"args": ["REPL child process died unexpectedly"]}
     assert "REPL child process died unexpectedly" in node.term_out
     assert "REPL child process died unexpectedly" in node.analysis
+
+
+def test_mark_node_generation_failure_records_failed_result():
+    node = Node(code="raise RuntimeError('generation failed')", plan="failed")
+
+    _mark_node_generation_failure(
+        node,
+        RuntimeError("Codex CLI timed out after 7 seconds"),
+    )
+
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert node.status == "failed"
+    assert node.exec_time == 0.0
+    assert node.exc_type == "RuntimeError"
+    assert node.exc_info == {"args": ["Codex CLI timed out after 7 seconds"]}
+    assert "Codex CLI timed out after 7 seconds" in node.term_out
+    assert "Generation failed before execution" in node.analysis
 
 
 def test_mark_node_execution_crash_reports_autogluon_gpu_oom(tmp_path):

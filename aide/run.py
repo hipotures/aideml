@@ -544,6 +544,19 @@ def mark_node_generated_only(node: Node) -> None:
     node.analysis = "Generated only; execution skipped by --skip-execution."
 
 
+def _mark_node_generation_failure(node: Node, exc: Exception) -> None:
+    message = str(exc) or exc.__class__.__name__
+    node._term_out = [f"{exc.__class__.__name__}: {message}\n"]
+    node.exec_time = 0.0
+    node.exc_type = exc.__class__.__name__
+    node.exc_info = {"args": [message]}
+    node.exc_stack = None
+    node.analysis = f"Generation failed before execution: {message}"
+    node.metric = WorstMetricValue()
+    node.is_buggy = True
+    node.status = "failed"
+
+
 def _is_seeded_scored_root_node(node: Node) -> bool:
     if node.parent is not None:
         return False
@@ -5987,12 +6000,53 @@ def run(argv: list[str] | None = None):
                                         "llm_log_dir": str(pending_artifact_dir),
                                     },
                                 )
-                                node = agent.generate_preselected_hypothesis_root(
-                                    root_selection,
-                                    node_ctime=node_ctime,
-                                    llm_log_dir=pending_artifact_dir,
-                                    artifact_dir_name=artifact_dir_name,
-                                )
+                                try:
+                                    node = agent.generate_preselected_hypothesis_root(
+                                        root_selection,
+                                        node_ctime=node_ctime,
+                                        llm_log_dir=pending_artifact_dir,
+                                        artifact_dir_name=artifact_dir_name,
+                                    )
+                                except Exception as exc:
+                                    message = f"{exc.__class__.__name__}: {exc}"
+                                    record_hypothesis_root_generation_failure(
+                                        cfg,
+                                        hypothesis_id=hypothesis_id,
+                                        attempts=1,
+                                        message=message,
+                                    )
+                                    node = Node(
+                                        code=f"raise RuntimeError({message!r})\n",
+                                        plan=(
+                                            "Failed to materialize research "
+                                            f"hypothesis {hypothesis_id}: {message}"
+                                        ),
+                                        ctime=node_ctime,
+                                        artifact_dir_name=artifact_dir_name,
+                                    )
+                                    node.research_mode = "hypothesis"
+                                    node.research_hypotheses_offered = [
+                                        hypothesis_id
+                                    ]
+                                    node.research_source_hash = (
+                                        root_selection.source_hash
+                                    )
+                                    node.research_runtime_config = {
+                                        "gpu": bool(cfg.agent.gpu)
+                                    }
+                                    record_manual_prompt_node(cfg, node)
+                                    _mark_node_generation_failure(node, exc)
+                                    debug_log(
+                                        "failed_generate_library_hypothesis_root",
+                                        phase="generate",
+                                        node=node,
+                                        extra={
+                                            "hypothesis_id": hypothesis_id,
+                                            "exception_type": exc.__class__.__name__,
+                                            "exception": str(exc),
+                                        },
+                                    )
+                                    return node
                                 debug_log(
                                     "after_generate_library_hypothesis_root",
                                     phase="generate",
@@ -6249,6 +6303,7 @@ def run(argv: list[str] | None = None):
 
                         should_execute_node = (
                             not pipeline_skip_execution()
+                            and result_node.status != "failed"
                             and (
                                 synthesized is None
                                 or synthesized.ready_for_execution
@@ -6279,7 +6334,27 @@ def run(argv: list[str] | None = None):
                                 node=result_node,
                             )
 
-                        if pipeline_skip_execution() and not node_already_in_journal:
+                        if (
+                            result_node.status == "failed"
+                            and not node_already_in_journal
+                        ):
+                            debug_log(
+                                "before_append_failed_generation_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+                            append_node_with_best_score_notification(
+                                journal=journal,
+                                node=result_node,
+                                experiment_id=cfg.exp_name,
+                            )
+                            node_already_in_journal = True
+                            debug_log(
+                                "after_append_failed_generation_node",
+                                phase="journal",
+                                node=result_node,
+                            )
+                        elif pipeline_skip_execution() and not node_already_in_journal:
                             debug_log(
                                 "before_append_generated_only_node",
                                 phase="journal",
