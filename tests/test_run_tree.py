@@ -66,6 +66,12 @@ from aide.utils.resource_monitor import ResourceHistory
 from aide.utils.metric import MetricValue
 
 
+@pytest.fixture(autouse=True)
+def _isolate_repo_dotenv(monkeypatch, tmp_path):
+    # These unit tests assert default config behavior; repo .env is production input.
+    monkeypatch.chdir(tmp_path)
+
+
 def test_resource_sparkline_uses_latest_samples_without_rebinning_history():
     assert _sparkline([100.0, 0.0, 0.0, 0.0], width=3, ceiling=100.0) == "▁▁▁"
 
