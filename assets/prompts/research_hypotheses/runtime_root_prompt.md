@@ -33,21 +33,31 @@ hyperparameter search, seed search, or advanced model-specific tricks in
 initial hypotheses. Those belong to later algorithm/ensemble/tuning phases
 after initial feature-search hypotheses have produced scores.
 
+# Hard boundary for prior examples
+Do not imitate prior hypotheses that use intermediate supervised models,
+hierarchical classifiers, pretraining, stacking, calibration, label
+propagation, KNN class posteriors, class-conditional density models, threshold
+tuning, or other multi-stage prediction architectures as the hypothesis
+mechanism. If such ideas are absent from the Existing hypotheses section, that
+absence is intentional. Treat the visible Existing hypotheses as examples of
+feature/preprocessing/data-representation directions to avoid duplicating, not
+as permission to introduce supervised meta-features or algorithmic search.
+
 # Novelty dimensions
 A new initial feature-search hypothesis is materially different only if at
 least one of these dimensions changes:
 - feature representation family
 - preprocessing mechanism
 - data source usage
-- fold-dependent or statistical feature mechanism
+- covariate-only statistical feature mechanism
 - physical or domain-specific representation
 - dimensionality-reduction or embedding method
 - missingness or outlier treatment
 
 Changing only the model panel, hyperparameters, parameter names, bin count,
 threshold values, seeds, wording, or evaluation wrapper is not novel. Changing
-the binning mechanism or fold-safe statistical mechanism can be novel; changing
-only the number of bins is not.
+the binning mechanism or target-free statistical mechanism can be novel;
+changing only the number of bins is not.
 
 # Output contract
 Return exactly {{HYPOTHESIS_COUNT}} concise new initial feature-search

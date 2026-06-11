@@ -2034,6 +2034,13 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "baseline model panel should normally be reused" in prompt
     assert "not from changing panel composition" in prompt
     assert "Do not propose heavy ensembling" in prompt
+    assert "Do not imitate prior hypotheses" in prompt
+    assert "intermediate supervised models" in prompt
+    assert "KNN class posteriors" in prompt
+    assert "class-conditional density models" in prompt
+    assert "that absence is intentional" in compact_prompt
+    assert "covariate-only statistical feature mechanism" in prompt
+    assert "target-free statistical mechanism" in prompt
     assert "Do not target a specific previous node or code block" in prompt
 
 
@@ -2052,7 +2059,7 @@ def test_research_prompt_uses_requested_hypothesis_count():
         "Return exactly 3 concise new initial feature-search hypotheses"
         in compact_prompt
     )
-    assert "contain exactly 3 items" in prompt
+    assert "contain exactly 3 items" in compact_prompt
 
 
 def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
