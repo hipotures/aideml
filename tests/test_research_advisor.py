@@ -918,6 +918,16 @@ def test_generate_research_hypotheses_omits_solution_code_context(tmp_path):
     assert "Code:" not in seen[0]
 
 
+def test_next_generated_hypothesis_ids_predicts_reserved_root_ids(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000022")
+
+    assert research.next_generated_hypothesis_ids(cfg, count=2, repo_root=tmp_path) == [
+        "000023",
+        "000024",
+    ]
+
+
 def test_select_hypothesis_for_root_prioritizes_generated_run_hypotheses(
     tmp_path,
 ):
@@ -2187,7 +2197,10 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert seen["stdin"].startswith(
         "You are a research scientist and Kaggle competition strategist."
     )
-    assert "- root hypothesis model: gpt-root-hypothesis" in seen["stdin"]
+    assert "root hypothesis model" not in seen["stdin"]
+    assert "research reasoning effort" not in seen["stdin"]
+    assert "materialize after hypothesis" not in seen["stdin"]
+    assert "execute after materialization" not in seen["stdin"]
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (

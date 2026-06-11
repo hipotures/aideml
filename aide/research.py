@@ -1066,6 +1066,16 @@ def _next_hypothesis_number(source_dir: Path) -> int:
     return max_id + 1
 
 
+def next_generated_hypothesis_ids(
+    cfg: Config,
+    *,
+    count: int,
+    repo_root: Path = REPO_ROOT,
+) -> list[str]:
+    start = _next_hypothesis_number(_manual_library_dir(cfg, repo_root=repo_root))
+    return [f"{number:06d}" for number in range(start, start + max(0, int(count)))]
+
+
 def _agent_modes_for_generated_hypothesis(cfg: Config) -> list[str]:
     agent_mode = _manual_agent_mode_key(cfg)
     if agent_mode == "autogluon":
@@ -3116,18 +3126,6 @@ def _append_runtime_options_section(lines: list[str], runtime_options: Any) -> N
                 f"- gpu: {_format_scalar_for_prompt(agent.get('gpu'))}",
                 f"- aux: {_format_scalar_for_prompt(agent.get('aux'))}",
                 f"- aux file: {_format_scalar_for_prompt(agent.get('aux_file_name'))}",
-            ]
-        )
-    research = runtime_options.get("research")
-    if isinstance(research, dict):
-        lines.extend(
-            [
-                "- root hypothesis model: "
-                f"{_format_scalar_for_prompt(research.get('root_hypothesis_model'))}",
-                "- research reasoning effort: "
-                f"{_format_scalar_for_prompt(research.get('reasoning_effort'))}",
-                f"- materialize after hypothesis: {_format_scalar_for_prompt(research.get('materialize'))}",
-                f"- execute after materialization: {_format_scalar_for_prompt(research.get('execute'))}",
             ]
         )
 

@@ -40,6 +40,7 @@ from .research import (
     load_hypothesis_root_code,
     load_manual_hypothesis_library,
     load_scored_hypothesis_root_code,
+    next_generated_hypothesis_ids,
     record_manual_prompt_node,
     record_hypothesis_root_generation_failure,
     record_hypothesis_only_selection,
@@ -4136,10 +4137,10 @@ def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
         ("feedback", cfg.agent.feedback.model, cfg.agent.feedback.reasoning_effort),
         ("report", cfg.report.model, cfg.report.reasoning_effort),
     ]
-    if cfg.research.enabled and getattr(cfg.research, "mode", "llm") != "hypothesis":
+    if cfg.research.enabled:
         settings.append(
             (
-                "research root",
+                "root hypothesis",
                 cfg.research.root_hypothesis_model,
                 cfg.research.reasoning_effort,
             )
@@ -6084,6 +6085,15 @@ def run(argv: list[str] | None = None):
                                 return selection
 
                             try:
+                                pending_hypothesis_ids = next_generated_hypothesis_ids(
+                                    cfg,
+                                    count=root_hypotheses_to_generate,
+                                )
+                                agent.active_research_hypothesis_id = (
+                                    pending_hypothesis_ids[0]
+                                    if len(pending_hypothesis_ids) == 1
+                                    else None
+                                )
                                 agent.set_active_stage("researching")
                                 generated_selection = run_with_live_refresh(
                                     live,
@@ -6102,6 +6112,7 @@ def run(argv: list[str] | None = None):
                                 break
                             finally:
                                 operator_notice = None
+                                agent.active_research_hypothesis_id = None
                                 agent.clear_active_step()
                                 agent.set_active_stage(None)
 

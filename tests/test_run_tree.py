@@ -2922,7 +2922,7 @@ def test_run_data_shows_generate_only_worker_count(tmp_path):
     assert "4" in output
 
 
-def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
+def test_model_settings_show_root_hypothesis_model_in_hypothesis_mode(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)
     cfg.goal = "test goal"
@@ -2939,8 +2939,8 @@ def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
     assert "code" in output
     assert "feedback" in output
     assert "report" in output
-    assert "research" not in output
-    assert "unused-research-model" not in output
+    assert "root hypothesis" in output
+    assert "unused-research-model" in output
 
 
 def test_model_settings_and_agent_summary_show_refactor_when_enabled(tmp_path):
