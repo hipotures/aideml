@@ -4829,7 +4829,9 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
 
     attempts = captured["prompt"]["Previous attempts from this parent"]
     assert "These direct children already tried changes on the same parent" in attempts
-    assert "Do not repeat these attempted changes" in attempts
+    assert "Use them as context to avoid simple repeats" in attempts
+    assert "If a similar direction is still worth testing" in attempts
+    assert "explain the concrete difference" in attempts
     assert "Add rank blend mode" in attempts
     assert "Remove count encoding features" in attempts
     assert "0.954672" in attempts

@@ -677,8 +677,9 @@ def _format_previous_child_attempts(
     lines = [
         (
             "These direct children already tried changes on the same parent. "
-            "Do not repeat these attempted changes; your new improvement must be "
-            "materially different from every listed attempt."
+            "Use them as context to avoid simple repeats. If a similar direction "
+            "is still worth testing, explain the concrete difference in mechanism, "
+            "scope, or implementation."
         ),
         "",
     ]
