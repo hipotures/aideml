@@ -4286,11 +4286,7 @@ def build_panel_copy_notice(
 
 
 def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
-    settings: list[ModelSetting] = [
-        ("code", cfg.agent.code.model, cfg.agent.code.reasoning_effort),
-        ("feedback", cfg.agent.feedback.model, cfg.agent.feedback.reasoning_effort),
-        ("report", cfg.report.model, cfg.report.reasoning_effort),
-    ]
+    settings: list[ModelSetting] = []
     if cfg.research.enabled:
         settings.append(
             (
@@ -4299,12 +4295,19 @@ def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
                 cfg.research.reasoning_effort,
             )
         )
+    settings.extend(
+        [
+            ("code", cfg.agent.code.model, cfg.agent.code.reasoning_effort),
+            ("feedback", cfg.agent.feedback.model, cfg.agent.feedback.reasoning_effort),
+        ]
+    )
     if cfg.synthesis.enabled:
         settings.append(
             ("synthesis", cfg.synthesis.model, cfg.synthesis.reasoning_effort)
         )
     if cfg.refactor.enabled:
         settings.append(("refactor", cfg.refactor.model, cfg.refactor.reasoning_effort))
+    settings.append(("report", cfg.report.model, cfg.report.reasoning_effort))
     return settings
 
 

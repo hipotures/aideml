@@ -3333,6 +3333,9 @@ def test_model_settings_show_root_hypothesis_model_in_hypothesis_mode(tmp_path):
     assert "root hyp" in output
     assert "root hypothesis" not in output
     assert "unused-research-model" in output
+    assert output.index("root hyp") < output.index("code")
+    assert output.index("code") < output.index("feedback")
+    assert output.index("feedback") < output.index("report")
 
 
 def test_model_settings_and_agent_summary_show_refactor_when_enabled(tmp_path):
