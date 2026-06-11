@@ -2312,7 +2312,9 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
         "total",
     }
     assert all(value >= 0 for value in response["timings_seconds"].values())
-    readable_response = (checkpoint_dir / "response_raw.txt").read_text()
+    raw_response = (checkpoint_dir / "response_raw.txt").read_text()
+    assert raw_response.startswith('{"summary":')
+    readable_response = (checkpoint_dir / "response_readable.txt").read_text()
     assert readable_response.startswith(
         "Use these external Codex research hints only when relevant."
     )

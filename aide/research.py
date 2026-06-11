@@ -3376,7 +3376,7 @@ def run_research_checkpoint(
     phase_started = time.monotonic()
     parsed_response = _parse_response(raw_response)
     if isinstance(parsed_response, dict):
-        raw_response_path.write_text(
+        (checkpoint_dir / "response_readable.txt").write_text(
             _format_research_response_for_file(
                 checkpoint_name=_checkpoint_name(completed_steps),
                 parsed_response=parsed_response,
