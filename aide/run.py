@@ -1498,6 +1498,23 @@ def _tree_active_placeholder_line(
     return line
 
 
+def _tree_active_root_hypothesis_line(
+    *,
+    active_stage: str | None,
+    active_hypothesis_id: str,
+    blink_on: bool,
+) -> Text:
+    if active_stage == "generating":
+        line = Text("●" if blink_on else " ", style="cyan")
+        line.append(f" {active_hypothesis_id}", style="cyan")
+        return line
+    return _tree_active_placeholder_line(
+        active_stage=active_stage,
+        active_hypothesis_id=active_hypothesis_id,
+        blink_on=blink_on,
+    )
+
+
 def synthesis_injected_node_ids(log_dir: Path | str) -> set[str]:
     synthesis_dir = Path(log_dir) / "synthesis"
     if not synthesis_dir.exists():
@@ -1783,7 +1800,7 @@ def build_tree_view(
                 line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
             else:
                 line.append_text(
-                    _tree_active_placeholder_line(
+                    _tree_active_root_hypothesis_line(
                         active_stage=active_stage,
                         active_hypothesis_id=hypothesis_id,
                         blink_on=blink_on,

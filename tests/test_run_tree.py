@@ -2189,27 +2189,47 @@ def test_solution_tree_marks_virtual_root_hypothesis_active_on_same_line(tmp_pat
     _write_root_hypothesis(tmp_path, task, "000011", title="First root")
     _write_root_hypothesis(tmp_path, task, "000012", title="Second root")
 
-    view = build_tree_view(
+    view_on = build_tree_view(
         Journal(),
         cfg=cfg,
         repo_root=tmp_path,
         active_stage="generating",
         active_hypothesis_id="000011",
+        blink_on=True,
     )
-    output = _render_text(
+    output_on = _render_text(
         render_tree_view(
-            view,
-            focused_item_id=active_tree_item_id(view) or "header",
+            view_on,
+            focused_item_id=active_tree_item_id(view_on) or "header",
             scroll_top=0,
             viewport_height=10,
         )
     )
 
-    assert "[*]·000011" in output
-    assert "○ 000011" not in output
-    assert output.count("[*]") == 1
-    assert output.index("[*]·000011") < output.index("000012")
-    assert active_tree_item_id(view) == "hypothesis-root:000011"
+    view_off = build_tree_view(
+        Journal(),
+        cfg=cfg,
+        repo_root=tmp_path,
+        active_stage="generating",
+        active_hypothesis_id="000011",
+        blink_on=False,
+    )
+    output_off = _render_text(
+        render_tree_view(
+            view_off,
+            focused_item_id=active_tree_item_id(view_off) or "header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "● 000011" in output_on
+    assert "[*]" not in output_on
+    assert "  000011" in output_off
+    assert "[ ]" not in output_off
+    assert "·000011" not in output_on
+    assert output_on.index("● 000011") < output_on.index("000012")
+    assert active_tree_item_id(view_on) == "hypothesis-root:000011"
 
 
 def test_solution_tree_marks_researching_root_as_blinking_hypothesis_icon(tmp_path):
