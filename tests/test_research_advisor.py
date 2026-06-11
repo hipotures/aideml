@@ -849,6 +849,7 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
         assert (hypothesis_dir / "request.md").exists()
         assert (hypothesis_dir / "request.json").exists()
         assert (hypothesis_dir / "response_raw.txt").exists()
+        assert not (hypothesis_dir / "response_readable.txt").exists()
         assert (hypothesis_dir / "response.json").exists()
         hypothesis_path = hypothesis_dir / f"hypothesis-{hypothesis_id}.json"
         payload = json.loads(hypothesis_path.read_text(encoding="utf-8"))
@@ -2314,14 +2315,7 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert all(value >= 0 for value in response["timings_seconds"].values())
     raw_response = (checkpoint_dir / "response_raw.txt").read_text()
     assert raw_response.startswith('{"summary":')
-    readable_response = (checkpoint_dir / "response_readable.txt").read_text()
-    assert readable_response.startswith(
-        "Use these external Codex research hints only when relevant."
-    )
-    assert "Research checkpoint: 000010" in readable_response
-    assert "Summary: researched" in readable_response
-    assert "Try calibrated LightGBM" in readable_response
-    assert '{"summary":' not in readable_response
+    assert not (checkpoint_dir / "response_readable.txt").exists()
     assert response["exit_code"] == 0
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "completed"
