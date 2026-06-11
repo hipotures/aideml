@@ -2196,6 +2196,56 @@ def test_solution_tree_marks_virtual_root_hypothesis_active_on_same_line(tmp_pat
     assert active_tree_item_id(view) == "hypothesis-root:000011"
 
 
+def test_solution_tree_marks_researching_root_as_blinking_hypothesis_icon(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-active-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-active-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000023", title="Pending root")
+
+    view_on = build_tree_view(
+        Journal(),
+        cfg=cfg,
+        repo_root=tmp_path,
+        active_stage="researching",
+        active_hypothesis_id="000023",
+        blink_on=True,
+    )
+    output_on = _render_text(
+        render_tree_view(
+            view_on,
+            focused_item_id=active_tree_item_id(view_on) or "header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    view_off = build_tree_view(
+        Journal(),
+        cfg=cfg,
+        repo_root=tmp_path,
+        active_stage="researching",
+        active_hypothesis_id="000023",
+        blink_on=False,
+    )
+    output_off = _render_text(
+        render_tree_view(
+            view_off,
+            focused_item_id=active_tree_item_id(view_off) or "header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "○·000023" in output_on
+    assert "[*]" not in output_on
+    assert " ·000023" in output_off
+    assert "[ ]" not in output_off
+
+
 def test_solution_tree_orders_real_and_virtual_hypothesis_roots_by_id(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
