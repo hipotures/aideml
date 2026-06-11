@@ -1358,6 +1358,8 @@ def generate_research_hypotheses_for_pipeline(
             completed_steps=completed_steps,
             repo_root=repo_root,
         )
+        context["best_working_solutions"] = []
+        context["worst_working_solutions"] = []
         context["hypothesis_count"] = 1
         result = run_research_checkpoint(
             cfg=cfg,

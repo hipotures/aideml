@@ -868,6 +868,56 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
     )
 
 
+def test_generate_research_hypotheses_omits_solution_code_context(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Existing clean hypothesis",
+        summary="This text should remain available as hypothesis context.",
+    )
+    journal = Journal()
+    journal.append(
+        _node(
+            0.9,
+            code="print('old implementation should not be in prompt')",
+            plan="old plan",
+        )
+    )
+    seen: list[str] = []
+
+    def fake_runner(cmd, *, input, text, capture_output, timeout, cwd):
+        del text, capture_output, timeout
+        seen.append(input)
+        response = {
+            "summary": "generated",
+            "hypotheses": [_generated_hypothesis_payload()],
+        }
+        (Path(cwd) / "response_raw.txt").write_text(
+            json.dumps(response),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    research.generate_research_hypotheses_for_pipeline(
+        cfg=cfg,
+        task_desc="task",
+        journal=journal,
+        completed_steps=0,
+        count=1,
+        runner=fake_runner,
+        repo_root=tmp_path,
+    )
+
+    assert len(seen) == 1
+    assert "Existing clean hypothesis" in seen[0]
+    assert "Best working solutions" not in seen[0]
+    assert "Worst working solutions" not in seen[0]
+    assert "old implementation should not be in prompt" not in seen[0]
+    assert "Code:" not in seen[0]
+
+
 def test_select_hypothesis_for_root_prioritizes_generated_run_hypotheses(
     tmp_path,
 ):
