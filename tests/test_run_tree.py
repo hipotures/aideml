@@ -2989,7 +2989,8 @@ def test_model_settings_show_root_hypothesis_model_in_hypothesis_mode(tmp_path):
     assert "code" in output
     assert "feedback" in output
     assert "report" in output
-    assert "root hypothesis" in output
+    assert "root hyp" in output
+    assert "root hypothesis" not in output
     assert "unused-research-model" in output
 
 

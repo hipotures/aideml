@@ -4144,7 +4144,7 @@ def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
     if cfg.research.enabled:
         settings.append(
             (
-                "root hypothesis",
+                "root hyp",
                 cfg.research.root_hypothesis_model,
                 cfg.research.reasoning_effort,
             )
