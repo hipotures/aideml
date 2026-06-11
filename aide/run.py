@@ -1924,7 +1924,7 @@ def build_tree_view(
         roots = [
             node
             for node in roots
-            if hypothesis_id_for_node(node) is not None
+            if hypothesis_id_for_node(node) is not None or node.children
         ]
     virtual_hypothesis_roots: list[dict[str, object]] = []
     if cfg is not None:

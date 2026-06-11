@@ -433,6 +433,36 @@ def test_hypothesis_tree_view_hides_legacy_roots_but_keeps_hypothesis_branches(
     assert "step-" not in output
 
 
+def test_hypothesis_tree_view_keeps_legacy_root_when_it_has_branches(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / "task")
+    cfg.goal = "test"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+    cfg.research.mode = "hypothesis"
+    journal = Journal()
+    legacy_root = _good_node(0.96533)
+    legacy_child = _good_node(0.96494, parent=legacy_root)
+    hypothesis_root = _hypothesis_node(_good_node(0.96652), "000019")
+    journal.append(legacy_root)
+    journal.append(legacy_child)
+    journal.append(hypothesis_root)
+
+    output = _render_text(
+        render_tree_view(
+            build_tree_view(journal, cfg=cfg),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "0.96533·0" in output
+    assert "0.96494·1" in output
+    assert "0.96652·000019" in output
+    assert "step-" not in output
+
+
 def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
     journal = Journal()
     root = _good_node(0.945)
