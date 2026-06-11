@@ -1400,6 +1400,25 @@ def test_load_resume_state_defaults_research_for_older_configs(tmp_path):
     assert cfg.agent.autogluon.included_model_types is None
 
 
+def test_load_resume_state_migrates_legacy_research_model_key(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.research.model = "gpt-legacy-root"
+    del cfg_data.research.root_hypothesis_model
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.research.root_hypothesis_model == "gpt-legacy-root"
+    assert "model" not in cfg.research
+
+
 def test_load_resume_state_normalizes_autogluon_mode_alias(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
 

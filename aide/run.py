@@ -453,6 +453,14 @@ def _migrate_resume_memory_prompt_defaults(cfg: Any) -> None:
         cfg.agent.memory_full_recent_steps = 10
 
 
+def _migrate_resume_research_model_key(cfg: Any) -> None:
+    if "research" not in cfg or "model" not in cfg.research:
+        return
+    if "root_hypothesis_model" not in cfg.research:
+        cfg.research.root_hypothesis_model = cfg.research.model
+    del cfg.research.model
+
+
 def apply_runtime_web_options(cfg: Config, runtime: RuntimeOptions) -> None:
     if runtime.web_enabled:
         cfg.web.enabled = True
@@ -1090,6 +1098,7 @@ def load_resume_state(
     forced_root_overridden = _cli_sets_key(cli_overrides, "agent.search.forced_root")
     cfg = OmegaConf.load(config_path)
     _migrate_resume_memory_prompt_defaults(cfg)
+    _migrate_resume_research_model_key(cfg)
     _apply_env_aliases(cfg)
     if (
         not forced_root_overridden
