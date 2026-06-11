@@ -2201,6 +2201,10 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert "research reasoning effort" not in seen["stdin"]
     assert "materialize after hypothesis" not in seen["stdin"]
     assert "execute after materialization" not in seen["stdin"]
+    assert "Runtime options" not in seen["stdin"]
+    assert "agent mode" not in seen["stdin"]
+    assert "gpu:" not in seen["stdin"]
+    assert "aux:" not in seen["stdin"]
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (

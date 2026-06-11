@@ -133,7 +133,8 @@ def test_render_next_hypothesis_prompt_writes_dry_run_request(tmp_path: Path):
     assert runtime_options["research"]["materialize"] is False
     assert runtime_options["research"]["execute"] is False
     assert "Return exactly 1 concise new initial feature-search" in request["prompt"]
-    assert "## Runtime options" in request["prompt"]
+    assert "## Runtime options" not in request["prompt"]
+    assert "agent mode" not in request["prompt"]
     assert "```json" not in request["prompt"]
     assert '"existing_hypotheses"' not in request["prompt"]
 

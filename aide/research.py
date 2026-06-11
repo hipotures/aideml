@@ -3114,22 +3114,6 @@ def _render_text_list_item_for_prompt(value: Any) -> str:
     return _compact_prompt_multiline_text(value, max_chars=1200)
 
 
-def _append_runtime_options_section(lines: list[str], runtime_options: Any) -> None:
-    if not isinstance(runtime_options, dict):
-        return
-    lines.extend(["", "## Runtime options"])
-    agent = runtime_options.get("agent")
-    if isinstance(agent, dict):
-        lines.extend(
-            [
-                f"- agent mode: {_format_scalar_for_prompt(agent.get('mode'))}",
-                f"- gpu: {_format_scalar_for_prompt(agent.get('gpu'))}",
-                f"- aux: {_format_scalar_for_prompt(agent.get('aux'))}",
-                f"- aux file: {_format_scalar_for_prompt(agent.get('aux_file_name'))}",
-            ]
-        )
-
-
 def _append_solution_examples_section(
     lines: list[str],
     title: str,
@@ -3191,7 +3175,6 @@ def _format_research_context_for_prompt(context: dict[str, Any]) -> str:
                 _format_scalar_for_prompt(context.get("metric_direction")),
             ]
         )
-    _append_runtime_options_section(lines, context.get("runtime_options"))
     _append_text_list_section(
         lines,
         "Existing hypotheses",
