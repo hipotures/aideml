@@ -1482,7 +1482,7 @@ def _tree_active_placeholder_line(
 ) -> Text:
     if active_stage == "researching" and active_hypothesis_id:
         line = Text("○" if blink_on else " ", style=TUI_INACTIVE_VALUE_STYLE)
-        line.append(f"·{active_hypothesis_id}", style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(f" {active_hypothesis_id}", style=TUI_NEUTRAL_VALUE_STYLE)
         return line
     indicator = "[*]" if blink_on else "[ ]"
     style = "bold yellow"

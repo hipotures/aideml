@@ -2240,9 +2240,9 @@ def test_solution_tree_marks_researching_root_as_blinking_hypothesis_icon(tmp_pa
         )
     )
 
-    assert "○·000023" in output_on
+    assert "○ 000023" in output_on
     assert "[*]" not in output_on
-    assert " ·000023" in output_off
+    assert "  000023" in output_off
     assert "[ ]" not in output_off
 
 
