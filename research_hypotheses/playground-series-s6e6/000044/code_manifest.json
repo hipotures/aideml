@@ -1,0 +1,25 @@
+{
+  "versions": {
+    "legacy": [
+      {
+        "file": "legacy-001.py",
+        "buggy": null,
+        "status": "candidate",
+        "node_id": null,
+        "score": null,
+        "created_at": "2026-06-11T20:52:57+00:00",
+        "exec_time": null,
+        "gpu": true,
+        "aux": true,
+        "hypothesis_id": "000044",
+        "imported_from_hypothesis_id": "000034",
+        "source_batch_file": "legacy-034.py",
+        "parent_code_file": "response.py",
+        "syntax_check": "ok"
+      }
+    ]
+  },
+  "active": {
+    "legacy": "legacy-001.py"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "title": "Lower SDSS17 Auxiliary Weight",
+  "summary": "Reduce the global auxiliary SDSS17 base weight from 0.35 to 0.20 while keeping locality and class-ratio weighting intact.",
+  "feature_family": "source_derived_photometric_sky_features",
+  "feature_strategy": "Keep the current feature generation and SDSS17 inclusion path unchanged. Only the overall training influence of auxiliary rows is reduced, while the competition rows and train+test covariate-only features are unchanged.",
+  "baseline_model_panel": "Use the current CatBoost, XGBoost, and LightGBM panel with identical fold-wise blend and calibration. The only code change is AUX_SAMPLE_WEIGHT=0.20 instead of 0.35.",
+  "model_panel_rationale": "The parent uses 100000 auxiliary SDSS17 rows, which can help but may introduce domain shift. Lowering the auxiliary weight tests whether the ensemble benefits from less external-domain influence while retaining useful locality-weighted signal.",
+  "validation_strategy": "Use the same 5-fold competition-row OOF protocol. Auxiliary rows are appended only to the training fold, never to validation scoring, and balanced accuracy is reported only on competition validation rows.",
+  "materialization_hint": "Start from response.py and change AUX_SAMPLE_WEIGHT from 0.35 to 0.20. Do not change auxiliary locality weighting, class balance weighting, features, models, blend search, calibration, or artifacts.",
+  "expected_signal": "If the auxiliary rows currently add mild domain noise, reducing their weight should improve or stabilize OOF balanced accuracy. If the auxiliary domain is genuinely helpful, the score should fall and the parent 0.35 setting should be retained.",
+  "novelty_confidence": "medium",
+  "risk": "This may reduce rare-class support from the auxiliary dataset. Because it is a scalar-only change, the result should be straightforward to interpret.",
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "rationale": "Hypothesis 000032: Reduce the global auxiliary SDSS17 base weight from 0.35 to 0.20 while keeping locality and class-ratio weighting intact.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
+  "implementation_hint": "Start from response.py and change AUX_SAMPLE_WEIGHT from 0.35 to 0.20. Do not change auxiliary locality weighting, class balance weighting, features, models, blend search, calibration, or artifacts.",
+  "expected_effect": "If the auxiliary rows currently add mild domain noise, reducing their weight should improve or stabilize OOF balanced accuracy. If the auxiliary domain is genuinely helpful, the score should fall and the parent 0.35 setting should be retained.",
+  "sources": [
+    "response.py",
+    "aide_result.json",
+    "hypothesis-000019.json"
+  ],
+  "source_run": "2-indigo-leech-of-pleasure",
+  "source_artifact_dir": "logs/2-indigo-leech-of-pleasure/artifacts/20260611T070645-b952224c-55",
+  "source_step": 55,
+  "source_node_id": "3c1233c427ea4683a7bdeda305e035cc",
+  "parent_cv_reference": {
+    "parent_oof_balanced_accuracy": 0.968002,
+    "parent_metric": "balanced_accuracy",
+    "parent_code_file": "response.py",
+    "note": "Use this hypothesis run score, not the parent score, as the empirical result."
+  },
+  "code_file": "legacy-001.py",
+  "prompt_enabled": false,
+  "imported_from_hypothesis_id": "000032",
+  "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
+  "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
+  "source_batch_parent_oof_balanced_accuracy": 0.968002,
+  "source_batch_code_file": "legacy-032.py"
+}

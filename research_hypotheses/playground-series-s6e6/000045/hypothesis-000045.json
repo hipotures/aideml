@@ -1,0 +1,42 @@
+{
+  "title": "Alternative Fold Seed Stability Check",
+  "summary": "Run the full current pipeline with a different StratifiedKFold random seed to measure whether the 0.968-level result is robust to fold assignment.",
+  "feature_family": "source_derived_photometric_sky_features",
+  "feature_strategy": "No feature changes. Keep the exact current feature builder, auxiliary data handling, model configurations, weights, fold-wise blend, and fold-wise calibration.",
+  "baseline_model_panel": "Use the current CatBoost, XGBoost, and LightGBM ensemble unchanged. The only modification is RANDOM_STATE=2026 for fold construction.",
+  "model_panel_rationale": "Recent improvements are small enough that fold noise can obscure real gains. A seed-stability run estimates whether the current score is structurally robust or fold-specific.",
+  "validation_strategy": "Use 5-fold StratifiedKFold with shuffle=True and random_state=2026 on competition rows. Score balanced accuracy on OOF competition rows after the same fold-wise blend and temperature/offset calibration.",
+  "materialization_hint": "Start from response.py and change only RANDOM_STATE from 42 to 2026. Do not change model random seeds, features, auxiliary weighting, blend grid, calibration grid, or artifacts.",
+  "expected_signal": "A similar score to 0.968002 supports robustness of the current pipeline. A large drop would indicate the parent improvement is partly fold-seed sensitive and should be validated on multiple seeds before further tuning.",
+  "novelty_confidence": "high",
+  "risk": "This is primarily a reliability/stability hypothesis rather than a direct improvement attempt. It still produces a valid comparable OOF score.",
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "rationale": "Hypothesis 000035: Run the full current pipeline with a different StratifiedKFold random seed to measure whether the 0.968-level result is robust to fold assignment.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
+  "implementation_hint": "Start from response.py and change only RANDOM_STATE from 42 to 2026. Do not change model random seeds, features, auxiliary weighting, blend grid, calibration grid, or artifacts.",
+  "expected_effect": "A similar score to 0.968002 supports robustness of the current pipeline. A large drop would indicate the parent improvement is partly fold-seed sensitive and should be validated on multiple seeds before further tuning.",
+  "sources": [
+    "response.py",
+    "aide_result.json",
+    "hypothesis-000019.json"
+  ],
+  "source_run": "2-indigo-leech-of-pleasure",
+  "source_artifact_dir": "logs/2-indigo-leech-of-pleasure/artifacts/20260611T070645-b952224c-55",
+  "source_step": 55,
+  "source_node_id": "3c1233c427ea4683a7bdeda305e035cc",
+  "parent_cv_reference": {
+    "parent_oof_balanced_accuracy": 0.968002,
+    "parent_metric": "balanced_accuracy",
+    "parent_code_file": "response.py",
+    "note": "Use this hypothesis run score, not the parent score, as the empirical result."
+  },
+  "code_file": "legacy-001.py",
+  "prompt_enabled": false,
+  "imported_from_hypothesis_id": "000035",
+  "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
+  "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
+  "source_batch_parent_oof_balanced_accuracy": 0.968002,
+  "source_batch_code_file": "legacy-035.py"
+}

@@ -1,0 +1,42 @@
+{
+  "title": "CatBoost Explicit Weights Without Auto Class Weights",
+  "summary": "Remove CatBoost auto_class_weights while preserving the explicit fold-specific balanced sample weights passed into CatBoost.",
+  "feature_family": "source_derived_photometric_sky_features",
+  "feature_strategy": "Keep all engineered features and auxiliary rows unchanged. This hypothesis changes only CatBoost class-balancing semantics, not the feature space or the other models.",
+  "baseline_model_panel": "Use the current CatBoost, XGBoost, and LightGBM ensemble pipeline, but configure CatBoost without auto_class_weights=\"Balanced\" because sample_weight=tree_sw already encodes fold-specific class balance and auxiliary locality.",
+  "model_panel_rationale": "The parent improved by passing tree_sw to CatBoost, but CatBoost still also applies automatic class weighting. This experiment tests whether explicit balanced sample weights alone are cleaner than double balancing.",
+  "validation_strategy": "Use the same 5-fold StratifiedKFold, same OOF model panel, same fold-wise logit blend, and same fold-wise temp-offset calibration. Primary score is balanced accuracy on competition OOF rows.",
+  "materialization_hint": "Start from response.py. In make_cat_model, remove auto_class_weights=\"Balanced\" and leave the CatBoost fit call using sample_weight=tree_sw. Preserve XGBoost/LightGBM weighting, auxiliary weights, features, blend search, calibration, and output artifacts.",
+  "expected_signal": "If CatBoost was overcompensating class imbalance, its standalone OOF score and/or blend usefulness should improve. If auto_class_weights adds a useful extra bias, CatBoost should weaken and the ensemble score should decline.",
+  "novelty_confidence": "medium-high",
+  "risk": "The competition hint favored CatBoost auto_class_weights, so disabling it may hurt. This is explicitly a controlled alternative class-weighting test.",
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "rationale": "Hypothesis 000033: Remove CatBoost auto_class_weights while preserving the explicit fold-specific balanced sample weights passed into CatBoost.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
+  "implementation_hint": "Start from response.py. In make_cat_model, remove auto_class_weights=\"Balanced\" and leave the CatBoost fit call using sample_weight=tree_sw. Preserve XGBoost/LightGBM weighting, auxiliary weights, features, blend search, calibration, and output artifacts.",
+  "expected_effect": "If CatBoost was overcompensating class imbalance, its standalone OOF score and/or blend usefulness should improve. If auto_class_weights adds a useful extra bias, CatBoost should weaken and the ensemble score should decline.",
+  "sources": [
+    "response.py",
+    "aide_result.json",
+    "hypothesis-000019.json"
+  ],
+  "source_run": "2-indigo-leech-of-pleasure",
+  "source_artifact_dir": "logs/2-indigo-leech-of-pleasure/artifacts/20260611T070645-b952224c-55",
+  "source_step": 55,
+  "source_node_id": "3c1233c427ea4683a7bdeda305e035cc",
+  "parent_cv_reference": {
+    "parent_oof_balanced_accuracy": 0.968002,
+    "parent_metric": "balanced_accuracy",
+    "parent_code_file": "response.py",
+    "note": "Use this hypothesis run score, not the parent score, as the empirical result."
+  },
+  "code_file": "legacy-001.py",
+  "prompt_enabled": false,
+  "imported_from_hypothesis_id": "000033",
+  "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
+  "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
+  "source_batch_parent_oof_balanced_accuracy": 0.968002,
+  "source_batch_code_file": "legacy-033.py"
+}

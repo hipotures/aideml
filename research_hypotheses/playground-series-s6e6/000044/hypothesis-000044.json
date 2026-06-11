@@ -1,0 +1,42 @@
+{
+  "title": "Prune Fine Sky-Bin Feature Family",
+  "summary": "Remove the high-cardinality fine sky-bin categorical family and its frequency features from the current feature set.",
+  "feature_family": "source_derived_photometric_sky_features_pruned_fine_sky_bins",
+  "feature_strategy": "Keep the core photometric, redshift, coarse sky-bin, galactic, rank, and auxiliary features. Drop sky_alpha_bin_48, sky_delta_bin_36, sky_cell_bin_48, their spectral/galaxy interaction categories, and their covariate-only frequency columns before encoding/model fitting.",
+  "baseline_model_panel": "Use the current CatBoost, XGBoost, and LightGBM ensemble, fold-wise blend, and fold-wise calibration with the pruned feature matrix. No model hyperparameters are changed.",
+  "model_panel_rationale": "The feature stack is broad and some fine sky-bin crosses may be noisy or overly transductive. Pruning this high-cardinality block tests whether the ensemble generalizes better with less spatial memorization.",
+  "validation_strategy": "Use the same 5-fold competition-row OOF protocol and balanced accuracy. Train+test covariate-only features remain label-free; the only change is dropping a named fine-bin block before categorical handling and numeric median filling.",
+  "materialization_hint": "Start from response.py. Define PRUNED_FINE_SKY_FEATURES, remove these names from CATEGORICAL_COLS, and after add_all_features drop any matching columns from train_full and test before categorical normalization. Preserve all models, sample weights, blend search, calibration, and artifact writing.",
+  "expected_signal": "If fine sky bins are mostly noise or overfit, OOF balanced accuracy should hold or increase despite fewer features. If they encode real synthetic-generation structure, the score should fall, confirming their importance.",
+  "novelty_confidence": "medium",
+  "risk": "The parent feature recipe may rely on fine sky localization, so this could reduce accuracy. The result is still useful as an ablation for feature-stack pruning.",
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "rationale": "Hypothesis 000034: Remove the high-cardinality fine sky-bin categorical family and its frequency features from the current feature set.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
+  "implementation_hint": "Start from response.py. Define PRUNED_FINE_SKY_FEATURES, remove these names from CATEGORICAL_COLS, and after add_all_features drop any matching columns from train_full and test before categorical normalization. Preserve all models, sample weights, blend search, calibration, and artifact writing.",
+  "expected_effect": "If fine sky bins are mostly noise or overfit, OOF balanced accuracy should hold or increase despite fewer features. If they encode real synthetic-generation structure, the score should fall, confirming their importance.",
+  "sources": [
+    "response.py",
+    "aide_result.json",
+    "hypothesis-000019.json"
+  ],
+  "source_run": "2-indigo-leech-of-pleasure",
+  "source_artifact_dir": "logs/2-indigo-leech-of-pleasure/artifacts/20260611T070645-b952224c-55",
+  "source_step": 55,
+  "source_node_id": "3c1233c427ea4683a7bdeda305e035cc",
+  "parent_cv_reference": {
+    "parent_oof_balanced_accuracy": 0.968002,
+    "parent_metric": "balanced_accuracy",
+    "parent_code_file": "response.py",
+    "note": "Use this hypothesis run score, not the parent score, as the empirical result."
+  },
+  "code_file": "legacy-001.py",
+  "prompt_enabled": false,
+  "imported_from_hypothesis_id": "000034",
+  "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
+  "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
+  "source_batch_parent_oof_balanced_accuracy": 0.968002,
+  "source_batch_code_file": "legacy-034.py"
+}

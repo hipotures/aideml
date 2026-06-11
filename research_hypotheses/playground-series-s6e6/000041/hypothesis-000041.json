@@ -1,0 +1,42 @@
+{
+  "title": "Regularized Second LightGBM Expert",
+  "summary": "Add one diversity-focused LightGBM variant with smaller leaves, stronger regularization, and a different seed to the existing fold-wise ensemble.",
+  "feature_family": "source_derived_photometric_sky_features",
+  "feature_strategy": "Keep all current source-derived photometric, sky, redshift, categorical, frequency, rank, and SDSS17 auxiliary features unchanged. This hypothesis changes only model-panel diversity, not the feature representation.",
+  "baseline_model_panel": "Use the current CatBoost, XGBoost, primary LightGBM, plus one additional LightGBM regularized expert with num_leaves=63, min_child_samples=85, subsample=0.80, colsample_bytree=0.75, reg_alpha=0.10, reg_lambda=2.50, random_state=2026. Extend the simplex blend search to four model families while keeping fold-wise blend and calibration.",
+  "model_panel_rationale": "A previous shallow XGBoost variant did not help, but LightGBM is the strongest standalone learner; a more regularized LightGBM may make different boundary errors while remaining aligned with the best model family.",
+  "validation_strategy": "Use identical 5-fold StratifiedKFold competition-row OOF scoring. The new LightGBM variant is trained inside each fold with the same tree_sw sample weights and evaluated only on the competition validation slice; final OOF score uses fold-wise blend and fold-wise temp-offset calibration.",
+  "materialization_hint": "Start from response.py. Add LGBM_REG_CONFIG and train lightgbm_reg after the primary LightGBM in each fold; store its OOF/test probabilities; include it in model_names, model_available, fold_scores, fold_times, and the common_model_names blend path. Replace the 3-model-specific simplex search with a generic bounded simplex candidate generator so the four-model blend is valid.",
+  "expected_signal": "If the regularized LightGBM is complementary, fold-specific blend weights should allocate it nonzero mass and the calibrated OOF score should exceed 0.968002. If it is redundant, the blend search should give it near-zero weight with little score change but extra runtime.",
+  "novelty_confidence": "medium-high",
+  "risk": "This increases runtime and blend-search dimensionality. The generic candidate grid is bounded and joblib-parallelized, but the extra LightGBM expert may still not add enough diversity to justify its cost.",
+  "enabled": true,
+  "agent_modes": [
+    "legacy"
+  ],
+  "rationale": "Hypothesis 000031: Add one diversity-focused LightGBM variant with smaller leaves, stronger regularization, and a different seed to the existing fold-wise ensemble.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
+  "implementation_hint": "Start from response.py. Add LGBM_REG_CONFIG and train lightgbm_reg after the primary LightGBM in each fold; store its OOF/test probabilities; include it in model_names, model_available, fold_scores, fold_times, and the common_model_names blend path. Replace the 3-model-specific simplex search with a generic bounded simplex candidate generator so the four-model blend is valid.",
+  "expected_effect": "If the regularized LightGBM is complementary, fold-specific blend weights should allocate it nonzero mass and the calibrated OOF score should exceed 0.968002. If it is redundant, the blend search should give it near-zero weight with little score change but extra runtime.",
+  "sources": [
+    "response.py",
+    "aide_result.json",
+    "hypothesis-000019.json"
+  ],
+  "source_run": "2-indigo-leech-of-pleasure",
+  "source_artifact_dir": "logs/2-indigo-leech-of-pleasure/artifacts/20260611T070645-b952224c-55",
+  "source_step": 55,
+  "source_node_id": "3c1233c427ea4683a7bdeda305e035cc",
+  "parent_cv_reference": {
+    "parent_oof_balanced_accuracy": 0.968002,
+    "parent_metric": "balanced_accuracy",
+    "parent_code_file": "response.py",
+    "note": "Use this hypothesis run score, not the parent score, as the empirical result."
+  },
+  "code_file": "legacy-001.py",
+  "prompt_enabled": false,
+  "imported_from_hypothesis_id": "000031",
+  "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
+  "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
+  "source_batch_parent_oof_balanced_accuracy": 0.968002,
+  "source_batch_code_file": "legacy-031.py"
+}
