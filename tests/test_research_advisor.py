@@ -2086,6 +2086,8 @@ def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
             "playground-series-s6e5",
             hypothesis_id,
             title=title,
+            rationale=f"Legacy rationale for {title}",
+            feature_strategy=f"Feature strategy for {title}",
         )
     _write_code_manifest(
         tmp_path,
@@ -2115,6 +2117,9 @@ def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
     assert "## Existing hypotheses" in prompt
     assert "---\nTitle: First feature family" in prompt
     assert "---\nTitle: Second feature family" in prompt
+    assert "Feature strategy: Feature strategy for First feature family" in prompt
+    assert "Legacy rationale for First feature family" not in prompt
+    assert "Rationale:" not in prompt
     assert "### 1" not in prompt
     assert "### 2" not in prompt
     assert "## Executed hypotheses" not in prompt

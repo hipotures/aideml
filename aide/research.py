@@ -2902,11 +2902,12 @@ def _max_public_score(
 
 
 def _hypothesis_text_for_prompt(hypothesis: ManualHypothesis) -> str:
+    feature_strategy = hypothesis.feature_strategy or hypothesis.rationale
     return "\n".join(
         [
             f"Title: {hypothesis.title}",
             f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
-            f"Rationale: {_compact_prompt_text(hypothesis.rationale, max_chars=520)}",
+            f"Feature strategy: {_compact_prompt_text(feature_strategy, max_chars=520)}",
         ]
     )
 
@@ -3119,16 +3120,18 @@ def _render_text_list_item_for_prompt(value: Any) -> str:
         parts: list[str] = []
         title = _compact_prompt_text(value.get("title"), max_chars=220)
         summary = _compact_prompt_text(value.get("summary"), max_chars=360)
-        rationale = _compact_prompt_text(
-            value.get("rationale") or value.get("expected_effect"),
+        feature_strategy = _compact_prompt_text(
+            value.get("feature_strategy")
+            or value.get("rationale")
+            or value.get("expected_effect"),
             max_chars=620,
         )
         if title:
             parts.append(f"Title: {title}")
         if summary:
             parts.append(f"Summary: {summary}")
-        if rationale:
-            parts.append(f"Rationale: {rationale}")
+        if feature_strategy:
+            parts.append(f"Feature strategy: {feature_strategy}")
         return "\n".join(parts)
     return _compact_prompt_multiline_text(value, max_chars=1200)
 
