@@ -122,6 +122,7 @@ class ManualHypothesis:
     sources: list[str]
     path: Path
     prompt_enabled: bool = True
+    feature_strategy: str | None = None
 
 
 @dataclass(frozen=True)
@@ -317,6 +318,12 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
         title=payload["title"].strip(),
         summary=payload["summary"].strip(),
         rationale=payload["rationale"].strip(),
+        feature_strategy=(
+            payload["feature_strategy"].strip()
+            if isinstance(payload.get("feature_strategy"), str)
+            and payload["feature_strategy"].strip()
+            else None
+        ),
         implementation_hint=payload["implementation_hint"].strip(),
         expected_effect=payload["expected_effect"].strip(),
         risk=payload["risk"].strip(),
@@ -2629,9 +2636,12 @@ def format_hypothesis_for_prompt(
         f"Title: {hypothesis.title}",
         f"Summary: {_compact_prompt_text(hypothesis.summary, 420)}",
     ]
-    rationale = _compact_prompt_text(hypothesis.rationale, 2000)
-    if rationale:
-        lines.append(f"Experiment specification: {rationale}")
+    feature_strategy = _compact_prompt_text(
+        hypothesis.feature_strategy or hypothesis.rationale,
+        2000,
+    )
+    if feature_strategy:
+        lines.append(f"Feature strategy: {feature_strategy}")
     implementation_hint = _compact_prompt_text(
         hypothesis.implementation_hint,
         5000,

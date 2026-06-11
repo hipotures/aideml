@@ -89,6 +89,7 @@ def _write_manual_hypothesis(
     title: str = "Grouped validation",
     summary: str = "Use grouped validation to reduce public/CV mismatch.",
     rationale: str = "Race/year grouping should reduce public/CV mismatch.",
+    feature_strategy: str | None = None,
     implementation_hint: str = "Build Race_Year groups and compare grouped CV.",
     expected_effect: str = "Better validation stability.",
     risk: str = "Grouped CV may be pessimistic.",
@@ -120,6 +121,11 @@ def _write_manual_hypothesis(
                 "title": title,
                 "summary": summary,
                 "rationale": rationale,
+                **(
+                    {"feature_strategy": feature_strategy}
+                    if feature_strategy is not None
+                    else {}
+                ),
                 "implementation_hint": implementation_hint,
                 "expected_effect": expected_effect,
                 "risk": risk,
@@ -1732,6 +1738,8 @@ def test_format_hypothesis_for_prompt_omits_self_report_contract(tmp_path):
         "000001",
         title="Grouped validation",
         summary="Use grouped validation to reduce public/CV mismatch.",
+        rationale="Legacy rationale should not be used when feature strategy exists.",
+        feature_strategy="Build grouped validation features from race-year context.",
     )
     selection = research.select_hypothesis_for_node(
         cfg,
@@ -1750,7 +1758,8 @@ def test_format_hypothesis_for_prompt_omits_self_report_contract(tmp_path):
     assert "Do not add hypothesis-id bookkeeping" in rendered
     assert "Research source hash" not in rendered
     assert "Sources:" not in rendered
-    assert "Experiment specification:" in rendered
+    assert "Feature strategy: Build grouped validation features" in rendered
+    assert "Legacy rationale should not be used" not in rendered
     assert "Rationale:" not in rendered
 
 
