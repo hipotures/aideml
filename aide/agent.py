@@ -39,6 +39,7 @@ from .research import (
     REPO_ROOT,
     load_latest_manual_research_hints,
     load_latest_research_hints,
+    load_manual_hypothesis_library,
     load_failed_hypothesis_root_code,
     load_hypothesis_root_code,
     record_manual_claimed_usage,
@@ -706,6 +707,36 @@ def _format_previous_child_attempts(
             f"- step {step}: {status}, {_format_metric_value(child)}{delta}; "
             f"attempt={summary}"
         )
+    return "\n".join(lines)
+
+
+def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:
+    compact = " ".join(str(text or "").split())
+    if len(compact) <= max_chars:
+        return compact
+    return compact[: max_chars - 3].rstrip() + "..."
+
+
+def _format_branch_hypothesis_description(hypothesis: Any) -> str:
+    lines = [
+        f"Title: {hypothesis.title}",
+        (
+            "Summary: "
+            + _compact_branch_hypothesis_text(hypothesis.summary, max_chars=420)
+        ),
+    ]
+    rationale = _compact_branch_hypothesis_text(
+        hypothesis.rationale,
+        max_chars=900,
+    )
+    if rationale:
+        lines.append(f"Rationale: {rationale}")
+    implementation = _compact_branch_hypothesis_text(
+        hypothesis.implementation_hint,
+        max_chars=700,
+    )
+    if implementation:
+        lines.append(f"Implementation: {implementation}")
     return "\n".join(lines)
 
 
@@ -1577,6 +1608,9 @@ class Agent:
                 prompt["Branch context"] = self.journal.generate_branch_context(
                     parent_node,
                     public_scores_by_node_id=self.prompt_public_scores_by_node_id,
+                    hypothesis_descriptions_by_id=(
+                        self._branch_hypothesis_descriptions_by_id()
+                    ),
                 )
             return
         if include_global_memory:
@@ -1585,6 +1619,16 @@ class Agent:
                 full_recent_steps=self.acfg.memory_full_recent_steps,
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
             )
+
+    def _branch_hypothesis_descriptions_by_id(self) -> dict[str, str]:
+        try:
+            library = load_manual_hypothesis_library(self.cfg, repo_root=REPO_ROOT)
+        except ValueError:
+            return {}
+        return {
+            hypothesis.id: _format_branch_hypothesis_description(hypothesis)
+            for hypothesis in library.hypotheses
+        }
 
     def _parent_process_stdout_prompt(self, parent_node: Node) -> str | None:
         if not bool(getattr(self.acfg, "include_parent_process_stdout", False)):

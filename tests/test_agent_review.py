@@ -373,6 +373,40 @@ def test_journal_generates_branch_context_from_root_to_parent_only():
     assert "Grandchild plan" not in context
 
 
+def test_branch_context_uses_hypothesis_description_for_seeded_root_plan():
+    journal = Journal()
+    root = Node(
+        code="root",
+        plan="Seeded scored ROOT hypothesis 000019 from legacy legacy-001.py.",
+    )
+    root.metric = MetricValue(0.96652, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000019"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child improvement plan", parent=root)
+    child.metric = MetricValue(0.96723, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    context = journal.generate_branch_context(
+        child,
+        hypothesis_descriptions_by_id={
+            "000019": (
+                "Title: Source-Derived Photometric Sky Feature Baseline\n"
+                "Summary: Rebuild the source feature recipe with a simple balanced panel.\n"
+                "Rationale: Isolate the reusable photometric, sky, and auxiliary feature set."
+            )
+        },
+    )
+
+    assert "Hypothesis ID: 000019" in context
+    assert "Title: Source-Derived Photometric Sky Feature Baseline" in context
+    assert "Summary: Rebuild the source feature recipe" in context
+    assert "Seeded scored ROOT hypothesis 000019" not in context
+
+
 def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = True

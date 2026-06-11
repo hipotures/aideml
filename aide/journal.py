@@ -44,6 +44,23 @@ def _summary_plan_text(plan: str | None) -> str:
     return text
 
 
+def _branch_design_text(
+    node: "Node",
+    *,
+    hypothesis_descriptions_by_id: dict[str, str] | None = None,
+) -> str:
+    text = _summary_plan_text(node.plan)
+    if (
+        text.startswith("Seeded scored ROOT hypothesis ")
+        and len(node.research_hypotheses_offered) == 1
+    ):
+        hypothesis_id = node.research_hypotheses_offered[0]
+        description = (hypothesis_descriptions_by_id or {}).get(hypothesis_id)
+        if description:
+            return description.strip()
+    return text
+
+
 def _format_public_cv_interpretation(
     *,
     cv_score: float,
@@ -436,6 +453,7 @@ class Journal(DataClassJsonMixin):
         parent_node: Node,
         *,
         public_scores_by_node_id: dict[str, float] | None = None,
+        hypothesis_descriptions_by_id: dict[str, str] | None = None,
     ) -> str:
         """Generate hypothesis-mode context for the selected parent branch."""
         public_scores_by_node_id = public_scores_by_node_id or {}
@@ -468,7 +486,15 @@ class Journal(DataClassJsonMixin):
                 lines.append(
                     f"Hypothesis ID: {ancestor.research_hypotheses_offered[0]}"
                 )
-            lines.append(f"Design: {_summary_plan_text(ancestor.plan)}")
+            design = _branch_design_text(
+                ancestor,
+                hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+            )
+            if "\n" in design:
+                lines.append("Design:")
+                lines.extend(design.splitlines())
+            else:
+                lines.append(f"Design: {design}")
             if ancestor.metric is not None and ancestor.metric.value is not None:
                 lines.append(f"Validation Metric: {ancestor.metric.value:.5f}")
                 public_score = public_scores_by_node_id.get(ancestor.id)
