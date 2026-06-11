@@ -1917,6 +1917,15 @@ def build_tree_view(
             or not node.is_submission_contract_error
         )
     ]
+    if (
+        cfg is not None
+        and getattr(getattr(cfg, "research", None), "mode", None) == "hypothesis"
+    ):
+        roots = [
+            node
+            for node in roots
+            if hypothesis_id_for_node(node) is not None
+        ]
     virtual_hypothesis_roots: list[dict[str, object]] = []
     if cfg is not None:
         existing_hypothesis_ids = {
