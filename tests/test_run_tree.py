@@ -588,15 +588,14 @@ def test_journal_tree_renders_executing_hypothesis_as_blue_dot_with_id():
     output_on = _render_text(tree_on)
     output_off = _render_text(tree_off)
     ansi_on = _render_ansi(tree_on)
-    ansi_off = _render_ansi(tree_off)
 
     assert "● 000123" in output_on
-    assert "● 000123" in output_off
+    assert "  000123" in output_off
+    assert "● 000123" not in output_off
     assert "○ 000123" not in output_on
     assert "○ 000123" not in output_off
     assert "●·000123" not in output_on
     assert "\x1b[36m●" in ansi_on
-    assert "\x1b[32m●" in ansi_off
     assert "[*]" not in output_on
     assert "[ ]" not in output_on
     assert "[*]" not in output_off

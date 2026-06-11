@@ -1201,7 +1201,7 @@ def journal_to_rich_tree(
         if active_stage is None:
             return
         if active_stage == "executing":
-            placeholder = Text("●", style="cyan" if blink_on else "green")
+            placeholder = Text("●" if blink_on else " ", style="cyan")
         else:
             indicator = "[*]" if blink_on else "[ ]"
             placeholder = Text(indicator, style=active_placeholder_style())
@@ -1508,7 +1508,7 @@ def _tree_active_placeholder_line(
         line.append(f" {active_hypothesis_id}", style=TUI_INACTIVE_VALUE_STYLE)
         return line
     if active_stage == "executing":
-        line = Text("●", style="cyan" if blink_on else "green")
+        line = Text("●" if blink_on else " ", style="cyan")
         if active_hypothesis_id:
             line.append(f" {active_hypothesis_id}", style="cyan")
         return line
