@@ -24,6 +24,7 @@ from aide.run import (
     recover_generated_only_root_artifacts,
     save_parallel_generate_only_run,
     should_parallel_generate_only_roots,
+    should_seed_scored_hypothesis_roots_for_run,
     should_cleanup_workspace_on_exit,
     validate_hypothesis_root_generate_workers,
 )
@@ -191,6 +192,18 @@ def test_parse_runtime_args_extracts_generate_only_hypothesis_ids():
     assert runtime.generate_only_requested is True
     assert runtime.generate_only_hypothesis_ids == ("001162", "001170")
     assert remaining == ["agent.steps=200"]
+
+
+def test_generate_only_disables_scored_root_seeding():
+    _resume, runtime, _remaining = parse_runtime_args(["--generate-only"])
+
+    assert should_seed_scored_hypothesis_roots_for_run(runtime) is False
+
+
+def test_skip_execution_does_not_disable_scored_root_seeding():
+    _resume, runtime, _remaining = parse_runtime_args(["--skip-execution"])
+
+    assert should_seed_scored_hypothesis_roots_for_run(runtime) is True
 
 
 @pytest.mark.parametrize("workers", [0, -1, 9, "four"])

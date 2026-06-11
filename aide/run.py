@@ -695,6 +695,10 @@ def maybe_seed_scored_hypothesis_roots(
     return seeded_count
 
 
+def should_seed_scored_hypothesis_roots_for_run(runtime_options: RuntimeOptions) -> bool:
+    return not runtime_options.generate_only_requested
+
+
 def _refresh_existing_seeded_hypothesis_root(existing: Node, seeded: Node) -> bool:
     run_stats = getattr(existing, "run_stats", None) or {}
     if not run_stats.get("seeded_from_manifest"):
@@ -4995,7 +4999,7 @@ def run(argv: list[str] | None = None):
                     seed_source,
                 )
                 save_run(cfg, journal)
-        else:
+        elif should_seed_scored_hypothesis_roots_for_run(runtime_options):
             with Status("Seeding run from scored hypothesis roots ..."):
                 seeded_count = maybe_seed_scored_hypothesis_roots(
                     cfg,
@@ -5004,7 +5008,7 @@ def run(argv: list[str] | None = None):
                 )
                 if seeded_count:
                     save_run(cfg, journal)
-    else:
+    elif should_seed_scored_hypothesis_roots_for_run(runtime_options):
         with Status("Seeding run from scored hypothesis roots ..."):
             seeded_count = maybe_seed_scored_hypothesis_roots(
                 cfg,
