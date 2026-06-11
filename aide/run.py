@@ -1200,8 +1200,11 @@ def journal_to_rich_tree(
     def append_active_placeholder(tree):
         if active_stage is None:
             return
-        indicator = "[*]" if blink_on else "[ ]"
-        placeholder = Text(indicator, style=active_placeholder_style())
+        if active_stage == "executing":
+            placeholder = Text("●", style="cyan")
+        else:
+            indicator = "[*]" if blink_on else "[ ]"
+            placeholder = Text(indicator, style=active_placeholder_style())
         placeholder_hypothesis_id = active_hypothesis_id
         if (
             active_parent_node is not None
@@ -1210,10 +1213,13 @@ def journal_to_rich_tree(
         ):
             placeholder_hypothesis_id = None
         if placeholder_hypothesis_id:
-            placeholder.append(
-                f"·{placeholder_hypothesis_id}",
-                style=active_placeholder_style(),
-            )
+            if active_stage == "executing":
+                placeholder.append(f" {placeholder_hypothesis_id}", style="cyan")
+            else:
+                placeholder.append(
+                    f"·{placeholder_hypothesis_id}",
+                    style=active_placeholder_style(),
+                )
         tree.add(placeholder)
 
     def node_order_key(node: Node):
@@ -1500,6 +1506,11 @@ def _tree_active_placeholder_line(
     if active_stage == "researching" and active_hypothesis_id:
         line = Text("○" if blink_on else " ", style=TUI_INACTIVE_VALUE_STYLE)
         line.append(f" {active_hypothesis_id}", style=TUI_INACTIVE_VALUE_STYLE)
+        return line
+    if active_stage == "executing":
+        line = Text("●", style="cyan")
+        if active_hypothesis_id:
+            line.append(f" {active_hypothesis_id}", style="cyan")
         return line
     indicator = "[*]" if blink_on else "[ ]"
     style = "bold yellow"

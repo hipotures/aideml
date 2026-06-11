@@ -347,7 +347,8 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
     output = _render_text(tree)
 
     assert "● 0.94500" in output
-    assert "[*]" in output
+    assert "●" in output
+    assert "[*]" not in output
     assert "executing" not in output
 
 
@@ -467,7 +468,7 @@ def test_journal_tree_suppresses_root_hypothesis_id_on_child_placeholder():
 def test_journal_tree_colors_active_placeholder_by_stage():
     expected_ansi = {
         "generating": "\x1b[1;37m[*]",
-        "executing": "\x1b[1;33m[*]",
+        "executing": "\x1b[36m●",
         "reviewing": "\x1b[1;34m[*]",
     }
 
@@ -561,10 +562,28 @@ def test_tree_view_marks_existing_generated_node_active_without_placeholder():
         )
     )
 
-    assert "[*] 000123" in output
+    assert "● 000123" in output
+    assert "[*] 000123" not in output
     assert "[*]·000123" not in output
-    assert output.count("[*]") == 1
     assert active_tree_item_id(view) == active.id
+
+
+def test_journal_tree_renders_executing_hypothesis_as_blue_dot_with_id():
+    journal = Journal()
+    tree = journal_to_rich_tree(
+        journal,
+        active_parent_node=None,
+        active_stage="executing",
+        active_hypothesis_id="000123",
+        blink_on=True,
+    )
+
+    output = _render_text(tree)
+
+    assert "● 000123" in output
+    assert "●·000123" not in output
+    assert "[*]" not in output
+    assert "[ ]" not in output
 
 
 def test_tree_view_ignores_generated_only_node_when_selecting_best():
@@ -1396,7 +1415,8 @@ def test_tree_view_renders_active_placeholder_as_tree_child():
     ))
 
     assert "├── ● 0.91000" in output
-    assert "└── [*]" in output
+    assert "└── ●" in output
+    assert "[*]" not in output
 
 
 def test_tree_view_renders_active_hypothesis_id_on_placeholder():
