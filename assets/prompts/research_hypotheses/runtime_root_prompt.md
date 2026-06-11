@@ -72,8 +72,8 @@ hypothesis, set novelty_confidence to "low", and explicitly describe the
 duplication or weak-novelty risk in risk.
 
 The prompt may include previously stored hypotheses as short Title, Summary,
-and Rationale text blocks. Use them only to understand what feature directions
-have already been proposed and to avoid near-duplicates.
+and Feature strategy text blocks. Use them only to understand what feature
+directions have already been proposed and to avoid near-duplicates.
 
 # Prior research history
 If recent research summaries are included, use them as context for choosing a
@@ -105,7 +105,10 @@ exactly {{HYPOTHESIS_COUNT}} items.
   auxiliary_data_features, missingness_outlier_features, or text_tfidf_features.
 - feature_strategy: concrete plan for which features, transformations,
   encodings, imputations, reductions, or data representations this hypothesis
-  should build. This is the main hypothesis.
+  should build. This is the main hypothesis. It must be self-contained: do not
+  define it by pointing at a previous run, node, artifact directory, code file,
+  or log path. Prior runs may motivate novelty/risk, but the feature_strategy
+  itself must name the actual features or transformations to build.
 - baseline_model_panel: simple, diverse model-family panel to evaluate the
   feature family. Keep it basic and comparable across initial hypotheses; avoid
   hardcoding the same few model names in every hypothesis unless the task

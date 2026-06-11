@@ -2053,6 +2053,9 @@ def test_research_prompt_starts_with_researcher_instruction(tmp_path):
     assert "covariate-only statistical feature mechanism" in prompt
     assert "target-free statistical mechanism" in prompt
     assert "Do not target a specific previous node or code block" in prompt
+    assert "Feature strategy text blocks" in prompt
+    assert "must be self-contained" in prompt
+    assert "do not define it by pointing at a previous run" in compact_prompt
 
 
 def test_research_prompt_uses_requested_hypothesis_count():
@@ -2125,6 +2128,16 @@ def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
     assert "## Executed hypotheses" not in prompt
     assert "## Buggy hypotheses" not in prompt
     assert "## Unexecuted hypotheses" not in prompt
+
+
+def test_compact_prompt_text_truncates_at_word_boundary():
+    text = "alpha " + ("bravo " * 40) + "charlie_delta"
+
+    compact = research._compact_prompt_text(text, max_chars=80)
+
+    assert compact.endswith("…")
+    assert "charlie_delta" not in compact
+    assert not compact.endswith("brav…")
 
 
 def test_research_context_skips_prompt_disabled_hypotheses_without_disabling_execution(

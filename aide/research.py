@@ -2696,7 +2696,7 @@ def _compact_prompt_text(value: Any, max_chars: int = 500) -> str:
     text = " ".join(text.split())
     if len(text) <= max_chars:
         return text
-    return text[: max_chars - 1].rstrip() + "…"
+    return _truncate_prompt_text(text, max_chars=max_chars)
 
 
 def _compact_prompt_multiline_text(value: Any, max_chars: int = 1200) -> str:
@@ -2710,7 +2710,17 @@ def _compact_prompt_multiline_text(value: Any, max_chars: int = 1200) -> str:
     text = "\n".join(line for line in lines if line)
     if len(text) <= max_chars:
         return text
-    return text[: max_chars - 1].rstrip() + "…"
+    return _truncate_prompt_text(text, max_chars=max_chars)
+
+
+def _truncate_prompt_text(text: str, *, max_chars: int) -> str:
+    if max_chars <= 1:
+        return "…"
+    prefix = text[: max_chars - 1].rstrip()
+    boundary = prefix.rfind(" ")
+    if boundary >= max(1, int(max_chars * 0.7)):
+        prefix = prefix[:boundary].rstrip()
+    return prefix + "…"
 
 
 def build_data_overview(cfg: Config) -> str | None:
@@ -2907,7 +2917,7 @@ def _hypothesis_text_for_prompt(hypothesis: ManualHypothesis) -> str:
         [
             f"Title: {hypothesis.title}",
             f"Summary: {_compact_prompt_text(hypothesis.summary, max_chars=320)}",
-            f"Feature strategy: {_compact_prompt_text(feature_strategy, max_chars=520)}",
+            f"Feature strategy: {_compact_prompt_text(feature_strategy, max_chars=1200)}",
         ]
     )
 
@@ -3124,7 +3134,7 @@ def _render_text_list_item_for_prompt(value: Any) -> str:
             value.get("feature_strategy")
             or value.get("rationale")
             or value.get("expected_effect"),
-            max_chars=620,
+            max_chars=1200,
         )
         if title:
             parts.append(f"Title: {title}")
