@@ -924,6 +924,23 @@ def test_ensure_node_artifact_slot_assigns_hash_name_to_legacy_node(tmp_path):
     assert same_dir == artifact_dir
 
 
+def test_ensure_node_artifact_slot_copies_solution_helper(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "run"
+    cfg = prep_cfg(cfg)
+    node = Node(
+        code="from aide_solution_helpers import load_competition_data\n",
+        plan="loaded root code",
+        ctime=1_779_492_701.0,
+    )
+
+    artifact_dir = ensure_node_artifact_slot(cfg, node)
+
+    assert (artifact_dir / "aide_solution_helpers.py").exists()
+
+
 def test_ensure_node_artifact_slot_appends_node_step_to_explicit_name(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)

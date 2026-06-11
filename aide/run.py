@@ -4682,6 +4682,7 @@ def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
     if node.artifact_dir_name is not None:
         artifact_dir = _node_artifact_dir(cfg, node)
         artifact_dir.mkdir(parents=True, exist_ok=True)
+        copy_solution_helper(artifact_dir)
         link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
@@ -4695,6 +4696,7 @@ def ensure_node_artifact_slot(cfg: Config, node: Node) -> Path:
         except FileExistsError:
             continue
         node.artifact_dir_name = dir_name
+        copy_solution_helper(artifact_dir)
         link_artifact_input_dir(cfg.workspace_dir, artifact_dir)
         return artifact_dir
 
