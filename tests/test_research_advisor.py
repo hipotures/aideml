@@ -2102,6 +2102,10 @@ def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
     assert "Evidence type" not in prompt
     assert "Status:" not in prompt
     assert "## Existing hypotheses" in prompt
+    assert "---\nTitle: First feature family" in prompt
+    assert "---\nTitle: Second feature family" in prompt
+    assert "### 1" not in prompt
+    assert "### 2" not in prompt
     assert "## Executed hypotheses" not in prompt
     assert "## Buggy hypotheses" not in prompt
     assert "## Unexecuted hypotheses" not in prompt

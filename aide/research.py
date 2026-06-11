@@ -3098,10 +3098,10 @@ def _append_text_list_section(lines: list[str], title: str, values: Any) -> None
     if not isinstance(values, list) or not values:
         return
     lines.extend(["", f"## {title}"])
-    for index, value in enumerate(values, start=1):
+    for value in values:
         text = _render_text_list_item_for_prompt(value)
         if text:
-            lines.extend([f"### {index}", text])
+            lines.extend(["---", text])
 
 
 def _render_text_list_item_for_prompt(value: Any) -> str:
