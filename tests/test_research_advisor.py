@@ -4349,6 +4349,8 @@ def test_preselected_hypothesis_root_prompt_omits_global_memory(tmp_path):
     assert "Hypothesis under verification" in captured["prompt"]
     sketch_guideline = captured["prompt"]["Instructions"]["Solution sketch guideline"]
     assert not any("Memory section" in item for item in sketch_guideline)
+    assert not any("first solution" in item.lower() for item in sketch_guideline)
+    assert any("do not turn it into" in item for item in sketch_guideline)
 
 
 def test_hypothesis_child_prompt_uses_branch_context_not_global_memory(

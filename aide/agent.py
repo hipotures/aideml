@@ -1851,8 +1851,19 @@ class Agent:
         if hypothesis_selection is None:
             self._add_memory_or_branch_context(prompt, parent_node=None)
         prompt["Instructions"] |= self._prompt_resp_fmt
+        if hypothesis_selection is None:
+            opening_sketch_guideline = (
+                "This solution design should be relatively simple, without ensembling or hyper-parameter optimization."
+            )
+        else:
+            opening_sketch_guideline = (
+                "This verification implementation should be a relatively simple test of the assigned hypothesis, "
+                "without ensembling or hyper-parameter optimization unless the hypothesis explicitly requires it. "
+                "If the hypothesis mentions a model panel, use it as measurement guidance; do not turn it into "
+                "a blended ensemble unless blending is explicitly part of the hypothesis."
+            )
         solution_sketch_guideline = [
-            "This first solution design should be relatively simple, without ensembling or hyper-parameter optimization.",
+            opening_sketch_guideline,
             "The solution sketch should be 3-5 sentences.",
             "Propose an evaluation metric that is reasonable for this task.",
             "Don't suggest to do EDA.",
@@ -1906,7 +1917,7 @@ class Agent:
         prompt["Instructions"] |= self._prompt_resp_fmt
         preprocessing_sketch_guideline = [
             "The solution sketch should be 3-5 sentences describing the feature engineering idea.",
-            "Keep the first solution relatively simple and deterministic.",
+            "Keep this preprocessing design relatively simple and deterministic.",
             "Don't suggest to do EDA.",
         ]
         prompt["Instructions"] |= {
