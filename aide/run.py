@@ -1851,6 +1851,8 @@ def build_tree_view(
             label_style = (
                 TUI_INACTIVE_VALUE_STYLE
                 if status_text == "hypothesis"
+                else status_style
+                if status_text in {"code", "generated"}
                 else TUI_NEUTRAL_VALUE_STYLE
             )
             line.append(hypothesis_label, style=label_style)
@@ -2209,16 +2211,6 @@ def _hypothesis_root_inventory_rows(
                 metric_maximize = True
                 exec_time = scored_code.exec_time
             elif (
-                load_failed_hypothesis_root_code(cfg, hypothesis.id)
-                if repo_root is None
-                else load_failed_hypothesis_root_code(
-                    cfg,
-                    hypothesis.id,
-                    repo_root=repo_root,
-                )
-            ) is not None:
-                status = "bug"
-            elif (
                 load_hypothesis_root_code(cfg, hypothesis.id)
                 if repo_root is None
                 else load_hypothesis_root_code(
@@ -2228,6 +2220,16 @@ def _hypothesis_root_inventory_rows(
                 )
             ) is not None:
                 status = "code"
+            elif (
+                load_failed_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_failed_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            ) is not None:
+                status = "bug"
 
         rows.append(
             {
@@ -2485,6 +2487,8 @@ def build_root_hypotheses_view(
             label_style = (
                 TUI_INACTIVE_VALUE_STYLE
                 if status_text == "hypothesis"
+                else status_style
+                if status_text in {"code", "generated"}
                 else TUI_NEUTRAL_VALUE_STYLE
             )
             line.append(hypothesis_id, style=label_style)

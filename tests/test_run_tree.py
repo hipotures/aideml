@@ -2100,6 +2100,7 @@ def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
     assert "● 000002" in output
     assert "● 0.96321·000003" in output
     _assert_text_has_only_style(view.items[1].line, "000001", "dim")
+    _assert_text_has_only_style(view.items[2].line, "000002", "cyan")
     assert "Only hypothesis" not in output
     assert "Has code" not in output
     assert "Has score" not in output
@@ -2453,6 +2454,61 @@ def test_solution_tree_marks_manifest_buggy_root_as_bug(tmp_path):
 
     assert "bug·000021" in output
     assert "[ ]·000021" not in output
+
+
+def test_solution_tree_prefers_generated_root_code_over_older_bug(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-generated-over-bug-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-generated-over-bug-test")
+    cfg.agent.mode = "legacy"
+    cfg.agent.gpu = True
+
+    manifest_dir = _write_root_hypothesis(tmp_path, task, "000021", title="Generated")
+    (manifest_dir / "legacy-001.py").write_text("raise RuntimeError('bug')\n", encoding="utf-8")
+    (manifest_dir / "legacy-002.py").write_text("print('generated')\n", encoding="utf-8")
+    (manifest_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "legacy": [
+                        {
+                            "file": "legacy-001.py",
+                            "buggy": True,
+                            "status": "bug",
+                            "score": None,
+                            "gpu": True,
+                        },
+                        {
+                            "file": "legacy-002.py",
+                            "buggy": None,
+                            "status": "generated",
+                            "score": None,
+                            "gpu": True,
+                        },
+                    ]
+                },
+                "active": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    view = build_tree_view(Journal(), cfg=cfg, repo_root=tmp_path)
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "● 000021" in output
+    assert "bug·000021" not in output
+    line = view.items[view.index_by_id["hypothesis-root:000021"]].line
+    _assert_text_has_only_style(line, "000021", "cyan")
 
 
 def test_next_unfinished_library_root_selection_uses_root_order(tmp_path):
