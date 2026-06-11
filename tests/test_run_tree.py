@@ -433,7 +433,7 @@ def test_hypothesis_tree_view_hides_legacy_roots_but_keeps_hypothesis_branches(
     assert "step-" not in output
 
 
-def test_hypothesis_tree_view_keeps_legacy_root_when_it_has_branches(tmp_path):
+def test_hypothesis_tree_view_hides_legacy_root_even_when_it_has_branches(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path / "task")
     cfg.goal = "test"
@@ -442,15 +442,13 @@ def test_hypothesis_tree_view_keeps_legacy_root_when_it_has_branches(tmp_path):
     cfg.research.mode = "hypothesis"
     journal = Journal()
     legacy_root = _good_node(0.96533)
-    legacy_root.plan = (
-        f"{SEEDED_BASE_PLAN_PREFIX}: source_run=2-source-run "
-        "source_step=93 source_timestamp=20260605T055136 node_sha256=abc"
-    )
     legacy_child = _good_node(0.96494, parent=legacy_root)
     hypothesis_root = _hypothesis_node(_good_node(0.96652), "000019")
+    hypothesis_child = _good_node(0.96723, parent=hypothesis_root)
     journal.append(legacy_root)
     journal.append(legacy_child)
     journal.append(hypothesis_root)
+    journal.append(hypothesis_child)
 
     output = _render_text(
         render_tree_view(
@@ -461,10 +459,10 @@ def test_hypothesis_tree_view_keeps_legacy_root_when_it_has_branches(tmp_path):
         )
     )
 
-    assert "0.96533·seed:2-source-run#93" in output
     assert "0.96533·0" not in output
-    assert "0.96494·1" in output
+    assert "0.96494·1" not in output
     assert "0.96652·000019" in output
+    assert "0.96723·3" in output
     assert "step-" not in output
 
 

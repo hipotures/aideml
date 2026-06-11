@@ -508,28 +508,10 @@ def _node_has_public_score(
     return node.id in public_scores_by_node_id
 
 
-def _seeded_base_suffix(node: Node) -> str | None:
-    if node.parent is not None:
-        return None
-    plan = str(node.plan or "")
-    if not plan.startswith(SEEDED_BASE_PLAN_PREFIX):
-        return None
-    source_run_match = re.search(r"\bsource_run=([^ ]+)", plan)
-    source_step_match = re.search(r"\bsource_step=([^ ]+)", plan)
-    if source_run_match and source_step_match:
-        return f"·seed:{source_run_match.group(1)}#{source_step_match.group(1)}"
-    if source_run_match:
-        return f"·seed:{source_run_match.group(1)}"
-    return "·seed"
-
-
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
     if hypothesis_id is not None:
         return f"·{hypothesis_id}"
-    seeded_suffix = _seeded_base_suffix(node)
-    if seeded_suffix is not None:
-        return seeded_suffix
     if node.step is not None:
         return f"·{node.step}"
     return ""
@@ -1942,7 +1924,7 @@ def build_tree_view(
         roots = [
             node
             for node in roots
-            if hypothesis_id_for_node(node) is not None or node.children
+            if hypothesis_id_for_node(node) is not None
         ]
     virtual_hypothesis_roots: list[dict[str, object]] = []
     if cfg is not None:
