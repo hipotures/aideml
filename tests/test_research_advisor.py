@@ -1750,6 +1750,8 @@ def test_format_hypothesis_for_prompt_omits_self_report_contract(tmp_path):
     assert "Do not add hypothesis-id bookkeeping" in rendered
     assert "Research source hash" not in rendered
     assert "Sources:" not in rendered
+    assert "Experiment specification:" in rendered
+    assert "Rationale:" not in rendered
 
 
 def test_build_data_overview_prefers_data_dir_over_workspace_working(tmp_path):

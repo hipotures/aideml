@@ -2631,7 +2631,7 @@ def format_hypothesis_for_prompt(
     ]
     rationale = _compact_prompt_text(hypothesis.rationale, 2000)
     if rationale:
-        lines.append(f"Rationale: {rationale}")
+        lines.append(f"Experiment specification: {rationale}")
     implementation_hint = _compact_prompt_text(
         hypothesis.implementation_hint,
         5000,
