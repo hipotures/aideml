@@ -195,6 +195,7 @@ class RuntimeOptions:
     telegram_test_message: bool = False
     debug: bool = False
     skip_execution: bool = False
+    generate_only_requested: bool = False
     generate_only_hypothesis_ids: tuple[str, ...] = ()
     seed_sha_prefix: str | None = None
     seed_source_run: str | None = None
@@ -357,6 +358,8 @@ def parse_runtime_args(
             runtime = replace(
                 runtime,
                 skip_execution=True,
+                generate_only_requested=arg == "--generate-only"
+                or runtime.generate_only_requested,
                 generate_only_hypothesis_ids=tuple(
                     dict.fromkeys(
                         [
@@ -2294,6 +2297,46 @@ def _next_unfinished_library_root_selection(
             hypotheses=[hypothesis],
         )
     return None
+
+
+def _next_generate_only_root_reservation(
+    cfg: Config,
+    journal: Journal,
+    *,
+    completed_steps: int,
+    forced_hypothesis_ids: tuple[str, ...] = (),
+    repo_root: Path | None = None,
+) -> HypothesisRootReservation | None:
+    if forced_hypothesis_ids:
+        reserve_kwargs: dict[str, Any] = {}
+        if repo_root is not None:
+            reserve_kwargs["repo_root"] = repo_root
+        reservations = reserve_hypothesis_roots(
+            cfg,
+            journal=journal,
+            count=1,
+            completed_steps=completed_steps,
+            reserved_hypothesis_ids=set(),
+            forced_hypothesis_ids=forced_hypothesis_ids,
+            **reserve_kwargs,
+        )
+        return reservations[0] if reservations else None
+
+    selection = _next_unfinished_library_root_selection(
+        cfg,
+        journal,
+        completed_steps=completed_steps,
+        repo_root=repo_root,
+    )
+    if selection is None:
+        return None
+    hypothesis_id = selection.hypotheses[0].id
+    return HypothesisRootReservation(
+        selection=selection,
+        hypothesis_id=hypothesis_id,
+        completed_steps=selection.completed_steps,
+        retry_attempts=0,
+    )
 
 
 def _has_debuggable_hypothesis_root(journal: Journal, cfg: Config) -> bool:
@@ -5077,6 +5120,8 @@ def run(argv: list[str] | None = None):
     def pipeline_root_hypotheses_to_generate() -> int:
         if not _is_research_hypothesis_mode(cfg):
             return 0
+        if runtime_options.generate_only_requested:
+            return 0
         if runtime_options.generate_only_hypothesis_ids:
             return 0
         if getattr(cfg.agent.search, "forced_hypothesis", None):
@@ -5857,6 +5902,8 @@ def run(argv: list[str] | None = None):
         return renderable
 
     def parallel_root_workers_enabled() -> bool:
+        if runtime_options.generate_only_requested:
+            return False
         return should_parallel_generate_only_roots(
             skip_execution=pipeline_skip_execution(),
             materialize_enabled=pipeline_materialize_enabled(),
@@ -6006,17 +6053,14 @@ def run(argv: list[str] | None = None):
 
     def generate_next_forced_root_serial(live: Live) -> Node | None:
         nonlocal pending_artifact_dir
-        reservations = reserve_hypothesis_roots(
+        reservation = _next_generate_only_root_reservation(
             cfg,
             journal=journal,
-            count=1,
             completed_steps=len(journal),
-            reserved_hypothesis_ids=set(),
             forced_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
         )
-        if not reservations:
+        if reservation is None:
             return None
-        reservation = reservations[0]
         (
             node_ctime,
             artifact_dir_name,
@@ -6204,7 +6248,7 @@ def run(argv: list[str] | None = None):
                             pipeline_skip_execution()
                             and pipeline_materialize_enabled()
                             and cfg.research.mode == "hypothesis"
-                            and runtime_options.generate_only_hypothesis_ids
+                            and runtime_options.generate_only_requested
                         ):
                             result_node = generate_next_forced_root_serial(live)
                             display_node = result_node

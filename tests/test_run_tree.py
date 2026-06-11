@@ -14,6 +14,7 @@ from aide.run import (
     _sparkline,
     _has_debuggable_hypothesis_root,
     _next_unfinished_library_root_selection,
+    _next_generate_only_root_reservation,
     ActiveRootGeneration,
     active_run_log_path,
     build_all_hypotheses_view,
@@ -2532,6 +2533,31 @@ def test_next_unfinished_library_root_selection_respects_forced_hypothesis(tmp_p
 
     assert selection is not None
     assert [hypothesis.id for hypothesis in selection.hypotheses] == ["000014"]
+
+
+def test_generate_only_without_ids_reserves_first_unfinished_library_root(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-generate-only-selection-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-generate-only-selection-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000012", title="Earlier")
+    _write_root_hypothesis(tmp_path, task, "000014", title="Later")
+
+    reservation = _next_generate_only_root_reservation(
+        cfg,
+        Journal(),
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert reservation is not None
+    assert reservation.hypothesis_id == "000012"
+    assert [hypothesis.id for hypothesis in reservation.selection.hypotheses] == [
+        "000012"
+    ]
 
 
 def test_debuggable_hypothesis_root_blocks_next_library_root(tmp_path):

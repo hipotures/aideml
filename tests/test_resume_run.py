@@ -153,6 +153,24 @@ def test_parse_runtime_args_extracts_skip_execution_flag():
 
     assert resume.run_id == "2-example-run"
     assert runtime.skip_execution is True
+    assert runtime.generate_only_requested is False
+    assert remaining == ["agent.steps=200"]
+
+
+def test_parse_runtime_args_extracts_generate_only_without_ids():
+    resume, runtime, remaining = parse_runtime_args(
+        [
+            "--resume",
+            "2-example-run",
+            "--generate-only",
+            "agent.steps=200",
+        ]
+    )
+
+    assert resume.run_id == "2-example-run"
+    assert runtime.skip_execution is True
+    assert runtime.generate_only_requested is True
+    assert runtime.generate_only_hypothesis_ids == ()
     assert remaining == ["agent.steps=200"]
 
 
@@ -170,6 +188,7 @@ def test_parse_runtime_args_extracts_generate_only_hypothesis_ids():
 
     assert resume.run_id == "2-example-run"
     assert runtime.skip_execution is True
+    assert runtime.generate_only_requested is True
     assert runtime.generate_only_hypothesis_ids == ("001162", "001170")
     assert remaining == ["agent.steps=200"]
 
