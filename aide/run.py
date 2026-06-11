@@ -1654,6 +1654,11 @@ def build_tree_view(
         if item.parent_id is not None:
             children_by_id.setdefault(item.parent_id, []).append(item.item_id)
 
+    def active_focus_start(prefix: str) -> int:
+        if active_stage == "executing":
+            return len(prefix) + 2
+        return len(prefix)
+
     def append_active(parent_id: str, ancestor_has_next: list[bool]) -> None:
         nonlocal active_item_id
         if active_stage is None:
@@ -1682,7 +1687,14 @@ def build_tree_view(
                 blink_on=blink_on,
             )
         )
-        append_item(TreeViewItem("active", parent_id, line, focus_start=len(prefix)))
+        append_item(
+            TreeViewItem(
+                "active",
+                parent_id,
+                line,
+                focus_start=active_focus_start(prefix),
+            )
+        )
         active_item_id = "active"
 
     def append_active_root_generations(parent_id: str) -> None:
@@ -1705,7 +1717,14 @@ def build_tree_view(
                     blink_on=blink_on,
                 )
             )
-            append_item(TreeViewItem(item_id, parent_id, line, focus_start=len(prefix)))
+            append_item(
+                TreeViewItem(
+                    item_id,
+                    parent_id,
+                    line,
+                    focus_start=active_focus_start(prefix),
+                )
+            )
             if is_latest:
                 active_item_id = item_id
 
@@ -1764,7 +1783,11 @@ def build_tree_view(
                 parent_id,
                 line,
                 node=node,
-                focus_start=len(prefix),
+                focus_start=(
+                    active_focus_start(prefix)
+                    if node is active_existing_node and active_stage is not None
+                    else len(prefix)
+                ),
             )
         )
 
@@ -1837,7 +1860,7 @@ def build_tree_view(
                     item_id,
                     "header",
                     line,
-                    focus_start=len(prefix),
+                    focus_start=active_focus_start(prefix),
                 )
             )
             active_item_id = item_id

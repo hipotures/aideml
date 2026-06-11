@@ -602,6 +602,34 @@ def test_journal_tree_renders_executing_hypothesis_as_blue_dot_with_id():
     assert "[ ]" not in output_off
 
 
+def test_tree_view_active_execute_focus_starts_after_dot():
+    journal = Journal()
+    active = _hypothesis_node(_good_node(0.941), "000123")
+    mark_node_generated_only(active)
+    journal.append(active)
+
+    view = build_tree_view(
+        journal,
+        active_node=active,
+        active_parent_node=None,
+        active_stage="executing",
+        active_hypothesis_id="000123",
+        blink_on=True,
+    )
+    output = _render_ansi(
+        render_tree_view(
+            view,
+            focused_item_id=active_tree_item_id(view) or "header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "\x1b[7;36m●" not in output
+    assert "\x1b[36m●" in output
+    assert "\x1b[7;36m000123" in output
+
+
 def test_tree_view_ignores_generated_only_node_when_selecting_best():
     journal = Journal()
     scored = _hypothesis_node(_good_node(0.941), "000111")
