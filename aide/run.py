@@ -89,6 +89,7 @@ from .utils import serialize
 from .utils.config import (
     Config,
     _apply_env_aliases,
+    _dotenv_values_for_config,
     _drop_deprecated_config_keys,
     _load_cfg,
     _normalize_agent_mode_aliases,
@@ -1095,7 +1096,7 @@ def load_resume_state(
     cfg = OmegaConf.load(config_path)
     _migrate_resume_memory_prompt_defaults(cfg)
     _migrate_resume_research_model_key(cfg)
-    _apply_env_aliases(cfg)
+    _apply_env_aliases(cfg, dotenv_env=_dotenv_values_for_config(load_env=True))
     if (
         not forced_root_overridden
         and "agent" in cfg

@@ -1050,6 +1050,25 @@ def test_load_resume_state_applies_env_model_over_saved_config(tmp_path, monkeyp
     assert cfg.agent.code.reasoning_effort == "medium"
 
 
+def test_load_resume_state_applies_dotenv_model_over_saved_config(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    monkeypatch.delenv("AIDE_AGENT_CODE_MODEL", raising=False)
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_CODE_MODEL=gpt-5.3-codex-spark:medium\n",
+        encoding="utf-8",
+    )
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.agent.code.model == "gpt-5.3-codex-spark"
+    assert cfg.agent.code.reasoning_effort == "medium"
+
+
 def test_load_resume_state_cli_model_override_wins_over_env(tmp_path, monkeypatch):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     monkeypatch.setenv("AIDE_AGENT_CODE_MODEL", "gpt-5.3-codex-spark:medium")
