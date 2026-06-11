@@ -1017,6 +1017,24 @@ def test_load_resume_state_uses_existing_paths_and_cli_overrides(tmp_path):
     assert journal.nodes[0].metric.value == 0.9
 
 
+def test_load_resume_state_restores_solution_helper_to_workspace(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    helper_path = (
+        tmp_path / "workspaces" / "2-existing-run" / "aide_solution_helpers.py"
+    )
+    helper_path.unlink(missing_ok=True)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert helper_path.exists()
+    assert Path(cfg.workspace_dir) == helper_path.parent
+
+
 def test_load_resume_state_applies_env_model_over_saved_config(tmp_path, monkeypatch):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
     monkeypatch.setenv("AIDE_AGENT_CODE_MODEL", "gpt-5.3-codex-spark:medium")

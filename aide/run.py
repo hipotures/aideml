@@ -1091,6 +1091,7 @@ def load_resume_state(
         raise FileNotFoundError(
             f"Resume workspace must contain input/ and working/: {workspace_dir}"
         )
+    copy_solution_helper(workspace_dir)
 
     _validate_cli_model_effort_conflicts(cli_overrides)
     cli_overrides = _normalize_model_effort_cli_overrides(cli_overrides)
