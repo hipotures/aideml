@@ -1482,7 +1482,7 @@ def _tree_active_placeholder_line(
 ) -> Text:
     if active_stage == "researching" and active_hypothesis_id:
         line = Text("○" if blink_on else " ", style=TUI_INACTIVE_VALUE_STYLE)
-        line.append(f" {active_hypothesis_id}", style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(f" {active_hypothesis_id}", style=TUI_INACTIVE_VALUE_STYLE)
         return line
     indicator = "[*]" if blink_on else "[ ]"
     style = "bold yellow"
@@ -1828,7 +1828,12 @@ def build_tree_view(
         elif status_text in {"bug", "failed"}:
             line.append(f"bug·{hypothesis_label}{runtime_suffix}", style="red")
         else:
-            line.append(hypothesis_label, style=TUI_NEUTRAL_VALUE_STYLE)
+            label_style = (
+                TUI_INACTIVE_VALUE_STYLE
+                if status_text == "hypothesis"
+                else TUI_NEUTRAL_VALUE_STYLE
+            )
+            line.append(hypothesis_label, style=label_style)
         append_item(
             TreeViewItem(
                 f"hypothesis-root:{hypothesis_id}",
@@ -2394,7 +2399,12 @@ def build_root_hypotheses_view(
         elif status_text in {"bug", "failed"}:
             line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
         else:
-            line.append(hypothesis_id, style=TUI_NEUTRAL_VALUE_STYLE)
+            label_style = (
+                TUI_INACTIVE_VALUE_STYLE
+                if status_text == "hypothesis"
+                else TUI_NEUTRAL_VALUE_STYLE
+            )
+            line.append(hypothesis_id, style=label_style)
         lines.append(line)
     if not rows:
         lines.append(Text("n/a", style=TUI_INACTIVE_VALUE_STYLE))

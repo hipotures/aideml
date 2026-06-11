@@ -315,6 +315,22 @@ def _render_ansi(tree) -> str:
     return console.export_text(styles=True)
 
 
+def _styles_for_text(text: Text, needle: str) -> list[str]:
+    start = text.plain.index(needle)
+    end = start + len(needle)
+    return [
+        str(span.style)
+        for span in text.spans
+        if span.start < end and span.end > start
+    ]
+
+
+def _assert_text_has_only_style(text: Text, needle: str, expected_style: str) -> None:
+    styles = _styles_for_text(text, needle)
+    assert styles
+    assert set(styles) == {expected_style}
+
+
 def test_journal_tree_renders_blinking_active_child_under_selected_parent():
     journal = Journal()
     parent = _good_node(0.945)
@@ -2074,15 +2090,15 @@ def test_root_hypotheses_view_lists_library_hypotheses_by_state(tmp_path):
     journal = Journal()
     journal.append(_hypothesis_node(_good_node(0.96321), "000003"))
 
-    output = _render_text(
-        build_root_hypotheses_view(journal, cfg=cfg, repo_root=tmp_path)
-    )
+    view = build_root_hypotheses_view(journal, cfg=cfg, repo_root=tmp_path)
+    output = _render_text(view)
 
     assert "AutoGluon only" not in output
     assert "000000" not in output
     assert "○ 000001" in output
     assert "● 000002" in output
     assert "● 0.96321·000003" in output
+    _assert_text_has_only_style(view.items[1].line, "000001", "dim")
     assert "Only hypothesis" not in output
     assert "Has code" not in output
     assert "Has score" not in output
@@ -2244,6 +2260,29 @@ def test_solution_tree_marks_researching_root_as_blinking_hypothesis_icon(tmp_pa
     assert "[*]" not in output_on
     assert "  000023" in output_off
     assert "[ ]" not in output_off
+    active_line = view_on.items[view_on.index_by_id["hypothesis-root:000023"]].line
+    _assert_text_has_only_style(active_line, "000023", "dim")
+
+
+def test_solution_tree_renders_unscored_root_hypothesis_id_dim(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-hypothesis-color-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-hypothesis-color-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000022", title="Pending root")
+
+    view = build_tree_view(
+        Journal(),
+        cfg=cfg,
+        repo_root=tmp_path,
+    )
+
+    line = view.items[view.index_by_id["hypothesis-root:000022"]].line
+    assert line.plain.endswith("○ 000022")
+    _assert_text_has_only_style(line, "000022", "dim")
 
 
 def test_solution_tree_orders_real_and_virtual_hypothesis_roots_by_id(tmp_path):
