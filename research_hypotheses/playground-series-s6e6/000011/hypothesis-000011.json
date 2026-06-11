@@ -1,5 +1,6 @@
 {
   "enabled": true,
+  "prompt_enabled": false,
   "agent_modes": [
     "legacy"
   ],

@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "prompt_enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Rest-Frame SED Warp Features",
+  "summary": "Convert observed ugriz magnitudes into approximate rest-frame spectral features by shifting filter wavelengths by redshift and interpolating pseudo-colors on a common wavelength grid.",
+  "feature_family": "rest_frame_sed_warp_features",
+  "feature_strategy": "Keep the existing raw magnitudes, redshift, alpha/delta, spectral_type, and galaxy_population, then add a redshift-warped representation of the photometric SED. Use fixed SDSS effective wavelengths for u,g,r,i,z, compute rest wavelengths as lambda_obs/(1+clipped_redshift), convert magnitudes to relative log-flux or centered magnitude profiles, and interpolate each object onto a small common rest-frame wavelength grid. Derive pseudo-rest-frame colors, continuum slopes, curvature/second-difference features, 4000A-break-style blue-vs-red contrast proxies, flags for which rest grid points are covered by observed bands versus extrapolated, and redshift-band-crossing indicators. This tests whether aligning the observed SED to rest-frame coordinates exposes galaxy/QSO/star class structure beyond ordinary observed-frame color indices.",
+  "baseline_model_panel": "Use the same simple balanced panel across feature-search runs: a class-weighted multinomial linear model on scaled numeric/one-hot features, a shallow bagged tree model, and one class-weighted gradient-boosted tree model appropriate for mixed tabular data such as CatBoost with auto_class_weights='Balanced' or LightGBM with class_weight='balanced'.",
+  "model_panel_rationale": "The linear model checks whether the rest-frame representation creates nearly linear color-separation signal, while bagged and boosted trees check threshold and interaction effects without making the hypothesis depend on model tuning or ensembling.",
+  "validation_strategy": "Use 5-fold StratifiedKFold on train.csv with balanced accuracy, preserving fold isolation for scalers/encoders and using only covariate-derived deterministic SED transforms. Keep class weighting enabled because the metric is balanced accuracy.",
+  "materialization_hint": "Implement this as an additive feature block: define SDSS band wavelengths, clip redshift just enough to avoid division pathologies, build per-row rest-wavelength arrays, interpolate centered magnitude or log-flux profiles to a compact rest grid, add coverage/extrapolation flags, then concatenate with standard raw numeric and categorical encodings before fitting the baseline panel.",
+  "expected_signal": "If useful, CV balanced accuracy should improve most for QSO-vs-STAR and QSO-vs-GALAXY confusion, and tree feature importance or linear coefficients should highlight rest-frame slope, curvature, and coverage-crossing features rather than only raw redshift or observed colors.",
+  "novelty_confidence": "medium",
+  "risk": "This overlaps partly with previous color and flux/luminosity hypotheses because it still derives from ugriz and redshift, but the core novelty is the rest-frame wavelength warping and interpolation mechanism. Risks include noisy extrapolated values at high redshift, redshift dominating the engineered block, and limited benefit if the synthetic categorical columns already encode the same separation.",
+  "rationale": "Feature family: rest_frame_sed_warp_features\nFeature strategy: Keep the existing raw magnitudes, redshift, alpha/delta, spectral_type, and galaxy_population, then add a redshift-warped representation of the photometric SED. Use fixed SDSS effective wavelengths for u,g,r,i,z, compute rest wavelengths as lambda_obs/(1+clipped_redshift), convert magnitudes to relative log-flux or centered magnitude profiles, and interpolate each object onto a small common rest-frame wavelength grid. Derive pseudo-rest-frame colors, continuum slopes, curvature/second-difference features, 4000A-break-style blue-vs-red contrast proxies, flags for which rest grid points are covered by observed bands versus extrapolated, and redshift-band-crossing indicators. This tests whether aligning the observed SED to rest-frame coordinates exposes galaxy/QSO/star class structure beyond ordinary observed-frame color indices.\nBaseline model panel: Use the same simple balanced panel across feature-search runs: a class-weighted multinomial linear model on scaled numeric/one-hot features, a shallow bagged tree model, and one class-weighted gradient-boosted tree model appropriate for mixed tabular data such as CatBoost with auto_class_weights='Balanced' or LightGBM with class_weight='balanced'.\nModel panel rationale: The linear model checks whether the rest-frame representation creates nearly linear color-separation signal, while bagged and boosted trees check threshold and interaction effects without making the hypothesis depend on model tuning or ensembling.\nValidation strategy: Use 5-fold StratifiedKFold on train.csv with balanced accuracy, preserving fold isolation for scalers/encoders and using only covariate-derived deterministic SED transforms. Keep class weighting enabled because the metric is balanced accuracy.\nNovelty confidence: medium",
+  "implementation_hint": "Implement this as an additive feature block: define SDSS band wavelengths, clip redshift just enough to avoid division pathologies, build per-row rest-wavelength arrays, interpolate centered magnitude or log-flux profiles to a compact rest grid, add coverage/extrapolation flags, then concatenate with standard raw numeric and categorical encodings before fitting the baseline panel.",
+  "expected_effect": "If useful, CV balanced accuracy should improve most for QSO-vs-STAR and QSO-vs-GALAXY confusion, and tree feature importance or linear coefficients should highlight rest-frame slope, curvature, and coverage-crossing features rather than only raw redshift or observed colors.",
+  "sources": [
+    "https://arxiv.org/abs/astro-ph/0606355",
+    "https://arxiv.org/abs/astro-ph/0408504",
+    "https://arxiv.org/abs/2212.05868",
+    "https://en.wikipedia.org/wiki/Photometric_redshift"
+  ],
+  "source_run": "2-strict-hairy-starling",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000024",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000024/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000024/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000024/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000024/response_raw.txt"
+}

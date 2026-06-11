@@ -94,6 +94,7 @@ def _write_manual_hypothesis(
     risk: str = "Grouped CV may be pessimistic.",
     sources: list[str] | None = None,
     enabled: bool = True,
+    prompt_enabled: bool | None = None,
     agent_modes: list[str] | None = None,
 ) -> Path:
     path = (
@@ -108,6 +109,11 @@ def _write_manual_hypothesis(
         json.dumps(
             {
                 "enabled": enabled,
+                **(
+                    {"prompt_enabled": prompt_enabled}
+                    if prompt_enabled is not None
+                    else {}
+                ),
                 "agent_modes": (
                     agent_modes if agent_modes is not None else ["legacy", "autogluon"]
                 ),
@@ -2092,6 +2098,48 @@ def test_research_context_lists_existing_hypotheses_as_text_only(tmp_path):
     assert "## Executed hypotheses" not in prompt
     assert "## Buggy hypotheses" not in prompt
     assert "## Unexecuted hypotheses" not in prompt
+
+
+def test_research_context_skips_prompt_disabled_hypotheses_without_disabling_execution(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000001",
+        title="Prompt-visible feature family",
+        prompt_enabled=True,
+    )
+    _write_manual_hypothesis(
+        tmp_path,
+        "playground-series-s6e5",
+        "000002",
+        title="Execution-only heavy branch",
+        prompt_enabled=False,
+    )
+
+    library = research.load_manual_hypothesis_library(cfg, repo_root=tmp_path)
+    context = collect_research_context(
+        cfg=cfg,
+        task_desc="task",
+        journal=Journal(),
+        completed_steps=0,
+        repo_root=tmp_path,
+    )
+
+    assert [hypothesis.enabled for hypothesis in library.hypotheses] == [True, True]
+    assert [hypothesis.prompt_enabled for hypothesis in library.hypotheses] == [
+        True,
+        False,
+    ]
+    assert len(context["existing_hypotheses"]) == 1
+    assert "Prompt-visible feature family" in context["existing_hypotheses"][0]
+    assert "Execution-only heavy branch" not in "\n".join(
+        context["existing_hypotheses"]
+    )
+
 
 def test_research_prompt_includes_previous_research_summaries(tmp_path):
     context = {

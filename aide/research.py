@@ -121,6 +121,7 @@ class ManualHypothesis:
     risk: str
     sources: list[str]
     path: Path
+    prompt_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -270,6 +271,9 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
     missing = []
     if "enabled" not in payload or not isinstance(payload.get("enabled"), bool):
         missing.append("enabled")
+    raw_prompt_enabled = payload.get("prompt_enabled", True)
+    if not isinstance(raw_prompt_enabled, bool):
+        missing.append("prompt_enabled")
     raw_agent_modes = payload.get("agent_modes")
     if (
         not isinstance(raw_agent_modes, list)
@@ -308,6 +312,7 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
     return ManualHypothesis(
         id=hypothesis_id,
         enabled=payload["enabled"],
+        prompt_enabled=raw_prompt_enabled,
         agent_modes=list(raw_agent_modes),
         title=payload["title"].strip(),
         summary=payload["summary"].strip(),
@@ -2908,7 +2913,11 @@ def _existing_hypothesis_payloads(
     agent_mode = _manual_agent_mode_key(cfg)
     payloads: list[str] = []
     for hypothesis in library.hypotheses:
-        if not hypothesis.enabled or agent_mode not in hypothesis.agent_modes:
+        if (
+            not hypothesis.enabled
+            or not hypothesis.prompt_enabled
+            or agent_mode not in hypothesis.agent_modes
+        ):
             continue
         payloads.append(_hypothesis_text_for_prompt(hypothesis))
     return payloads
