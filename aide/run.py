@@ -517,8 +517,6 @@ def _node_hypothesis_suffix(node: Node) -> str:
     root_hypothesis_id = root_hypothesis_id_for_node(node)
     if root_hypothesis_id is not None and node.step is not None:
         return f"·{root_hypothesis_id}#{node.step}"
-    if node.step is not None:
-        return f"·step-{node.step:06d}"
     return ""
 
 

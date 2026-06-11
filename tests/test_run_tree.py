@@ -352,7 +352,7 @@ def test_journal_tree_renders_blinking_active_child_under_selected_parent():
     assert "executing" not in output
 
 
-def test_journal_tree_uses_step_suffix_when_hypothesis_id_is_missing():
+def test_journal_tree_omits_step_suffix_when_hypothesis_id_is_missing():
     journal = Journal()
     root = _good_node(0.945)
     child = _good_node(0.946, parent=root)
@@ -361,8 +361,10 @@ def test_journal_tree_uses_step_suffix_when_hypothesis_id_is_missing():
 
     output = _render_text(journal_to_rich_tree(journal))
 
-    assert "0.94500·step-000000" in output
-    assert "● 0.94600·step-000001" in output
+    assert "0.94500·step-" not in output
+    assert "0.94600·step-" not in output
+    assert "● 0.94500" in output
+    assert "● 0.94600" in output
 
 
 def test_journal_tree_uses_root_hypothesis_prefix_for_child_step_suffix():
@@ -378,7 +380,7 @@ def test_journal_tree_uses_root_hypothesis_prefix_for_child_step_suffix():
     assert "● 0.94600·000015#1" in output
 
 
-def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
+def test_tree_view_omits_step_suffix_when_hypothesis_id_is_missing():
     journal = Journal()
     root = _good_node(0.945)
     child = _good_node(0.946, parent=root)
@@ -394,8 +396,10 @@ def test_tree_view_uses_step_suffix_when_hypothesis_id_is_missing():
         )
     )
 
-    assert "0.94500·step-000000" in output
-    assert "● 0.94600·step-000001" in output
+    assert "0.94500·step-" not in output
+    assert "0.94600·step-" not in output
+    assert "● 0.94500" in output
+    assert "● 0.94600" in output
 
 
 def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
@@ -420,12 +424,12 @@ def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
         )
     )
 
-    assert "0.94500·step-000000·16m" in rich_output
-    assert "● 0.94600·step-000001·47m" in rich_output
-    assert "bug·step-000002·0m" not in rich_output
-    assert "0.94500·step-000000·16m" in view_output
-    assert "● 0.94600·step-000001·47m" in view_output
-    assert "bug·step-000002·0m" not in view_output
+    assert "0.94500·16m" in rich_output
+    assert "● 0.94600·47m" in rich_output
+    assert "step-" not in rich_output
+    assert "0.94500·16m" in view_output
+    assert "● 0.94600·47m" in view_output
+    assert "step-" not in view_output
 
 
 def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
