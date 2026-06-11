@@ -511,12 +511,9 @@ def _node_has_public_score(
 def _node_hypothesis_suffix(node: Node) -> str:
     hypothesis_id = hypothesis_id_for_node(node)
     if hypothesis_id is not None:
-        if node.step is not None:
-            return f"·{hypothesis_id}#{node.step}"
         return f"·{hypothesis_id}"
-    root_hypothesis_id = root_hypothesis_id_for_node(node)
-    if root_hypothesis_id is not None and node.step is not None:
-        return f"·{root_hypothesis_id}#{node.step}"
+    if node.step is not None:
+        return f"·{node.step}"
     return ""
 
 
