@@ -570,20 +570,37 @@ def test_tree_view_marks_existing_generated_node_active_without_placeholder():
 
 def test_journal_tree_renders_executing_hypothesis_as_blue_dot_with_id():
     journal = Journal()
-    tree = journal_to_rich_tree(
+    tree_on = journal_to_rich_tree(
         journal,
         active_parent_node=None,
         active_stage="executing",
         active_hypothesis_id="000123",
         blink_on=True,
     )
+    tree_off = journal_to_rich_tree(
+        journal,
+        active_parent_node=None,
+        active_stage="executing",
+        active_hypothesis_id="000123",
+        blink_on=False,
+    )
 
-    output = _render_text(tree)
+    output_on = _render_text(tree_on)
+    output_off = _render_text(tree_off)
+    ansi_on = _render_ansi(tree_on)
+    ansi_off = _render_ansi(tree_off)
 
-    assert "● 000123" in output
-    assert "●·000123" not in output
-    assert "[*]" not in output
-    assert "[ ]" not in output
+    assert "● 000123" in output_on
+    assert "● 000123" in output_off
+    assert "○ 000123" not in output_on
+    assert "○ 000123" not in output_off
+    assert "●·000123" not in output_on
+    assert "\x1b[36m●" in ansi_on
+    assert "\x1b[32m●" in ansi_off
+    assert "[*]" not in output_on
+    assert "[ ]" not in output_on
+    assert "[*]" not in output_off
+    assert "[ ]" not in output_off
 
 
 def test_tree_view_ignores_generated_only_node_when_selecting_best():
