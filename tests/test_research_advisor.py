@@ -4838,6 +4838,43 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "did_not_improve" in attempts
 
 
+def test_standard_improve_prompt_includes_timeout_child_attempt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    timeout = Node(
+        code="while True: pass",
+        plan="Try a heavier feature search.",
+        parent=parent,
+    )
+    timeout.metric = WorstMetricValue()
+    timeout.is_buggy = True
+    timeout.analysis = "Execution exceeded the configured timeout."
+    timeout._term_out = ["TimeoutError: Execution exceeded the time limit"]
+    timeout.exc_type = "TimeoutError"
+    journal = Journal()
+    for node in [parent, timeout]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Try a heavier feature search" in attempts
+    assert "step ?" not in attempts
+    assert "timeout" in attempts
+    assert "bug" not in attempts
+
+
 def test_standard_improve_prompt_omits_prior_child_attempts_without_children(
     tmp_path,
 ):

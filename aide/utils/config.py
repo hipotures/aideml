@@ -185,6 +185,7 @@ class SearchConfig:
     exploration_weight: float = 0.0
     best_score_min_children_before_exploration: int = 5
     disable_oom_saturated_parents: bool = False
+    disable_timeout_debugging: bool = True
     hypothesis_child_order: str = "root_score"
     forced_root: str | None = None
     forced_hypothesis: str | None = None

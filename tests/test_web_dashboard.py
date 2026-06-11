@@ -4,7 +4,7 @@ from urllib.request import urlopen
 import pytest
 
 from aide.journal import Journal, Node
-from aide.utils.metric import MetricValue
+from aide.utils.metric import MetricValue, WorstMetricValue
 from aide.web_dashboard.server import AideWebServer, STATIC_DIR, clamp_refresh_seconds
 from aide.web_dashboard.state import (
     WebDashboardSnapshot,
@@ -21,6 +21,17 @@ def _scored_node(score: float, *, parent: Node | None = None) -> Node:
     node.status = "ok"
     node.is_buggy = False
     node.metric = MetricValue(score, maximize=True)
+    return node
+
+
+def _timeout_node(*, parent: Node | None = None) -> Node:
+    node = Node(code="while True: pass", plan="timeout", parent=parent)
+    node.status = "bug"
+    node.is_buggy = True
+    node.metric = WorstMetricValue()
+    node.exc_type = "TimeoutError"
+    node.analysis = "Execution exceeded the configured timeout."
+    node._term_out = ["TimeoutError: Execution exceeded the time limit"]
     return node
 
 
@@ -56,6 +67,19 @@ def test_web_tree_lines_include_compact_and_desktop_text_prefixes():
         "│   └── ",
         "└── ",
     ]
+
+
+def test_web_tree_lines_mark_timeout_as_blocked():
+    journal = Journal()
+    root = _scored_node(0.91)
+    timeout = _timeout_node(parent=root)
+    for node in [root, timeout]:
+        journal.append(node)
+
+    lines = build_web_tree_lines(journal)
+
+    assert lines[1].label.startswith("timeout")
+    assert lines[1].kind == "blocked"
 
 
 def test_web_tree_lines_include_virtual_root_hypotheses():

@@ -684,7 +684,9 @@ def _format_previous_child_attempts(
         "",
     ]
     for child in attempts:
-        if child.is_buggy:
+        if child.is_timeout_failure:
+            status = "timeout"
+        elif child.is_buggy:
             status = "bug"
         elif _node_improves_parent(child, parent_node, epsilon=epsilon):
             status = "improved"
@@ -872,6 +874,10 @@ class Agent:
                 and n.debug_depth < search_cfg.max_debug_depth
                 and not n.is_submission_contract_error
                 and not n.is_terminal_failure
+                and (
+                    not search_cfg.disable_timeout_debugging
+                    or not n.is_timeout_failure
+                )
                 and _is_in_forced_hypothesis_root(n, forced_hypothesis_root)
             )
         ]
@@ -899,6 +905,10 @@ class Agent:
                 and (
                     not n.is_terminal_failure
                     or _is_debuggable_failed_hypothesis_root(n)
+                )
+                and (
+                    not search_cfg.disable_timeout_debugging
+                    or not n.is_timeout_failure
                 )
                 and _is_in_forced_hypothesis_root(n, forced_hypothesis_root)
             )

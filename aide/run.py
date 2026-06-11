@@ -532,15 +532,7 @@ def _row_runtime_suffix(row: dict[str, object]) -> str:
 
 
 def _is_timeout_node(node: Node) -> bool:
-    if node.exc_type in {"TimeoutError", "PreprocessTimeoutError"}:
-        return True
-    raw_term_out = getattr(node, "_term_out", None)
-    term_out = "".join(raw_term_out) if isinstance(raw_term_out, list) else ""
-    text = f"{node.analysis or ''}\n{term_out}"
-    return (
-        "AIDE AutoGluon preprocess exceeded the dedicated timeout" in text
-        or "TimeoutError: Execution exceeded the time limit" in text
-    )
+    return node.is_timeout_failure
 
 
 def _show_hypothesis_failure_in_tree(node: Node) -> bool:
@@ -1251,7 +1243,7 @@ def journal_to_rich_tree(
         ):
             s = f"[bold blue]◆[/bold blue] [red]bug{suffix}{runtime_suffix}[/red]"
         elif _is_timeout_node(node):
-            s = f"[red]● timeout{suffix}{runtime_suffix}"
+            s = f"[bright_black]◉ timeout{suffix}{runtime_suffix}"
         elif node.is_buggy or node.metric is None or node.metric.value is None:
             s = f"[red]● bug{suffix}{runtime_suffix}"
         else:
@@ -1398,7 +1390,7 @@ def _tree_node_label(
         label.append(f" bug{suffix}{runtime_suffix}", style="red")
         return label
     if _is_timeout_node(node):
-        return Text(f"● timeout{suffix}{runtime_suffix}", style="red")
+        return Text(f"◉ timeout{suffix}{runtime_suffix}", style="bright_black")
     if node.is_buggy or node.metric is None or node.metric.value is None:
         return Text(f"● bug{suffix}{runtime_suffix}", style="red")
 

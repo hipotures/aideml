@@ -147,6 +147,8 @@ def _line_for_node(
         return f"generated{suffix}", "generated"
     if node.is_terminal_failure or node.status == "failed":
         return f"failed{suffix}{runtime_suffix}", "bug"
+    if node.is_timeout_failure:
+        return f"timeout{suffix}{runtime_suffix}", "blocked"
     if node.is_buggy:
         return f"bug{suffix}{runtime_suffix}", "bug"
 

@@ -2481,8 +2481,13 @@ def test_tree_view_shows_timeout_label_with_hypothesis_id():
         )
     )
 
-    assert "timeout·000447" in output
+    assert "◉ timeout·000447" in output
     assert "bug·000447" not in output
+
+    rich_output = _render_text(journal_to_rich_tree(journal))
+    ansi = _render_ansi(journal_to_rich_tree(journal))
+    assert "◉ timeout·000447" in rich_output
+    assert "\x1b[90m◉ timeout·000447" in ansi
 
 
 def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
@@ -2503,7 +2508,7 @@ def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
         )
     )
 
-    assert "timeout·000447" in output
+    assert "◉ timeout·000447" in output
     assert "bug·000447" not in output
 
 

@@ -249,6 +249,16 @@ class Node(DataClassJsonMixin):
         )
 
     @property
+    def is_timeout_failure(self) -> bool:
+        if self.exc_type in {"TimeoutError", "PreprocessTimeoutError"}:
+            return True
+        text = f"{self.analysis or ''}\n{''.join(self._term_out or [])}"
+        return (
+            "AIDE AutoGluon preprocess exceeded the dedicated timeout" in text
+            or "TimeoutError: Execution exceeded the time limit" in text
+        )
+
+    @property
     def is_terminal_failure(self) -> bool:
         return self.status == "failed" or self.is_gpu_execution_failure or (
             self.status is None

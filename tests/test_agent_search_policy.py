@@ -98,6 +98,14 @@ def _lightgbm_cuda_crash_node(parent: Node | None = None) -> Node:
     return node
 
 
+def _timeout_bug_node(parent: Node | None = None) -> Node:
+    node = _bug_node(parent=parent)
+    node.exc_type = "TimeoutError"
+    node.analysis = "Execution exceeded the configured timeout."
+    node._term_out = ["TimeoutError: Execution exceeded the time limit"]
+    return node
+
+
 def test_search_policy_does_not_debug_invalid_submission_leaf(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 1.0
@@ -126,6 +134,22 @@ def test_search_policy_does_not_debug_catboost_gpu_oom_leaf(tmp_path):
     selected = agent.search_policy()
 
     assert selected is normal_bug
+
+
+def test_search_policy_does_not_debug_timeout_leaf_when_disabled(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.search.debug_prob = 1.0
+    cfg.agent.search.disable_timeout_debugging = True
+    journal = Journal()
+    timeout = _timeout_bug_node()
+    good = _good_node(0.5)
+    journal.append(timeout)
+    journal.append(good)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    selected = agent.search_policy()
+
+    assert selected is good
 
 
 def test_search_policy_does_not_debug_lightgbm_cuda_crash_leaf(tmp_path):
