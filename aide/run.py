@@ -1234,7 +1234,7 @@ def journal_to_rich_tree(
             if hypothesis_id is not None:
                 hypothesis_label = (
                     f"{hypothesis_id}#{node.step}"
-                    if node.step is not None
+                    if node.parent is not None and node.step is not None
                     else hypothesis_id
                 )
                 s = f"[cyan]● {hypothesis_label}[/cyan]"
@@ -1375,7 +1375,7 @@ def _tree_node_label(
         if hypothesis_id is not None:
             hypothesis_label = (
                 f"{hypothesis_id}#{node.step}"
-                if node.step is not None
+                if node.parent is not None and node.step is not None
                 else hypothesis_id
             )
             return Text(f"● {hypothesis_label}", style="cyan")
@@ -1780,10 +1780,7 @@ def build_tree_view(
     ) -> None:
         nonlocal active_item_id
         hypothesis_id = str(row["hypothesis_id"])
-        row_step = row.get("step")
-        hypothesis_label = (
-            f"{hypothesis_id}#{row_step}" if isinstance(row_step, int) else hypothesis_id
-        )
+        hypothesis_label = hypothesis_id
         status_text = str(row.get("status") or "hypothesis")
         score = row.get("score")
         runtime_suffix = _row_runtime_suffix(row)

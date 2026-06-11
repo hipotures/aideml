@@ -2307,6 +2307,33 @@ def test_solution_tree_renders_unscored_root_hypothesis_id_dim(tmp_path):
     _assert_text_has_only_style(line, "000022", "dim")
 
 
+def test_solution_tree_omits_step_suffix_for_virtual_generated_root(tmp_path):
+    task = "playground-series-s6e5"
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path / task)
+    cfg.log_dir = str(tmp_path / "logs" / "2-tree-generated-step-test")
+    cfg.workspace_dir = str(tmp_path / "workspaces" / "2-tree-generated-step-test")
+    cfg.agent.mode = "legacy"
+
+    _write_root_hypothesis(tmp_path, task, "000024", title="Generated root")
+    node = _hypothesis_node(Node(code="print('generated')", plan="generated"), "000024")
+    mark_node_generated_only(node)
+    journal = Journal()
+    journal.append(node)
+
+    output = _render_text(
+        render_tree_view(
+            build_tree_view(journal, cfg=cfg, repo_root=tmp_path),
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "● 000024" in output
+    assert "000024#" not in output
+
+
 def test_solution_tree_orders_real_and_virtual_hypothesis_roots_by_id(tmp_path):
     task = "playground-series-s6e5"
     cfg = _load_cfg(use_cli_args=False)
