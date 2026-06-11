@@ -1,0 +1,33 @@
+{
+  "enabled": false,
+  "prompt_enabled": false,
+  "agent_modes": [
+    "legacy"
+  ],
+  "title": "Nonlinear Photometric Manifold Coordinates",
+  "summary": "Add covariate-only UMAP-style embedding coordinates that summarize each object’s position on the star-galaxy-QSO photometric manifold.",
+  "feature_family": "nonlinear_manifold_embedding_features",
+  "feature_strategy": "Build a compact unsupervised representation from ugriz magnitudes, redshift, alpha/delta, adjacent and broad color indices, and one-hot spectral_type/galaxy_population. Standardize numeric inputs, fit a small nonlinear manifold embedding such as UMAP on combined train+test covariates only, and append 2-10 embedding coordinates plus simple distances to embedding-space centroids computed without target labels. Do not use class labels in the embedding fit; this tests whether curved photometric loci expose separability that linear colors, PCA, bins, and local-density features miss.",
+  "baseline_model_panel": "Reuse a simple balanced multiclass panel: regularized linear classifier, shallow/randomized tree ensemble, and class-weighted gradient-boosted trees such as CatBoost or LightGBM with balanced class handling.",
+  "model_panel_rationale": "The linear model checks whether the embedding makes the class geometry linearly separable, while tree and boosted-tree models test whether the added manifold coordinates provide incremental nonlinear signal without making the experiment about tuning.",
+  "validation_strategy": "Use 5-fold StratifiedKFold on class with balanced accuracy; fit all label-free preprocessing inside each fold when evaluating strict CV, or log a separate transductive variant that fits the embedding on train+test covariates only.",
+  "materialization_hint": "Create a staged feature builder: base photometric/color/categorical matrix, scaler, UMAP embedding with fixed seed and modest neighbors/min_dist settings, then concatenate embedding columns to the ordinary tabular features. If umap-learn is unavailable, fall back to a lightweight sklearn manifold or kernel approximation and mark the run as a fallback.",
+  "expected_signal": "If useful, CV should improve most for the linear and shallow tree baselines, confusion between QSO and STAR/GALAXY should drop, and embedding scatter diagnostics should show partial class clustering without a major runtime blowup.",
+  "novelty_confidence": "medium",
+  "risk": "This partially overlaps with the earlier unsupervised locus-density hypothesis, but the novelty is the nonlinear manifold coordinate representation rather than PCA, clustering, or kNN density. UMAP can be slow on 800k rows and may overfit transductive structure if fold handling is not logged clearly.",
+  "rationale": "Feature family: nonlinear_manifold_embedding_features\nFeature strategy: Build a compact unsupervised representation from ugriz magnitudes, redshift, alpha/delta, adjacent and broad color indices, and one-hot spectral_type/galaxy_population. Standardize numeric inputs, fit a small nonlinear manifold embedding such as UMAP on combined train+test covariates only, and append 2-10 embedding coordinates plus simple distances to embedding-space centroids computed without target labels. Do not use class labels in the embedding fit; this tests whether curved photometric loci expose separability that linear colors, PCA, bins, and local-density features miss.\nBaseline model panel: Reuse a simple balanced multiclass panel: regularized linear classifier, shallow/randomized tree ensemble, and class-weighted gradient-boosted trees such as CatBoost or LightGBM with balanced class handling.\nModel panel rationale: The linear model checks whether the embedding makes the class geometry linearly separable, while tree and boosted-tree models test whether the added manifold coordinates provide incremental nonlinear signal without making the experiment about tuning.\nValidation strategy: Use 5-fold StratifiedKFold on class with balanced accuracy; fit all label-free preprocessing inside each fold when evaluating strict CV, or log a separate transductive variant that fits the embedding on train+test covariates only.\nNovelty confidence: medium",
+  "implementation_hint": "Create a staged feature builder: base photometric/color/categorical matrix, scaler, UMAP embedding with fixed seed and modest neighbors/min_dist settings, then concatenate embedding columns to the ordinary tabular features. If umap-learn is unavailable, fall back to a lightweight sklearn manifold or kernel approximation and mark the run as a fallback.",
+  "expected_effect": "If useful, CV should improve most for the linear and shallow tree baselines, confusion between QSO and STAR/GALAXY should drop, and embedding scatter diagnostics should show partial class clustering without a major runtime blowup.",
+  "sources": [
+    "https://arxiv.org/abs/1909.10963",
+    "https://arxiv.org/abs/2311.02951",
+    "https://arxiv.org/abs/2605.18218"
+  ],
+  "source_run": "2-benign-amazing-groundhog",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000029",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000029/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000029/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000029/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000029/response_raw.txt"
+}
