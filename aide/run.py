@@ -3965,6 +3965,10 @@ def build_run_log_summary(
 ModelSetting = tuple[str, str, str | None]
 
 
+def _format_model_setting(model: str, effort: str | None) -> str:
+    return f"{model}:{effort}" if effort else model
+
+
 def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | None:
     if not model_settings:
         return None
@@ -3972,7 +3976,7 @@ def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | No
     for label, model, effort in model_settings:
         line = Text()
         line.append(f"▶ {label:<9} ", style=TUI_ROW_LABEL_STYLE)
-        line.append(f"{model} - {effort or '-'}", style=TUI_NEUTRAL_VALUE_STYLE)
+        line.append(_format_model_setting(model, effort), style=TUI_NEUTRAL_VALUE_STYLE)
         lines.append(line)
     return Group(*lines)
 
@@ -5449,7 +5453,7 @@ def run(argv: list[str] | None = None):
             WebRunSection(
                 "Models",
                 [
-                    WebRunDatum(label, f"{model} - {effort or '-'}")
+                    WebRunDatum(label, _format_model_setting(model, effort))
                     for label, model, effort in model_settings_for_run(cfg)
                 ],
             ),

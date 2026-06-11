@@ -2887,8 +2887,8 @@ def test_run_data_shows_resolved_model_settings(tmp_path):
     )
 
     assert "Models" in output
-    assert "code" in output and "gemma-4-31B" in output and " - " in output
-    assert "synthesis" in output and "gpt-5.5" in output and "low" in output
+    assert "code" in output and "gemma-4-31B" in output and " - " not in output
+    assert "synthesis" in output and "gpt-5.5:low" in output
     assert output.index("Synthesis") < output.index("Models")
     assert output.index("Models") < output.index("Base path")
 
@@ -3011,7 +3011,7 @@ def test_model_settings_and_agent_summary_show_refactor_when_enabled(tmp_path):
     agent_output = _render_text(build_agent_mode_summary(cfg))
 
     assert "refactor" in models_output
-    assert "refactor-model - medium" in models_output
+    assert "refactor-model:medium" in models_output
     assert "refactor" in agent_output
     assert "on" in agent_output
 
