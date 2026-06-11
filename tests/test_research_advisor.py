@@ -2314,7 +2314,12 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     }
     assert all(value >= 0 for value in response["timings_seconds"].values())
     raw_response = (checkpoint_dir / "response_raw.txt").read_text()
-    assert raw_response.startswith('{"summary":')
+    assert raw_response.startswith("Research response")
+    assert "Summary: researched" in raw_response
+    assert "Try calibrated LightGBM" in raw_response
+    assert "Feature strategy: Build probability-shape features." in raw_response
+    assert '{"summary":' not in raw_response
+    assert "Research checkpoint:" not in raw_response
     assert not (checkpoint_dir / "response_readable.txt").exists()
     assert response["exit_code"] == 0
     status = json.loads((checkpoint_dir / "status.json").read_text())

@@ -3375,6 +3375,11 @@ def run_research_checkpoint(
 
     phase_started = time.monotonic()
     parsed_response = _parse_response(raw_response)
+    if isinstance(parsed_response, dict):
+        raw_response_path.write_text(
+            _format_research_response_for_file(parsed_response=parsed_response),
+            encoding="utf-8",
+        )
     timings_seconds["parse_response"] = time.monotonic() - phase_started
     status = "completed" if exit_code == 0 and parsed_response is not None else "failed"
     if error is not None:
@@ -3516,19 +3521,39 @@ def format_research_hints_for_prompt(hints: dict[str, Any]) -> str:
 
 def _format_research_response_for_file(
     *,
-    checkpoint_name: str,
     parsed_response: dict[str, Any],
 ) -> str:
-    return (
-        format_research_hints_for_prompt(
-            {
-                "checkpoint": checkpoint_name,
-                "summary": parsed_response.get("summary", ""),
-                "hypotheses": parsed_response.get("hypotheses", []),
-            }
-        )
-        + "\n"
-    )
+    lines = ["Research response"]
+    summary = _compact_prompt_text(parsed_response.get("summary"), max_chars=1000)
+    if summary:
+        lines.extend(["", f"Summary: {summary}"])
+
+    hypotheses = parsed_response.get("hypotheses", [])
+    if isinstance(hypotheses, list) and hypotheses:
+        lines.extend(["", "Hypotheses:"])
+        for idx, hypothesis in enumerate(hypotheses, start=1):
+            if not isinstance(hypothesis, dict):
+                lines.append(f"{idx}. {_compact_prompt_text(hypothesis, max_chars=1000)}")
+                continue
+            title = _compact_prompt_text(hypothesis.get("title"), max_chars=180)
+            lines.append(f"{idx}. {title or 'Untitled hypothesis'}")
+            hypothesis_summary = _compact_prompt_text(
+                hypothesis.get("summary"), max_chars=360
+            )
+            if hypothesis_summary:
+                lines.append(f"   Summary: {hypothesis_summary}")
+            feature_strategy = _compact_prompt_text(
+                hypothesis.get("feature_strategy")
+                or hypothesis.get("implementation_hint")
+                or hypothesis.get("rationale"),
+                max_chars=1000,
+            )
+            if feature_strategy:
+                lines.append(f"   Feature strategy: {feature_strategy}")
+            risk = _compact_prompt_text(hypothesis.get("risk"), max_chars=360)
+            if risk:
+                lines.append(f"   Risk: {risk}")
+    return "\n".join(lines) + "\n"
 
 
 class ResearchAdvisor:
