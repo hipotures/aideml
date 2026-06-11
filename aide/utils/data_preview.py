@@ -21,6 +21,19 @@ def is_csv_file(f: Path) -> bool:
     return f.suffix == ".csv" or f.name.endswith(".csv.gz")
 
 
+def _visible_files(path: Path) -> list[Path]:
+    files = [p for p in Path(path).iterdir() if not p.is_dir()]
+    names = {p.name for p in files}
+    visible: list[Path] = []
+    for p in files:
+        if p.suffix == ".zip":
+            continue
+        if p.name.endswith(".csv.gz") and p.name[: -len(".gz")] in names:
+            continue
+        visible.append(p)
+    return sorted(visible)
+
+
 def get_file_len_size(f: Path) -> tuple[int, str]:
     """
     Calculate the size of a file (#lines for plaintext files, otherwise #bytes)
@@ -41,7 +54,7 @@ def get_file_len_size(f: Path) -> tuple[int, str]:
 def file_tree(path: Path, depth=0) -> str:
     """Generate a tree structure of files in a directory"""
     result = []
-    files = [p for p in Path(path).iterdir() if not p.is_dir()]
+    files = _visible_files(path)
     dirs = [p for p in Path(path).iterdir() if p.is_dir()]
     max_n = 4 if len(files) > 30 else 8
     for p in sorted(files)[:max_n]:
@@ -58,9 +71,12 @@ def file_tree(path: Path, depth=0) -> str:
 
 def _walk(path: Path):
     """Recursively walk a directory (analogous to os.walk but for pathlib.Path)"""
+    visible_files = set(_visible_files(path))
     for p in sorted(Path(path).iterdir()):
         if p.is_dir():
             yield from _walk(p)
+            continue
+        if p not in visible_files:
             continue
         yield p
 
