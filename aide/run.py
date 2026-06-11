@@ -2251,6 +2251,7 @@ def _next_unfinished_library_root_selection(
     *,
     completed_steps: int,
     repo_root: Path | None = None,
+    require_no_materialized_code: bool = False,
 ) -> ManualHypothesisSelection | None:
     try:
         library = (
@@ -2279,6 +2280,27 @@ def _next_unfinished_library_root_selection(
     for hypothesis in sorted(compatible, key=lambda item: item.id):
         if hypothesis.id in used_root_ids:
             continue
+        if require_no_materialized_code:
+            root_code = (
+                load_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            )
+            failed_code = (
+                load_failed_hypothesis_root_code(cfg, hypothesis.id)
+                if repo_root is None
+                else load_failed_hypothesis_root_code(
+                    cfg,
+                    hypothesis.id,
+                    repo_root=repo_root,
+                )
+            )
+            if root_code is not None or failed_code is not None:
+                continue
         scored_code = (
             load_scored_hypothesis_root_code(cfg, hypothesis.id)
             if repo_root is None
@@ -2327,6 +2349,7 @@ def _next_generate_only_root_reservation(
         journal,
         completed_steps=completed_steps,
         repo_root=repo_root,
+        require_no_materialized_code=True,
     )
     if selection is None:
         return None
