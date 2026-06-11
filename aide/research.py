@@ -1135,7 +1135,11 @@ def _research_request_cfg_snapshot(cfg: Config) -> dict[str, Any]:
         },
         "research": {
             "mode": getattr(cfg.research, "mode", None),
-            "model": getattr(cfg.research, "model", None),
+            "root_hypothesis_model": getattr(
+                cfg.research,
+                "root_hypothesis_model",
+                None,
+            ),
             "reasoning_effort": getattr(cfg.research, "reasoning_effort", None),
             "timeout": getattr(cfg.research, "timeout", None),
             "materialize": bool(getattr(cfg.research, "materialize", True)),
@@ -3118,7 +3122,8 @@ def _append_runtime_options_section(lines: list[str], runtime_options: Any) -> N
     if isinstance(research, dict):
         lines.extend(
             [
-                f"- research model: {_format_scalar_for_prompt(research.get('model'))}",
+                "- root hypothesis model: "
+                f"{_format_scalar_for_prompt(research.get('root_hypothesis_model'))}",
                 "- research reasoning effort: "
                 f"{_format_scalar_for_prompt(research.get('reasoning_effort'))}",
                 f"- materialize after hypothesis: {_format_scalar_for_prompt(research.get('materialize'))}",
@@ -3241,7 +3246,7 @@ def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
         "--cd",
         str(checkpoint_dir),
         "--model",
-        cfg.research.model,
+        cfg.research.root_hypothesis_model,
         "--output-schema",
         "schema.json",
         "--output-last-message",
@@ -3303,7 +3308,7 @@ def run_research_checkpoint(
             "checkpoint_step": completed_steps,
             "created_at": dt.datetime.now().isoformat(timespec="seconds"),
             "command": command,
-            "model": cfg.research.model,
+            "root_hypothesis_model": cfg.research.root_hypothesis_model,
             "reasoning_effort": cfg.research.reasoning_effort,
             "cfg_snapshot": _research_request_cfg_snapshot(cfg),
             "prompt": prompt,
@@ -3311,7 +3316,10 @@ def run_research_checkpoint(
     )
     _write_json(checkpoint_dir / "schema.json", RESEARCH_RESPONSE_SCHEMA)
     (checkpoint_dir / "codex_profile.toml").write_text(
-        _codex_profile_text(cfg.research.model, cfg.research.reasoning_effort),
+        _codex_profile_text(
+            cfg.research.root_hypothesis_model,
+            cfg.research.reasoning_effort,
+        ),
         encoding="utf-8",
     )
     timings_seconds["write_inputs"] = time.monotonic() - phase_started

@@ -3,8 +3,8 @@ import pytest
 from aide.utils.config import _load_cfg, prep_cfg, resolve_model_config
 
 
-def _base_cfg(tmp_path):
-    cfg = _load_cfg(use_cli_args=False)
+def _base_cfg(tmp_path, *, load_env: bool = False):
+    cfg = _load_cfg(use_cli_args=False, load_env=load_env)
     cfg.data_dir = str(tmp_path)
     cfg.goal = "test goal"
     cfg.log_dir = str(tmp_path / "logs")
@@ -38,7 +38,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.feedback.reasoning_effort == "low"
     assert cfg.report.model == "gpt-5.4-mini"
     assert cfg.report.reasoning_effort == "low"
-    assert cfg.research.model == "gpt-5.4-mini"
+    assert cfg.research.root_hypothesis_model == "gpt-5.4-mini"
     assert cfg.research.reasoning_effort == "low"
     assert cfg.research.mode == "llm"
     assert cfg.research.manual_sample_size == 3
@@ -60,6 +60,59 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.include_parent_process_stdout is True
     assert cfg.agent.parent_process_stdout_max_bytes == 5000
     assert cfg.agent.gpu is False
+
+
+def test_load_cfg_ignores_dotenv_by_default_under_pytest(tmp_path, monkeypatch):
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_CODE_MODEL=gpt-from-dotenv:high\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path))
+
+    assert cfg.agent.code.model == "gpt-5.4-mini"
+    assert cfg.agent.code.reasoning_effort == "low"
+
+
+def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("AIDE_RESEARCH_ROOT_HYPOTHESIS_MODEL", raising=False)
+    (tmp_path / ".env").write_text(
+        "AIDE_RESEARCH_ROOT_HYPOTHESIS_MODEL=gpt-root-hypothesis:medium\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path, load_env=True), load_env=True)
+
+    assert cfg.research.root_hypothesis_model == "gpt-root-hypothesis"
+    assert cfg.research.reasoning_effort == "medium"
+
+
+def test_legacy_research_model_env_key_is_ignored(tmp_path, monkeypatch):
+    monkeypatch.delenv("AIDE_RESEARCH_MODEL", raising=False)
+    monkeypatch.delenv("AIDE_RESEARCH_ROOT_HYPOTHESIS_MODEL", raising=False)
+    (tmp_path / ".env").write_text(
+        "AIDE_RESEARCH_MODEL=gpt-legacy:high\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path))
+
+    assert cfg.research.root_hypothesis_model == "gpt-5.4-mini"
+    assert cfg.research.reasoning_effort == "low"
+
+
+def test_legacy_research_model_cli_key_is_rejected(tmp_path):
+    cfg = _load_cfg(cli_args=["research.model=gpt-legacy"])
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = str(tmp_path / "logs")
+    cfg.workspace_dir = str(tmp_path / "workspaces")
+
+    with pytest.raises(Exception, match="research.model"):
+        prep_cfg(cfg)
 
 
 def test_agent_memory_and_parent_stdout_options_can_be_overridden_from_cli():

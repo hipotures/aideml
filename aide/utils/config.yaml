@@ -45,7 +45,7 @@ research:
   top_k_worst: 5
   previous_summary_count: 5
   timeout: 900
-  model: gpt-5.4-mini
+  root_hypothesis_model: gpt-5.4-mini
   reasoning_effort: low
   manual_sample_size: 3
   manual_seed: 42

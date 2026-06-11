@@ -54,12 +54,12 @@ def test_prep_cfg_reads_project_paths_from_env(tmp_path, monkeypatch):
     )
     monkeypatch.chdir(tmp_path)
 
-    cfg = _load_cfg(use_cli_args=False)
+    cfg = _load_cfg(use_cli_args=False, load_env=True)
     cfg.log_dir = str(tmp_path / "logs")
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "env-path-test"
 
-    cfg = prep_cfg(cfg)
+    cfg = prep_cfg(cfg, load_env=True)
 
     assert Path(cfg.data_dir) == data_dir.resolve()
     assert Path(cfg.desc_file) == desc_file.resolve()
@@ -81,12 +81,12 @@ def test_prep_cfg_reads_refactor_settings_from_env(tmp_path, monkeypatch):
     )
     monkeypatch.chdir(tmp_path)
 
-    cfg = _load_cfg(use_cli_args=False)
+    cfg = _load_cfg(use_cli_args=False, load_env=True)
     cfg.log_dir = str(tmp_path / "logs")
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "env-refactor-test"
 
-    cfg = prep_cfg(cfg)
+    cfg = prep_cfg(cfg, load_env=True)
 
     assert cfg.refactor.enabled is True
     assert cfg.refactor.model == "gpt-refactor"
@@ -113,12 +113,12 @@ def test_prep_cfg_reads_agent_and_research_settings_from_env(tmp_path, monkeypat
     )
     monkeypatch.chdir(tmp_path)
 
-    cfg = _load_cfg(use_cli_args=False)
+    cfg = _load_cfg(use_cli_args=False, load_env=True)
     cfg.log_dir = str(tmp_path / "logs")
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "env-agent-test"
 
-    cfg = prep_cfg(cfg)
+    cfg = prep_cfg(cfg, load_env=True)
 
     assert cfg.agent.gpu is True
     assert cfg.agent.steps == 7

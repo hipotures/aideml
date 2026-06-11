@@ -2931,7 +2931,7 @@ def test_model_settings_hide_research_model_in_hypothesis_mode(tmp_path):
     cfg.exp_name = "model-settings-test"
     cfg.research.enabled = True
     cfg.research.mode = "hypothesis"
-    cfg.research.model = "unused-research-model"
+    cfg.research.root_hypothesis_model = "unused-research-model"
     cfg = prep_cfg(cfg)
 
     output = _render_text(build_model_summary(model_settings_for_run(cfg)))

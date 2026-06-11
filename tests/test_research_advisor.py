@@ -2110,12 +2110,15 @@ def test_research_prompt_includes_previous_research_summaries(tmp_path):
 
 def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     cfg = _cfg(tmp_path)
+    cfg.research.root_hypothesis_model = "gpt-root-hypothesis"
+    cfg.research.reasoning_effort = "low"
     context = {
         "run_id": cfg.exp_name,
         "checkpoint_step": 10,
         "task_desc": "task",
         "best_working_solutions": [],
         "worst_working_solutions": [],
+        "runtime_options": research._research_request_cfg_snapshot(cfg),
     }
     seen = {}
 
@@ -2179,17 +2182,18 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert "--ignore-user-config" in command
     assert "--search" in command
     assert command[command.index("--sandbox") + 1] == "read-only"
-    assert command[command.index("--model") + 1] == "gpt-5.4-mini"
+    assert command[command.index("--model") + 1] == "gpt-root-hypothesis"
     assert 'model_reasoning_effort="low"' in command
     assert seen["stdin"].startswith(
         "You are a research scientist and Kaggle competition strategist."
     )
+    assert "- root hypothesis model: gpt-root-hypothesis" in seen["stdin"]
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (
         (checkpoint_dir / "codex_profile.toml")
         .read_text()
-        .startswith('model = "gpt-5.4-mini"')
+        .startswith('model = "gpt-root-hypothesis"')
     )
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["parsed_response"]["summary"] == "researched"

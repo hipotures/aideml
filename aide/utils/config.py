@@ -5,14 +5,14 @@ import json
 import os
 import shutil
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Callable, Hashable, Literal, cast
 
 import coolname
 import rich
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 from omegaconf import OmegaConf
 from rich.syntax import Syntax
 import shutup
@@ -253,7 +253,7 @@ class ResearchConfig:
     top_k_worst: int = 5
     previous_summary_count: int = 5
     timeout: int = 900
-    model: str = "gpt-5.4-mini"
+    root_hypothesis_model: str = "gpt-5.4-mini"
     reasoning_effort: str | None = "low"
     manual_sample_size: int = 3
     manual_seed: int = 42
@@ -341,10 +341,11 @@ def _load_cfg(
     path: Path = Path(__file__).parent / "config.yaml",
     use_cli_args=True,
     cli_args: Sequence[str] | None = None,
+    load_env: bool | None = None,
 ) -> Config:
     cfg = OmegaConf.load(path)
-    load_dotenv(dotenv_path=Path(".env"), override=False)
-    _apply_env_aliases(cfg)
+    dotenv_env = _dotenv_values_for_config(load_env)
+    _apply_env_aliases(cfg, dotenv_env=dotenv_env)
     if use_cli_args:
         raw_cli_args = list(sys.argv[1:] if cli_args is None else cli_args)
         _validate_cli_model_effort_conflicts(raw_cli_args)
@@ -397,7 +398,29 @@ def _env_float(value: str) -> float | None:
         return None
 
 
-def _apply_env_aliases(cfg: Config) -> None:
+def _should_load_config_dotenv(load_env: bool | None) -> bool:
+    if load_env is not None:
+        return load_env
+    return "PYTEST_CURRENT_TEST" not in os.environ
+
+
+def _dotenv_values_for_config(load_env: bool | None) -> Mapping[str, str]:
+    if not _should_load_config_dotenv(load_env):
+        return {}
+    values = dotenv_values(Path(".env"))
+    return {key: str(value) for key, value in values.items() if value is not None}
+
+
+def _config_env_value(env_name: str, *, dotenv_env: Mapping[str, str]) -> str:
+    return os.getenv(env_name, dotenv_env.get(env_name, "")).strip()
+
+
+def _apply_env_aliases(
+    cfg: Config,
+    *,
+    dotenv_env: Mapping[str, str] | None = None,
+) -> None:
+    dotenv_env = dotenv_env or {}
     aliases = {
         "AIDE_GENERATE_REPORT": ("generate_report", _env_bool),
         "AIDE_PREPROCESS_DATA": ("preprocess_data", _env_bool),
@@ -460,7 +483,10 @@ def _apply_env_aliases(cfg: Config) -> None:
         "AIDE_RESEARCH_MATERIALIZE": ("research.materialize", _env_bool),
         "AIDE_RESEARCH_EXECUTE": ("research.execute", _env_bool),
         "AIDE_RESEARCH_TIMEOUT": ("research.timeout", _env_int),
-        "AIDE_RESEARCH_MODEL": ("research.model", str.strip),
+        "AIDE_RESEARCH_ROOT_HYPOTHESIS_MODEL": (
+            "research.root_hypothesis_model",
+            str.strip,
+        ),
         "AIDE_RESEARCH_REASONING_EFFORT": (
             "research.reasoning_effort",
             str.strip,
@@ -502,7 +528,7 @@ def _apply_env_aliases(cfg: Config) -> None:
         "AIDE_WEB_PORT": ("web.port", _env_int),
     }
     for env_name, (path, parser) in aliases.items():
-        raw = os.getenv(env_name, "").strip()
+        raw = _config_env_value(env_name, dotenv_env=dotenv_env)
         if not raw:
             continue
         value = parser(raw)
@@ -511,31 +537,47 @@ def _apply_env_aliases(cfg: Config) -> None:
         OmegaConf.update(cfg, path, value, merge=False)
 
 
-def _apply_project_env_defaults(cfg: Config) -> None:
-    load_dotenv(dotenv_path=Path(".env"), override=False)
+def _apply_project_env_defaults(
+    cfg: Config,
+    *,
+    load_env: bool | None = None,
+) -> None:
+    dotenv_env = _dotenv_values_for_config(load_env)
     if _is_missing_config_value(cfg.data_dir):
-        data_dir = os.getenv("AIDE_PROJECT_DATA_DIR", "").strip()
+        data_dir = _config_env_value("AIDE_PROJECT_DATA_DIR", dotenv_env=dotenv_env)
         if data_dir:
             cfg.data_dir = data_dir
     if _is_missing_config_value(cfg.desc_file) and _is_missing_config_value(cfg.goal):
-        desc_file = os.getenv("AIDE_PROJECT_DESC_FILE", "").strip()
+        desc_file = _config_env_value(
+            "AIDE_PROJECT_DESC_FILE",
+            dotenv_env=dotenv_env,
+        )
         if desc_file:
             cfg.desc_file = desc_file
-    refactor_enabled = os.getenv("AIDE_REFACTOR_ENABLED", "").strip().lower()
+    refactor_enabled = _config_env_value(
+        "AIDE_REFACTOR_ENABLED",
+        dotenv_env=dotenv_env,
+    ).lower()
     if refactor_enabled in {"1", "true", "yes", "on"}:
         cfg.refactor.enabled = True
     elif refactor_enabled in {"0", "false", "no", "off"}:
         cfg.refactor.enabled = False
-    refactor_model = os.getenv("AIDE_REFACTOR_MODEL", "").strip()
+    refactor_model = _config_env_value("AIDE_REFACTOR_MODEL", dotenv_env=dotenv_env)
     if refactor_model:
         cfg.refactor.model = refactor_model
-    refactor_timeout = os.getenv("AIDE_REFACTOR_TIMEOUT_S", "").strip()
+    refactor_timeout = _config_env_value(
+        "AIDE_REFACTOR_TIMEOUT_S",
+        dotenv_env=dotenv_env,
+    )
     if refactor_timeout:
         try:
             cfg.refactor.timeout = int(refactor_timeout)
         except ValueError:
             pass
-    refactor_max_input = os.getenv("AIDE_REFACTOR_MAX_INPUT_CHARS", "").strip()
+    refactor_max_input = _config_env_value(
+        "AIDE_REFACTOR_MAX_INPUT_CHARS",
+        dotenv_env=dotenv_env,
+    )
     if refactor_max_input:
         try:
             cfg.refactor.max_input_chars = int(refactor_max_input)
@@ -552,7 +594,7 @@ def _validate_cli_model_effort_conflicts(cli_args: Sequence[str]) -> None:
         _base, suffix_effort = _split_model_effort(model)
         if suffix_effort is None:
             continue
-        effort_key = model_key.removesuffix(".model") + ".reasoning_effort"
+        effort_key = _model_reasoning_effort_key(model_key)
         explicit_effort = values.get(effort_key)
         if explicit_effort is not None and not _is_nullish(explicit_effort):
             raise ValueError(
@@ -566,10 +608,16 @@ def _model_config_keys() -> list[str]:
         "agent.code.model",
         "agent.feedback.model",
         "report.model",
-        "research.model",
+        "research.root_hypothesis_model",
         "synthesis.model",
         "refactor.model",
     ]
+
+
+def _model_reasoning_effort_key(model_key: str) -> str:
+    if model_key == "research.root_hypothesis_model":
+        return "research.reasoning_effort"
+    return model_key.removesuffix(".model") + ".reasoning_effort"
 
 
 def _normalize_model_effort_cli_overrides(cli_args: Sequence[str]) -> list[str]:
@@ -580,7 +628,7 @@ def _normalize_model_effort_cli_overrides(cli_args: Sequence[str]) -> list[str]:
         if model is None:
             continue
         _base, suffix_effort = _split_model_effort(model)
-        effort_key = model_key.removesuffix(".model") + ".reasoning_effort"
+        effort_key = _model_reasoning_effort_key(model_key)
         if suffix_effort is None and effort_key not in values:
             normalized.append(f"{effort_key}=null")
     return normalized
@@ -614,13 +662,14 @@ def _normalize_forced_root_cli_overrides(cli_args: Sequence[str]) -> list[str]:
 def load_cfg(
     path: Path = Path(__file__).parent / "config.yaml",
     cli_args: Sequence[str] | None = None,
+    load_env: bool | None = None,
 ) -> Config:
     """Load config from .yaml file and CLI args, and set up logging directory."""
-    return prep_cfg(_load_cfg(path, cli_args=cli_args))
+    return prep_cfg(_load_cfg(path, cli_args=cli_args, load_env=load_env), load_env=load_env)
 
 
-def prep_cfg(cfg: Config):
-    _apply_project_env_defaults(cfg)
+def prep_cfg(cfg: Config, *, load_env: bool | None = None):
+    _apply_project_env_defaults(cfg, load_env=load_env)
 
     if cfg.data_dir is None:
         raise ValueError("`data_dir` must be provided.")
@@ -723,7 +772,13 @@ def _resolve_all_model_configs(cfg: Config) -> None:
     _resolve_stage_config(cfg.agent.code)
     _resolve_stage_config(cfg.agent.feedback)
     _resolve_stage_config(cfg.report)
-    _resolve_model_attrs(cfg.research)
+    resolved = resolve_model_config(
+        cfg.research.root_hypothesis_model,
+        cfg.research.reasoning_effort,
+        allow_suffix_override=True,
+    )
+    cfg.research.root_hypothesis_model = resolved.model
+    cfg.research.reasoning_effort = resolved.reasoning_effort
     _resolve_model_attrs(cfg.synthesis)
     _resolve_model_attrs(cfg.refactor)
 
