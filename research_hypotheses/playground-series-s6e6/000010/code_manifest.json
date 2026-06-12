@@ -1,0 +1,23 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": true,
+        "created_at": "2026-06-12T14:05:16",
+        "exception_info": {
+          "args": [
+            "Preprocess target leakage risk: forbidden column 'class' referenced in preprocess"
+          ]
+        },
+        "exception_type": "ValueError",
+        "file": "autogluon-001.py",
+        "node_id": "01e59b0153aa4c728835ea3975a58b18",
+        "score": null,
+        "status": "bug"
+      }
+    ]
+  }
+}

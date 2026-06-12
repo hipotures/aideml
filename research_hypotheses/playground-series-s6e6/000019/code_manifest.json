@@ -1,6 +1,5 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
     "legacy": "legacy-001.py"
   },
   "versions": {
@@ -12,6 +11,25 @@
         "score": null,
         "source_legacy_feature_kind": "source_features",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "7062ff9e05944965a90d5ed7d5fcc898",
+        "score": null,
+        "created_at": "2026-06-12T14:11:31",
+        "exec_time": 0.0,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "RuntimeError",
+        "exception_info": {
+          "args": [
+            "REPL child process died unexpectedly"
+          ]
+        },
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
+        "analysis": "REPL child process died unexpectedly"
       }
     ],
     "legacy": [

@@ -1,6 +1,6 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
+    "autogluon": "autogluon-002.py",
     "legacy": "legacy-001.py"
   },
   "versions": {
@@ -12,6 +12,17 @@
         "score": null,
         "source_legacy_feature_kind": "color_sky",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "05d0f6e22fb24631a1e8dc8490d02b11",
+        "score": 0.9641540052732136,
+        "created_at": "2026-06-12T14:35:49",
+        "exec_time": 189.07370114326477,
+        "gpu": true,
+        "aux": true
       }
     ],
     "legacy": [

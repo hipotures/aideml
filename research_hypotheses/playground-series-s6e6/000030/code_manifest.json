@@ -1,6 +1,6 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
+    "autogluon": "autogluon-002.py",
     "legacy": "legacy-001.py"
   },
   "versions": {
@@ -12,6 +12,17 @@
         "score": null,
         "source_legacy_feature_kind": "locus_density",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "411de976b8784f8282569e85571a1a98",
+        "score": 0.9637861379244789,
+        "created_at": "2026-06-12T14:42:28",
+        "exec_time": 74.57690358161926,
+        "gpu": true,
+        "aux": true
       }
     ],
     "legacy": [

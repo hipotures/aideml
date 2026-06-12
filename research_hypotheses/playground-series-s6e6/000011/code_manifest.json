@@ -1,6 +1,5 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
     "legacy": "legacy-002.py"
   },
   "versions": {
@@ -12,6 +11,25 @@
         "score": null,
         "source_legacy_feature_kind": "color_piecewise",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "28753337d9e1442db6d085a051cb4b39",
+        "score": null,
+        "created_at": "2026-06-12T14:05:36",
+        "exec_time": 0.12726044654846191,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "ValueError",
+        "exception_info": {
+          "args": [
+            "Preprocess target leakage risk: forbidden column 'class' referenced in preprocess"
+          ]
+        },
+        "terminal_output": "Traceback (most recent call last):\n  File \"runfile.py\", line 1, in <module>\n    raise ValueError(\"Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\")\nValueError: Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\nExecution time: a moment seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
+        "analysis": "The run failed immediately with a `ValueError` before any preprocessing, training, or validation could occur. No metric was produced, so the result is invalid; the fix is to remove or correct the target-leakage guard in preprocessing and rerun the pipeline.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
       }
     ],
     "legacy": [
