@@ -49,6 +49,63 @@
         },
         "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
         "analysis": "REPL child process died unexpectedly"
+      },
+      {
+        "file": "autogluon-004.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "8c7e448d1ae646e185edca3dfc639695",
+        "score": null,
+        "created_at": "2026-06-12T18:32:46",
+        "exec_time": 0.0,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "RuntimeError",
+        "exception_info": {
+          "args": [
+            "REPL child process died unexpectedly"
+          ]
+        },
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
+        "analysis": "REPL child process died unexpectedly"
+      },
+      {
+        "file": "autogluon-005.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "1bd5dbe57d3b4962a5ab7a29e76683b9",
+        "score": null,
+        "created_at": "2026-06-12T18:46:59",
+        "exec_time": 0.0,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "RuntimeError",
+        "exception_info": {
+          "args": [
+            "REPL child process died unexpectedly"
+          ]
+        },
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
+        "analysis": "REPL child process died unexpectedly"
+      },
+      {
+        "file": "autogluon-006.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "4e700a51b5d54ab9b962d71f0a4b07f9",
+        "score": null,
+        "created_at": "2026-06-12T20:34:13",
+        "exec_time": 2.620774984359741,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "TypeError",
+        "exception_info": {
+          "args": [
+            "data type 'Int16' not understood"
+          ]
+        },
+        "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 1126, in <module>\n    main()\n  File \"runfile.py\", line 948, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 465, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 173, in preprocess\n    np.searchsorted(edges[1:-1], z, side=\"right\").astype(\"Int16\"),\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: data type 'Int16' not understood\nExecution time: 2 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
+        "analysis": "The run failed during preprocessing before training, so no valid metric was produced. The crash is caused by `astype(\"Int16\")` on a NumPy array in `redshift_bin`; replace it with a pandas `Series(..., dtype=\"Int16\")` or use a NumPy integer dtype and keep the nullable integer conversion on a Series.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
       }
     ],
     "legacy": [

@@ -1,7 +1,5 @@
 {
-  "active": {
-    "autogluon": "autogluon-001.py"
-  },
+  "active": {},
   "versions": {
     "autogluon": [
       {
@@ -17,6 +15,46 @@
         "node_id": "01e59b0153aa4c728835ea3975a58b18",
         "score": null,
         "status": "bug"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "ed54d000b9254d2d8928e665443371e5",
+        "score": null,
+        "created_at": "2026-06-12T14:05:16",
+        "exec_time": 0.13421082496643066,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "ValueError",
+        "exception_info": {
+          "args": [
+            "Preprocess target leakage risk: forbidden column 'class' referenced in preprocess"
+          ]
+        },
+        "terminal_output": "Traceback (most recent call last):\n  File \"runfile.py\", line 1, in <module>\n    raise ValueError(\"Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\")\nValueError: Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\nExecution time: a moment seconds (time limit is 2 hours).",
+        "analysis": "The run failed immediately with a `ValueError` triggered by the preprocessing code referencing the target column `class`, so no model training or validation metric was produced. Fix the preprocessing to avoid any target leakage checks that abort execution, then rerun end-to-end."
+      },
+      {
+        "file": "autogluon-003.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "730f42b593f243ff913e39a9781f878e",
+        "score": null,
+        "created_at": "2026-06-12T20:37:49",
+        "exec_time": 2.3767151832580566,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "AttributeError",
+        "exception_info": {
+          "args": [
+            "'DataFrame' object has no attribute 'mad'"
+          ],
+          "name": "mad",
+          "obj": "              u         g         r         i         z  redshift       alpha      delta     c_ug     c_gr     c_ri     c_iz     c_ui\n0      23.87882  22.27530  20.39501  19.16573  18.79371  0.634794  135.689107  32.494632  1.60352  1.88029  1.22928  0.37202  4.71309\n1      24.77759  22.83188  22.58444  21.16812  21.61427  0.779136  144.826101  31.274185  1.94571  0.24744  1.41632 -0.44615  3.60947\n2      25.26307  22.66389  20.60976  19.34857  18.94827  0.644195  142.188790  35.582444  2.59918  2.05413  1.26119  0.40030  5.91450\n3      22.13682  23.77656  21.61162  20.50454  19.25010  0.932346  338.741038  -0.402828 -1.63974  2.16494  1.10708  1.25444  1.63228\n4      19.43718  17.58028  16.49747  15.97711  15.54461  0.116123  345.282593  21.183866  1.85690  1.08281  0.52036  0.43250  3.46007\n...         ...       ...       ...       ...       ...       ...         ...        ...      ...      ...      ...      ...      ...\n99995  22.16759  22.97586  21.90404  21.30548  20.73569  0.000000   39.620709  -2.594074 -0.80827  1.07182  0.59856  0.56979  0.86211\n99996  22.69118  22.38628  20.45003  19.75759  19.41526  0.404895   29.493819  19.798874  0.30490  1.93625  0.69244  0.34233  2.93359\n99997  21.16916  19.26997  18.20428  17.69034  17.35221  0.143366  224.587407  15.700707  1.89919  1.06569  0.51394  0.33813  3.47882\n99998  25.35039  21.63757  19.91386  19.07254  18.62482  0.455040  212.268621  46.660365  3.71282  1.72371  0.84132  0.44772  6.27785\n99999  22.62171  21.79745  20.60115  20.00959  19.28075  0.542944  196.896053  49.464643  0.82426  1.19630  0.59156  0.72884  2.61212\n\n[99999 rows x 13 columns]"
+        },
+        "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 897, in <module>\n    main()\n  File \"runfile.py\", line 719, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 236, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 160, in preprocess\n    .mad(numeric_only=True)\n     ^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/generic.py\", line 6204, in __getattr__\n    return object.__getattribute__(self, name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'DataFrame' object has no attribute 'mad'. Did you mean: 'map'?\nExecution time: 2 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
+        "analysis": "The run failed during preprocessing because `DataFrame.mad()` is no longer available in the pandas version in this environment. Replace that call with an explicit mean/median absolute deviation implementation or another robust scale computation so preprocessing can complete and the model can train.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
       }
     ]
   }
