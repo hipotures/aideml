@@ -1093,12 +1093,20 @@ def load_resume_state(
     cli_overrides = _normalize_model_effort_cli_overrides(cli_overrides)
     cli_overrides = _normalize_forced_root_cli_overrides(cli_overrides)
     forced_root_overridden = _cli_sets_key(cli_overrides, "agent.search.forced_root")
+    dotenv_env = _dotenv_values_for_config(load_env=True)
+    forced_root_env_overridden = bool(
+        os.getenv(
+            "AIDE_AGENT_SEARCH_FORCED_ROOT",
+            dotenv_env.get("AIDE_AGENT_SEARCH_FORCED_ROOT", ""),
+        ).strip()
+    )
     cfg = OmegaConf.load(config_path)
     _migrate_resume_memory_prompt_defaults(cfg)
     _migrate_resume_research_model_key(cfg)
-    _apply_env_aliases(cfg, dotenv_env=_dotenv_values_for_config(load_env=True))
+    _apply_env_aliases(cfg, dotenv_env=dotenv_env)
     if (
         not forced_root_overridden
+        and not forced_root_env_overridden
         and "agent" in cfg
         and "search" in cfg.agent
         and "forced_root" in cfg.agent.search

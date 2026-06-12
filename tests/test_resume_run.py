@@ -1279,6 +1279,20 @@ def test_load_resume_state_clears_saved_forced_root_without_cli_override(tmp_pat
     assert cfg.agent.search.forced_root is None
 
 
+def test_load_resume_state_preserves_env_forced_root_override(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    monkeypatch.setenv("AIDE_AGENT_SEARCH_FORCED_ROOT", "000405")
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.agent.search.forced_root == "000405"
+
+
 def test_load_resume_state_preserves_unquoted_forced_root_cli_id(tmp_path):
     _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
 
