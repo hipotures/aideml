@@ -572,7 +572,7 @@ def test_resolve_process_timeout_defaults_to_profile_time_limit_plus_margin():
     assert rerun_autogluon_profile.resolve_process_timeout(300, 1800) == 300
 
 
-def test_execute_code_uses_single_autogluon_log_file(tmp_path):
+def test_execute_code_preserves_process_stdout_and_autogluon_log_file(tmp_path):
     artifact_dir = tmp_path / "artifacts"
     code = (
         "from pathlib import Path\n"
@@ -580,6 +580,7 @@ def test_execute_code_uses_single_autogluon_log_file(tmp_path):
         "artifact = Path(os.environ['AIDE_NODE_ARTIFACT_DIR'])\n"
         "artifact.mkdir(parents=True, exist_ok=True)\n"
         "(artifact / 'autogluon_stdout.log').write_text('training log\\n')\n"
+        "print('v1')\n"
         "print('AIDE_RESULT_JSON: {\"is_bug\": false, \"metric\": 0.9, \"lower_is_better\": false}')\n"
     )
 
@@ -596,7 +597,9 @@ def test_execute_code_uses_single_autogluon_log_file(tmp_path):
     assert result.exc_type is None
     assert "AIDE_RESULT_JSON:" in result.term_out[0]
     assert (artifact_dir / "autogluon_stdout.log").read_text() == "training log\n"
-    assert not (artifact_dir / "process_stdout.log").exists()
+    process_stdout = (artifact_dir / "process_stdout.log").read_text()
+    assert "v1" in process_stdout
+    assert "AIDE_RESULT_JSON:" in process_stdout
 
 
 def test_main_leaves_timeout_unset_for_profile_default(tmp_path, monkeypatch):

@@ -273,6 +273,7 @@ def execute_code(
     progress_time_limit: int | None = None,
 ) -> ExecutionResult:
     workspace_dir.mkdir(parents=True, exist_ok=True)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
     (workspace_dir / "working").mkdir(parents=True, exist_ok=True)
     runfile = workspace_dir / "solution.py"
     runfile.write_text(code)
@@ -339,6 +340,7 @@ def execute_code(
             os.killpg(proc.pid, signal.SIGKILL)
             output_text, _ = proc.communicate()
         exec_time = float(timeout)
+        (artifact_dir / "process_stdout.log").write_text(output_text)
         return ExecutionResult(
             [output_text, f"TimeoutError: Execution exceeded the time limit of {timeout} seconds"],
             exec_time,
@@ -348,6 +350,7 @@ def execute_code(
         )
 
     output = [output_text]
+    (artifact_dir / "process_stdout.log").write_text(output_text)
     if proc.returncode == 0:
         output.append(
             f"Execution time: {exec_time:.0f} seconds (time limit is {timeout} seconds)."
