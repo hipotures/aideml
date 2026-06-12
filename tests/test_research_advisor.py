@@ -5037,6 +5037,86 @@ def test_standard_improve_prompt_includes_timeout_child_attempt(tmp_path):
     assert "bug" not in attempts
 
 
+def test_standard_improve_prompt_includes_unfixed_bug_child_attempt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    bug = Node(
+        code="raise KeyError('missing_feature')",
+        plan="Add risky feature family.",
+        parent=parent,
+    )
+    bug.metric = WorstMetricValue()
+    bug.is_buggy = True
+    bug.analysis = "KeyError: missing_feature"
+    bug.exc_type = "KeyError"
+    journal = Journal()
+    for node in [parent, bug]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Add risky feature family" in attempts
+    assert "bug, metric=n/a" in attempts
+
+
+def test_standard_improve_prompt_replaces_fixed_bug_child_with_working_descendant(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    bug = Node(
+        code="raise KeyError('missing_feature')",
+        plan="Add risky feature family.",
+        parent=parent,
+    )
+    bug.metric = WorstMetricValue()
+    bug.is_buggy = True
+    bug.analysis = "KeyError: missing_feature"
+    bug.exc_type = "KeyError"
+    fixed = Node(
+        code="print('fixed feature family')",
+        plan="Fix missing feature and keep the feature family.",
+        parent=bug,
+    )
+    fixed.metric = MetricValue(0.954900, maximize=True)
+    fixed.is_buggy = False
+    fixed.analysis = "fixed run completed"
+    journal = Journal()
+    for node in [parent, bug, fixed]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Add risky feature family" not in attempts
+    assert "bug, metric=n/a" not in attempts
+    assert "Fix missing feature and keep the feature family" in attempts
+    assert "step 2: improved, metric=0.954900" in attempts
+
+
 def test_standard_improve_prompt_omits_prior_child_attempts_without_children(
     tmp_path,
 ):

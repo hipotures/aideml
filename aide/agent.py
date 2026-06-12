@@ -652,6 +652,23 @@ def _format_metric_value(node: Node) -> str:
     return f"metric={float(node.metric.value):.6f}"
 
 
+def _best_working_descendant(node: Node) -> Node | None:
+    best: Node | None = None
+    stack = list(node.children)
+    while stack:
+        candidate = stack.pop()
+        stack.extend(candidate.children)
+        if (
+            candidate.is_buggy
+            or candidate.metric is None
+            or candidate.metric.value is None
+        ):
+            continue
+        if best is None or candidate.metric > best.metric:
+            best = candidate
+    return best
+
+
 def _format_previous_child_attempts(
     parent_node: Node,
     *,
@@ -669,6 +686,10 @@ def _format_previous_child_attempts(
         attempts,
         key=lambda child: (-1 if child.step is None else child.step),
     )[-limit:]
+    display_attempts = [
+        _best_working_descendant(child) if child.is_buggy else None
+        for child in attempts
+    ]
     parent_value = (
         float(parent_node.metric.value)
         if parent_node.metric is not None and parent_node.metric.value is not None
@@ -683,18 +704,25 @@ def _format_previous_child_attempts(
         ),
         "",
     ]
-    for child in attempts:
+    for child, replacement in zip(attempts, display_attempts):
+        display_node = replacement or child
         if child.is_timeout_failure:
             status = "timeout"
-        elif child.is_buggy:
+        elif replacement is not None:
+            status = (
+                "improved"
+                if _node_improves_parent(replacement, parent_node, epsilon=epsilon)
+                else "did_not_improve"
+            )
+        elif display_node.is_buggy:
             status = "bug"
-        elif _node_improves_parent(child, parent_node, epsilon=epsilon):
+        elif _node_improves_parent(display_node, parent_node, epsilon=epsilon):
             status = "improved"
         else:
             status = "did_not_improve"
         child_value = (
-            float(child.metric.value)
-            if child.metric is not None and child.metric.value is not None
+            float(display_node.metric.value)
+            if display_node.metric is not None and display_node.metric.value is not None
             else None
         )
         delta = (
@@ -702,12 +730,12 @@ def _format_previous_child_attempts(
             if child_value is not None and parent_value is not None
             else ""
         )
-        step = "?" if child.step is None else str(child.step)
-        summary = _compact_attempt_text(child.plan) or _compact_attempt_text(
-            child.analysis
+        step = "?" if display_node.step is None else str(display_node.step)
+        summary = _compact_attempt_text(display_node.plan) or _compact_attempt_text(
+            display_node.analysis
         )
         lines.append(
-            f"- step {step}: {status}, {_format_metric_value(child)}{delta}; "
+            f"- step {step}: {status}, {_format_metric_value(display_node)}{delta}; "
             f"attempt={summary}"
         )
     return "\n".join(lines)
