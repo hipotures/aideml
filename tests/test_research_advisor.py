@@ -4625,6 +4625,88 @@ def test_hypothesis_child_prompt_includes_autogluon_preprocess_reference_only(
     assert "AIDE_AG_CONFIG" not in reference
 
 
+def test_hypothesis_child_prompt_skips_non_preprocess_reference_in_autogluon_mode(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.mode = "hypothesis"
+    cfg.agent.mode = AGENT_MODE
+    cfg.agent.data_preview = False
+    task_slug = Path(cfg.data_dir).name
+    _write_manual_hypothesis(tmp_path, task_slug, "000303")
+    hypothesis_dir = tmp_path / "research_hypotheses" / task_slug / "000303"
+    (hypothesis_dir / "autogluon-001.py").write_text(
+        "from autogluon.tabular import TabularPredictor\n\n"
+        "def train_model():\n"
+        "    return TabularPredictor(label='target')\n",
+        encoding="utf-8",
+    )
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "active": {"autogluon": "autogluon-001.py"},
+                "versions": {
+                    "autogluon": [
+                        {
+                            "file": "autogluon-001.py",
+                            "buggy": False,
+                            "score": 0.91,
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    parent = _node(
+        0.91,
+        code=build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg),
+        plan="parent",
+    )
+    journal = Journal()
+    journal.append(parent)
+    selection = research.ManualHypothesisSelection(
+        completed_steps=1,
+        source_hash="sha256:test",
+        source_dir=tmp_path / "research_hypotheses" / task_slug,
+        hypotheses=[
+            research.ManualHypothesis(
+                id="000303",
+                enabled=True,
+                agent_modes=["legacy", "autogluon"],
+                title="Grouped validation",
+                summary="Use grouped validation.",
+                rationale="Race/year grouping should reduce mismatch.",
+                implementation_hint="Build Race_Year groups.",
+                expected_effect="Better validation stability.",
+                risk="Grouped CV may be pessimistic.",
+                sources=[],
+                path=hypothesis_dir / "hypothesis-000303.json",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "aide.agent.select_hypothesis_for_node",
+        lambda *_args, **_kwargs: selection,
+    )
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return (
+            "I will verify hypothesis 000303 without a reusable reference.",
+            "def preprocess(df):\n    return df\n",
+        )
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    assert "Reference implementation for assigned hypothesis" not in captured["prompt"]
+
+
 def test_non_hypothesis_draft_prompt_keeps_global_memory(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.mode = "llm"

@@ -1614,8 +1614,9 @@ class Agent:
             f"Mode: {root_code.agent_mode}; file: {root_code.path.name}."
         )
         if is_autogluon_preprocess_mode(self.cfg):
-            preprocess_source = extract_preprocess_source(code)
-            if preprocess_source is None:
+            try:
+                preprocess_source = extract_preprocess_source(code)
+            except ValueError:
                 return None
             code = preprocess_source
             mode_note += " Only the `preprocess(df)` implementation is shown."
