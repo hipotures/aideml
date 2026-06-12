@@ -380,6 +380,20 @@ def test_journal_tree_uses_hypothesis_id_for_root_and_step_for_child():
     assert "● 0.94600·1" in output
 
 
+def test_journal_tree_uses_step_for_hypothesis_child_branch():
+    journal = Journal()
+    root = _hypothesis_node(_good_node(0.945), "000111")
+    child = _hypothesis_node(_good_node(0.946, parent=root), "000222")
+    journal.append(root)
+    journal.append(child)
+
+    output = _render_text(journal_to_rich_tree(journal))
+
+    assert "0.94500·000111" in output
+    assert "● 0.94600·1" in output
+    assert "0.94600·000222" not in output
+
+
 def test_tree_view_uses_short_step_suffix_when_hypothesis_id_is_missing():
     journal = Journal()
     root = _good_node(0.945)
@@ -732,7 +746,7 @@ def test_final_tree_renderable_prints_complete_tree_without_focus():
 
     assert "Solution tree" in output
     assert "0.94100·000111" in output
-    assert "● 0.94200·000222" in output
+    assert "● 0.94200·1" in output
     assert "\x1b[7m" not in output
 
 
@@ -2833,7 +2847,7 @@ def test_debuggable_hypothesis_root_blocks_next_library_root(tmp_path):
     assert _has_debuggable_hypothesis_root(journal, cfg)
 
 
-def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
+def test_tree_view_uses_step_for_hypothesis_child_bug_labels():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
     bug = _hypothesis_node(_bug_node(parent=root), "000205")
@@ -2851,10 +2865,11 @@ def test_tree_view_appends_hypothesis_id_to_metric_and_bug_labels():
     )
 
     assert "0.95104·000122" in output
-    assert "bug·000205" in output
+    assert "bug·1" in output
+    assert "bug·000205" not in output
 
 
-def test_tree_view_shows_timeout_label_with_hypothesis_id():
+def test_tree_view_shows_timeout_label_with_step_for_hypothesis_child():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
     timeout = _hypothesis_node(_bug_node(parent=root), "000447")
@@ -2872,16 +2887,17 @@ def test_tree_view_shows_timeout_label_with_hypothesis_id():
         )
     )
 
-    assert "◉ timeout·000447" in output
-    assert "bug·000447" not in output
+    assert "◉ timeout·1" in output
+    assert "bug·1" not in output
+    assert "000447" not in output
 
     rich_output = _render_text(journal_to_rich_tree(journal))
     ansi = _render_ansi(journal_to_rich_tree(journal))
-    assert "◉ timeout·000447" in rich_output
-    assert "\x1b[90m◉ timeout·000447" in ansi
+    assert "◉ timeout·1" in rich_output
+    assert "\x1b[90m◉ timeout·1" in ansi
 
 
-def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
+def test_tree_view_shows_preprocess_timeout_label_with_step_for_hypothesis_child():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
     timeout = _hypothesis_node(_bug_node(parent=root), "000447")
@@ -2899,11 +2915,12 @@ def test_tree_view_shows_preprocess_timeout_label_with_hypothesis_id():
         )
     )
 
-    assert "◉ timeout·000447" in output
-    assert "bug·000447" not in output
+    assert "◉ timeout·1" in output
+    assert "bug·1" not in output
+    assert "000447" not in output
 
 
-def test_tree_view_shows_hypothesis_protocol_failures_with_id():
+def test_tree_view_shows_hypothesis_protocol_failures_with_step_for_child():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.95104), "000122")
     failed = _hypothesis_node(_failed_node(parent=root), "000311")
@@ -2920,7 +2937,8 @@ def test_tree_view_shows_hypothesis_protocol_failures_with_id():
         )
     )
 
-    assert "● failed·000311" in output
+    assert "● failed·1" in output
+    assert "000311" not in output
 
 
 def test_run_data_shows_current_artifact_directory_under_log_dir(tmp_path):
