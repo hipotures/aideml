@@ -21,6 +21,6 @@
 - Any task that changes files must end in one of two states: changes committed, or an explicit explanation why they were not committed.
 - Before committing, run relevant verification and inspect `git status --short`.
 - Commit only changes made for the current task.
-- If changes in `research_hypotheses/` are detected or created, commit them in a separate commit from code, script, or documentation changes outside `research_hypotheses/`.
+- If changes in `research_hypotheses/` are detected or created, you must commit those `research_hypotheses/` changes in a separate commit from code, script, or documentation changes outside `research_hypotheses/`.
 - Never commit unrelated user changes.
 - Use concise commit messages.
