@@ -1199,8 +1199,7 @@ def journal_to_rich_tree(
         if active_stage == "executing":
             placeholder = Text("●" if blink_on else " ", style="cyan")
         else:
-            indicator = "[*]" if blink_on else "[ ]"
-            placeholder = Text(indicator, style=active_placeholder_style())
+            placeholder = Text("●" if blink_on else " ", style=active_placeholder_style())
         placeholder_hypothesis_id = active_hypothesis_id
         if (
             active_parent_node is not None
@@ -1508,7 +1507,6 @@ def _tree_active_placeholder_line(
         if active_hypothesis_id:
             line.append(f" {active_hypothesis_id}", style="cyan")
         return line
-    indicator = "[*]" if blink_on else "[ ]"
     style = "bold yellow"
     if active_stage == "generating":
         style = "bold white"
@@ -1516,7 +1514,7 @@ def _tree_active_placeholder_line(
         style = "bold yellow"
     elif active_stage == "reviewing":
         style = "bold blue"
-    line = Text(indicator, style=style)
+    line = Text("●" if blink_on else " ", style=style)
     if active_hypothesis_id:
         line.append(f"·{active_hypothesis_id}", style=style)
     return line
@@ -1838,18 +1836,13 @@ def build_tree_view(
         if is_active_virtual_root:
             line = Text()
             line.append(prefix, style=TUI_INACTIVE_VALUE_STYLE)
-            if status_text in {"bug", "failed"}:
-                indicator = "[*]" if blink_on else "[ ]"
-                line.append(f"{indicator} ", style="bold yellow")
-                line.append(f"bug·{hypothesis_id}{runtime_suffix}", style="red")
-            else:
-                line.append_text(
-                    _tree_active_root_hypothesis_line(
-                        active_stage=active_stage,
-                        active_hypothesis_id=hypothesis_id,
-                        blink_on=blink_on,
-                    )
+            line.append_text(
+                _tree_active_root_hypothesis_line(
+                    active_stage=active_stage,
+                    active_hypothesis_id=hypothesis_id,
+                    blink_on=blink_on,
                 )
+            )
             item_id = f"hypothesis-root:{hypothesis_id}"
             append_item(
                 TreeViewItem(

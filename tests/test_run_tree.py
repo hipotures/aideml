@@ -511,7 +511,7 @@ def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
 
     output = _render_text(tree)
 
-    assert "[*]·000348" in output
+    assert "●·000348" in output
 
 
 def test_journal_tree_suppresses_root_hypothesis_id_on_child_placeholder():
@@ -529,15 +529,15 @@ def test_journal_tree_suppresses_root_hypothesis_id_on_child_placeholder():
 
     output = _render_text(tree)
 
-    assert "[*]" in output
-    assert "[*]·000111" not in output
+    assert "●" in output
+    assert "●·000111" not in output
 
 
 def test_journal_tree_colors_active_placeholder_by_stage():
     expected_ansi = {
-        "generating": "\x1b[1;37m[*]",
+        "generating": "\x1b[1;37m●",
         "executing": "\x1b[36m●",
-        "reviewing": "\x1b[1;34m[*]",
+        "reviewing": "\x1b[1;34m●",
     }
 
     for stage, ansi in expected_ansi.items():
@@ -1065,7 +1065,7 @@ def test_journal_tree_ignores_unappended_active_child_node():
 
     assert "● 0.94500" in output
     assert "n/a" not in output
-    assert "[*]" in output
+    assert "●" in output
 
 
 def test_tree_view_starts_with_focusable_header_and_node_rows():
@@ -1426,8 +1426,8 @@ def test_tree_renders_multiple_active_root_generations():
         )
     )
 
-    assert "[*]·000405" in output
-    assert "[*]·000941" in output
+    assert "●·000405" in output
+    assert "●·000941" in output
     assert active_tree_item_id(view) == "active:000941"
 
 
@@ -1552,7 +1552,7 @@ def test_tree_view_renders_active_hypothesis_id_on_placeholder():
         )
     )
 
-    assert "└── [*]·000348" in output
+    assert "└── ●·000348" in output
 
 
 def test_tree_view_suppresses_root_hypothesis_id_on_child_placeholder():
@@ -1576,8 +1576,8 @@ def test_tree_view_suppresses_root_hypothesis_id_on_child_placeholder():
         )
     )
 
-    assert "└── [*]" in output
-    assert "[*]·000111" not in output
+    assert "└── ●" in output
+    assert "●·000111" not in output
 
 
 def test_tree_view_uses_score_icons_for_baseline_nodes():
@@ -1790,7 +1790,7 @@ def test_tree_view_renders_root_active_placeholder_as_tree_child():
     ))
 
     assert "├── ● 0.90000" in output
-    assert "└── [ ]" in output
+    assert "└──  " in output
 
 
 def test_path_summary_shows_shared_base_once_and_relative_paths(tmp_path):
