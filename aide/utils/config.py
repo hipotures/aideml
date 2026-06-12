@@ -133,6 +133,7 @@ VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
 AGENT_MODE_ALIASES = {"autogluon": "autogluon_preprocess"}
 DEPRECATED_CONFIG_KEYS = (
     "agent.search.seeded_base_max_children",
+    "agent.search.forced_parent",
     "agent.autogluon.eval_metric",
 )
 

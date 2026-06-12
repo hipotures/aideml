@@ -1559,3 +1559,20 @@ def test_load_resume_state_ignores_deprecated_seeded_base_limit(tmp_path):
     )
 
     assert not hasattr(cfg.agent.search, "seeded_base_max_children")
+
+
+def test_load_resume_state_ignores_deprecated_forced_parent(tmp_path):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.agent.search.forced_parent = "34"
+    OmegaConf.save(cfg_data, config_path)
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert not hasattr(cfg.agent.search, "forced_parent")
