@@ -1,7 +1,7 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
-    "legacy": "legacy-001.py"
+    "legacy": "legacy-001.py",
+    "autogluon": "autogluon-003.py"
   },
   "versions": {
     "autogluon": [
@@ -12,6 +12,37 @@
         "score": null,
         "source_legacy_feature_kind": "locus_density",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "6c9357008bd3428dab4f6a0685acdd95",
+        "score": null,
+        "created_at": "2026-06-12T14:34:29",
+        "exec_time": 0.09210395812988281,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "ValueError",
+        "exception_info": {
+          "args": [
+            "Preprocess target leakage risk: forbidden column 'class' referenced in preprocess"
+          ]
+        },
+        "terminal_output": "Traceback (most recent call last):\n  File \"runfile.py\", line 1, in <module>\n    raise ValueError(\"Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\")\nValueError: Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\nExecution time: a moment seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
+        "analysis": "The run failed immediately with a raised `ValueError` before any training or validation could occur, so no metric was produced. Fix the preprocess logic to avoid referencing the forbidden target column `class` and rerun the pipeline.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
+      },
+      {
+        "file": "autogluon-003.py",
+        "buggy": false,
+        "status": "generated",
+        "node_id": null,
+        "score": null,
+        "created_at": "2026-06-12T16:45:00",
+        "exec_time": null,
+        "gpu": true,
+        "aux": true,
+        "notes": "Active non-bug AutoGluon locus-density wrapper restored as a new version; preprocess contains no forbidden target-column literal."
       }
     ],
     "legacy": [
