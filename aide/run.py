@@ -1161,6 +1161,7 @@ def journal_to_rich_tree(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
+    active_step: int | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -1223,6 +1224,8 @@ def journal_to_rich_tree(
                     f"·{placeholder_hypothesis_id}",
                     style=active_placeholder_style(),
                 )
+        elif active_step is not None:
+            placeholder.append(f"·{active_step}", style=active_placeholder_style())
         tree.add(placeholder)
 
     def node_order_key(node: Node):
@@ -1504,6 +1507,7 @@ def _tree_active_placeholder_line(
     *,
     active_stage: str | None,
     active_hypothesis_id: str | None = None,
+    active_step: int | None = None,
     blink_on: bool,
 ) -> Text:
     if active_stage == "researching" and active_hypothesis_id:
@@ -1525,6 +1529,8 @@ def _tree_active_placeholder_line(
     line = Text("●" if blink_on else " ", style=style)
     if active_hypothesis_id:
         line.append(f"·{active_hypothesis_id}", style=style)
+    elif active_step is not None:
+        line.append(f"·{active_step}", style=style)
     return line
 
 
@@ -1571,6 +1577,7 @@ def build_tree_view(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
+    active_step: int | None = None,
     active_root_generations: list[ActiveRootGeneration] | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
@@ -1686,6 +1693,7 @@ def build_tree_view(
             _tree_active_placeholder_line(
                 active_stage=active_stage,
                 active_hypothesis_id=placeholder_hypothesis_id,
+                active_step=active_step if placeholder_hypothesis_id is None else None,
                 blink_on=blink_on,
             )
         )
@@ -5761,6 +5769,7 @@ def run(argv: list[str] | None = None):
                         active_parent_node=agent.active_parent_node,
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
+                        active_step=global_step,
                         plateau_block_epsilon=(
                             cfg.agent.search.plateau_block_epsilon
                         ),
@@ -5791,6 +5800,7 @@ def run(argv: list[str] | None = None):
             active_parent_node=agent.active_parent_node,
             active_stage=agent.active_stage,
             active_hypothesis_id=active_hypothesis_id_for_display(),
+            active_step=global_step,
             active_root_generations=active_root_generations,
             blink_on=blink_on,
             show_invalid_submission_branches=(

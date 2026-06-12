@@ -1569,6 +1569,30 @@ def test_tree_view_renders_active_hypothesis_id_on_placeholder():
     assert "└── ●·000348" in output
 
 
+def test_tree_view_renders_active_step_on_non_hypothesis_placeholder():
+    journal = Journal()
+    root = _good_node(0.90)
+    journal.append(root)
+
+    view = build_tree_view(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+        active_step=1,
+        blink_on=True,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "└── ●·1" in output
+
+
 def test_tree_view_suppresses_root_hypothesis_id_on_child_placeholder():
     journal = Journal()
     root = _hypothesis_node(_good_node(0.90), "000111")
