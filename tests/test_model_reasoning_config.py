@@ -89,6 +89,22 @@ def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypa
     assert cfg.research.reasoning_effort == "medium"
 
 
+def test_search_best_score_min_children_env_overrides_default(tmp_path, monkeypatch):
+    monkeypatch.delenv(
+        "AIDE_AGENT_SEARCH_BEST_SCORE_MIN_CHILDREN_BEFORE_EXPLORATION",
+        raising=False,
+    )
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_SEARCH_BEST_SCORE_MIN_CHILDREN_BEFORE_EXPLORATION=6\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path, load_env=True), load_env=True)
+
+    assert cfg.agent.search.best_score_min_children_before_exploration == 6
+
+
 def test_legacy_research_model_env_key_is_ignored(tmp_path, monkeypatch):
     monkeypatch.delenv("AIDE_RESEARCH_MODEL", raising=False)
     monkeypatch.delenv("AIDE_RESEARCH_ROOT_HYPOTHESIS_MODEL", raising=False)

@@ -461,6 +461,10 @@ def _apply_env_aliases(
             "agent.search.exploration_weight",
             _env_float,
         ),
+        "AIDE_AGENT_SEARCH_BEST_SCORE_MIN_CHILDREN_BEFORE_EXPLORATION": (
+            "agent.search.best_score_min_children_before_exploration",
+            _env_int,
+        ),
         "AIDE_AGENT_SEARCH_FORCED_ROOT": ("agent.search.forced_root", str.strip),
         "AIDE_AGENT_SEARCH_FORCED_HYPOTHESIS": (
             "agent.search.forced_hypothesis",
