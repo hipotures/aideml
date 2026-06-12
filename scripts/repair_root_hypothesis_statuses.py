@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich import box
+from rich.console import Console
+from rich.table import Table
+
 
 @dataclass(frozen=True)
 class PlannedChange:
@@ -256,19 +260,66 @@ def _format_value(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _node_group_key(change: PlannedChange) -> tuple[int, str]:
+    return change.node_index, change.node_id
+
+
 def _print_changes(changes: list[PlannedChange]) -> None:
     if not changes:
         print("No root hypothesis status mismatches found.")
         return
-    print(f"Planned root hypothesis journal updates: {len(changes)} field change(s)")
+
+    console = Console()
+    node_count = len({_node_group_key(change) for change in changes})
+    console.print(
+        f"Planned root hypothesis journal updates: "
+        f"{len(changes)} field change(s) across {node_count} node(s)"
+    )
+
+    table = Table(
+        box=box.SIMPLE,
+        show_lines=False,
+        pad_edge=False,
+        expand=False,
+    )
+    table.add_column("step", justify="right", no_wrap=True)
+    table.add_column("node", no_wrap=True)
+    table.add_column("hyp", no_wrap=True)
+    table.add_column("source", no_wrap=True)
+    table.add_column("field", no_wrap=True)
+    table.add_column("journal")
+    table.add_column("manifest")
+
+    group_styles = ["on grey11", "on grey23"]
+    previous_group: tuple[int, str] | None = None
+    group_index = -1
     for change in changes:
+        group = _node_group_key(change)
         step = "?" if change.step is None else str(change.step)
-        source = change.manifest_file or "manifest"
-        print(
-            f"- step={step} node={change.node_id} hypothesis={change.hypothesis_id} "
-            f"source={source} field={change.field}: "
-            f"{_format_value(change.before)} -> {_format_value(change.after)}"
+        if group != previous_group:
+            group_index += 1
+            previous_group = group
+            step_label = step
+            node_label = change.node_id[:8]
+            hypothesis_label = change.hypothesis_id
+            source_label = change.manifest_file or "manifest"
+        else:
+            step_label = ""
+            node_label = ""
+            hypothesis_label = ""
+            source_label = ""
+        style = group_styles[group_index % len(group_styles)]
+        table.add_row(
+            step_label,
+            node_label,
+            hypothesis_label,
+            source_label,
+            change.field,
+            _format_value(change.before),
+            _format_value(change.after),
+            style=style,
         )
+    console.print(table)
 
 
 def parse_args() -> argparse.Namespace:
