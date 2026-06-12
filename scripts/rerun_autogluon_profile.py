@@ -233,6 +233,35 @@ def build_profile_code(
     )
 
 
+def build_whole_solution_code(
+    *,
+    source_record: dict[str, Any],
+    whole_solution_path: Path,
+    presets: str | None,
+    time_limit: int | None,
+) -> tuple[str, list[str], int, str]:
+    code = whole_solution_path.read_text()
+    ag_config = lab.parse_autogluon_config(code) or {}
+    included_model_types = (
+        ag_config.get("included_model_types")
+        or source_record.get("included_model_types")
+        or []
+    )
+    resolved_time_limit = int(
+        time_limit
+        or ag_config.get("time_limit")
+        or source_record.get("time_limit")
+        or _load_cfg(use_cli_args=False).agent.autogluon.time_limit
+    )
+    autogluon_presets = str(
+        presets
+        or ag_config.get("presets")
+        or source_record.get("autogluon_presets")
+        or _load_cfg(use_cli_args=False).agent.autogluon.presets
+    )
+    return code, list(included_model_types or []), resolved_time_limit, autogluon_presets
+
+
 def execute_code(
     code: str,
     *,
@@ -366,6 +395,7 @@ def run_profile_eval(
     timeout: int | None = None,
     memory_limit_gb: float | None = 80.0,
     console: Console | None = None,
+    whole_solution_path: Path | None = None,
 ) -> dict[str, Any]:
     if source_record.get("kind") not in {"source_node", "profile_eval"}:
         raise ValueError("Source record must be a source_node or profile_eval.")
@@ -385,14 +415,26 @@ def run_profile_eval(
         except FileExistsError:
             time.sleep(1.0)
 
-    code, included_model_types, resolved_time_limit, autogluon_presets = build_profile_code(
-        source_record=source_record,
-        profile=profile,
-        competition=competition,
-        presets=presets,
-        time_limit=time_limit,
-        fit_args=fit_args,
-    )
+    if whole_solution_path is None:
+        code, included_model_types, resolved_time_limit, autogluon_presets = build_profile_code(
+            source_record=source_record,
+            profile=profile,
+            competition=competition,
+            presets=presets,
+            time_limit=time_limit,
+            fit_args=fit_args,
+        )
+        output_profile = profile
+    else:
+        code, included_model_types, resolved_time_limit, autogluon_presets = (
+            build_whole_solution_code(
+                source_record=source_record,
+                whole_solution_path=whole_solution_path,
+                presets=presets,
+                time_limit=time_limit,
+            )
+        )
+        output_profile = source_record.get("profile") or profile
     effective_timeout = resolve_process_timeout(timeout, resolved_time_limit)
     (artifact_dir / "solution.py").write_text(code)
     if console is not None:
@@ -468,7 +510,7 @@ def run_profile_eval(
         "kind": "profile_eval",
         "competition": competition,
         "status": "ok" if is_ok else "error",
-        "profile": profile,
+        "profile": output_profile,
         "autogluon_presets": autogluon_presets,
         "included_model_types": included_model_types,
         "time_limit": resolved_time_limit,
@@ -547,7 +589,7 @@ def run_profile_eval(
             {"status": "ok"} if validation_error is None else {"status": "error", "error": validation_error}
         ),
         "autogluon": {
-            "profile": profile,
+            "profile": output_profile,
             "presets": autogluon_presets,
             "included_model_types": included_model_types,
             "time_limit": resolved_time_limit,
@@ -777,7 +819,63 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--refresh-index", action="store_true")
+    parser.add_argument(
+        "--solution-path",
+        type=Path,
+        help=(
+            "Run this solution file as-is, without extracting preprocess or rebuilding "
+            "the AutoGluon wrapper. The file must live under "
+            "<logs-dir>/<run>/artifacts/<timestamp>/."
+        ),
+    )
     return parser.parse_args(argv)
+
+
+def source_record_from_solution_path(
+    *,
+    solution_path: Path,
+    logs_dir: Path,
+    competition: str,
+) -> dict[str, Any]:
+    resolved_solution = solution_path.resolve()
+    if not resolved_solution.exists():
+        raise ValueError(f"Missing solution file: {solution_path}")
+    artifact_dir = resolved_solution.parent
+    artifacts_dir = artifact_dir.parent
+    run_dir = artifacts_dir.parent
+    if artifacts_dir.name != "artifacts":
+        raise ValueError(
+            "--solution-path must point to a file under "
+            "<logs-dir>/<run>/artifacts/<timestamp>/."
+        )
+    try:
+        run_dir.relative_to(logs_dir.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            f"--solution-path must be inside --logs-dir ({logs_dir})."
+        ) from exc
+
+    submission_path = artifact_dir / "submission.csv"
+    code = resolved_solution.read_text()
+    ag_config = lab.parse_autogluon_config(code) or {}
+    source_sha256 = lab.sha256_file(resolved_solution)
+    return {
+        "kind": "profile_eval",
+        "competition": competition,
+        "run": run_dir.name,
+        "timestamp": artifact_dir.name,
+        "artifact_dir": to_portable_path(artifact_dir),
+        "solution_path": to_portable_path(resolved_solution),
+        "submission_path": (
+            to_portable_path(submission_path) if submission_path.exists() else None
+        ),
+        "sha256": source_sha256,
+        "profile": ag_config.get("profile"),
+        "autogluon_presets": ag_config.get("presets"),
+        "included_model_types": ag_config.get("included_model_types"),
+        "time_limit": ag_config.get("time_limit"),
+        "source_solution_sha256": source_sha256,
+    }
 
 
 def _build_progress(console: Console) -> Progress:
@@ -795,53 +893,73 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     console = Console()
     try:
-        sha_filters = lab.parse_sha256_filters(args.sha256)
-    except ValueError as exc:
-        console.print(f"[red]{exc}[/red]")
-        return 2
-    if not sha_filters:
-        console.print("[red]At least one --sha256/--sha prefix is required.[/red]")
-        return 2
-    try:
         fit_args = parse_fit_args_json(args.fit_args_json)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         return 2
-    try:
-        validate_autogluon_profile(args.profile)
-    except ValueError as exc:
-        console.print(f"[red]{exc}[/red]")
-        return 2
 
-    if args.refresh_index:
-        with _build_progress(console) as progress:
-            index = lab.refresh_index(
-                logs_dir=args.logs_dir,
-                index_path=args.index,
-                competition=args.competition,
-                progress=progress,
-            )
-    else:
-        index = lab._load_json(args.index)
-        if not index:
-            console.print(
-                f"[red]Missing submission index: {args.index}. "
-                "Run with --refresh-index once.[/red]"
-            )
+    if args.solution_path is not None:
+        try:
+            planned = [
+                source_record_from_solution_path(
+                    solution_path=args.solution_path,
+                    logs_dir=args.logs_dir,
+                    competition=args.competition,
+                )
+            ]
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
             return 2
-    try:
-        selected = lab.filter_records_by_sha256(index.get("records", []), sha_filters)
-    except ValueError as exc:
-        console.print(f"[red]{exc}[/red]")
-        return 2
+        index = {"records": []}
+    else:
+        try:
+            sha_filters = lab.parse_sha256_filters(args.sha256)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
+        if not sha_filters:
+            console.print("[red]At least one --sha256/--sha prefix is required.[/red]")
+            return 2
+        try:
+            validate_autogluon_profile(args.profile)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
 
-    planned = selected
+        if args.refresh_index:
+            with _build_progress(console) as progress:
+                index = lab.refresh_index(
+                    logs_dir=args.logs_dir,
+                    index_path=args.index,
+                    competition=args.competition,
+                    progress=progress,
+                )
+        else:
+            index = lab._load_json(args.index)
+            if not index:
+                console.print(
+                    f"[red]Missing submission index: {args.index}. "
+                    "Run with --refresh-index once.[/red]"
+                )
+                return 2
+        try:
+            planned = lab.filter_records_by_sha256(index.get("records", []), sha_filters)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
+
+    if not planned:
+        console.print("[red]No profile evaluations selected.[/red]")
+        return 2
 
     if not args.execute:
         console.print(f"Would run {len(planned)} profile evaluation(s). Use --execute.")
+        for record in planned:
+            if args.solution_path is not None:
+                console.print(f"Solution: {record.get('solution_path')}")
         return 0
 
-    if not args.force:
+    if args.solution_path is None and not args.force:
         duplicates = _find_duplicate_profile_reruns(
             index.get("records", []),
             planned,
@@ -858,9 +976,12 @@ def main(argv: list[str] | None = None) -> int:
 
     results = []
     for record in planned:
-        console.print(
-            f"Running {args.profile} for {(record.get('sha256') or '')[:10]}..."
+        source_label = (
+            str(record.get("solution_path"))
+            if args.solution_path is not None
+            else (record.get("sha256") or "")[:10]
         )
+        console.print(f"Running {args.profile} for {source_label}...")
         results.append(
             run_profile_eval(
                 record,
@@ -873,6 +994,7 @@ def main(argv: list[str] | None = None) -> int:
                 timeout=args.timeout,
                 memory_limit_gb=args.memory_limit_gb,
                 console=console,
+                whole_solution_path=args.solution_path,
             )
         )
 

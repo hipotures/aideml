@@ -160,6 +160,78 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
     assert source_record["sha256"][:10] in output
 
 
+def test_run_profile_eval_can_execute_whole_solution_without_rebuilding_wrapper(
+    tmp_path, monkeypatch
+):
+    logs_dir = tmp_path / "logs"
+    run_dir = logs_dir / "run-a"
+    source_artifact = run_dir / "artifacts" / "20260504T100000"
+    source_artifact.mkdir(parents=True)
+    input_dir = tmp_path / "workspaces" / "run-a" / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "sample_submission.csv").write_text("id,target\n1,0.0\n")
+    whole_solution = (
+        "CUSTOM_AUTOGLUON_BEHAVIOR = True\n"
+        "print('AIDE_RESULT_JSON: {\"is_bug\": false, \"lower_is_better\": false, "
+        "\"metric\": 0.952, \"eval_metric\": \"balanced_accuracy\"}')\n"
+    )
+    solution_path = source_artifact / "solution.py"
+    solution_path.write_text(whole_solution)
+    (source_artifact / "submission.csv").write_text("id,target\n1,0.8\n")
+    source_record = {
+        "kind": "profile_eval",
+        "competition": "playground-series-s6e5",
+        "run": "run-a",
+        "step": None,
+        "node_id": None,
+        "timestamp": "20260504T100000",
+        "artifact_dir": str(source_artifact),
+        "solution_path": str(solution_path),
+        "local_score": 0.95,
+        "sha256": kaggle_submission_lab.sha256_file(source_artifact / "submission.csv"),
+        "profile": "best_boost_gpu_1h",
+    }
+
+    class FakeResult:
+        term_out = [
+            'AIDE_RESULT_JSON: {"is_bug": false, "lower_is_better": false, '
+            '"metric": 0.952, "eval_metric": "balanced_accuracy"}\n'
+        ]
+        exec_time = 42.0
+        exc_type = None
+        exc_info = None
+        exc_stack = None
+
+    def fake_execute(code, *, workspace_dir, artifact_dir, timeout, memory_limit_gb):
+        assert code == whole_solution
+        assert "build_autogluon_wrapper" not in code
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        (artifact_dir / "submission.csv").write_text("id,target\n1,0.9\n")
+        return FakeResult()
+
+    monkeypatch.setattr(rerun_autogluon_profile, "execute_code", fake_execute)
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "timestamp_now",
+        lambda: "20260504T120000",
+    )
+
+    record = rerun_autogluon_profile.run_profile_eval(
+        source_record,
+        logs_dir=logs_dir,
+        profile="full_boost",
+        competition="playground-series-s6e5",
+        timeout=1200,
+        memory_limit_gb=80.0,
+        whole_solution_path=solution_path,
+    )
+
+    eval_artifact = run_dir / "artifacts" / "20260504T120000"
+    assert (eval_artifact / "solution.py").read_text() == whole_solution
+    assert record["profile"] == "best_boost_gpu_1h"
+    assert record["source_sha256"] == source_record["sha256"]
+
+
 def test_s6e6_autogluon_defaults_are_competition_scoped():
     source_record = {"solution_path": "unused.py"}
 
@@ -585,3 +657,53 @@ def test_main_leaves_timeout_unset_for_profile_default(tmp_path, monkeypatch):
 
     assert exit_code == 0
     assert calls[0][1]["timeout"] is None
+
+
+def test_main_accepts_solution_path_without_sha256(tmp_path, monkeypatch):
+    logs_dir = tmp_path / "logs"
+    source_artifact = logs_dir / "run-a" / "artifacts" / "20260504T100000"
+    source_artifact.mkdir(parents=True)
+    solution_path = source_artifact / "solution.py"
+    solution_path.write_text("print('custom whole solution')\n")
+    submission_path = source_artifact / "submission.csv"
+    submission_path.write_text("id,target\n1,0.8\n")
+    calls = []
+
+    def fake_run_profile_eval(record, **kwargs):
+        calls.append((record, kwargs))
+        return {
+            "kind": "profile_eval",
+            "status": "ok",
+            "local_score": 0.9,
+            "profile": "source_profile",
+            "run": "run-a",
+            "timestamp": "20260504T120000",
+            "source_step": None,
+            "source_sha256": record["sha256"],
+            "sha256": "new-eval-sha",
+            "artifact_dir": str(tmp_path / "artifact"),
+        }
+
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "run_profile_eval",
+        fake_run_profile_eval,
+    )
+
+    exit_code = rerun_autogluon_profile.main(
+        [
+            "--execute",
+            "--logs-dir",
+            str(logs_dir),
+            "--solution-path",
+            str(solution_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    record, kwargs = calls[0]
+    assert record["run"] == "run-a"
+    assert record["kind"] == "profile_eval"
+    assert record["solution_path"] == str(solution_path)
+    assert kwargs["whole_solution_path"] == solution_path
