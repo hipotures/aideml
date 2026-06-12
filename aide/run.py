@@ -4109,26 +4109,33 @@ def _format_model_setting(model: str, effort: str | None) -> str:
     return f"{model}:{effort}" if effort else model
 
 
-def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | None:
+def build_model_summary_lines(model_settings: list[ModelSetting] | None) -> list[Text]:
     if not model_settings:
-        return None
+        return []
     lines: list[Text] = [Text("Models", style=TUI_ROW_LABEL_STYLE)]
     for label, model, effort in model_settings:
         line = Text()
         line.append(f"▶ {label:<9} ", style=TUI_ROW_LABEL_STYLE)
         line.append(_format_model_setting(model, effort), style=TUI_NEUTRAL_VALUE_STYLE)
         lines.append(line)
+    return lines
+
+
+def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | None:
+    lines = build_model_summary_lines(model_settings)
+    if not lines:
+        return None
     return Group(*lines)
 
 
-def build_agent_mode_summary(
+def build_agent_mode_summary_lines(
     cfg: Config | None,
     *,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
-) -> Group | None:
+) -> list[Text]:
     if cfg is None:
-        return None
+        return []
     mode = str(getattr(cfg.agent, "mode", "legacy"))
     mode_line = Text()
     mode_line.append("▶ mode      ", style=TUI_ROW_LABEL_STYLE)
@@ -4177,6 +4184,56 @@ def build_agent_mode_summary(
             style=TUI_NEUTRAL_VALUE_STYLE,
         )
         lines.append(workers_line)
+    return lines
+
+
+def build_agent_mode_summary(
+    cfg: Config | None,
+    *,
+    skip_execution: bool = False,
+    hypothesis_root_generate_workers: int = 1,
+) -> Group | None:
+    lines = build_agent_mode_summary_lines(
+        cfg,
+        skip_execution=skip_execution,
+        hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+    )
+    if not lines:
+        return None
+    return Group(*lines)
+
+
+def build_side_by_side_summary(
+    left_lines: list[Text],
+    right_lines: list[Text],
+    *,
+    available_width: int | None,
+) -> Group | None:
+    if not left_lines or not right_lines or available_width is None:
+        return None
+    left_width = max(line.cell_len for line in left_lines)
+    right_width = max(line.cell_len for line in right_lines)
+    separator = " │ "
+    if left_width + len(separator) + right_width > available_width:
+        return None
+
+    lines: list[Text] = []
+    empty_left = Text(" " * left_width)
+    empty_right = Text()
+    for index in range(max(len(left_lines), len(right_lines))):
+        left = left_lines[index].copy() if index < len(left_lines) else empty_left.copy()
+        right = (
+            right_lines[index].copy()
+            if index < len(right_lines)
+            else empty_right.copy()
+        )
+        if left.cell_len < left_width:
+            left.append(" " * (left_width - left.cell_len))
+        line = Text()
+        line.append_text(left)
+        line.append(separator, style="dim")
+        line.append_text(right)
+        lines.append(line)
     return Group(*lines)
 
 
@@ -4326,6 +4383,7 @@ def build_run_data(
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
     selected_hypothesis_ids: tuple[str, ...] = (),
+    content_width: int | None = None,
 ) -> Group:
     if resource_history is None and resource_snapshot is not None:
         resource_history = ResourceHistory()
@@ -4369,16 +4427,26 @@ def build_run_data(
         if research_line is None and phase_line is None and synthesis_line is None:
             lines.append("")
         lines.append(best_score_status)
-    model_summary = build_model_summary(model_settings)
-    if model_summary is not None:
-        lines.extend(["", model_summary])
-    agent_mode_summary = build_agent_mode_summary(
+    model_summary_lines = build_model_summary_lines(model_settings)
+    agent_summary_lines = build_agent_mode_summary_lines(
         cfg,
         skip_execution=skip_execution,
         hypothesis_root_generate_workers=hypothesis_root_generate_workers,
     )
-    if agent_mode_summary is not None:
-        lines.extend(["", agent_mode_summary])
+    model_agent_summary = build_side_by_side_summary(
+        model_summary_lines,
+        agent_summary_lines,
+        available_width=content_width,
+    )
+    if model_agent_summary is not None:
+        lines.extend(["", model_agent_summary])
+    else:
+        model_summary = Group(*model_summary_lines) if model_summary_lines else None
+        if model_summary is not None:
+            lines.extend(["", model_summary])
+        agent_mode_summary = Group(*agent_summary_lines) if agent_summary_lines else None
+        if agent_mode_summary is not None:
+            lines.extend(["", agent_mode_summary])
     lines.extend(
         [
             "",
@@ -5887,6 +5955,7 @@ def run(argv: list[str] | None = None):
                 skip_execution=pipeline_skip_execution(),
                 hypothesis_root_generate_workers=hypothesis_root_generate_workers,
                 selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
+                content_width=right_copy_width - 2,
             ),
             (0, 1, 0, 1),
         )

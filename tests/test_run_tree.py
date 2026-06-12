@@ -3268,6 +3268,64 @@ def test_run_data_shows_agent_mode_and_runtime_mode(tmp_path):
     assert output.index("Agent") < output.index("Base path")
 
 
+def test_run_data_places_models_and_agent_side_by_side_when_width_allows(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.agent.mode = "autogluon_preprocess"
+    cfg.agent.autogluon.profile = "s6e6_boost_gpu_ens"
+    cfg.agent.aux = "star_classification.csv"
+    cfg.agent.gpu = True
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            model_settings=[
+                ("code", "gpt-5.3-codex-spark", "medium"),
+                ("feedback", "gpt-5.4-mini", "low"),
+                ("report", "gpt-5.4-mini", "low"),
+            ],
+            cfg=cfg,
+            content_width=80,
+        )
+    )
+
+    assert "Models" in output
+    assert "Agent" in output
+    assert "│" in output
+    assert output.index("Models") < output.index("Base path")
+    assert output.index("Agent") < output.index("Base path")
+
+
+def test_run_data_stacks_models_and_agent_when_width_is_too_narrow(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Generating code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            model_settings=[("code", "gpt-5.3-codex-spark", "medium")],
+            cfg=cfg,
+            content_width=24,
+        )
+    )
+
+    assert "Models" in output
+    assert "Agent" in output
+    assert "│" not in output
+    assert output.index("Models") < output.index("Agent")
+    assert output.index("Agent") < output.index("Base path")
+
+
 def test_run_data_shows_aux_file_name(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.agent.aux = "star_classification.csv"
