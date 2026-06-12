@@ -2,7 +2,8 @@
   "enabled": false,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Nonlinear Photometric Manifold Coordinates",
   "summary": "Add covariate-only UMAP-style embedding coordinates that summarize each object’s position on the star-galaxy-QSO photometric manifold.",
@@ -29,5 +30,10 @@
   "source_request_path": "research_hypotheses/playground-series-s6e6/000029/request.md",
   "source_request_json_path": "research_hypotheses/playground-series-s6e6/000029/request.json",
   "source_response_path": "research_hypotheses/playground-series-s6e6/000029/response.json",
-  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000029/response_raw.txt"
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000029/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "manifold"
+  }
 }

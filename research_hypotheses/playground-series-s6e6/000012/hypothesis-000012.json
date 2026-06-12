@@ -2,7 +2,8 @@
   "enabled": true,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Auxiliary SDSS pretrain then domain-stack",
   "summary": "Treat `original_sdss17/star_classification.csv` as a second supervised domain, pretrain on the original SDSS rows using only shared columns, then fine-tune or stack on the synthetic competition train set.",
@@ -14,5 +15,10 @@
     "competition context: `original_sdss17/star_classification.csv` auxiliary data",
     "https://arxiv.org/abs/0711.2477",
     "https://arxiv.org/abs/1909.10963"
-  ]
+  ],
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "aux_transfer"
+  }
 }

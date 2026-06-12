@@ -1,0 +1,31 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "cosmology",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "aux": true,
+        "buggy": false,
+        "created_at": "2026-06-11T21:46:46",
+        "exec_time": 46.5454261302948,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "35bde0a17f26487fb5f4a3ae3f596757",
+        "score": 0.962136,
+        "status": "ok"
+      }
+    ]
+  }
+}

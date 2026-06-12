@@ -1,0 +1,40 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "template_sed",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed before any training or validation because `aide_solution_helpers` does not export `aidestage`. Fix the import to use `aide_stage` only, or guard the alias assignment without importing the missing symbol first, then rerun to obtain a valid balanced accuracy metric.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T21:45:20",
+        "exception_info": {
+          "args": [
+            "cannot import name 'aidestage' from 'aide_solution_helpers' (workspaces/2-indigo-leech-of-pleasure/aide_solution_helpers.py)"
+          ],
+          "msg": "cannot import name 'aidestage' from 'aide_solution_helpers' (workspaces/2-indigo-leech-of-pleasure/aide_solution_helpers.py)",
+          "name": "aide_solution_helpers"
+        },
+        "exception_type": "ImportError",
+        "exec_time": 0.5556883811950684,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "d6d57cc117ad440a93ab8dbe21ad2139",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "Traceback (most recent call last):\n  File \"runfile.py\", line 11, in <module>\n    from aide_solution_helpers import (\nImportError: cannot import name 'aidestage' from 'aide_solution_helpers' (workspaces/2-indigo-leech-of-pleasure/aide_solution_helpers.py). Did you mean: 'aide_stage'?\nExecution time: a moment seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

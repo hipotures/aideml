@@ -1,0 +1,39 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Published SDSS Color-Cut Regime Features",
+  "summary": "Encode fixed SDSS-inspired quasar and emission-line galaxy color-selection regions as binary flags and signed distance-to-boundary features.",
+  "feature_family": "domain_color_cut_regime_features",
+  "feature_strategy": "Keep raw numeric columns, one-hot spectral_type and galaxy_population, and basic ugriz color differences, then add target-free fixed-rule features from published SDSS photometric selection practice: UV-excess quasar indicators such as very blue u-g regimes, high-redshift/dropout-style red color regimes using u-g/g-r/r-i/i-z, broad g-i and u-r redness flags, Green-Pea-like emission-line galaxy color inequalities using u-r, r-i, r-z, and g-r, plus continuous signed margins to each rule boundary, rule-count totals, and interactions with coarse observed redshift bands and the two provided categorical columns. Do not learn any class-conditional thresholds from the target; treat these as deterministic domain-regime transforms.",
+  "baseline_model_panel": "Use the same simple balanced panel as other initial feature-search runs: a class-balanced multinomial linear model, a shallow bagged tree ensemble, and a class-weighted gradient-boosted tree model such as CatBoost or LightGBM with conservative/default settings.",
+  "model_panel_rationale": "The linear model tests whether the rule margins are directly separable, while shallow and boosted trees test whether the discrete regimes interact usefully with redshift and metadata without making the hypothesis about tuning.",
+  "validation_strategy": "5-fold StratifiedKFold on train.csv with balanced accuracy; all deterministic rule features may be built on train and test together because they use no target statistics, but categorical encoders should be fit within the normal training pipeline.",
+  "materialization_hint": "Implement a small feature builder that computes colors, applies each published inequality as both a 0/1 flag and a signed margin, adds counts/max-margin summaries by regime family, then appends these columns to a compact raw-plus-color baseline before running the simple panel.",
+  "expected_signal": "If useful, CV should show improved balanced accuracy especially for QSO recall or rare color-regime subsets; tree models should show nontrivial feature importance for rule margins, while runtime should remain close to the basic color-feature baseline.",
+  "novelty_confidence": "medium",
+  "risk": "This partly overlaps with prior color-stack and stellar-locus ideas because it reuses ugriz colors, but the novelty is fixed published astronomy regime boundaries rather than generic continuous colors or data-derived loci. Synthetic competition data may not preserve the exact SDSS selection cuts, making some flags sparse or no-op.",
+  "rationale": "Feature family: domain_color_cut_regime_features\nFeature strategy: Keep raw numeric columns, one-hot spectral_type and galaxy_population, and basic ugriz color differences, then add target-free fixed-rule features from published SDSS photometric selection practice: UV-excess quasar indicators such as very blue u-g regimes, high-redshift/dropout-style red color regimes using u-g/g-r/r-i/i-z, broad g-i and u-r redness flags, Green-Pea-like emission-line galaxy color inequalities using u-r, r-i, r-z, and g-r, plus continuous signed margins to each rule boundary, rule-count totals, and interactions with coarse observed redshift bands and the two provided categorical columns. Do not learn any class-conditional thresholds from the target; treat these as deterministic domain-regime transforms.\nBaseline model panel: Use the same simple balanced panel as other initial feature-search runs: a class-balanced multinomial linear model, a shallow bagged tree ensemble, and a class-weighted gradient-boosted tree model such as CatBoost or LightGBM with conservative/default settings.\nModel panel rationale: The linear model tests whether the rule margins are directly separable, while shallow and boosted trees test whether the discrete regimes interact usefully with redshift and metadata without making the hypothesis about tuning.\nValidation strategy: 5-fold StratifiedKFold on train.csv with balanced accuracy; all deterministic rule features may be built on train and test together because they use no target statistics, but categorical encoders should be fit within the normal training pipeline.\nNovelty confidence: medium",
+  "implementation_hint": "Implement a small feature builder that computes colors, applies each published inequality as both a 0/1 flag and a signed margin, adds counts/max-margin summaries by regime family, then appends these columns to a compact raw-plus-color baseline before running the simple panel.",
+  "expected_effect": "If useful, CV should show improved balanced accuracy especially for QSO recall or rare color-regime subsets; tree models should show nontrivial feature importance for rule margins, while runtime should remain close to the basic color-feature baseline.",
+  "sources": [
+    "https://arxiv.org/abs/astro-ph/0202251",
+    "https://arxiv.org/abs/astro-ph/0012449",
+    "https://arxiv.org/abs/astro-ph/0408504",
+    "https://arxiv.org/abs/0907.4155"
+  ],
+  "source_run": "2-nice-crayfish-of-devotion",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000031",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000031/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000031/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000031/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000031/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "color_rules"
+  }
+}

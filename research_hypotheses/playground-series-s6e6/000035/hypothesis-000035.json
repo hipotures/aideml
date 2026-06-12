@@ -1,0 +1,39 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Redshifted Line Filter Footprint Features",
+  "summary": "Encode where important stellar, galaxy, and quasar spectral lines would fall inside the SDSS ugriz filter set at the observed redshift.",
+  "feature_family": "physical_filter_line_features",
+  "feature_strategy": "Keep raw ugriz magnitudes, redshift, alpha/delta, and one-hot spectral_type/galaxy_population, then add target-free spectral-line/filter geometry features. Use fixed rest-frame wavelengths for lines such as Ly-alpha 1216, C IV 1549, C III] 1909, Mg II 2798, [O II] 3727, H-beta 4861, [O III] 5007, H-alpha 6563, and Ca H/K around 3934/3969 Angstrom. For each row compute observed_line_wavelength = rest_wavelength * (1 + clipped_redshift). Using fixed SDSS ugriz effective wavelengths and approximate band widths, add normalized distance from each observed line to each band center, soft Gaussian band-affinity weights, nearest-band id, min distance to a filter gap/edge, line-visible flags within the optical ugriz range, per-band summed line-affinity totals, blue-line versus red-line affinity balances, and interactions between summed line-affinity per band and that band magnitude or adjacent colors. Do not learn thresholds or line weights from class labels.",
+  "baseline_model_panel": "Use one comparable simple panel: a class-weighted regularized multinomial linear model on scaled numeric plus one-hot categorical features, a class-balanced random-forest or extra-trees model, and one class-balanced gradient-boosted tree model such as CatBoost with balanced class weights or LightGBM with class_weight='balanced' if available.",
+  "model_panel_rationale": "The linear model checks whether fixed physical line-position features add mostly additive signal, while tree models can exploit discontinuities when emission lines cross filters or gaps; the panel is diverse enough to measure feature value without turning the hypothesis into model tuning.",
+  "validation_strategy": "Use 5-fold StratifiedKFold with balanced accuracy, preserving identical folds and class-weight handling across the baseline panel; inspect per-class scores because the feature should mainly help QSO and emission-line galaxy separation.",
+  "materialization_hint": "Materialize constants for rest-frame line wavelengths and SDSS filter centers/widths, generate all features from train+test covariates without target labels, one-hot the two categorical columns, scale only for the linear model, and log feature count plus top feature importances or coefficients from the simple models.",
+  "expected_signal": "If useful, CV balanced accuracy should improve most for QSO versus STAR/GALAXY confusions, and tree feature importances should surface line-near-band, line-near-gap, or per-band line-affinity aggregates rather than only raw redshift.",
+  "novelty_confidence": "medium",
+  "risk": "Some signal may overlap with existing redshift, color, and analytic SED-template features, and the synthetic data may not preserve detailed filter-gap physics. Approximate filter widths and line constants could be too crude, so this may behave like another nonlinear redshift transform rather than a genuinely new representation.",
+  "rationale": "Feature family: physical_filter_line_features\nFeature strategy: Keep raw ugriz magnitudes, redshift, alpha/delta, and one-hot spectral_type/galaxy_population, then add target-free spectral-line/filter geometry features. Use fixed rest-frame wavelengths for lines such as Ly-alpha 1216, C IV 1549, C III] 1909, Mg II 2798, [O II] 3727, H-beta 4861, [O III] 5007, H-alpha 6563, and Ca H/K around 3934/3969 Angstrom. For each row compute observed_line_wavelength = rest_wavelength * (1 + clipped_redshift). Using fixed SDSS ugriz effective wavelengths and approximate band widths, add normalized distance from each observed line to each band center, soft Gaussian band-affinity weights, nearest-band id, min distance to a filter gap/edge, line-visible flags within the optical ugriz range, per-band summed line-affinity totals, blue-line versus red-line affinity balances, and interactions between summed line-affinity per band and that band magnitude or adjacent colors. Do not learn thresholds or line weights from class labels.\nBaseline model panel: Use one comparable simple panel: a class-weighted regularized multinomial linear model on scaled numeric plus one-hot categorical features, a class-balanced random-forest or extra-trees model, and one class-balanced gradient-boosted tree model such as CatBoost with balanced class weights or LightGBM with class_weight='balanced' if available.\nModel panel rationale: The linear model checks whether fixed physical line-position features add mostly additive signal, while tree models can exploit discontinuities when emission lines cross filters or gaps; the panel is diverse enough to measure feature value without turning the hypothesis into model tuning.\nValidation strategy: Use 5-fold StratifiedKFold with balanced accuracy, preserving identical folds and class-weight handling across the baseline panel; inspect per-class scores because the feature should mainly help QSO and emission-line galaxy separation.\nNovelty confidence: medium",
+  "implementation_hint": "Materialize constants for rest-frame line wavelengths and SDSS filter centers/widths, generate all features from train+test covariates without target labels, one-hot the two categorical columns, scale only for the linear model, and log feature count plus top feature importances or coefficients from the simple models.",
+  "expected_effect": "If useful, CV balanced accuracy should improve most for QSO versus STAR/GALAXY confusions, and tree feature importances should surface line-near-band, line-near-gap, or per-band line-affinity aggregates rather than only raw redshift.",
+  "sources": [
+    "https://arxiv.org/abs/0911.5700",
+    "https://arxiv.org/abs/astro-ph/0408504",
+    "https://arxiv.org/abs/1002.3701",
+    "https://en.wikipedia.org/wiki/Sloan_Digital_Survey"
+  ],
+  "source_run": "2-enchanted-bumblebee-from-nibiru",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000035",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000035/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000035/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000035/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000035/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "lines"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "aux_transfer",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed before producing a valid metric. The immediate cause is that `density_oof` was built by concatenation into an already indexed DataFrame, which doubled its row count and later caused `balanced_accuracy_score` to see 577,347 targets vs. 1,154,694 predictions. Fix by assigning fold outputs back into a preallocated OOF frame (or concatenating from an actually empty frame) so `train_aug` stays the same length as `y`.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T21:04:03",
+        "exception_info": {
+          "args": [
+            "Found input variables with inconsistent numbers of samples: [577347, 1154694]"
+          ]
+        },
+        "exception_type": "ValueError",
+        "exec_time": 1486.8334987163544,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "cc7abb9896044c14a1108a3ffb4d3f94",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.658\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.659\nAIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=1.863\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.284\nAIDE_STAGE|event=start|stage=fit_density_stage\nAIDE_STAGE|Fitting fold 1 class-conditional Gaussian density features\nAIDE_STAGE|Fitting fold 2 class-conditional Gaussian density features\nAIDE_STAGE|Fitting fold 3 class-conditional Gaussian density features\nAIDE_STAGE|Fitting fold 4 class-conditional Gaussian density features\nAIDE_STAGE|Fitting fold 5 class-conditional Gaussian density features\nAIDE_STAGE|Refitting class-conditional Gaussian density features on full training data for test\nAIDE_STAGE|event=end|stage=fit_density_stage|elapsed_s=28.669\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|Starting 5-fold CV for logreg\nAIDE_STAGE|Fold 1/5: fitting logreg\nAIDE_STAGE|Fold 2/5: fitting logreg\nAIDE_STAGE|Fold 3/5: fitting logreg\nAIDE_STAGE|Fold 4/5: fitting logreg\nAIDE_STAGE|Fold 5/5: fitting logreg\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=1454.806|error_type=ValueError\nTraceback (most recent call last):\n  File \"runfile.py\", line 419, in <module>\n    main()\n  File \"runfile.py\", line 383, in main\n    score = balanced_accuracy_score(y, pred_labels)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/utils/_param_validation.py\", line 218, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/metrics/_classification.py\", line 2797, in balanced_accuracy_score\n    C = confusion_matrix(y_true, y_pred, sample_weight=sample_weight)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/utils/_param_validation.py\", line 191, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/metrics/_classification.py\", line 467, in confusion_matrix\n    y_type, y_true, y_pred = _check_targets(y_true, y_pred)\n                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/metrics/_classification.py\", line 97, in _check_targets\n    check_consistent_length(y_true, y_pred)\n  File \"venv/lib/python3.12/site-packages/sklearn/utils/validation.py\", line 473, in check_consistent_length\n    raise ValueError(\nValueError: Found input variables with inconsistent numbers of samples: [577347, 1154694]\nExecution time: 24 minutes seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

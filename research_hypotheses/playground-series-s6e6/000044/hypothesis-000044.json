@@ -12,7 +12,8 @@
   "risk": "The parent feature recipe may rely on fine sky localization, so this could reduce accuracy. The result is still useful as an ablation for feature-stack pruning.",
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "rationale": "Hypothesis 000034: Remove the high-cardinality fine sky-bin categorical family and its frequency features from the current feature set.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py. Define PRUNED_FINE_SKY_FEATURES, remove these names from CATEGORICAL_COLS, and after add_all_features drop any matching columns from train_full and test before categorical normalization. Preserve all models, sample weights, blend search, calibration, and artifact writing.",
@@ -34,9 +35,15 @@
   },
   "code_file": "legacy-001.py",
   "prompt_enabled": false,
-  "imported_from_hypothesis_id": "000034",
   "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
   "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
   "source_batch_parent_oof_balanced_accuracy": 0.968002,
-  "source_batch_code_file": "legacy-034.py"
+  "source_batch_code_file": "legacy-034.py",
+  "source_hypothesis_id": "000019",
+  "source_batch_hypothesis_id": "000034",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features_pruned_sky"
+  }
 }

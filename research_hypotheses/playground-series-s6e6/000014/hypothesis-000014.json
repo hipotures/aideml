@@ -1,7 +1,8 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Photometric Color Stack",
   "summary": "Convert the ugriz magnitudes into physically meaningful color and slope features to expose the main class-separating signal.",
@@ -20,5 +21,10 @@
     "Competition brief",
     "https://arxiv.org/abs/astro-ph/0012449",
     "SDSS photometric system background"
-  ]
+  ],
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "color_piecewise"
+  }
 }

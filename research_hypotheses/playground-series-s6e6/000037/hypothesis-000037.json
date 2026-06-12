@@ -1,0 +1,38 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Galactic Extinction Vector Photometry",
+  "summary": "Project ugriz magnitudes and colors onto a fixed Galactic reddening vector and test whether dereddened photometric proxies add class signal.",
+  "feature_family": "galactic_extinction_dereddening_features",
+  "feature_strategy": "Keep raw alpha, delta, ugriz magnitudes, redshift, spectral_type, and galaxy_population, then convert alpha/delta to Galactic longitude and latitude using a fixed J2000 rotation. Build a target-free dust-column proxy from Galactic latitude, such as clipped 1/sin(abs(b)) plus low-latitude flags and smooth normalized variants. Using fixed SDSS ugriz extinction coefficients from the literature, create dereddened magnitude proxies m0_u through m0_z = m_band - coeff_band * dust_proxy, dereddened adjacent and broad colors, color shifts along the reddening vector, and orthogonal color residuals after subtracting the projection of the observed color vector onto the reddening direction. Add compact summaries such as reddening_projection_strength, reddening_orthogonal_norm, blue_color_dereddened_mean, red_color_dereddened_mean, and interactions between dust_proxy, redshift, spectral_type, and galaxy_population. Do not use target labels, auxiliary class labels, row identity joins, supervised intermediate models, or external map downloads.",
+  "baseline_model_panel": "Use a simple comparable multiclass panel: a class-weighted regularized linear classifier on standardized numeric features, a balanced shallow-to-moderate tree ensemble, and one native categorical gradient-boosted tree model with balanced class handling such as CatBoost auto_class_weights='Balanced' or LightGBM class_weight='balanced'.",
+  "model_panel_rationale": "The linear model tests whether the dereddening projection creates linearly separable color corrections, while the tree families test nonlinear interactions between dust proxy, redshift, metadata, and corrected colors without turning the hypothesis into model tuning.",
+  "validation_strategy": "Use 5-fold StratifiedKFold with balanced accuracy, preserving identical folds across the baseline panel; all dust and extinction features are deterministic covariate transforms, so no fold-specific fitting is needed beyond model training.",
+  "materialization_hint": "Implement Galactic coordinate conversion locally with fixed constants, compute the analytic latitude dust proxy on combined train/test covariates for consistent scaling, append dereddened magnitude/color and reddening-vector projection features, one-hot or native-handle the two categorical columns, then train the simple balanced model panel and log per-model CV balanced accuracy.",
+  "expected_signal": "If the feature family matters, CV should show a small but consistent balanced-accuracy lift over raw colors for at least one model, with feature importance or linear coefficients emphasizing reddening_projection_strength, dereddened blue colors, and low-latitude interactions.",
+  "novelty_confidence": "medium",
+  "risk": "The competition data are synthetic and may not preserve real Galactic dust effects; prior sky/galactic-coordinate hypotheses may already capture part of the same signal, so the incremental gain may be small. The analytic latitude proxy is cruder than a true SFD or Schlafly-Finkbeiner dust map, but avoids external data availability risk.",
+  "rationale": "Feature family: galactic_extinction_dereddening_features\nFeature strategy: Keep raw alpha, delta, ugriz magnitudes, redshift, spectral_type, and galaxy_population, then convert alpha/delta to Galactic longitude and latitude using a fixed J2000 rotation. Build a target-free dust-column proxy from Galactic latitude, such as clipped 1/sin(abs(b)) plus low-latitude flags and smooth normalized variants. Using fixed SDSS ugriz extinction coefficients from the literature, create dereddened magnitude proxies m0_u through m0_z = m_band - coeff_band * dust_proxy, dereddened adjacent and broad colors, color shifts along the reddening vector, and orthogonal color residuals after subtracting the projection of the observed color vector onto the reddening direction. Add compact summaries such as reddening_projection_strength, reddening_orthogonal_norm, blue_color_dereddened_mean, red_color_dereddened_mean, and interactions between dust_proxy, redshift, spectral_type, and galaxy_population. Do not use target labels, auxiliary class labels, row identity joins, supervised intermediate models, or external map downloads.\nBaseline model panel: Use a simple comparable multiclass panel: a class-weighted regularized linear classifier on standardized numeric features, a balanced shallow-to-moderate tree ensemble, and one native categorical gradient-boosted tree model with balanced class handling such as CatBoost auto_class_weights='Balanced' or LightGBM class_weight='balanced'.\nModel panel rationale: The linear model tests whether the dereddening projection creates linearly separable color corrections, while the tree families test nonlinear interactions between dust proxy, redshift, metadata, and corrected colors without turning the hypothesis into model tuning.\nValidation strategy: Use 5-fold StratifiedKFold with balanced accuracy, preserving identical folds across the baseline panel; all dust and extinction features are deterministic covariate transforms, so no fold-specific fitting is needed beyond model training.\nNovelty confidence: medium",
+  "implementation_hint": "Implement Galactic coordinate conversion locally with fixed constants, compute the analytic latitude dust proxy on combined train/test covariates for consistent scaling, append dereddened magnitude/color and reddening-vector projection features, one-hot or native-handle the two categorical columns, then train the simple balanced model panel and log per-model CV balanced accuracy.",
+  "expected_effect": "If the feature family matters, CV should show a small but consistent balanced-accuracy lift over raw colors for at least one model, with feature importance or linear coefficients emphasizing reddening_projection_strength, dereddened blue colors, and low-latitude interactions.",
+  "sources": [
+    "https://arxiv.org/abs/0805.0061",
+    "https://arxiv.org/abs/1301.1427",
+    "https://arxiv.org/abs/1111.4985",
+    "https://arxiv.org/abs/astro-ph/0408504"
+  ],
+  "source_run": "2-refreshing-celadon-chameleon",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000037",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000037/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000037/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000037/response.json",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "extinction"
+  }
+}

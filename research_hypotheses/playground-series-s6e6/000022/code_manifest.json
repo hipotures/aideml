@@ -1,0 +1,50 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-002.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "flux",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run is technically invalid: it crashes during fold fitting with `CatBoostError` (`Both binary classification-only and multiclassification-only loss function or metrics specified`), so no OOF metrics, submission, OOF predictions, or test predictions were completed. The failure occurs in `cat_model.fit(...)` inside the CatBoost fold loop. Fix by removing the incompatible eval metric for multiclass (`eval_metric='BalancedAccuracy'`) or replacing it with a multiclass-compatible metric (or rely on default `MultiClass` metric) while keeping `loss_function='MultiClass'` and `auto_class_weights='Balanced'`.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T17:12:29",
+        "exception_info": {
+          "args": [
+            "catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified"
+          ]
+        },
+        "exception_type": "CatBoostError",
+        "exec_time": 66.43381261825562,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "bb85b5544ffc485594dc82b365883195",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.633\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=1.846\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.000\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|Fold 1/5: fitting balanced logistic regression\nAIDE_STAGE|Fold 1/5: fitting balanced ExtraTrees\nAIDE_STAGE|Fold 1/5: fitting CatBoost GPU\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=64.197|error_type=CatBoostError\nTraceback (most recent call last):\n  File \"runfile.py\", line 320, in <module>\n    main()\n  File \"runfile.py\", line 280, in main\n    cat_model.fit(tr_pool, eval_set=va_pool, use_best_model=True)\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 5547, in fit\n    self._fit(X, y, cat_features, text_features, embedding_features, None, graph, sample_weight, None, None, None, None, baseline, use_best_model,\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 2716, in _fit\n    self._train(\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 1824, in _train\n    self._object._train(train_pool, test_pool, params, allow_clear_pool, init_model._object if init_model else None)\n  File \"_catboost.pyx\", line 5430, in _catboost._CatBoost._train\n  File \"_catboost.pyx\", line 5479, in _catboost._CatBoost._train\n_catboost.CatBoostError: catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified\nExecution time: a minute seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      },
+      {
+        "aux": true,
+        "buggy": false,
+        "created_at": "2026-06-11T18:46:45",
+        "exec_time": 388.3913719654083,
+        "file": "legacy-002.py",
+        "gpu": true,
+        "node_id": "8b42b45c74ef4b5381edf8c83ff98071",
+        "score": 0.961396,
+        "status": "ok"
+      }
+    ]
+  }
+}

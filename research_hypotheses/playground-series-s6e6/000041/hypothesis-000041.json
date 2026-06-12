@@ -12,7 +12,8 @@
   "risk": "This increases runtime and blend-search dimensionality. The generic candidate grid is bounded and joblib-parallelized, but the extra LightGBM expert may still not add enough diversity to justify its cost.",
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "rationale": "Hypothesis 000031: Add one diversity-focused LightGBM variant with smaller leaves, stronger regularization, and a different seed to the existing fold-wise ensemble.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py. Add LGBM_REG_CONFIG and train lightgbm_reg after the primary LightGBM in each fold; store its OOF/test probabilities; include it in model_names, model_available, fold_scores, fold_times, and the common_model_names blend path. Replace the 3-model-specific simplex search with a generic bounded simplex candidate generator so the four-model blend is valid.",
@@ -34,9 +35,15 @@
   },
   "code_file": "legacy-001.py",
   "prompt_enabled": false,
-  "imported_from_hypothesis_id": "000031",
   "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
   "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
   "source_batch_parent_oof_balanced_accuracy": 0.968002,
-  "source_batch_code_file": "legacy-031.py"
+  "source_batch_code_file": "legacy-031.py",
+  "source_hypothesis_id": "000019",
+  "source_batch_hypothesis_id": "000031",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features"
+  }
 }

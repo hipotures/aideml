@@ -1,7 +1,8 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Source-Derived Photometric Sky Feature Baseline",
   "summary": "Rebuild the strong step-4 feature recipe from the best public-score run and measure it with a simple balanced model panel instead of the original heavy ensemble.",
@@ -31,5 +32,10 @@
     "best_single_calibrated_expert": "XGBoost",
     "best_single_calibrated_expert_oof_balanced_accuracy": 0.967566,
     "note": "Use the new materialized run's best simple model CV=5 score as the hypothesis score; do not reuse the source final blended score."
+  },
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features"
   }
 }

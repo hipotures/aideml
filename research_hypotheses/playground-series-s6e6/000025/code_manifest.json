@@ -1,0 +1,38 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "locus_density",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed before completion in CatBoost training, so the reported CV scores are not a valid final result. The failure is caused by an incompatible CatBoost configuration: `loss_function=\"MultiClass\"` was combined with `eval_metric=\"BalancedAccuracy\"`, which CatBoost rejects here; switch `eval_metric` to a multiclass-compatible metric or remove it, then rerun.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T18:54:30",
+        "exception_info": {
+          "args": [
+            "catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified"
+          ]
+        },
+        "exception_type": "CatBoostError",
+        "exec_time": 1570.4335799217224,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "895e8c2736824e4e8cf25f6a3a159c0a",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.660\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=1.311\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.303\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|building fold-safe graph label-propagation features fold 1/5\nAIDE_STAGE|building fold-safe graph label-propagation features fold 2/5\nAIDE_STAGE|building fold-safe graph label-propagation features fold 3/5\nAIDE_STAGE|building fold-safe graph label-propagation features fold 4/5\nAIDE_STAGE|building fold-safe graph label-propagation features fold 5/5\nAIDE_STAGE|building final all-train graph label-propagation features for test\nAIDE_STAGE|fit fold 1/5: linear_base\nlinear_base fold 1 balanced_accuracy=0.919932\nAIDE_STAGE|fit fold 2/5: linear_base\nlinear_base fold 2 balanced_accuracy=0.919226\nAIDE_STAGE|fit fold 3/5: linear_base\nlinear_base fold 3 balanced_accuracy=0.919386\nAIDE_STAGE|fit fold 4/5: linear_base\nlinear_base fold 4 balanced_accuracy=0.920916\nAIDE_STAGE|fit fold 5/5: linear_base\nlinear_base fold 5 balanced_accuracy=0.920609\nlinear_base CV balanced_accuracy=0.920014; recall_GALAXY=0.882627 recall_QSO=0.934798 recall_STAR=0.942616\nAIDE_STAGE|fit fold 1/5: forest_base\nforest_base fold 1 balanced_accuracy=0.956782\nAIDE_STAGE|fit fold 2/5: forest_base\nforest_base fold 2 balanced_accuracy=0.957368\nAIDE_STAGE|fit fold 3/5: forest_base\nforest_base fold 3 balanced_accuracy=0.957179\nAIDE_STAGE|fit fold 4/5: forest_base\nforest_base fold 4 balanced_accuracy=0.958740\nAIDE_STAGE|fit fold 5/5: forest_base\nforest_base fold 5 balanced_accuracy=0.956759\nforest_base CV balanced_accuracy=0.957365; recall_GALAXY=0.954111 recall_QSO=0.970267 recall_STAR=0.947718\nAIDE_STAGE|fit fold 1/5: catboost_base\nWarning: less than 75% GPU memory available for training. Free: 8802.25 Total: 11873.125\nCatBoost GPU failed; retrying on CPU. Reason: catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=1568.187|error_type=CatBoostError\nTraceback (most recent call last):\n  File \"runfile.py\", line 267, in fit_catboost\n    model.fit(x_train, y_train, **fit_kwargs)\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 5547, in fit\n    self._fit(X, y, cat_features, text_features, embedding_features, None, graph, sample_weight, None, None, None, None, baseline, use_best_model,\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 2716, in _fit\n    self._train(\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 1824, in _train\n    self._object._train(train_pool, test_pool, params, allow_clear_pool, init_model._object if init_model else None)\n  File \"_catboost.pyx\", line 5430, in _catboost._CatBoost._train\n  File \"_catboost.pyx\", line 5479, in _catboost._CatBoost._train\n_catboost.CatBoostError: catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"runfile.py\", line 482, in <module>\n    main()\n  File \"runfile.py\", line 420, in main\n    best_key, best_result = evaluate_panel(\n                            ^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 311, in evaluate_panel\n    model = fit_catboost(clone(base_model), x_tr, y_tr, x_va, y_va)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 273, in fit_catboost\n    cpu_model.fit(x_train, y_train, **fit_kwargs)\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 5547, in fit\n    self._fit(X, y, cat_features, text_features, embedding_features, None, graph, sample_weight, None, None, None, None, baseline, use_best_model,\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 2716, in _fit\n    self._train(\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 1824, in _train\n    self._object._train(train_pool, test_pool, params, allow_clear_pool, init_model._object if init_model else None)\n  File \"_catboost.pyx\", line 5430, in _catboost._CatBoost._train\n  File \"_catboost.pyx\", line 5479, in _catboost._CatBoost._train\n_catboost.CatBoostError: catboost/private/libs/target/data_providers.cpp:389: Both binary classification-only and multiclassification-only loss function or metrics specified\nExecution time: 26 minutes seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

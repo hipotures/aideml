@@ -1,0 +1,38 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "topology",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed before any validation metric was produced. The immediate issue is `balanced_accuracy_score(..., labels=class_order)`: scikit-learn does not accept a `labels` argument there, so the fold loop crashes on the first validation score computation. Remove that argument and rerun; the rest of the pipeline may still need verification after that fix.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T21:52:11",
+        "exception_info": {
+          "args": [
+            "got an unexpected keyword argument 'labels'"
+          ]
+        },
+        "exception_type": "TypeError",
+        "exec_time": 33.050527811050415,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "34c29c9e4a3c471b9cd304d8901f5d1e",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.657\nAIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|Auxiliary file star_classification.csv detected; skipped in this exact hypothesis run by design.\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=20.611\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.000\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|Fold 1/5: CatBoost multiclass\nAIDE_STAGE|Fitting CatBoost multiclass on GPU\nWarning: less than 75% GPU memory available for training. Free: 8611 Total: 11873.125\nFold 1 trained with GPU\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=11.205|error_type=TypeError\nTraceback (most recent call last):\n  File \"runfile.py\", line 417, in <module>\n    main()\n  File \"runfile.py\", line 366, in main\n    score = balanced_accuracy_score(y_va, va_pred, labels=class_order)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/sklearn/utils/_param_validation.py\", line 196, in wrapper\n    params = func_sig.bind(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"$AIDEML_PATH_BASE/.local/share/uv/python/cpython-3.12.9-linux-x86_64-gnu/lib/python3.12/inspect.py\", line 3277, in bind\n    return self._bind(args, kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"$AIDEML_PATH_BASE/.local/share/uv/python/cpython-3.12.9-linux-x86_64-gnu/lib/python3.12/inspect.py\", line 3266, in _bind\n    raise TypeError(\nTypeError: got an unexpected keyword argument 'labels'\nExecution time: 33 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

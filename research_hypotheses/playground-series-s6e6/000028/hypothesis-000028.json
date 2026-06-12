@@ -2,7 +2,8 @@
   "enabled": false,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Class-Conditional Photometric Density Ratios",
   "summary": "Fit fold-safe class-wise Gaussian density models in color-redshift space and use their log-likelihood ratios, posterior margins, and entropy as compact supervised statistical features.",
@@ -29,5 +30,10 @@
   "source_request_path": "research_hypotheses/playground-series-s6e6/000028/request.md",
   "source_request_json_path": "research_hypotheses/playground-series-s6e6/000028/request.json",
   "source_response_path": "research_hypotheses/playground-series-s6e6/000028/response.json",
-  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000028/response_raw.txt"
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000028/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "aux_transfer"
+  }
 }

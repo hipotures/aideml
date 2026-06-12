@@ -12,7 +12,8 @@
   "risk": "The deeper LightGBM setting may overfit or increase runtime, especially if the current improvement is mostly from calibration rather than single-model capacity. Because all downstream aggregation is unchanged, any score movement should be easy to attribute.",
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "rationale": "Hypothesis 000030: Retune the main LightGBM expert toward higher capacity and slower learning while preserving the current feature set, model panel, fold-wise blend, and fold-wise calibration.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py. Change only LGBM_CONFIG to n_estimators=1150, learning_rate=0.035, num_leaves=191, min_child_samples=35, subsample=0.90, colsample_bytree=0.90, reg_alpha=0.02, reg_lambda=0.70; preserve all other feature engineering, folds, model families, weighting, blend search, calibration, and artifact writing.",
@@ -34,9 +35,15 @@
   },
   "code_file": "legacy-001.py",
   "prompt_enabled": false,
-  "imported_from_hypothesis_id": "000030",
   "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
   "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
   "source_batch_parent_oof_balanced_accuracy": 0.968002,
-  "source_batch_code_file": "legacy-030.py"
+  "source_batch_code_file": "legacy-030.py",
+  "source_hypothesis_id": "000019",
+  "source_batch_hypothesis_id": "000030",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features"
+  }
 }

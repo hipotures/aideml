@@ -2,7 +2,8 @@
   "enabled": true,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Fold-Safe Local Class Posterior Features",
   "summary": "Represent each object by out-of-fold nearest-neighbor class posterior, margin, entropy, and class-distance features in standardized photometric space.",
@@ -29,5 +30,10 @@
   "source_request_path": "research_hypotheses/playground-series-s6e6/000023/request.md",
   "source_request_json_path": "research_hypotheses/playground-series-s6e6/000023/request.json",
   "source_response_path": "research_hypotheses/playground-series-s6e6/000023/response.json",
-  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000023/response_raw.txt"
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000023/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "locus_density"
+  }
 }

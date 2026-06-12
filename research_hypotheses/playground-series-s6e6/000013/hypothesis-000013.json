@@ -2,7 +2,8 @@
   "enabled": false,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Calibrated weighted ensemble with per-class decision tuning",
   "summary": "Ensemble multiple balanced tree models, then calibrate their probabilities on out-of-fold predictions and tune class decisions to maximize balanced accuracy rather than raw log loss.",
@@ -14,5 +15,10 @@
     "https://arxiv.org/abs/1910.12656",
     "https://arxiv.org/abs/2102.12182",
     "https://arxiv.org/abs/0606541"
-  ]
+  ],
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "color_sky"
+  }
 }

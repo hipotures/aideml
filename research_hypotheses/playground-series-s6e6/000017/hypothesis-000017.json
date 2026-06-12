@@ -1,7 +1,8 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Unsupervised Photometric Locus Features",
   "summary": "Represent each object by its unsupervised position, cluster affinity, and local density in color-magnitude-redshift space before applying simple balanced classifiers.",
@@ -27,5 +28,10 @@
   "source_request_path": "research_hypotheses/playground-series-s6e6/000017/request.md",
   "source_request_json_path": "research_hypotheses/playground-series-s6e6/000017/request.json",
   "source_response_path": "research_hypotheses/playground-series-s6e6/000017/response.json",
-  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000017/response_raw.txt"
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000017/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "locus_density"
+  }
 }

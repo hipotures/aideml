@@ -1,0 +1,38 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "splines",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed before producing OOF predictions or a submission. The immediate issue is `check_is_fitted` being called on `SplineFeatureBuilder`, which is not a scikit-learn estimator, so validation aborts in the first fold; remove that check or make the class inherit from `BaseEstimator`/`TransformerMixin` and set fitted attributes in a way sklearn recognizes.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T21:52:53",
+        "exception_info": {
+          "args": [
+            "<__main__.SplineFeatureBuilder object at 0x7fa286db3cb0> is not an estimator instance."
+          ]
+        },
+        "exception_type": "TypeError",
+        "exec_time": 10.720523834228516,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "922e1c10af6a4c51adf6d82dfe90d558",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.717\nAIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=0.114\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.054\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|fit_predict_fold_stage: fold=1 model=QuantileSplineLogistic\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=9.305|error_type=TypeError\nTraceback (most recent call last):\n  File \"runfile.py\", line 279, in <module>\n    main()\n  File \"runfile.py\", line 210, in main\n    X_va_t = builder.transform(X_va)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 131, in transform\n    check_is_fitted(self, [\"spline_\", \"ohe_\", \"selector_\", \"scaler_\"])\n  File \"venv/lib/python3.12/site-packages/sklearn/utils/validation.py\", line 1746, in check_is_fitted\n    raise TypeError(\"%s is not an estimator instance.\" % (estimator))\nTypeError: <__main__.SplineFeatureBuilder object at 0x7fa286db3cb0> is not an estimator instance.\nExecution time: 10 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

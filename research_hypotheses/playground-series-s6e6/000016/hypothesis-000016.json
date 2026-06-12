@@ -1,7 +1,8 @@
 {
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Auxiliary SDSS Transfer Features",
   "summary": "Use the provided original SDSS table as an auxiliary labeled source to build robust, merged representation features for the competition rows.",
@@ -20,5 +21,10 @@
     "original_sdss17/star_classification.csv",
     "original_sdss17/star_classification.txt",
     "https://arxiv.org/abs/1207.7326"
-  ]
+  ],
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "aux_transfer"
+  }
 }

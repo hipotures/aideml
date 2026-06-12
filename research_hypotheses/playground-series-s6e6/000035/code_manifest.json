@@ -1,0 +1,38 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "lines",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed during feature construction with a `KeyError: 'color_u_g'`, so no model was trained and no validation metric was produced. The bug is in `build_line_features()`: it creates color columns as `color_ug`, `color_gr`, etc., but later tries to access `color_u_g` / `color_g_r` style names when building interaction features. Fix the naming mismatch and rerun.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-11T21:47:43",
+        "exception_info": {
+          "args": [
+            "color_u_g"
+          ]
+        },
+        "exception_type": "KeyError",
+        "exec_time": 5.233926057815552,
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "860a40e469f9473c9c59edbe4eb8db35",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.632\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.666\nAIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=failed|stage=build_features_stage|elapsed_s=4.081|error_type=KeyError\nTraceback (most recent call last):\n  File \"venv/lib/python3.12/site-packages/pandas/core/indexes/base.py\", line 3791, in get_loc\n    return self._engine.get_loc(casted_key)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"index.pyx\", line 152, in pandas._libs.index.IndexEngine.get_loc\n  File \"index.pyx\", line 181, in pandas._libs.index.IndexEngine.get_loc\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7080, in pandas._libs.hashtable.PyObjectHashTable.get_item\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7088, in pandas._libs.hashtable.PyObjectHashTable.get_item\nKeyError: 'color_u_g'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"runfile.py\", line 297, in <module>\n    main()\n  File \"runfile.py\", line 171, in main\n    line_features_all = build_line_features(\n                        ^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 125, in build_line_features\n    col = feats[f\"color_{left}_{right}\"].to_numpy(dtype=np.float32)\n          ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/frame.py\", line 3893, in __getitem__\n    indexer = self.columns.get_loc(key)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/indexes/base.py\", line 3798, in get_loc\n    raise KeyError(key) from err\nKeyError: 'color_u_g'\nExecution time: 5 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      }
+    ]
+  }
+}

@@ -2,7 +2,8 @@
   "enabled": true,
   "prompt_enabled": false,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "title": "Color-engineered two-stage classifier",
   "summary": "Build explicit color indices and piecewise features from `u,g,r,i,z,redshift`, then train a hierarchical model that first separates `STAR` vs non-`STAR`, and only then splits `GALAXY` vs `QSO`.",
@@ -14,5 +15,10 @@
     "https://arxiv.org/abs/1811.03740",
     "https://arxiv.org/abs/1909.10963",
     "competition context: balanced-accuracy stellar-classification task with `u,g,r,i,z,redshift`"
-  ]
+  ],
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "color_piecewise"
+  }
 }

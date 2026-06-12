@@ -1,0 +1,39 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Stellar Locus Residual Features",
+  "summary": "Represent each object by signed and normalized deviations from the empirical SDSS-like stellar color locus to expose stars, quasars, and galaxies as color-space outliers in different directions.",
+  "feature_family": "domain_stellar_locus_residual_features",
+  "feature_strategy": "Keep raw numeric/categorical features and the basic adjacent colors, then build target-free stellar-locus residual features on combined train+test covariates. Use g-i or the first color-space principal axis as the 1D locus coordinate; within quantile bins of that coordinate, compute robust median and MAD curves for u-g, g-r, r-i, and i-z, optionally smoothed by rolling medians. Add signed residuals, residual/MAD scores, absolute residuals, total normalized locus distance, max residual band, UV-excess score from u-g below the local locus, red-excess score from i-z or r-i above the local locus, and simple interactions with redshift and spectral_type. No target labels, class priors, supervised auxiliary learners, or row identity joins are used.",
+  "baseline_model_panel": "Reuse a simple balanced multiclass panel: regularized multinomial linear model on standardized numeric/one-hot features, a shallow class-weighted random-forest or extra-trees style model, and one class-balanced gradient-boosted tree model such as CatBoost/LightGBM with minimal tuning.",
+  "model_panel_rationale": "The linear model tests whether locus residuals add separable signed directions beyond raw colors, while the tree models test threshold and interaction signal without making the hypothesis depend on advanced model search.",
+  "validation_strategy": "Use 5-fold StratifiedKFold on `class`, reporting balanced accuracy overall and per class; all locus curves may be fit on train+test covariates because they are target-free, but any scaler/model fitting must occur inside folds.",
+  "materialization_hint": "Implement a staged transformer that first creates color indices, then fits robust binned locus curves from combined non-target rows, then appends residual, z-score, distance, and named excess features before feeding the same feature matrix to the baseline panel.",
+  "expected_signal": "If useful, CV should show STAR recall gains from small locus distances and QSO/GALAXY recall gains from UV/red residual extremes; tree feature importance or linear coefficients should elevate normalized u-g and total locus-distance residuals with modest runtime overhead.",
+  "novelty_confidence": "medium",
+  "risk": "This partly overlaps with earlier color and unsupervised-locus ideas because it still operates in ugriz color space, but the novelty is the domain-specific 1D stellar-locus residual representation rather than raw color differences, PCA/cluster features, or sky-local residuals. If the synthetic data distort the real SDSS stellar locus, the robust median curve may become a no-op or encode majority-class structure poorly.",
+  "rationale": "Feature family: domain_stellar_locus_residual_features\nFeature strategy: Keep raw numeric/categorical features and the basic adjacent colors, then build target-free stellar-locus residual features on combined train+test covariates. Use g-i or the first color-space principal axis as the 1D locus coordinate; within quantile bins of that coordinate, compute robust median and MAD curves for u-g, g-r, r-i, and i-z, optionally smoothed by rolling medians. Add signed residuals, residual/MAD scores, absolute residuals, total normalized locus distance, max residual band, UV-excess score from u-g below the local locus, red-excess score from i-z or r-i above the local locus, and simple interactions with redshift and spectral_type. No target labels, class priors, supervised auxiliary learners, or row identity joins are used.\nBaseline model panel: Reuse a simple balanced multiclass panel: regularized multinomial linear model on standardized numeric/one-hot features, a shallow class-weighted random-forest or extra-trees style model, and one class-balanced gradient-boosted tree model such as CatBoost/LightGBM with minimal tuning.\nModel panel rationale: The linear model tests whether locus residuals add separable signed directions beyond raw colors, while the tree models test threshold and interaction signal without making the hypothesis depend on advanced model search.\nValidation strategy: Use 5-fold StratifiedKFold on `class`, reporting balanced accuracy overall and per class; all locus curves may be fit on train+test covariates because they are target-free, but any scaler/model fitting must occur inside folds.\nNovelty confidence: medium",
+  "implementation_hint": "Implement a staged transformer that first creates color indices, then fits robust binned locus curves from combined non-target rows, then appends residual, z-score, distance, and named excess features before feeding the same feature matrix to the baseline panel.",
+  "expected_effect": "If useful, CV should show STAR recall gains from small locus distances and QSO/GALAXY recall gains from UV/red residual extremes; tree feature importance or linear coefficients should elevate normalized u-g and total locus-distance residuals with modest runtime overhead.",
+  "sources": [
+    "https://arxiv.org/abs/0707.4473",
+    "https://arxiv.org/abs/1508.04121",
+    "https://arxiv.org/abs/1909.10963",
+    "https://en.wikipedia.org/wiki/Sloan_Digital_Sky_Survey"
+  ],
+  "source_run": "2-cunning-swinging-ocelot",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000030",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000030/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000030/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000030/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000030/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "locus_density"
+  }
+}

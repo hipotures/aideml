@@ -1,28 +1,39 @@
 {
+  "active": {
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-002.py"
+  },
   "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "color_piecewise",
+        "status": "generated"
+      }
+    ],
     "legacy": [
       {
-        "file": "legacy-001.py",
+        "aux": false,
         "buggy": null,
-        "status": "generated",
+        "created_at": "2026-06-10T01:32:04",
+        "file": "legacy-001.py",
         "node_id": "657b35be11bb42919d7a89a04b46939c",
         "score": null,
-        "created_at": "2026-06-10T01:32:04",
-        "aux": false
+        "status": "generated"
       },
       {
-        "file": "legacy-002.py",
+        "aux": true,
         "buggy": false,
-        "status": "ok",
+        "created_at": "2026-06-10T02:10:46",
+        "file": "legacy-002.py",
+        "gpu": true,
         "node_id": "49603117bb3b4861b59506ff6d1f04da",
         "score": 0.961135,
-        "created_at": "2026-06-10T02:10:46",
-        "gpu": true,
-        "aux": true
+        "status": "ok"
       }
     ]
-  },
-  "active": {
-    "legacy": "legacy-002.py"
   }
 }

@@ -1,0 +1,49 @@
+{
+  "active": {
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-002.py"
+  },
+  "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "locus_density",
+        "status": "generated"
+      }
+    ],
+    "legacy": [
+      {
+        "analysis": "The run failed in `CatBoostClassifier.fit()` before completion, so no final submission or primary metric was produced. The immediate fix is to remove `rsm` when using CatBoost on GPU, or switch CatBoost to CPU; the completed models before the failure reported `logreg` balanced accuracy 0.919331 and `extratrees` balanced accuracy 0.928457.\n\nSubmission validation failed: stale working/submission.csv from before this node execution",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-10T07:23:47",
+        "exception_info": {
+          "args": [
+            "catboost/private/libs/options/catboost_options.cpp:638: Error: rsm on GPU is supported for pairwise modes only"
+          ]
+        },
+        "exception_type": "CatBoostError",
+        "file": "legacy-001.py",
+        "gpu": true,
+        "node_id": "432d6b751f82454e9687efa552797759",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.698\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=52.727\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.081\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|model=logreg|fold=1|event=fit_start\nAIDE_STAGE|model=logreg|fold=1|event=fit_end\nAIDE_STAGE|model=logreg|fold=2|event=fit_start\nAIDE_STAGE|model=logreg|fold=2|event=fit_end\nAIDE_STAGE|model=logreg|fold=3|event=fit_start\nAIDE_STAGE|model=logreg|fold=3|event=fit_end\nAIDE_STAGE|model=logreg|fold=4|event=fit_start\nAIDE_STAGE|model=logreg|fold=4|event=fit_end\nAIDE_STAGE|model=logreg|fold=5|event=fit_start\nAIDE_STAGE|model=logreg|fold=5|event=fit_end\nlogreg balanced_accuracy=0.919331, recall_GALAXY=0.966234, recall_QSO=0.940167, recall_STAR=0.851591\nAIDE_STAGE|model=extratrees|fold=1|event=fit_start\nAIDE_STAGE|model=extratrees|fold=1|event=fit_end\nAIDE_STAGE|model=extratrees|fold=2|event=fit_start\nAIDE_STAGE|model=extratrees|fold=2|event=fit_end\nAIDE_STAGE|model=extratrees|fold=3|event=fit_start\nAIDE_STAGE|model=extratrees|fold=3|event=fit_end\nAIDE_STAGE|model=extratrees|fold=4|event=fit_start\nAIDE_STAGE|model=extratrees|fold=4|event=fit_end\nAIDE_STAGE|model=extratrees|fold=5|event=fit_start\nAIDE_STAGE|model=extratrees|fold=5|event=fit_end\nextratrees balanced_accuracy=0.928457, recall_GALAXY=0.961574, recall_QSO=0.954133, recall_STAR=0.869663\nAIDE_STAGE|model=catboost|fold=1|event=fit_start\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=351.416|error_type=CatBoostError\nTraceback (most recent call last):\n  File \"runfile.py\", line 404, in <module>\n    main()\n  File \"runfile.py\", line 347, in main\n    oof_probs, test_probs = fit_predict_model(\n                            ^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 286, in fit_predict_model\n    model.fit(\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 5547, in fit\n    self._fit(X, y, cat_features, text_features, embedding_features, None, graph, sample_weight, None, None, None, None, baseline, use_best_model,\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 2701, in _fit\n    train_params = self._prepare_train_params(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/catboost/core.py\", line 2627, in _prepare_train_params\n    _check_train_params(params)\n  File \"_catboost.pyx\", line 7029, in _catboost._check_train_params\n  File \"_catboost.pyx\", line 7051, in _catboost._check_train_params\n_catboost.CatBoostError: catboost/private/libs/options/catboost_options.cpp:638: Error: rsm on GPU is supported for pairwise modes only\nExecution time: 6 minutes seconds (time limit is an hour).SubmissionValidationError: stale working/submission.csv from before this node execution\n"
+      },
+      {
+        "aux": true,
+        "buggy": false,
+        "created_at": "2026-06-11T16:58:50",
+        "exec_time": 395.5963900089264,
+        "file": "legacy-002.py",
+        "gpu": true,
+        "node_id": "8f1fb7d3e2f44f39b80c5c3671100910",
+        "score": 0.950061,
+        "status": "ok"
+      }
+    ]
+  }
+}

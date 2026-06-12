@@ -12,7 +12,8 @@
   "risk": "The competition hint favored CatBoost auto_class_weights, so disabling it may hurt. This is explicitly a controlled alternative class-weighting test.",
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "rationale": "Hypothesis 000033: Remove CatBoost auto_class_weights while preserving the explicit fold-specific balanced sample weights passed into CatBoost.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py. In make_cat_model, remove auto_class_weights=\"Balanced\" and leave the CatBoost fit call using sample_weight=tree_sw. Preserve XGBoost/LightGBM weighting, auxiliary weights, features, blend search, calibration, and output artifacts.",
@@ -34,9 +35,15 @@
   },
   "code_file": "legacy-001.py",
   "prompt_enabled": false,
-  "imported_from_hypothesis_id": "000033",
   "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
   "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
   "source_batch_parent_oof_balanced_accuracy": 0.968002,
-  "source_batch_code_file": "legacy-033.py"
+  "source_batch_code_file": "legacy-033.py",
+  "source_hypothesis_id": "000019",
+  "source_batch_hypothesis_id": "000033",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features"
+  }
 }

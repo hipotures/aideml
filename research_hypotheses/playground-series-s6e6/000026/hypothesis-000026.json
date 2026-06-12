@@ -1,0 +1,40 @@
+{
+  "enabled": true,
+  "agent_modes": [
+    "legacy",
+    "autogluon"
+  ],
+  "title": "Self-Supervised Metadata Consistency Features",
+  "summary": "Predict `spectral_type` and `galaxy_population` from photometry/redshift/sky covariates and use the fold-safe probability, entropy, margin, and mismatch residuals as class-prediction features.",
+  "feature_family": "self_supervised_metadata_consistency_features",
+  "feature_strategy": "Keep the raw numeric columns, one-hot `spectral_type` and `galaxy_population`, and a compact set of adjacent color indices, then add two auxiliary covariate-only learners: one predicts `spectral_type` from ugriz colors, redshift, alpha, and delta, and the other predicts `galaxy_population` from the same inputs. For each training fold, generate out-of-fold features: full predicted probability vectors, max probability, entropy, top-two margin, probability assigned to the row's actual metadata category, actual-vs-predicted match flags, and simple cross-consistency terms such as spectral_type_actual_prob * galaxy_population_actual_prob. For test, fit the auxiliary metadata predictors on the full training covariates and transform test rows using their observed metadata values only as lookup labels for the predicted probability columns. Do not use `class` in the auxiliary learners.",
+  "baseline_model_panel": "Use the same simple balanced multiclass panel across feature-search runs: a regularized linear classifier on standardized numeric plus one-hot categorical features, a shallow class-weighted tree ensemble, and a class-weighted gradient-boosted tree model such as CatBoost/LightGBM with balanced class handling.",
+  "model_panel_rationale": "The linear model checks whether the consistency residuals create separable additive signal; the shallow tree ensemble checks threshold/interactions; the balanced gradient-boosted tree checks whether nonlinear metadata-photometry contradictions help minority classes without turning this into a tuning experiment.",
+  "validation_strategy": "Use 5-fold StratifiedKFold on `class` with balanced accuracy. Generate the auxiliary metadata-consistency features inside each outer fold using only that fold's training rows for fitting, so validation rows receive genuinely out-of-fold metadata predictions.",
+  "materialization_hint": "Implement as a preprocessing stage before the baseline panel: build compact color inputs, cross-fit lightweight classifiers for `spectral_type` and `galaxy_population`, append their diagnostic probability/residual columns, then train the normal class predictors with balanced class weighting. Log auxiliary metadata prediction accuracy and the balanced-accuracy delta versus raw categorical one-hot features.",
+  "expected_signal": "If useful, CV should improve especially for borderline STAR/QSO and GALAXY/QSO cases where the observed metadata is surprising given colors/redshift; tree models should rank actual-category probability, entropy, or mismatch flags above plain one-hot metadata columns.",
+  "novelty_confidence": "medium",
+  "risk": "This partially overlaps with prior categorical encoding and the photometric-redshift residual idea, because it is another fold-safe self-supervised residual mechanism. The novelty is the auxiliary target: synthetic metadata consistency rather than `class`, redshift, bins, density, or graph propagation. Risk is low signal if `spectral_type` and `galaxy_population` are already deterministic or fully captured by one-hot categories; overfit risk is controlled by outer-fold cross-fitting.",
+  "rationale": "Feature family: self_supervised_metadata_consistency_features\nFeature strategy: Keep the raw numeric columns, one-hot `spectral_type` and `galaxy_population`, and a compact set of adjacent color indices, then add two auxiliary covariate-only learners: one predicts `spectral_type` from ugriz colors, redshift, alpha, and delta, and the other predicts `galaxy_population` from the same inputs. For each training fold, generate out-of-fold features: full predicted probability vectors, max probability, entropy, top-two margin, probability assigned to the row's actual metadata category, actual-vs-predicted match flags, and simple cross-consistency terms such as spectral_type_actual_prob * galaxy_population_actual_prob. For test, fit the auxiliary metadata predictors on the full training covariates and transform test rows using their observed metadata values only as lookup labels for the predicted probability columns. Do not use `class` in the auxiliary learners.\nBaseline model panel: Use the same simple balanced multiclass panel across feature-search runs: a regularized linear classifier on standardized numeric plus one-hot categorical features, a shallow class-weighted tree ensemble, and a class-weighted gradient-boosted tree model such as CatBoost/LightGBM with balanced class handling.\nModel panel rationale: The linear model checks whether the consistency residuals create separable additive signal; the shallow tree ensemble checks threshold/interactions; the balanced gradient-boosted tree checks whether nonlinear metadata-photometry contradictions help minority classes without turning this into a tuning experiment.\nValidation strategy: Use 5-fold StratifiedKFold on `class` with balanced accuracy. Generate the auxiliary metadata-consistency features inside each outer fold using only that fold's training rows for fitting, so validation rows receive genuinely out-of-fold metadata predictions.\nNovelty confidence: medium",
+  "implementation_hint": "Implement as a preprocessing stage before the baseline panel: build compact color inputs, cross-fit lightweight classifiers for `spectral_type` and `galaxy_population`, append their diagnostic probability/residual columns, then train the normal class predictors with balanced class weighting. Log auxiliary metadata prediction accuracy and the balanced-accuracy delta versus raw categorical one-hot features.",
+  "expected_effect": "If useful, CV should improve especially for borderline STAR/QSO and GALAXY/QSO cases where the observed metadata is surprising given colors/redshift; tree models should rank actual-category probability, entropy, or mismatch flags above plain one-hot metadata columns.",
+  "sources": [
+    "https://arxiv.org/abs/1909.10963",
+    "https://arxiv.org/abs/2605.18218",
+    "https://arxiv.org/abs/2605.04028",
+    "https://en.wikipedia.org/wiki/Stellar_classification",
+    "https://en.wikipedia.org/wiki/Galaxy_color%E2%80%93magnitude_diagram"
+  ],
+  "source_run": "2-xanthic-armadillo-of-foundation",
+  "source_checkpoint_step": 0,
+  "source_checkpoint_dir": "research_hypotheses/playground-series-s6e6/000026",
+  "source_request_path": "research_hypotheses/playground-series-s6e6/000026/request.md",
+  "source_request_json_path": "research_hypotheses/playground-series-s6e6/000026/request.json",
+  "source_response_path": "research_hypotheses/playground-series-s6e6/000026/response.json",
+  "source_response_raw_path": "research_hypotheses/playground-series-s6e6/000026/response_raw.txt",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "color_sky"
+  }
+}

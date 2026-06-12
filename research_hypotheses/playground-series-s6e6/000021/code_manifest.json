@@ -1,43 +1,84 @@
 {
+  "active": {
+    "autogluon": "autogluon-001.py",
+    "legacy": "legacy-004.py"
+  },
   "versions": {
+    "autogluon": [
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T13:39:37",
+        "file": "autogluon-001.py",
+        "score": null,
+        "source_legacy_feature_kind": "source_features",
+        "status": "generated"
+      }
+    ],
     "legacy": [
       {
-        "file": "legacy-001.py",
+        "analysis": "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured.",
+        "aux": true,
         "buggy": true,
-        "status": "bug",
+        "created_at": "2026-06-10T05:29:10",
+        "exception_info": {
+          "args": [
+            "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
+          ]
+        },
+        "exception_type": "RuntimeError",
+        "file": "legacy-001.py",
+        "gpu": true,
         "node_id": "68288dd26c52481990aeb64f06bfc055",
         "score": null,
-        "created_at": "2026-06-10T05:29:10",
-        "gpu": true,
-        "aux": true,
-        "exception_type": "RuntimeError",
-        "exception_info": {
-          "args": [
-            "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
-          ]
-        },
-        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured.",
-        "analysis": "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
+        "status": "bug",
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
       },
       {
-        "file": "legacy-002.py",
-        "buggy": true,
-        "status": "bug",
-        "node_id": "f27c5205404c443b80e6b51d6f766576",
-        "score": null,
-        "created_at": "2026-06-10T05:45:04",
-        "gpu": true,
+        "analysis": "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured.",
         "aux": true,
-        "exception_type": "RuntimeError",
+        "buggy": true,
+        "created_at": "2026-06-10T05:45:04",
         "exception_info": {
           "args": [
             "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
           ]
         },
-        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured.",
-        "analysis": "REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
+        "exception_type": "RuntimeError",
+        "file": "legacy-002.py",
+        "gpu": true,
+        "node_id": "f27c5205404c443b80e6b51d6f766576",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n\nLightGBM CUDA native crash likely terminated the REPL child process before Python could raise an exception. Evidence: generated code uses LightGBM with CUDA and no Python traceback was captured."
+      },
+      {
+        "analysis": "The run failed during fold 1 in `fit_xgboost()` because XGBoost could not ingest a column with `string[python]` dtype while `enable_categorical=True` was set. The categorical columns need to be converted to pandas `category` with valid non-string category storage, or XGBoost should be given fully numeric encodings before fitting; no validation metric was produced.\n\nSubmission validation failed: missing working/submission.csv while sample_submission exists",
+        "aux": true,
+        "buggy": true,
+        "created_at": "2026-06-10T06:03:52",
+        "exception_info": {
+          "args": [
+            "Cannot interpret 'string[python]' as a data type"
+          ]
+        },
+        "exception_type": "TypeError",
+        "file": "legacy-003.py",
+        "gpu": true,
+        "node_id": "55c845c266bb4458ac10fb324bb6ff4d",
+        "score": null,
+        "status": "bug",
+        "terminal_output": "AIDE_STAGE|event=start|stage=build_features_stage\nAIDE_STAGE|event=start|stage=load_data_stage\nAIDE_STAGE|event=end|stage=load_data_stage|elapsed_s=0.675\nAIDE_STAGE|event=end|stage=build_features_stage|elapsed_s=47.077\nAIDE_STAGE|event=start|stage=make_folds_stage\nAIDE_STAGE|event=end|stage=make_folds_stage|elapsed_s=0.085\nAIDE_STAGE|event=start|stage=fit_predict_fold_stage\nAIDE_STAGE|Fold 1/5 - CatBoost\nWarning: less than 75% GPU memory available for training. Free: 7934.75 Total: 11873.125\nAIDE_STAGE|Fold 1/5 - XGBoost\nAIDE_STAGE|event=failed|stage=fit_predict_fold_stage|elapsed_s=31.316|error_type=TypeError\nTraceback (most recent call last):\n  File \"runfile.py\", line 589, in <module>\n    main()\n  File \"runfile.py\", line 513, in main\n    xgb_valid_proba, xgb_test_proba = fit_xgboost(\n                                      ^^^^^^^^^^^^\n  File \"runfile.py\", line 409, in fit_xgboost\n    model.fit(\n  File \"venv/lib/python3.12/site-packages/xgboost/core.py\", line 774, in inner_f\n    return func(**kwargs)\n           ^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/sklearn.py\", line 1789, in fit\n    train_dmatrix, evals = _wrap_evaluation_matrices(\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/sklearn.py\", line 702, in _wrap_evaluation_matrices\n    train_dmatrix = create_dmatrix(\n                    ^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/sklearn.py\", line 1264, in _create_dmatrix\n    return DMatrix(**kwargs, nthread=self.n_jobs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/core.py\", line 774, in inner_f\n    return func(**kwargs)\n           ^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/core.py\", line 999, in __init__\n    handle, feature_names, feature_types = dispatch_data_backend(\n                                           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/data.py\", line 1419, in dispatch_data_backend\n    return _from_pandas_df(\n           ^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/data.py\", line 700, in _from_pandas_df\n    df, feature_names, feature_types = _transform_pandas_df(\n                                       ^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/data.py\", line 668, in _transform_pandas_df\n    PandasTransformed(arrays, ref_categories=ref_categories),\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/data.py\", line 625, in __init__\n    jnames, jcodes, buf = pd_cat_inf(col.categories, col.codes)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/xgboost/_data_utils.py\", line 407, in pd_cat_inf\n    if np.issubdtype(cats.dtype, np.floating) or np.issubdtype(cats.dtype, np.integer):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/numpy/core/numerictypes.py\", line 417, in issubdtype\n    arg1 = dtype(arg1).type\n           ^^^^^^^^^^^\nTypeError: Cannot interpret 'string[python]' as a data type\nExecution time: a minute seconds (time limit is an hour).SubmissionValidationError: missing working/submission.csv while sample_submission exists\n"
+      },
+      {
+        "aux": true,
+        "buggy": false,
+        "created_at": "2026-06-10T06:08:35",
+        "file": "legacy-004.py",
+        "gpu": true,
+        "node_id": "afcdd1401a924704b28c1e4bf762e03f",
+        "score": 0.965435,
+        "status": "ok"
       }
     ]
-  },
-  "active": {}
+  }
 }

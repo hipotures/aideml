@@ -12,7 +12,8 @@
   "risk": "This is primarily a reliability/stability hypothesis rather than a direct improvement attempt. It still produces a valid comparable OOF score.",
   "enabled": true,
   "agent_modes": [
-    "legacy"
+    "legacy",
+    "autogluon"
   ],
   "rationale": "Hypothesis 000035: Run the full current pipeline with a different StratifiedKFold random seed to measure whether the 0.968-level result is robust to fold assignment.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py and change only RANDOM_STATE from 42 to 2026. Do not change model random seeds, features, auxiliary weighting, blend grid, calibration grid, or artifacts.",
@@ -34,9 +35,15 @@
   },
   "code_file": "legacy-001.py",
   "prompt_enabled": false,
-  "imported_from_hypothesis_id": "000035",
   "source_batch_dir": "tmp/hypothesis_batch_000030_000035",
   "source_batch_parent_hypothesis_id": "000019-derived-current-branch",
   "source_batch_parent_oof_balanced_accuracy": 0.968002,
-  "source_batch_code_file": "legacy-035.py"
+  "source_batch_code_file": "legacy-035.py",
+  "source_hypothesis_id": "000019",
+  "source_batch_hypothesis_id": "000035",
+  "autogluon_feature_transfer": {
+    "file": "autogluon-001.py",
+    "source": "legacy feature engineering only; model, fold, calibration, and blending logic intentionally omitted",
+    "feature_kind": "source_features"
+  }
 }
