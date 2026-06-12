@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: One new feature-search hypothesis from live research: test unsupervised sky-local photometric residualization as a distinct preprocessing family, motivated by SDSS extinction and calibration effects.
+
+Prioritized hypotheses:
+1. Sky-Local Photometric Residualization
+   Risk: Overlap risk with prior sky-coordinate formulas exists because both use alpha/delta, but this is a different preprocessing mechanism: local photometric residualization rather than raw sky bins/densities/harmonics. Small…

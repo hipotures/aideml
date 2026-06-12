@@ -1,0 +1,9 @@
+Research response
+
+Summary: Live SDSS/quasar-selection references point to color-space topology and outlier structure as core signal, so the next distinct initial feature-search direction should test discrete ugriz SED shape/order patterns rather than more continuous color formulas.
+
+Hypotheses:
+1. Photometric Order Topology Features
+   Summary: Encode each object's ugriz band ordering, color-sign pattern, and discrete SED-shape topology as compact categorical and numeric features.
+   Feature strategy: Keep raw alpha, delta, ugriz magnitudes, redshift, spectral_type, galaxy_population, and basic adjacent colors, then add target-free ordinal shape features over the five SDSS bands. Treat lower magnitude as brighter and compute per-band brightness ranks, the full ugriz ordering token, adjacent color sign bitmask, all pairwise brighter-than comparison bits, inversion counts relative to monotone blue-to-red and red-to-blue orderings, number and location of local extrema in the magnitude sequence, longest monotone run length, second-difference sign pattern, convex/concave segment counts, and coarse topology tokens combining brightest band, faintest band, adjacent sign bitmask, and redshift regime. One-hot or count/frequency encode only these unsupervised tokens from combined train/test covariates; do not use target encodings, auxiliary labels, supervised intermediate models, or row identity joins.
+   Risk: This overlaps partially with prior color, SED-slope, and min/max-band features because it is derived from the same ugriz sequence; the novelty is the discrete ordinal/topological representation, which may be too lossy if continuous color magnitudes already capture all signal.

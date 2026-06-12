@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search points to SDSS classification being driven by ugriz photometry, colors, redshift, and class imbalance, but prior runs have already saturated many magnitude/color/sky/auxiliary directions; the next distinct initial feature-search direction is to change the photometric representation from magnitudes to physically motivated relative flux and luminosity-proxy features.
+
+Prioritized hypotheses:
+1. Relative Flux And Luminosity Proxies
+   Risk: This overlaps partially with prior magnitude color and SED-shape hypotheses because magnitude differences are mathematically related to flux ratios, so gains may be small; luminosity proxies are approximate without a re…

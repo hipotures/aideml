@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live-search-informed initial feature hypothesis focused on a physical redshift-to-distance representation not yet directly covered by prior photometric color, flux, sky, clustering, or SDSS-rule feature families.
+
+Prioritized hypotheses:
+1. Cosmological Absolute-Magnitude Proxies
+   Risk: This overlaps partially with prior redshift-scaled luminosity proxies, but differs by using an explicit distance-modulus/absolute-magnitude physical representation. Risk is highest for stars or synthetic rows with nonph…

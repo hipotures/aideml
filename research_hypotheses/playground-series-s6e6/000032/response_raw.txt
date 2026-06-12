@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a remaining distinct first-pass feature direction: fit simple physical SED templates to ugriz photometry and use target-free fit parameters/residuals as features.
+
+Prioritized hypotheses:
+1. Analytic SED Template Residual Features
+   Risk: This overlaps partially with prior physical flux and stellar-locus hypotheses because it reuses ugriz flux shape, but the main mechanism is different: explicit analytic continuum template fitting and residual diagnostic…

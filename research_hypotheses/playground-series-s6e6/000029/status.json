@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-benign-amazing-groundhog",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T16:27:49",
+  "duration_seconds": 44.768876529007684,
+  "timings_seconds": {
+    "build_prompt": 0.00029312900733202696,
+    "write_inputs": 0.0018883419688791037,
+    "codex_subprocess": 44.766273410001304,
+    "read_response": 0.0002718389732763171,
+    "parse_response": 0.0001441389904357493,
+    "total": 44.768876529007684
+  },
+  "exit_code": 0,
+  "error": null
+}

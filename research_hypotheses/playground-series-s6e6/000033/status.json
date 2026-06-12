@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-woodoo-wise-cockatoo",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T20:22:42",
+  "duration_seconds": 64.9712776769884,
+  "timings_seconds": {
+    "build_prompt": 0.00031800795113667846,
+    "write_inputs": 0.0062730550416745245,
+    "codex_subprocess": 64.96437890600646,
+    "read_response": 0.00019401899771764874,
+    "parse_response": 0.00010894896695390344,
+    "total": 64.9712776769884
+  },
+  "exit_code": 0,
+  "error": null
+}

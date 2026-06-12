@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live research points to SDSS color-space structure, especially the stellar locus and quasar UV/color outliers, as a still-distinct feature-search direction beyond raw colors, sky features, auxiliary transfer, and generic unsupervised embeddings.
+
+Prioritized hypotheses:
+1. Stellar Locus Residual Features
+   Risk: This partly overlaps with earlier color and unsupervised-locus ideas because it still operates in ugriz color space, but the novelty is the domain-specific 1D stellar-locus residual representation rather than raw color…

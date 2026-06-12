@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-dashing-bumblebee-of-will",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T15:44:59",
+  "duration_seconds": 45.71639118401799,
+  "timings_seconds": {
+    "build_prompt": 0.00033005798468366265,
+    "write_inputs": 0.001864749996457249,
+    "codex_subprocess": 45.71388124697842,
+    "read_response": 0.00020571902859956026,
+    "parse_response": 0.00010442995699122548,
+    "total": 45.71639118401799
+  },
+  "exit_code": 0,
+  "error": null
+}

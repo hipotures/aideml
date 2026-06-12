@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search points to a distinct local-neighborhood feature direction: SDSS-adjacent quasar/star/galaxy work repeatedly uses color-space nearest-neighbor or probability-density behavior, which has not yet been isolated as a fold-safe supervised feature family in the prior hypotheses.
+
+Prioritized hypotheses:
+1. Fold-Safe Local Class Posterior Features
+   Risk: This overlaps weakly with the prior unsupervised locus-density hypothesis because both use neighborhood geometry, but the novelty is the fold-safe supervised class-posterior mechanism. Main risks are target leakage from…

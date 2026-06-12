@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live web research suggests one remaining distinct initial feature-search direction: treat the provided synthetic metadata columns as self-supervised observable labels and add fold-safe consistency residuals between those labels and the continuous photometric/redshift space.
+
+Prioritized hypotheses:
+1. Self-Supervised Metadata Consistency Features
+   Risk: This partially overlaps with prior categorical encoding and the photometric-redshift residual idea, because it is another fold-safe self-supervised residual mechanism. The novelty is the auxiliary target: synthetic meta…

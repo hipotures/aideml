@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a remaining distinct initial direction: convert SDSS astronomy color-selection rules into fixed regime flags and signed margins, measuring whether known quasar/starburst color cuts add signal beyond continuous color features.
+
+Prioritized hypotheses:
+1. Published SDSS Color-Cut Regime Features
+   Risk: This partly overlaps with prior color-stack and stellar-locus ideas because it reuses ugriz colors, but the novelty is fixed published astronomy regime boundaries rather than generic continuous colors or data-derived lo…

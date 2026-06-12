@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live-search-backed next feature-search direction: test a redshift-warped rest-frame SED representation, distinct from prior raw color, flux, sky, auxiliary, and local-density ideas.
+
+Prioritized hypotheses:
+1. Rest-Frame SED Warp Features
+   Risk: This overlaps partly with previous color and flux/luminosity hypotheses because it still derives from ugriz and redshift, but the core novelty is the rest-frame wavelength warping and interpolation mechanism. Risks incl…

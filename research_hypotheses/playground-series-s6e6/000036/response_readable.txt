@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a remaining distinct first-pass feature direction: target-free empirical CDF, tail-risk, and rank-normal preprocessing features that expose rare photometric/redshift regimes without adding supervised meta-models or another domain-specific rule set.
+
+Prioritized hypotheses:
+1. Empirical CDF Tail Copula Features
+   Risk: This may partly overlap with prior rank/frequency feature blocks if those already included pooled percentile ranks, but the novelty is the explicit ECDF tail-surprise, group-conditional tail, and rank-normal copula…

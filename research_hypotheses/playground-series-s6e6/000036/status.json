@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-excellent-soft-locust",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T20:40:48",
+  "duration_seconds": 120.21344807400601,
+  "timings_seconds": {
+    "build_prompt": 0.0003378280089236796,
+    "write_inputs": 0.0021192790009081364,
+    "codex_subprocess": 120.21068688796367,
+    "read_response": 0.0001945690019056201,
+    "parse_response": 0.0001050900318659842,
+    "total": 120.21344807400601
+  },
+  "exit_code": 0,
+  "error": null
+}

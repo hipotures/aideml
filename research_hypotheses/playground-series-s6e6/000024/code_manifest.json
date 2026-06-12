@@ -1,7 +1,7 @@
 {
   "active": {
     "legacy": "legacy-001.py",
-    "autogluon": "autogluon-003.py"
+    "autogluon": "autogluon-002.py"
   },
   "versions": {
     "autogluon": [
@@ -14,13 +14,21 @@
         "status": "generated"
       },
       {
-        "file": "autogluon-002.py",
-        "buggy": true,
-        "status": "bug",
-        "node_id": "ef6ccfbc57aa41b3a53f0608145aebc5",
+        "buggy": false,
+        "created_at": "2026-06-12T16:42:28",
+        "file": "autogluon-003.py",
         "score": null,
+        "source_legacy_feature_kind": "rest_sed",
+        "status": "generated"
+      },
+      {
+        "file": "autogluon-002.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "ef6ccfbc57aa41b3a53f0608145aebc5",
+        "score": 0.964136886414098,
         "created_at": "2026-06-12T14:35:20",
-        "exec_time": 2.561318874359131,
+        "exec_time": 89.39656043052673,
         "gpu": true,
         "aux": true,
         "exception_type": "ValueError",
@@ -31,14 +39,6 @@
         },
         "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 879, in <module>\n    main()\n  File \"runfile.py\", line 701, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 218, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 97, in preprocess\n    raw_idx = np.searchsorted(wave_rest, rest_grid[None, :], side=\"right\") - 1\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/numpy/core/fromnumeric.py\", line 1400, in searchsorted\n    return _wrapfunc(a, 'searchsorted', v, side=side, sorter=sorter)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/numpy/core/fromnumeric.py\", line 59, in _wrapfunc\n    return bound(*args, **kwds)\n           ^^^^^^^^^^^^^^^^^^^^\nValueError: object too deep for desired array\nExecution time: 2 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
         "analysis": "The run failed during preprocessing before any model training or validation, so no valid metric was produced. The immediate fix is to replace the `np.searchsorted` call on the 2D `wave_rest` array with row-wise interpolation logic (or use a loop/vectorized method that operates on each row independently) so the preprocessing step preserves the expected array shape and completes successfully.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
-      },
-      {
-        "buggy": false,
-        "created_at": "2026-06-12T16:42:28",
-        "file": "autogluon-003.py",
-        "score": null,
-        "source_legacy_feature_kind": "rest_sed",
-        "status": "generated"
       }
     ],
     "legacy": [

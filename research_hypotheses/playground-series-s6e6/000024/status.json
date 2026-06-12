@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-strict-hairy-starling",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T14:40:17",
+  "duration_seconds": 56.40336616395507,
+  "timings_seconds": {
+    "build_prompt": 0.00027300900546833873,
+    "write_inputs": 0.002082012011669576,
+    "codex_subprocess": 56.400686284003314,
+    "read_response": 0.0002159500145353377,
+    "parse_response": 0.00010480900527909398,
+    "total": 56.40336616395507
+  },
+  "exit_code": 0,
+  "error": null
+}

@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "feature_family": {
+            "type": "string"
+          },
+          "feature_strategy": {
+            "type": "string"
+          },
+          "baseline_model_panel": {
+            "type": "string"
+          },
+          "model_panel_rationale": {
+            "type": "string"
+          },
+          "validation_strategy": {
+            "type": "string"
+          },
+          "materialization_hint": {
+            "type": "string"
+          },
+          "expected_signal": {
+            "type": "string"
+          },
+          "novelty_confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "risk": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "summary",
+          "feature_family",
+          "feature_strategy",
+          "baseline_model_panel",
+          "model_panel_rationale",
+          "validation_strategy",
+          "materialization_hint",
+          "expected_signal",
+          "novelty_confidence",
+          "risk",
+          "sources"
+        ]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "hypotheses"
+  ]
+}

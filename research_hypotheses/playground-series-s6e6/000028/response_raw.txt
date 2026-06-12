@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live-search review suggests one still-distinct initial direction: fold-safe parametric class-density features inspired by SDSS quasar probability selection methods that model class likelihoods in photometric flux/color space.
+
+Prioritized hypotheses:
+1. Class-Conditional Photometric Density Ratios
+   Risk: This overlaps conceptually with prior local class posterior features, but differs by using global parametric class likelihoods rather than neighbor posteriors or graph propagation. Main risks are covariance instability,…

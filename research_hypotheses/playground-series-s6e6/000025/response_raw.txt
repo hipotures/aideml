@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Propose one distinct initial feature-search direction: semi-supervised graph label-propagation features built from combined labeled train and unlabeled test covariates, evaluated with the same simple balanced model panel used for other feature families.
+
+Prioritized hypotheses:
+1. Transductive Graph Label-Propagation Features
+   Risk: This partially overlaps with prior local-class-posterior and unsupervised-locus ideas, but differs by using transductive graph smoothing over labeled and unlabeled covariates rather than direct KNN class counts or unsup…

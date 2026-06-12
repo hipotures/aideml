@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a distinct physical representation based on how redshifted spectral emission lines move through SDSS ugriz filters, complementing prior color, SED-continuum, sky, and reliability hypotheses.
+
+Prioritized hypotheses:
+1. Redshifted Line Filter Footprint Features
+   Risk: Some signal may overlap with existing redshift, color, and analytic SED-template features, and the synthetic data may not preserve detailed filter-gap physics. Approximate filter widths and line constants could be too…

@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "run_id": "2-busy-valiant-warthog",
+  "checkpoint_step": 0,
+  "completed_at": "2026-06-11T14:53:03",
+  "duration_seconds": 55.859484862943646,
+  "timings_seconds": {
+    "build_prompt": 0.0002499189577065408,
+    "write_inputs": 0.0016487939865328372,
+    "codex_subprocess": 55.857253220980056,
+    "read_response": 0.00021544902119785547,
+    "parse_response": 0.00011316995369270444,
+    "total": 55.859484862943646
+  },
+  "exit_code": 0,
+  "error": null
+}

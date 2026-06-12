@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a remaining distinct first-pass direction: encode SDSS photometric reliability and survey-depth censoring regimes, rather than adding more color, sky, locus, auxiliary, or SED-template features.
+
+Prioritized hypotheses:
+1. Survey-Depth Photometric Reliability Features
+   Risk: This partly overlaps prior magnitude/rank and color-feature work because it still uses ugriz values, but the mechanism is different: fixed survey-reliability and censoring-regime features rather than generic colors, ran…

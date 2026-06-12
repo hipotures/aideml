@@ -1,0 +1,9 @@
+Research response
+
+Summary: Live research suggests one remaining distinct initial feature direction is to change the continuous representation itself: replace raw scalar photometric/color/redshift coordinates with smooth spline bases that can expose nonlinear class regions without supervised meta-features.
+
+Hypotheses:
+1. Quantile Spline Photometric Basis
+   Summary: Encode magnitudes, colors, redshift, and sky coordinates with target-free B-spline basis expansions so simple models can learn smooth nonlinear class boundaries.
+   Feature strategy: Start from raw alpha, delta, u, g, r, i, z, redshift, spectral_type, galaxy_population, and compact adjacent/broad color indices. For continuous anchors such as ugriz magnitudes, u-g, g-r, r-i, i-z, u-r, g-i, r-z, u-z, redshift, and delta, add quantile-knot cubic B-spline basis columns with constant extrapolation; for alpha add periodic spline basis over 0-360 degrees. Optionally add a small tensor-product block only for high-value pairs such as redshift x u-g, redshift x g-r, redshift x r-i, and g-r x r-i by multiplying low-rank spline basis columns. One-hot encode the two categorical columns. Fit all spline knots without class labels inside each CV fold, and refit on full training covariates for test transformation. Do not use target encodings, auxiliary labels, neighbor features, row id, or intermediate supervised predictors.
+   Risk: This overlaps weakly with prior quantile-bin and rank/CDF hypotheses because all discretize continuous distributions, but it is a distinct smooth basis-expansion mechanism rather than hard bins or tail summaries. Too many knots or tensor products can overfit or create high-dimensional slow matrices, so the first test should keep the basis compact.

@@ -1,6 +1,6 @@
 {
   "active": {
-    "autogluon": "autogluon-001.py",
+    "autogluon": "autogluon-003.py",
     "legacy": "legacy-001.py"
   },
   "versions": {
@@ -12,6 +12,17 @@
         "score": null,
         "source_legacy_feature_kind": "source_features",
         "status": "generated"
+      },
+      {
+        "file": "autogluon-003.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "6a53b48af8614b13b2cf30dc73aa2b15",
+        "score": 0.9663300844591504,
+        "created_at": "2026-06-12T15:00:29",
+        "exec_time": 141.9319326877594,
+        "gpu": true,
+        "aux": true
       }
     ],
     "legacy": [

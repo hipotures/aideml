@@ -1,0 +1,9 @@
+Use these external Codex research hints only when relevant.
+Treat them as hypotheses to test, not as proven facts.
+Research checkpoint: 000000
+
+Summary: Live search suggests a distinct next initial feature direction: nonlinear manifold coordinates for SDSS-like photometric objects, inspired by public astronomical classification work using UMAP to separate stars, galaxies, and quasars.
+
+Prioritized hypotheses:
+1. Nonlinear Photometric Manifold Coordinates
+   Risk: This partially overlaps with the earlier unsupervised locus-density hypothesis, but the novelty is the nonlinear manifold coordinate representation rather than PCA, clustering, or kNN density. UMAP can be slow on 800k r…
