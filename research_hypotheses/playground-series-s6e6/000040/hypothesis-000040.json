@@ -12,8 +12,7 @@
   "risk": "The deeper LightGBM setting may overfit or increase runtime, especially if the current improvement is mostly from calibration rather than single-model capacity. Because all downstream aggregation is unchanged, any score movement should be easy to attribute.",
   "enabled": true,
   "agent_modes": [
-    "legacy",
-    "autogluon"
+    "legacy"
   ],
   "rationale": "Hypothesis 000030: Retune the main LightGBM expert toward higher capacity and slower learning while preserving the current feature set, model panel, fold-wise blend, and fold-wise calibration.\nParent pipeline score reference: 0.968002 OOF balanced accuracy.\nThis experiment is intentionally atomic so the score movement can be attributed to the named change.",
   "implementation_hint": "Start from response.py. Change only LGBM_CONFIG to n_estimators=1150, learning_rate=0.035, num_leaves=191, min_child_samples=35, subsample=0.90, colsample_bytree=0.90, reg_alpha=0.02, reg_lambda=0.70; preserve all other feature engineering, folds, model families, weighting, blend search, calibration, and artifact writing.",

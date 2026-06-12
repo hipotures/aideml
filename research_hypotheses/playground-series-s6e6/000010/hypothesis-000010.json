@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "agent_modes": [
-    "autogluon"
+    "legacy"
   ],
   "title": "Reallocate AutoGluon time from LightGBM to XGB and CatBoost",
   "summary": "Keep the seed preprocessing fixed but test a bounded AutoGluon profile that gives more capacity to XGBoost and CatBoost, since the seed ensemble weight is dominated by XGBoost and CatBoost.",
