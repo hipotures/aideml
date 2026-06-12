@@ -27,6 +27,21 @@ class PlannedChange:
     after: Any
 
 
+FRESH_GENERATED_RESET_FIELDS: dict[str, Any] = {
+    "code_path": None,
+    "artifact_dir_name": None,
+    "exec_time": None,
+    "exc_type": None,
+    "exc_info": None,
+    "exc_stack": None,
+    "run_stats": None,
+    "_term_out": [],
+    "analysis": None,
+    "validity_warning": None,
+    "submission_validation": None,
+}
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -123,6 +138,21 @@ def _entry_for_active_file(
             if entry.get("file") == active_file:
                 return entry
     return entries[-1] if entries else None
+
+
+def _active_source_path(
+    *,
+    hypothesis_root: Path,
+    hypothesis_id: str,
+    entry: dict[str, Any],
+) -> Path | None:
+    file_name = entry.get("file")
+    if not isinstance(file_name, str) or not file_name:
+        return None
+    source_path = hypothesis_root / hypothesis_id / file_name
+    if not source_path.exists():
+        raise FileNotFoundError(f"Active hypothesis source is missing: {source_path}")
+    return source_path
 
 
 def _numeric_score(value: Any) -> float | None:
@@ -226,6 +256,15 @@ def _plan_changes(
             "is_buggy": expected_is_buggy,
             "metric": expected_metric,
         }
+        source_path = _active_source_path(
+            hypothesis_root=hypothesis_root,
+            hypothesis_id=hypothesis_id,
+            entry=entry,
+        )
+        if expected_status == "generated":
+            expected.update(FRESH_GENERATED_RESET_FIELDS)
+            if source_path is not None:
+                expected["code"] = source_path.read_text(encoding="utf-8")
         for field, after in expected.items():
             before = node.get(field)
             if not _values_equal(field, before, after):
@@ -257,7 +296,13 @@ def _apply_changes(journal: dict[str, Any], changes: list[PlannedChange]) -> Non
 
 
 def _format_value(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if isinstance(value, str) and "\n" in value:
+        line_count = value.count("\n") + 1
+        return f"<code {line_count} lines, {len(value)} chars>"
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if len(text) > 160:
+        return text[:157] + "..."
+    return text
 
 
 def _node_group_key(change: PlannedChange) -> tuple[int, str]:

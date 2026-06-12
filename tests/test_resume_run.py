@@ -679,6 +679,50 @@ def test_save_parallel_generate_only_run_persists_journal(tmp_path):
     assert loaded.nodes[0].code == "print('generated')"
 
 
+def test_load_json_accepts_inline_generated_node_without_artifact(tmp_path):
+    log_dir = tmp_path / "logs" / "2-inline-generated"
+    log_dir.mkdir(parents=True)
+    journal_path = log_dir / "journal.json"
+    journal_path.write_text(
+        json.dumps(
+            {
+                "__version": "3",
+                "nodes": [
+                    {
+                        "id": "generated-root",
+                        "code": "print('generated')",
+                        "code_path": None,
+                        "artifact_dir_name": None,
+                        "plan": "generated",
+                        "step": 1,
+                        "ctime": 1777750547.0,
+                        "parent": None,
+                        "status": "generated",
+                        "_term_out": [],
+                        "metric": None,
+                        "is_buggy": False,
+                        "research_mode": "hypothesis",
+                        "research_hypotheses_offered": ["000002"],
+                    }
+                ],
+                "node2parent": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = serialize.load_json(journal_path, Journal)
+    serialized = json.loads(serialize.dumps_json(loaded, base_dir=log_dir))
+
+    assert loaded.nodes[0].status == "generated"
+    assert loaded.nodes[0].code == "print('generated')"
+    assert loaded.nodes[0].code_path is None
+    assert loaded.nodes[0].artifact_dir_name is None
+    assert serialized["nodes"][0]["code"] == "print('generated')"
+    assert serialized["nodes"][0]["code_path"] is None
+    assert serialized["nodes"][0]["artifact_dir_name"] is None
+
+
 def test_generated_only_journal_prevents_workspace_cleanup():
     journal = Journal()
     node = Node(code="print('generated')", plan="generated")

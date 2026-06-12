@@ -21,6 +21,33 @@ def _relative_code_path(artifact_dir_name: str) -> str:
     return (Path("artifacts") / artifact_dir_name / "solution.py").as_posix()
 
 
+def _is_inline_generated_node(node: object) -> bool:
+    status = getattr(node, "status", None)
+    code = getattr(node, "code", None)
+    artifact_dir_name = getattr(node, "artifact_dir_name", None)
+    code_path = getattr(node, "code_path", None)
+    return (
+        status == "generated"
+        and isinstance(code, str)
+        and bool(code)
+        and not (isinstance(artifact_dir_name, str) and artifact_dir_name.strip())
+        and not (isinstance(code_path, str) and code_path.strip())
+    )
+
+
+def _is_inline_generated_node_dict(node_dict: dict) -> bool:
+    code = node_dict.get("code")
+    code_path = node_dict.get("code_path")
+    artifact_dir_name = node_dict.get("artifact_dir_name")
+    return (
+        node_dict.get("status") == "generated"
+        and isinstance(code, str)
+        and bool(code)
+        and not (isinstance(artifact_dir_name, str) and artifact_dir_name.strip())
+        and not (isinstance(code_path, str) and code_path.strip())
+    )
+
+
 def dumps_json(
     obj: dataclasses_json.DataClassJsonMixin,
     *,
@@ -38,6 +65,10 @@ def dumps_json(
                 if isinstance(n.artifact_dir_name, str)
                 else None
             )
+            if _is_inline_generated_node(n):
+                n.code_path = None
+                n.artifact_dir_name = None
+                continue
             if not artifact_dir_name:
                 raise ValueError(
                     f"Cannot serialize node {n.id}: missing artifact_dir_name."
@@ -106,6 +137,10 @@ def _hydrate_journal_code(obj_dict: dict, *, base_dir: Path) -> None:
         )
         artifact_dir_name = node_dict.get("artifact_dir_name")
         if not code_path:
+            if _is_inline_generated_node_dict(node_dict):
+                node_dict["code_path"] = None
+                node_dict["artifact_dir_name"] = None
+                continue
             if version != "2":
                 raise ValueError(f"Journal node {node_id} is missing code_path.")
             if isinstance(artifact_dir_name, str) and artifact_dir_name.strip():
