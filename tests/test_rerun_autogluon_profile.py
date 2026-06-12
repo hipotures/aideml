@@ -709,4 +709,8 @@ def test_main_accepts_solution_path_without_sha256(tmp_path, monkeypatch):
     assert record["run"] == "run-a"
     assert record["kind"] == "profile_eval"
     assert record["solution_path"] == str(solution_path)
+    assert record["sha256"] == kaggle_submission_lab.sha256_file(submission_path)
+    assert record["source_solution_sha256"] == kaggle_submission_lab.sha256_file(
+        solution_path
+    )
     assert kwargs["whole_solution_path"] == solution_path

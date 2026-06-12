@@ -861,7 +861,12 @@ def source_record_from_solution_path(
     submission_path = artifact_dir / "submission.csv"
     code = resolved_solution.read_text()
     ag_config = lab.parse_autogluon_config(code) or {}
-    source_sha256 = lab.sha256_file(resolved_solution)
+    source_solution_sha256 = lab.sha256_file(resolved_solution)
+    source_sha256 = (
+        lab.sha256_file(submission_path)
+        if submission_path.exists()
+        else source_solution_sha256
+    )
     return {
         "kind": "profile_eval",
         "competition": competition,
@@ -877,7 +882,7 @@ def source_record_from_solution_path(
         "autogluon_presets": ag_config.get("presets"),
         "included_model_types": ag_config.get("included_model_types"),
         "time_limit": ag_config.get("time_limit"),
-        "source_solution_sha256": source_sha256,
+        "source_solution_sha256": source_solution_sha256,
     }
 
 
