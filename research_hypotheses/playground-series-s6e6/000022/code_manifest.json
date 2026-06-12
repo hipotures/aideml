@@ -1,6 +1,7 @@
 {
   "active": {
-    "legacy": "legacy-002.py"
+    "legacy": "legacy-002.py",
+    "autogluon": "autogluon-003.py"
   },
   "versions": {
     "autogluon": [
@@ -30,6 +31,14 @@
         },
         "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 829, in <module>\n    main()\n  File \"runfile.py\", line 651, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 168, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 111, in preprocess\n    mean_err = out[\"flux_weighted_mean_wavelength\"] - lam\n               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~\n  File \"venv/lib/python3.12/site-packages/pandas/core/ops/common.py\", line 76, in new_method\n    return method(self, other)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/arraylike.py\", line 194, in __sub__\n    return self._arith_method(other, operator.sub)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/series.py\", line 5819, in _arith_method\n    return base.IndexOpsMixin._arith_method(self, other, op)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/base.py\", line 1381, in _arith_method\n    result = ops.arithmetic_op(lvalues, rvalues, op)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/ops/array_ops.py\", line 285, in arithmetic_op\n    res_values = _na_arithmetic_op(left, right, op)  # type: ignore[arg-type]\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/ops/array_ops.py\", line 220, in _na_arithmetic_op\n    result = func(left, right)\n             ^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/computation/expressions.py\", line 242, in evaluate\n    return _evaluate(op, op_str, a, b)  # type: ignore[misc]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/computation/expressions.py\", line 73, in _evaluate_standard\n    return op(a, b)\n           ^^^^^^^^\nValueError: operands could not be broadcast together with shapes (824782,) (5,) \nExecution time: 2 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
         "analysis": "Fix the preprocessing bug in `flux_weighted_mean_wavelength` / moment calculations: the code subtracts a 5-element wavelength array from a pandas Series of length N, causing a broadcasting failure during preprocess. Compute the row-wise moments with a per-row broadcasted array (or `np.sum(share * ...)` on an expanded wavelength vector) so preprocessing completes and training can proceed.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
+      },
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T16:42:28",
+        "file": "autogluon-003.py",
+        "score": null,
+        "source_legacy_feature_kind": "flux",
+        "status": "generated"
       }
     ],
     "legacy": [

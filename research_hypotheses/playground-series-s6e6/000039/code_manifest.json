@@ -1,5 +1,7 @@
 {
-  "active": {},
+  "active": {
+    "autogluon": "autogluon-003.py"
+  },
   "versions": {
     "autogluon": [
       {
@@ -28,6 +30,14 @@
         },
         "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 958, in <module>\n    main()\n  File \"runfile.py\", line 780, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 297, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 191, in preprocess\n    fit_source = pd.concat([_to_float_array(out[col]) for _ in []], axis=0)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/reshape/concat.py\", line 380, in concat\n    op = _Concatenator(\n         ^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/reshape/concat.py\", line 443, in __init__\n    objs, keys = self._clean_keys_and_objs(objs, keys)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/reshape/concat.py\", line 505, in _clean_keys_and_objs\n    raise ValueError(\"No objects to concatenate\")\nValueError: No objects to concatenate\nExecution time: a second seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
         "analysis": "The run failed during preprocessing with `ValueError: No objects to concatenate` in `preprocess()`, so no model was trained and no validation metric was produced. The bug is caused by an invalid `pd.concat([... for _ in []], axis=0)` branch that always constructs an empty concatenation.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
+      },
+      {
+        "buggy": false,
+        "created_at": "2026-06-12T16:42:28",
+        "file": "autogluon-003.py",
+        "score": null,
+        "source_legacy_feature_kind": "splines",
+        "status": "generated"
       }
     ],
     "legacy": [
