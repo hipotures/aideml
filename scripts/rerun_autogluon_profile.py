@@ -137,6 +137,24 @@ def _copy_prediction_dir(source_dir: Path, destination_dir: Path) -> None:
         shutil.copy2(source, destination_dir / source.name)
 
 
+def _recover_submission_from_model_submissions(artifact_dir: Path) -> Path | None:
+    submission_path = artifact_dir / "submission.csv"
+    if submission_path.exists():
+        return submission_path
+    submissions_dir = artifact_dir / "submissions"
+    if not submissions_dir.exists():
+        return None
+    candidates = [
+        submissions_dir / "submission_autogluon_best.csv",
+        *sorted(submissions_dir.glob("submission_*.csv")),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            shutil.copy2(candidate, submission_path)
+            return candidate
+    return None
+
+
 def source_input_dir(*, logs_dir: Path, run: str) -> Path:
     repo_root = Path(logs_dir).resolve().parent
     path = repo_root / "workspaces" / run / "input"
@@ -576,6 +594,7 @@ def run_profile_eval(
         generated_submission = workspace_dir / "working" / "submission.csv"
         if generated_submission.exists():
             shutil.copy2(generated_submission, artifact_dir / "submission.csv")
+        recovered_submission_source = _recover_submission_from_model_submissions(artifact_dir)
         for name in (
             "oof_predictions.csv",
             "test_predictions.csv",
@@ -664,6 +683,11 @@ def run_profile_eval(
         "source_solution_sha256": source_solution_sha256,
         "recovered_submission": recovered_submission,
         "recovery_reason": recovery_reason,
+        "recovered_submission_source": (
+            to_portable_path(recovered_submission_source)
+            if recovered_submission_source is not None
+            else None
+        ),
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     _write_json(artifact_dir / "submission_eval.json", metadata)

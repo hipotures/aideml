@@ -279,10 +279,10 @@ def test_run_profile_eval_recovers_valid_submission_after_timeout(
         exc_stack = []
 
     def fake_execute(code, *, workspace_dir, artifact_dir, timeout, memory_limit_gb):
-        del code, artifact_dir, timeout, memory_limit_gb
-        working = workspace_dir / "working"
-        working.mkdir(parents=True, exist_ok=True)
-        (working / "submission.csv").write_text("id,target\n1,0.9\n")
+        del code, workspace_dir, timeout, memory_limit_gb
+        submissions = artifact_dir / "submissions"
+        submissions.mkdir(parents=True, exist_ok=True)
+        (submissions / "submission_autogluon_best.csv").write_text("id,target\n1,0.9\n")
         return FakeTimeoutResult()
 
     monkeypatch.setattr(rerun_autogluon_profile, "execute_code", fake_execute)
@@ -310,10 +310,14 @@ def test_run_profile_eval_recovers_valid_submission_after_timeout(
     assert record["sha256"] == kaggle_submission_lab.sha256_file(
         eval_artifact / "submission.csv"
     )
+    assert (eval_artifact / "submission.csv").read_text() == "id,target\n1,0.9\n"
     assert not (eval_artifact / "error.txt").exists()
 
     eval_meta = json.loads((eval_artifact / "submission_eval.json").read_text())
     assert eval_meta["recovered_submission"] is True
+    assert eval_meta["recovered_submission_source"].endswith(
+        "submissions/submission_autogluon_best.csv"
+    )
     assert eval_meta["status"] == "ok"
 
     manifest = json.loads((eval_artifact / "aide_result.json").read_text())
