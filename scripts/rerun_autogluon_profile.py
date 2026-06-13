@@ -55,7 +55,7 @@ COMPETITION_AUTOGLUON_DEFAULTS: dict[str, dict[str, Any]] = {
         "class_balance": "balanced",
     },
 }
-DEFAULT_PROCESS_TIMEOUT_MARGIN = 900
+DEFAULT_PROCESS_TIMEOUT_MARGIN = 3600
 
 
 def timestamp_now() -> str:
@@ -819,7 +819,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--timeout",
         type=int,
         default=None,
-        help="Process timeout in seconds. Defaults to profile time_limit plus 15 minutes.",
+        help="Process timeout in seconds. Defaults to profile time_limit plus 60 minutes.",
     )
     parser.add_argument("--memory-limit-gb", type=float, default=80.0)
     parser.add_argument(
