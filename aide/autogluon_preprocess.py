@@ -510,10 +510,23 @@ def _predict_values(
     eval_metric: str,
     model: str | None = None,
 ) -> pd.Series:
-    if eval_metric == "roc_auc":
-        return _positive_probability(predictor, data, model=model)
-    pred = predictor.predict(data, model=model)
-    return pd.Series(pred).reset_index(drop=True)
+    model_label = model if model is not None else "autogluon_best"
+    started_at = time.time()
+    print(
+        f"AIDE AutoGluon: predict start model={{model_label}} rows={{len(data)}} metric={{eval_metric}}",
+        flush=True,
+    )
+    try:
+        if eval_metric == "roc_auc":
+            return _positive_probability(predictor, data, model=model)
+        pred = predictor.predict(data, model=model)
+        return pd.Series(pred).reset_index(drop=True)
+    finally:
+        print(
+            f"AIDE AutoGluon: predict finished model={{model_label}} "
+            f"elapsed={{time.time() - started_at:.1f}}s",
+            flush=True,
+        )
 
 
 def _make_combined_frame(train_df: pd.DataFrame, test_df: pd.DataFrame) -> pd.DataFrame:
@@ -639,6 +652,12 @@ def _save_prediction_artifact(frame: pd.DataFrame, working_dir: Path, filename: 
         filename = f"{{filename}}.gz"
     working_path = working_dir / filename
     working_path.parent.mkdir(parents=True, exist_ok=True)
+    started_at = time.time()
+    print(
+        f"AIDE AutoGluon: writing prediction artifact {{filename}} "
+        f"rows={{len(frame)}} cols={{len(frame.columns)}}",
+        flush=True,
+    )
     frame.to_csv(working_path, index=False, compression="gzip")
     artifact_dir = _artifact_dir(working_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -646,6 +665,11 @@ def _save_prediction_artifact(frame: pd.DataFrame, working_dir: Path, filename: 
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     if artifact_path.resolve() != working_path.resolve():
         shutil.copy2(working_path, artifact_path)
+    print(
+        f"AIDE AutoGluon: wrote prediction artifact {{filename}} "
+        f"elapsed={{time.time() - started_at:.1f}}s",
+        flush=True,
+    )
     return working_path
 
 
@@ -682,7 +706,13 @@ def _save_autogluon_prediction_artifacts(
 
     try:
         per_model = []
-        for model_name in predictor.model_names():
+        model_names = list(predictor.model_names())
+        for model_index, model_name in enumerate(model_names, start=1):
+            print(
+                f"AIDE AutoGluon: model artifact start {{model_index}}/{{len(model_names)}} "
+                f"model={{model_name}}",
+                flush=True,
+            )
             try:
                 model_oof_proba = predictor.predict_proba_oof(
                     model=model_name,
@@ -737,9 +767,15 @@ def _save_autogluon_prediction_artifacts(
                     "model": model_name,
                     "error": f"{{type(exc).__name__}}: {{exc}}",
                 }})
+            print(
+                f"AIDE AutoGluon: model artifact finished {{model_index}}/{{len(model_names)}} "
+                f"model={{model_name}}",
+                flush=True,
+            )
         artifacts["model_predictions"] = per_model
         artifacts["model_predictions_ok"] = sum(1 for item in per_model if "error" not in item)
 
+        print("AIDE AutoGluon: OOF artifact start model=autogluon_best", flush=True)
         oof_proba = predictor.predict_proba_oof(
             transformed=False,
             as_multiclass=True,
@@ -759,6 +795,7 @@ def _save_autogluon_prediction_artifacts(
         )
         artifacts["oof_predictions"] = str(oof_path)
         artifacts["oof_rows"] = int(len(oof_frame))
+        print("AIDE AutoGluon: OOF artifact finished model=autogluon_best", flush=True)
     except Exception as exc:
         artifacts["oof_error"] = f"{{type(exc).__name__}}: {{exc}}"
 
