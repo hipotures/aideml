@@ -627,6 +627,13 @@ GENERATE_ONLY_FINISHED_MESSAGE = (
 )
 
 
+def should_stop_after_generate_only_roots(
+    runtime_options: RuntimeOptions,
+    parent_node: Node | None,
+) -> bool:
+    return runtime_options.generate_only_requested and parent_node is not None
+
+
 def save_parallel_generate_only_run(
     *,
     cfg: Config,
@@ -6751,12 +6758,15 @@ def run(argv: list[str] | None = None):
                                     break
                                 live.update(generate_live(), refresh=True)
                                 continue
-                            if pipeline_skip_execution() and parent_node is not None:
-                                interrupted = True
-                                interrupt_message = (
-                                    "Skip-execution mode finished generating root "
-                                    "candidates; no code was executed."
+                            if (
+                                pipeline_skip_execution()
+                                and should_stop_after_generate_only_roots(
+                                    runtime_options,
+                                    parent_node,
                                 )
+                            ):
+                                interrupted = True
+                                interrupt_message = GENERATE_ONLY_FINISHED_MESSAGE
                                 break
                             debug_log(
                                 "after_prepare_step",

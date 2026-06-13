@@ -26,6 +26,7 @@ from aide.run import (
     should_parallel_generate_only_roots,
     should_seed_scored_hypothesis_roots_for_run,
     should_cleanup_workspace_on_exit,
+    should_stop_after_generate_only_roots,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -677,6 +678,22 @@ def test_save_parallel_generate_only_run_persists_journal(tmp_path):
     assert len(loaded.nodes) == 1
     assert loaded.nodes[0].status == "generated"
     assert loaded.nodes[0].code == "print('generated')"
+
+
+def test_skip_execution_can_generate_branch_children():
+    parent = Node(code="print('parent')", plan="parent")
+
+    generate_only_runtime = parse_runtime_args(["--generate-only"])[1]
+    skip_execution_runtime = parse_runtime_args(["--skip-execution"])[1]
+
+    assert should_stop_after_generate_only_roots(
+        generate_only_runtime,
+        parent,
+    )
+    assert not should_stop_after_generate_only_roots(
+        skip_execution_runtime,
+        parent,
+    )
 
 
 def test_load_json_accepts_inline_generated_node_without_artifact(tmp_path):
