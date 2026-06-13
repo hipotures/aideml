@@ -1,5 +1,7 @@
 {
-  "active": {},
+  "active": {
+    "autogluon": "autogluon-005.py"
+  },
   "versions": {
     "autogluon": [
       {
@@ -55,6 +57,36 @@
         },
         "terminal_output": "AIDE AutoGluon: loaded aux file star_classification.csv rows=100000 cols=18 passed_to_preprocess=True\nAIDE AutoGluon: starting preprocess\nTraceback (most recent call last):\n  File \"runfile.py\", line 897, in <module>\n    main()\n  File \"runfile.py\", line 719, in main\n    preprocessed = _run_preprocess(combined, aux_df)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 236, in _run_preprocess\n    return preprocess(combined.copy(), aux_df.copy())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"runfile.py\", line 160, in preprocess\n    .mad(numeric_only=True)\n     ^^^\n  File \"venv/lib/python3.12/site-packages/pandas/core/generic.py\", line 6204, in __getattr__\n    return object.__getattribute__(self, name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'DataFrame' object has no attribute 'mad'. Did you mean: 'map'?\nExecution time: 2 seconds seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
         "analysis": "The run failed during preprocessing because `DataFrame.mad()` is no longer available in the pandas version in this environment. Replace that call with an explicit mean/median absolute deviation implementation or another robust scale computation so preprocessing can complete and the model can train.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
+      },
+      {
+        "file": "autogluon-004.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "566333d3084a4c6aa45018547dbde09d",
+        "score": null,
+        "created_at": "2026-06-12T20:46:24",
+        "exec_time": 0.03435993194580078,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "ValueError",
+        "exception_info": {
+          "args": [
+            "Preprocess target leakage risk: forbidden column 'class' referenced in preprocess"
+          ]
+        },
+        "terminal_output": "Traceback (most recent call last):\n  File \"runfile.py\", line 1, in <module>\n    raise ValueError(\"Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\")\nValueError: Preprocess target leakage risk: forbidden column 'class' referenced in preprocess\nExecution time: a moment seconds (time limit is 2 hours).SubmissionValidationError: stale working/submission.csv from before this node execution\n",
+        "analysis": "The run did not execute the model pipeline at all; it stopped immediately with a `ValueError` about forbidden target leakage from referencing `class` during preprocessing. Fix the preprocessing so it never reads the target column, then rerun training and validation to obtain a real balanced-accuracy metric.\n\nSubmission validation failed: stale working/submission.csv from before this node execution"
+      },
+      {
+        "file": "autogluon-005.py",
+        "buggy": false,
+        "status": "ok",
+        "node_id": "a4e744f6af934d259afecb051e83ada9",
+        "score": 0.9647139322701529,
+        "created_at": "2026-06-12T20:53:10",
+        "exec_time": 69.83916068077087,
+        "gpu": true,
+        "aux": true
       }
     ]
   }
