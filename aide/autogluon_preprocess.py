@@ -79,6 +79,13 @@ def _python_code_block_candidates(text: str) -> list[str]:
     return [match for match in matches if match.strip()]
 
 
+def _subscript_string_key(node: ast.Subscript) -> str | None:
+    slice_node = node.slice
+    if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, str):
+        return slice_node.value
+    return None
+
+
 def extract_preprocess_source(text: str) -> str:
     source = _source_for_first_preprocess_function(text)
     if source:
@@ -133,15 +140,23 @@ def validate_preprocess_source(source: str, *, target_col: str | None = None) ->
             if "pitstop" in window or "pit_stop" in window:
                 reasons.append("future PitStop shift(-1)")
 
-    forbidden_columns = [FORBIDDEN_ROW_ID, FORBIDDEN_SPLIT_MARKER]
-    if target_col:
-        forbidden_columns.append(target_col)
+    always_forbidden_columns = [FORBIDDEN_ROW_ID, FORBIDDEN_SPLIT_MARKER]
     for node in ast.walk(func):
         if not isinstance(node, ast.Constant):
             continue
-        for col in forbidden_columns:
+        for col in always_forbidden_columns:
             if node.value == col:
                 reasons.append(f"forbidden column '{col}' referenced in preprocess")
+    if target_col:
+        for node in ast.walk(func):
+            if not isinstance(node, ast.Subscript):
+                continue
+            if not isinstance(node.value, ast.Name) or node.value.id != "df":
+                continue
+            if _subscript_string_key(node) == target_col:
+                reasons.append(
+                    f"forbidden column '{target_col}' referenced in preprocess"
+                )
 
     if reasons:
         raise ValueError("Preprocess target leakage risk: " + "; ".join(dict.fromkeys(reasons)))

@@ -187,6 +187,28 @@ def test_validate_preprocess_source_rejects_target_reference():
         )
 
 
+def test_validate_preprocess_source_allows_aux_column_matching_target_name():
+    validate_preprocess_source(
+        "def preprocess(df, aux):\n"
+        "    out = df.copy()\n"
+        "    counts = aux['class'].value_counts()\n"
+        "    out['aux_class_count'] = len(counts)\n"
+        "    return out\n",
+        target_col="class",
+    )
+
+
+def test_validate_preprocess_source_rejects_df_column_matching_target_name():
+    with pytest.raises(ValueError, match="forbidden column"):
+        validate_preprocess_source(
+            "def preprocess(df, aux):\n"
+            "    out = df.copy()\n"
+            "    out['target_copy'] = df['class']\n"
+            "    return out\n",
+            target_col="class",
+        )
+
+
 def test_validate_preprocess_source_rejects_split_marker_reference():
     with pytest.raises(ValueError, match="__is_train__"):
         validate_preprocess_source(
