@@ -302,6 +302,38 @@ agent:
           save_space: true
           fit_weighted_ensemble: true
           auto_stack: false
+      s6e6_boost_gpu_ens_cv3:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 900
+        use_gpu: true
+        validation_strategy: autogluon
+        class_balance: balanced
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 1
+          GBM:
+            - device: cuda
+              ag_args_fit:
+                num_gpus: 1
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
+          num_bag_folds: 3
+          num_bag_sets: 1
+          num_stack_levels: 0
       full_boost_gpu_ens:
         included_model_types: [XGB, GBM, CAT]
         presets: medium_quality
