@@ -614,8 +614,8 @@ def test_main_reports_unknown_profile_without_traceback(tmp_path, capsys):
 
 
 def test_resolve_process_timeout_defaults_to_profile_time_limit_plus_margin():
-    assert rerun_autogluon_profile.resolve_process_timeout(None, 1800) == 5400
-    assert rerun_autogluon_profile.resolve_process_timeout(None, 60) == 3660
+    assert rerun_autogluon_profile.resolve_process_timeout(None, 1800) == 12600
+    assert rerun_autogluon_profile.resolve_process_timeout(None, 60) == 10860
     assert rerun_autogluon_profile.resolve_process_timeout(300, 1800) == 300
 
 

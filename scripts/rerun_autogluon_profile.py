@@ -55,7 +55,7 @@ COMPETITION_AUTOGLUON_DEFAULTS: dict[str, dict[str, Any]] = {
         "class_balance": "balanced",
     },
 }
-DEFAULT_PROCESS_TIMEOUT_MARGIN = 3600
+DEFAULT_PROCESS_TIMEOUT_MARGIN = 10800
 
 
 def timestamp_now() -> str:
