@@ -615,6 +615,24 @@ def run_profile_eval(
         and validation_error is None
         and submission_path.exists()
     )
+    recovered_submission = False
+    recovery_reason = None
+    if (
+        not is_ok
+        and exec_result.exc_type == "TimeoutError"
+        and validation_error is None
+        and submission_path.exists()
+        and source_record.get("local_score") is not None
+    ):
+        metric = float(source_record["local_score"])
+        eval_metric = eval_metric or source_record.get("eval_metric")
+        lower_is_better = not bool(source_record.get("metric_maximize", True))
+        is_ok = True
+        recovered_submission = True
+        recovery_reason = (
+            "Process timed out after writing a valid submission; reused the "
+            "source artifact local_score for submit-ready ranking."
+        )
     if not is_ok:
         (artifact_dir / "error.txt").write_text(
             _error_text(exec_result, validation_error) + "\n"
@@ -644,6 +662,8 @@ def run_profile_eval(
         "source_sha256": source_sha,
         "source_solution_path": source_solution_path,
         "source_solution_sha256": source_solution_sha256,
+        "recovered_submission": recovered_submission,
+        "recovery_reason": recovery_reason,
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     _write_json(artifact_dir / "submission_eval.json", metadata)
@@ -979,6 +999,14 @@ def source_record_from_solution_path(
     submission_path = artifact_dir / "submission.csv"
     code = resolved_solution.read_text()
     ag_config = lab.parse_autogluon_config(code) or {}
+    source_eval = lab._load_json(artifact_dir / "submission_eval.json")
+    source_manifest = lab._load_json(artifact_dir / RESULT_MANIFEST_NAME)
+    source_metric = source_eval.get("local_score", source_manifest.get("local_score"))
+    source_eval_metric = source_eval.get("eval_metric", source_manifest.get("eval_metric"))
+    source_metric_maximize = source_eval.get(
+        "metric_maximize",
+        source_manifest.get("metric_maximize"),
+    )
     source_solution_sha256 = lab.sha256_file(resolved_solution)
     source_sha256 = (
         lab.sha256_file(submission_path)
@@ -1000,6 +1028,9 @@ def source_record_from_solution_path(
         "autogluon_presets": ag_config.get("presets"),
         "included_model_types": ag_config.get("included_model_types"),
         "time_limit": ag_config.get("time_limit"),
+        "local_score": source_metric,
+        "eval_metric": source_eval_metric,
+        "metric_maximize": source_metric_maximize,
         "source_solution_sha256": source_solution_sha256,
     }
 

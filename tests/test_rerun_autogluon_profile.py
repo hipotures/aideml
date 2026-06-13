@@ -240,6 +240,88 @@ def test_run_profile_eval_can_execute_whole_solution_without_rebuilding_wrapper(
     assert manifest["source"]["source_solution_path"] == str(solution_path)
 
 
+def test_run_profile_eval_recovers_valid_submission_after_timeout(
+    tmp_path, monkeypatch
+):
+    logs_dir = tmp_path / "logs"
+    run_dir = logs_dir / "run-a"
+    source_artifact = run_dir / "artifacts" / "20260504T100000"
+    source_artifact.mkdir(parents=True)
+    input_dir = tmp_path / "workspaces" / "run-a" / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "sample_submission.csv").write_text("id,target\n1,0.0\n")
+    solution_path = source_artifact / "solution.py"
+    solution_path.write_text(
+        "AIDE_AG_CONFIG = {'time_limit': 7200, 'presets': 'best'}\n"
+        "print('legacy solution')\n"
+    )
+    (source_artifact / "submission.csv").write_text("id,target\n1,0.8\n")
+    source_record = {
+        "kind": "profile_eval",
+        "competition": "playground-series-s6e5",
+        "run": "run-a",
+        "timestamp": "20260504T100000",
+        "artifact_dir": str(source_artifact),
+        "solution_path": str(solution_path),
+        "submission_path": str(source_artifact / "submission.csv"),
+        "sha256": kaggle_submission_lab.sha256_file(source_artifact / "submission.csv"),
+        "local_score": 0.95123,
+        "eval_metric": "balanced_accuracy",
+        "metric_maximize": True,
+        "profile": "best_boost_2h",
+    }
+
+    class FakeTimeoutResult:
+        term_out = ["partial output\n"]
+        exec_time = 18000.0
+        exc_type = "TimeoutError"
+        exc_info = {}
+        exc_stack = []
+
+    def fake_execute(code, *, workspace_dir, artifact_dir, timeout, memory_limit_gb):
+        del code, artifact_dir, timeout, memory_limit_gb
+        working = workspace_dir / "working"
+        working.mkdir(parents=True, exist_ok=True)
+        (working / "submission.csv").write_text("id,target\n1,0.9\n")
+        return FakeTimeoutResult()
+
+    monkeypatch.setattr(rerun_autogluon_profile, "execute_code", fake_execute)
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "timestamp_now",
+        lambda: "20260504T120000",
+    )
+
+    record = rerun_autogluon_profile.run_profile_eval(
+        source_record,
+        logs_dir=logs_dir,
+        profile="full_boost",
+        competition="playground-series-s6e5",
+        timeout=18000,
+        memory_limit_gb=80.0,
+        whole_solution_path=solution_path,
+    )
+
+    eval_artifact = run_dir / "artifacts" / "20260504T120000"
+    assert record["status"] == "ok"
+    assert record["is_buggy"] is False
+    assert record["local_score"] == 0.95123
+    assert record["eval_metric"] == "balanced_accuracy"
+    assert record["sha256"] == kaggle_submission_lab.sha256_file(
+        eval_artifact / "submission.csv"
+    )
+    assert not (eval_artifact / "error.txt").exists()
+
+    eval_meta = json.loads((eval_artifact / "submission_eval.json").read_text())
+    assert eval_meta["recovered_submission"] is True
+    assert eval_meta["status"] == "ok"
+
+    manifest = json.loads((eval_artifact / "aide_result.json").read_text())
+    assert manifest["recovered_submission"] is True
+    assert manifest["execution"]["exc_type"] == "TimeoutError"
+    assert manifest["node"]["status"] == "ok"
+
+
 def test_instrument_whole_solution_autogluon_logging_patches_legacy_wrapper():
     legacy_code = '''
 from autogluon.tabular import TabularPredictor
@@ -717,6 +799,15 @@ def test_main_accepts_solution_path_without_sha256(tmp_path, monkeypatch):
     solution_path.write_text("print('custom whole solution')\n")
     submission_path = source_artifact / "submission.csv"
     submission_path.write_text("id,target\n1,0.8\n")
+    (source_artifact / "submission_eval.json").write_text(
+        json.dumps(
+            {
+                "local_score": 0.81234,
+                "eval_metric": "balanced_accuracy",
+                "metric_maximize": True,
+            }
+        )
+    )
     calls = []
 
     def fake_run_profile_eval(record, **kwargs):
@@ -757,6 +848,8 @@ def test_main_accepts_solution_path_without_sha256(tmp_path, monkeypatch):
     assert record["kind"] == "profile_eval"
     assert record["solution_path"] == str(solution_path)
     assert record["sha256"] == kaggle_submission_lab.sha256_file(submission_path)
+    assert record["local_score"] == 0.81234
+    assert record["eval_metric"] == "balanced_accuracy"
     assert record["source_solution_sha256"] == kaggle_submission_lab.sha256_file(
         solution_path
     )
