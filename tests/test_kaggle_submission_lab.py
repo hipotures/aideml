@@ -1067,6 +1067,17 @@ def test_tree_kind_profile_labels_seeded_source_node_as_source():
         )
         == "full"
     )
+    assert (
+        kaggle_submission_lab._tree_kind_profile(
+            {
+                "kind": "profile_eval",
+                "source_sha256": "source-parent-sha",
+                "profile": "full_boost",
+                "source_solution_path": "logs/run/artifacts/ts/solution_best_1h_v6_cpu.py",
+            }
+        )
+        == "solution_best_1h_v6_cpu.py"
+    )
 
 
 def test_candidate_tree_hides_seed_copy_records_by_default(tmp_path):

@@ -230,6 +230,14 @@ def test_run_profile_eval_can_execute_whole_solution_without_rebuilding_wrapper(
     assert (eval_artifact / "solution.py").read_text() == whole_solution
     assert record["profile"] == "best_boost_gpu_1h"
     assert record["source_sha256"] == source_record["sha256"]
+    assert record["source_solution_path"] == str(solution_path)
+
+    eval_meta = json.loads((eval_artifact / "submission_eval.json").read_text())
+    assert eval_meta["source_solution_path"] == str(solution_path)
+
+    manifest = json.loads((eval_artifact / "aide_result.json").read_text())
+    assert manifest["source_solution_path"] == str(solution_path)
+    assert manifest["source"]["source_solution_path"] == str(solution_path)
 
 
 def test_s6e6_autogluon_defaults_are_competition_scoped():

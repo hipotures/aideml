@@ -367,6 +367,10 @@ def build_manifest_records(
                 "source_step": source.get("source_step"),
                 "source_timestamp": source.get("source_timestamp"),
                 "source_sha256": source.get("source_sha256"),
+                "source_solution_path": source.get("source_solution_path")
+                or manifest.get("source_solution_path"),
+                "source_solution_sha256": source.get("source_solution_sha256")
+                or manifest.get("source_solution_sha256"),
             }
         )
     return records
@@ -914,6 +918,8 @@ def _registry_record_lookup(
             "eval_metric": record.get("eval_metric"),
             "exec_time": record.get("exec_time"),
             "source_sha256": record.get("source_sha256"),
+            "source_solution_path": record.get("source_solution_path"),
+            "source_solution_sha256": record.get("source_solution_sha256"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -1041,6 +1047,19 @@ def _registry_entry_source_sha256(
     return None
 
 
+def _registry_entry_source_solution_path(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("source_solution_path")
+    if explicit:
+        return str(explicit)
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None and record.get("source_solution_path"):
+        return str(record.get("source_solution_path"))
+    return None
+
+
 def _mark_rows_with_source_reruns(rows: list[dict[str, Any]]) -> None:
     source_shas = [
         str(row.get("source_sha256") or "")
@@ -1162,6 +1181,10 @@ def registry_display_rows(
             "date": entry.get("timestamp"),
             "sha256": entry.get("sha256"),
             "source_sha256": _registry_entry_source_sha256(entry, record_lookup),
+            "source_solution_path": _registry_entry_source_solution_path(
+                entry,
+                record_lookup,
+            ),
         }
         for entry in registry.entries
         if competition is None or entry.get("competition") == competition
@@ -1304,6 +1327,8 @@ def _tree_artifact_from_record(
     return {
         "sha256": record.get("sha256"),
         "source_sha256": record.get("source_sha256"),
+        "source_solution_path": record.get("source_solution_path"),
+        "source_solution_sha256": record.get("source_solution_sha256"),
         "kind": record.get("kind") or "source_node",
         "profile": record.get("profile"),
         "local_score": record.get("local_score"),
@@ -1327,6 +1352,8 @@ def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "sha256": row.get("sha256"),
         "source_sha256": row.get("source_sha256"),
+        "source_solution_path": row.get("source_solution_path"),
+        "source_solution_sha256": row.get("source_solution_sha256"),
         "kind": "profile_eval" if _tree_row_is_profile_eval(row) else "source_node",
         "local_score": row.get("local_score"),
         "exec_time": row.get("exec_time"),
@@ -1389,6 +1416,9 @@ def _tree_state(row: dict[str, Any]) -> str:
 
 def _tree_kind_profile(row: dict[str, Any]) -> str:
     if _tree_row_is_profile_eval(row):
+        source_solution_path = row.get("source_solution_path")
+        if source_solution_path:
+            return Path(str(source_solution_path)).name
         return _short_profile(row.get("profile")) or "rerun"
     return "source"
 

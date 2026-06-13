@@ -509,6 +509,8 @@ def run_profile_eval(
         )
 
     source_sha = source_record.get("sha256")
+    source_solution_path = source_record.get("solution_path")
+    source_solution_sha256 = source_record.get("source_solution_sha256")
     metadata = {
         "kind": "profile_eval",
         "competition": competition,
@@ -528,6 +530,8 @@ def run_profile_eval(
         "source_step": source_record.get("step") or source_record.get("source_step"),
         "source_timestamp": source_record.get("timestamp"),
         "source_sha256": source_sha,
+        "source_solution_path": source_solution_path,
+        "source_solution_sha256": source_solution_sha256,
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     _write_json(artifact_dir / "submission_eval.json", metadata)
@@ -608,6 +612,8 @@ def run_profile_eval(
             "source_step": source_record.get("step") or source_record.get("source_step"),
             "source_timestamp": source_record.get("timestamp"),
             "source_sha256": source_sha,
+            "source_solution_path": source_solution_path,
+            "source_solution_sha256": source_solution_sha256,
         },
     }
     _write_json(artifact_dir / RESULT_MANIFEST_NAME, manifest)
