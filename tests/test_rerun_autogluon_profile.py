@@ -240,6 +240,45 @@ def test_run_profile_eval_can_execute_whole_solution_without_rebuilding_wrapper(
     assert manifest["source"]["source_solution_path"] == str(solution_path)
 
 
+def test_instrument_whole_solution_autogluon_logging_patches_legacy_wrapper():
+    legacy_code = '''
+from autogluon.tabular import TabularPredictor
+import time
+import shutil
+
+def _save_prediction_artifact(frame, working_dir, filename):
+    working_path = working_dir / filename
+    working_path.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(working_path, index=False, compression="gzip")
+    artifact_path = working_path
+    if artifact_path.resolve() != working_path.resolve():
+        shutil.copy2(working_path, artifact_path)
+    return working_path
+
+def main() -> None:
+    predictor = TabularPredictor(label="target")
+    print("AIDE AutoGluon: starting validation and prediction", flush=True)
+    predictor.fit(**fit_kwargs)
+    print("AIDE AutoGluon: finished fit", flush=True)
+'''
+
+    instrumented = rerun_autogluon_profile.instrument_whole_solution_autogluon_logging(
+        legacy_code
+    )
+
+    assert "def _aide_wrap_predictor_progress_logging(predictor):" in instrumented
+    assert "\n    _aide_wrap_predictor_progress_logging(predictor)\n" in instrumented
+    assert "AIDE AutoGluon: {method_name} start" in instrumented
+    assert '("predict", "predict_proba", "predict_proba_oof", "evaluate")' in instrumented
+    assert "AIDE AutoGluon: writing prediction artifact" in instrumented
+    assert (
+        rerun_autogluon_profile.instrument_whole_solution_autogluon_logging(
+            instrumented
+        )
+        == instrumented
+    )
+
+
 def test_s6e6_autogluon_defaults_are_competition_scoped():
     source_record = {"solution_path": "unused.py"}
 

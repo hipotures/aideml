@@ -233,6 +233,118 @@ def build_profile_code(
     )
 
 
+AUTOGLUON_PROGRESS_LOGGING_HELPER = '''
+
+import time as _aide_progress_time
+
+def _aide_wrap_predictor_progress_logging(predictor):
+    if getattr(predictor, "_aide_progress_logging_wrapped", False):
+        return predictor
+
+    def _row_count(args, kwargs):
+        data = args[0] if args else kwargs.get("data", kwargs.get("X"))
+        try:
+            return str(len(data))
+        except Exception:
+            return "unknown"
+
+    def _wrap(method_name):
+        original = getattr(predictor, method_name, None)
+        if original is None:
+            return
+
+        def wrapped(*args, **kwargs):
+            model = kwargs.get("model")
+            model_label = model if model is not None else "autogluon_best"
+            rows = "oof" if method_name == "predict_proba_oof" else _row_count(args, kwargs)
+            started_at = _aide_progress_time.time()
+            print(
+                f"AIDE AutoGluon: {method_name} start model={model_label} rows={rows}",
+                flush=True,
+            )
+            try:
+                return original(*args, **kwargs)
+            finally:
+                print(
+                    f"AIDE AutoGluon: {method_name} finished model={model_label} "
+                    f"elapsed={_aide_progress_time.time() - started_at:.1f}s",
+                    flush=True,
+                )
+
+        setattr(predictor, method_name, wrapped)
+
+    for method_name in ("predict", "predict_proba", "predict_proba_oof", "evaluate"):
+        _wrap(method_name)
+    predictor._aide_progress_logging_wrapped = True
+    return predictor
+'''
+
+
+def instrument_whole_solution_autogluon_logging(code: str) -> str:
+    if "AIDE AutoGluon: starting validation and prediction" not in code:
+        return code
+    if "TabularPredictor" not in code:
+        return code
+
+    instrumented = code
+    if "_aide_wrap_predictor_progress_logging" not in instrumented:
+        marker = "\ndef main() -> None:\n"
+        if marker in instrumented:
+            instrumented = instrumented.replace(
+                marker,
+                AUTOGLUON_PROGRESS_LOGGING_HELPER + marker,
+                1,
+            )
+
+    if "_aide_wrap_predictor_progress_logging(predictor)\n" not in instrumented:
+        for indent in ("        ", "    "):
+            fit_marker = f"{indent}predictor.fit(**fit_kwargs)\n"
+            if fit_marker not in instrumented:
+                continue
+            fit_replacement = (
+                f"{indent}predictor.fit(**fit_kwargs)\n"
+                f"{indent}_aide_wrap_predictor_progress_logging(predictor)\n"
+            )
+            instrumented = instrumented.replace(fit_marker, fit_replacement, 1)
+            break
+
+    if "AIDE AutoGluon: writing prediction artifact" not in instrumented:
+        write_marker = (
+            "    working_path.parent.mkdir(parents=True, exist_ok=True)\n"
+            "    frame.to_csv(working_path, index=False, compression=\"gzip\")\n"
+        )
+        write_replacement = (
+            "    working_path.parent.mkdir(parents=True, exist_ok=True)\n"
+            "    _aide_artifact_started_at = _aide_progress_time.time()\n"
+            "    print(\n"
+            "        f\"AIDE AutoGluon: writing prediction artifact {filename} \"\n"
+            "        f\"rows={len(frame)} cols={len(frame.columns)}\",\n"
+            "        flush=True,\n"
+            "    )\n"
+            "    frame.to_csv(working_path, index=False, compression=\"gzip\")\n"
+        )
+        instrumented = instrumented.replace(write_marker, write_replacement, 1)
+
+        return_marker = (
+            "    if artifact_path.resolve() != working_path.resolve():\n"
+            "        shutil.copy2(working_path, artifact_path)\n"
+            "    return working_path\n"
+        )
+        return_replacement = (
+            "    if artifact_path.resolve() != working_path.resolve():\n"
+            "        shutil.copy2(working_path, artifact_path)\n"
+            "    print(\n"
+            "        f\"AIDE AutoGluon: wrote prediction artifact {filename} \"\n"
+            "        f\"elapsed={_aide_progress_time.time() - _aide_artifact_started_at:.1f}s\",\n"
+            "        flush=True,\n"
+            "    )\n"
+            "    return working_path\n"
+        )
+        instrumented = instrumented.replace(return_marker, return_replacement, 1)
+
+    return instrumented
+
+
 def build_whole_solution_code(
     *,
     source_record: dict[str, Any],
@@ -240,7 +352,7 @@ def build_whole_solution_code(
     presets: str | None,
     time_limit: int | None,
 ) -> tuple[str, list[str], int, str]:
-    code = whole_solution_path.read_text()
+    code = instrument_whole_solution_autogluon_logging(whole_solution_path.read_text())
     ag_config = lab.parse_autogluon_config(code) or {}
     included_model_types = (
         ag_config.get("included_model_types")
