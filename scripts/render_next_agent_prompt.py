@@ -9,8 +9,9 @@ from typing import Any
 
 from aide.agent import Agent
 from aide.backend.utils import compile_prompt_to_md, write_llm_request_files
-from aide.journal import Node
+from aide.journal import Journal, Node
 from aide.run import load_resume_state
+from aide.utils.artifact_manifest import reconstruct_journal_from_artifacts
 from aide.utils.config import load_task_desc
 
 
@@ -21,7 +22,7 @@ class PromptRendered(RuntimeError):
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Render the next agent generation prompt for a run/parent step without "
+            "Render the agent generation prompt that produced a run step without "
             "calling an LLM, executing code, or modifying the journal."
         )
     )
@@ -35,7 +36,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--step",
         required=True,
         type=int,
-        help="Parent node step to render the next-child prompt for.",
+        help="Existing node step whose generation prompt should be rendered.",
     )
     parser.add_argument(
         "--out-dir",
@@ -92,12 +93,27 @@ def _find_step(journal_nodes: list[Node], step: int) -> Node:
     raise ValueError(f"No node with step {step} in journal")
 
 
+def _journal_before_step(journal: Journal, step: int) -> Journal:
+    kept = [
+        node
+        for node in journal.nodes
+        if node.step is not None and node.step < step
+    ]
+    kept_set = set(kept)
+    for node in kept:
+        node.children = {child for child in node.children if child in kept_set}
+        if node.parent not in kept_set:
+            node.parent = None
+    return Journal(nodes=kept)
+
+
 def _write_prompt_artifact(
     *,
     prompt: Any,
     out_dir: Path,
     run_id: str,
-    parent_node: Node,
+    target_node: Node,
+    parent_node: Node | None,
     agent: Agent,
 ) -> None:
     system_message = compile_prompt_to_md(prompt)
@@ -106,15 +122,19 @@ def _write_prompt_artifact(
         "dry_run": True,
         "rendered_by": "scripts/render_next_agent_prompt.py",
         "run_id": run_id,
-        "parent_step": parent_node.step,
-        "parent_node_id": parent_node.id,
+        "target_step": target_node.step,
+        "target_node_id": target_node.id,
+        "parent_step": parent_node.step if parent_node is not None else None,
+        "parent_node_id": parent_node.id if parent_node is not None else None,
     }
     request_payload = {
         "created_at": dt.datetime.now().isoformat(timespec="seconds"),
         "dry_run": True,
         "run_id": run_id,
-        "parent_step": parent_node.step,
-        "parent_node_id": parent_node.id,
+        "target_step": target_node.step,
+        "target_node_id": target_node.id,
+        "parent_step": parent_node.step if parent_node is not None else None,
+        "parent_node_id": parent_node.id if parent_node is not None else None,
         "system_message": system_message,
         "user_message": None,
     }
@@ -143,15 +163,23 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True)
 
-        cfg, journal = load_resume_state(
+        cfg, _resume_journal = load_resume_state(
             run_id=run_id,
             top_log_dir=run_dir.parent,
             top_workspace_dir=workspace_root,
             cli_overrides=list(args.overrides),
             force_check_submissions=False,
         )
-        parent_node = _find_step(journal.nodes, args.step)
-        agent = Agent(task_desc=load_task_desc(cfg), cfg=cfg, journal=journal)
+        full_journal = reconstruct_journal_from_artifacts(run_dir)
+        if not full_journal.nodes:
+            raise ValueError(f"No artifact manifests found for run: {run_dir}")
+        target_node = _find_step(full_journal.nodes, args.step)
+        parent_node = target_node.parent
+        render_journal = _journal_before_step(full_journal, args.step)
+        if parent_node is not None:
+            parent_node = _find_step(render_journal.nodes, parent_node.step)
+
+        agent = Agent(task_desc=load_task_desc(cfg), cfg=cfg, journal=render_journal)
         if not args.no_data_preview:
             agent.update_data_preview()
 
@@ -161,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                 prompt=prompt,
                 out_dir=out_dir,
                 run_id=run_id,
+                target_node=target_node,
                 parent_node=parent_node,
                 agent=agent,
             )

@@ -5320,6 +5320,46 @@ def test_standard_improve_prompt_uses_improving_ancestor_memory_and_adjacent_sib
     assert "step 4 from 3: did_not_improve" in attempts
 
 
+def test_standard_improve_prompt_keeps_sub_epsilon_improving_ancestor_in_memory(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
+
+    root = _node(0.968262, code="root", plan="Root baseline")
+    small_gain_parent = _node(
+        0.968278,
+        code="small gain",
+        plan="Small real gain parent",
+    )
+    small_gain_parent.parent = root
+    root.children.add(small_gain_parent)
+    child_attempt = _node(0.968030, code="attempt", plan="Sibling attempt")
+    child_attempt.parent = small_gain_parent
+    small_gain_parent.children.add(child_attempt)
+
+    journal = Journal()
+    for node in [root, small_gain_parent, child_attempt]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(small_gain_parent)
+
+    memory = captured["prompt"]["Memory"]
+    assert "Root baseline" in memory
+    assert "Small real gain parent" in memory
+
+
 def test_standard_improve_prompt_caps_ancestor_and_sibling_entries_together(
     tmp_path,
 ):

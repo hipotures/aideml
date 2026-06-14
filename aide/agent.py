@@ -1749,7 +1749,7 @@ class Agent:
             if configured_entries is None
             else min(50, max(0, int(configured_entries)))
         )
-        ancestor_nodes = _improving_ancestor_nodes(parent_node, epsilon=epsilon)
+        ancestor_nodes = _improving_ancestor_nodes(parent_node, epsilon=0.0)
         attempt_entries = _previous_child_attempt_entries(parent_node)
         ancestor_nodes, attempt_entries = _limit_parent_history_entries(
             ancestor_nodes,
