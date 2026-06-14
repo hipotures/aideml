@@ -4297,6 +4297,40 @@ def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
     return f"# {title}\n"
 
 
+def render_tree_copy_text(title: str, view: TreeView, *, width: int = 100) -> str:
+    tree_lines = [item.line for item in view.items if item.item_id != "header"]
+    return render_panel_copy_text(title, Group(*tree_lines), width=width)
+
+
+def _clean_log_copy_line(line: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", line).replace("\t", "    ")
+
+
+def render_log_copy_text(
+    title: str,
+    active_artifact_dir: Path | None,
+    *,
+    missing_log_hint: str | None = None,
+) -> str:
+    log_path = active_run_log_path(active_artifact_dir)
+    if log_path is None:
+        body = missing_log_hint or "waiting for process log"
+    else:
+        try:
+            body = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            body = "waiting for process log"
+        if not body:
+            body = f"{log_path.name} is empty"
+
+    clean_lines = [_clean_log_copy_line(line) for line in body.splitlines()]
+    clean_body = "\n".join(clean_lines).rstrip()
+    title = title.strip()
+    if clean_body:
+        return f"# {title}\n\n{clean_body}\n"
+    return f"# {title}\n"
+
+
 def osc52_clipboard_sequence(text: str, *, tmux: bool = False) -> str:
     encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
     sequence = f"\x1b]52;c;{encoded}\x07"
@@ -5839,9 +5873,8 @@ def run(argv: list[str] | None = None):
 
     def handle_pending_panel_copy(
         *,
-        left_panel_content,
+        left_view: TreeView,
         data_panel_content,
-        log_panel_content,
         left_width: int,
         right_width: int,
     ) -> None:
@@ -5854,22 +5887,29 @@ def run(argv: list[str] | None = None):
         if action == "copy_aide_panel":
             panel_name = "aide"
             panel_title = f'AIDE: "{cfg.exp_name}"'
-            renderable = left_panel_content
             width = left_width
+            text = render_tree_copy_text(panel_title, left_view, width=width)
         elif action == "copy_run_data_panel":
             panel_name = "run-data"
             panel_title = "Run data"
             renderable = data_panel_content
             width = right_width
+            text = render_panel_copy_text(panel_title, renderable, width=width)
         elif action == "copy_logs_panel":
             panel_name = "logs"
             panel_title = "Logs"
-            renderable = log_panel_content
-            width = right_width
+            text = render_log_copy_text(
+                panel_title,
+                active_artifact_dir,
+                missing_log_hint=(
+                    agent.active_research_hypothesis_log_hint
+                    if agent.active_stage == "generating"
+                    else None
+                ),
+            )
         else:
             return
 
-        text = render_panel_copy_text(panel_title, renderable, width=width)
         path = save_panel_copy(panel_name, cfg.exp_name, text)
         osc52_sent = copy_text_to_clipboard_osc52(text)
         copy_notice = build_panel_copy_notice(
@@ -6000,9 +6040,8 @@ def run(argv: list[str] | None = None):
             (0, 1, 0, 1),
         )
         handle_pending_panel_copy(
-            left_panel_content=left_panel_content,
+            left_view=left_view,
             data_panel_content=data_panel_content,
-            log_panel_content=log_panel_content,
             left_width=left_copy_width,
             right_width=right_copy_width,
         )

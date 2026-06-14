@@ -53,7 +53,9 @@ from aide.run import (
     next_left_panel_view,
     recover_tree_focus_by_index,
     render_tree_view,
+    render_log_copy_text,
     render_panel_copy_text,
+    render_tree_copy_text,
     run_with_live_refresh,
     save_panel_copy,
     stage_status_message,
@@ -2040,6 +2042,64 @@ def test_render_panel_copy_text_exports_plain_text_without_ansi():
     assert text.startswith("# Logs\n\n")
     assert "Training AutoGluon..." in text
     assert "\x1b[" not in text
+
+
+def test_render_tree_copy_text_exports_full_tree_without_view_header():
+    journal = Journal()
+    root = _good_node(0.90)
+    child = _good_node(0.91, parent=root)
+    sibling = _good_node(0.92)
+    for node in [root, child, sibling]:
+        journal.append(node)
+    view = build_tree_view(journal)
+
+    viewport = render_panel_copy_text(
+        "AIDE",
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=2,
+        ),
+        width=80,
+    )
+    copied = render_tree_copy_text("AIDE", view, width=80)
+
+    assert "Solution tree" in viewport
+    assert "0.92000" not in viewport
+    assert copied.startswith("# AIDE\n\n")
+    assert "Solution tree" not in copied
+    assert "0.90000" in copied
+    assert "0.91000" in copied
+    assert "0.92000" in copied
+    assert "\x1b[" not in copied
+
+
+def test_render_log_copy_text_exports_full_active_log_without_view_clipping(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    log_path = artifact_dir / "process_stdout.log"
+    log_path.write_text(
+        "\x1b[31mfirst line\x1b[0m\n"
+        "middle line with more text than the visible panel width\n"
+        "last line\n",
+        encoding="utf-8",
+    )
+
+    visible = build_run_log_summary(artifact_dir, max_lines=1, max_width=12)
+    visible_text = render_panel_copy_text("Logs", visible, width=80)
+    copied = render_log_copy_text("Logs", artifact_dir)
+
+    assert "last line" in visible_text
+    assert "first line" not in visible_text
+    assert "middle line" not in visible_text
+    assert copied == (
+        "# Logs\n\n"
+        "first line\n"
+        "middle line with more text than the visible panel width\n"
+        "last line\n"
+    )
+    assert "\x1b[" not in copied
 
 
 def test_osc52_clipboard_sequence_encodes_text_for_terminal_clipboard():
