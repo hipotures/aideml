@@ -669,27 +669,89 @@ def _best_working_descendant(node: Node) -> Node | None:
     return best
 
 
-def _format_previous_child_attempts(
+def _node_step_sort_value(node: Node) -> int:
+    if isinstance(node.step, int) and not isinstance(node.step, bool):
+        return node.step
+    return -1
+
+
+def _improving_ancestor_nodes(parent_node: Node, *, epsilon: float) -> list[Node]:
+    path: list[Node] = []
+    current: Node | None = parent_node
+    while current is not None:
+        path.append(current)
+        current = current.parent
+    ancestors = list(reversed(path))
+    return [
+        node
+        for node in ancestors
+        if node.parent is None or _node_improves_parent(node, node.parent, epsilon=epsilon)
+    ]
+
+
+def _previous_child_attempt_entries(
     parent_node: Node,
-    *,
-    epsilon: float,
-    limit: int = 10,
-) -> str | None:
+) -> list[tuple[Node, Node | None]]:
     attempts = [
         child
         for child in parent_node.children
         if not child.is_terminal_failure
     ]
-    if not attempts:
-        return None
-    attempts = sorted(
-        attempts,
-        key=lambda child: (-1 if child.step is None else child.step),
-    )[-limit:]
-    display_attempts = [
-        _best_working_descendant(child) if child.is_buggy else None
+    attempts = sorted(attempts, key=_node_step_sort_value)
+    return [
+        (child, _best_working_descendant(child) if child.is_buggy else None)
         for child in attempts
     ]
+
+
+def _limit_parent_history_entries(
+    ancestor_nodes: list[Node],
+    attempt_entries: list[tuple[Node, Node | None]],
+    *,
+    limit: int,
+) -> tuple[list[Node], list[tuple[Node, Node | None]]]:
+    if limit <= 0:
+        return [], []
+
+    sortable: list[tuple[int, str, int]] = []
+    for idx, node in enumerate(ancestor_nodes):
+        sortable.append((_node_step_sort_value(node), "ancestor", idx))
+    for idx, (child, replacement) in enumerate(attempt_entries):
+        sortable.append((_node_step_sort_value(replacement or child), "attempt", idx))
+
+    if len(sortable) <= limit:
+        return ancestor_nodes, attempt_entries
+
+    keep = {
+        (kind, idx)
+        for _, kind, idx in sorted(sortable, key=lambda item: item[0])[-limit:]
+    }
+    return (
+        [
+            node
+            for idx, node in enumerate(ancestor_nodes)
+            if ("ancestor", idx) in keep
+        ],
+        [
+            entry
+            for idx, entry in enumerate(attempt_entries)
+            if ("attempt", idx) in keep
+        ],
+    )
+
+
+def _format_previous_child_attempts(
+    parent_node: Node,
+    *,
+    epsilon: float,
+    limit: int = 10,
+    entries: list[tuple[Node, Node | None]] | None = None,
+) -> str | None:
+    attempt_entries = entries
+    if attempt_entries is None:
+        attempt_entries = _previous_child_attempt_entries(parent_node)[-limit:]
+    if not attempt_entries:
+        return None
     parent_value = (
         float(parent_node.metric.value)
         if parent_node.metric is not None and parent_node.metric.value is not None
@@ -704,7 +766,7 @@ def _format_previous_child_attempts(
         ),
         "",
     ]
-    for child, replacement in zip(attempts, display_attempts):
+    for child, replacement in attempt_entries:
         display_node = replacement or child
         if child.is_timeout_failure:
             status = "timeout"
@@ -1661,6 +1723,50 @@ class Agent:
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
             )
 
+    def _add_parent_history_context(
+        self,
+        prompt: dict[str, Any],
+        *,
+        parent_node: Node,
+        epsilon: float,
+    ) -> None:
+        if self._is_hypothesis_mode() or _is_hypothesis_branch(parent_node):
+            self._add_memory_or_branch_context(prompt, parent_node=parent_node)
+            previous_attempts = _format_previous_child_attempts(
+                parent_node,
+                epsilon=epsilon,
+            )
+            if previous_attempts is not None:
+                prompt["Previous attempts from this parent"] = previous_attempts
+            return
+
+        configured_entries = self.acfg.memory_recent_steps
+        max_entries = (
+            50
+            if configured_entries is None
+            else min(50, max(0, int(configured_entries)))
+        )
+        ancestor_nodes = _improving_ancestor_nodes(parent_node, epsilon=epsilon)
+        attempt_entries = _previous_child_attempt_entries(parent_node)
+        ancestor_nodes, attempt_entries = _limit_parent_history_entries(
+            ancestor_nodes,
+            attempt_entries,
+            limit=max_entries,
+        )
+
+        if ancestor_nodes:
+            prompt["Memory"] = self.journal.generate_node_summary(
+                ancestor_nodes,
+                public_scores_by_node_id=self.prompt_public_scores_by_node_id,
+            )
+        previous_attempts = _format_previous_child_attempts(
+            parent_node,
+            epsilon=epsilon,
+            entries=attempt_entries,
+        )
+        if previous_attempts is not None:
+            prompt["Previous attempts from this parent"] = previous_attempts
+
     def _branch_hypothesis_descriptions_by_id(self) -> dict[str, str]:
         try:
             library = load_manual_hypothesis_library(self.cfg, repo_root=REPO_ROOT)
@@ -1994,19 +2100,17 @@ class Agent:
             "Task description": self.task_desc,
             "Instructions": {},
         }
-        self._add_memory_or_branch_context(prompt, parent_node=parent_node)
+        self._add_parent_history_context(
+            prompt,
+            parent_node=parent_node,
+            epsilon=improvement_epsilon,
+        )
         prompt["Previous solution"] = {
             "Code": wrap_code(parent_node.code),
         }
         parent_stdout = self._parent_process_stdout_prompt(parent_node)
         if parent_stdout is not None:
             prompt["Previous execution log"] = parent_stdout
-        previous_attempts = _format_previous_child_attempts(
-            parent_node,
-            epsilon=improvement_epsilon,
-        )
-        if previous_attempts is not None:
-            prompt["Previous attempts from this parent"] = previous_attempts
 
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
@@ -2015,7 +2119,7 @@ class Agent:
                 "You should be very specific and should only propose a single actionable improvement.",
                 "This improvement should be atomic so that we can experimentally evaluate the effect of the proposed change.",
                 "Take the Memory or Branch context section into consideration when proposing the improvement.",
-                "Use the recent Memory/Branch context and Previous attempts sections as a partial record of what has already been tried. Avoid near-duplicate changes when the same feature family, model setup, or training idea already appears there. If the recent record is dominated by small feature tweaks with marginal score movement, choose a more distinct controlled experiment instead: a different model family, ensembling strategy, calibration, feature selection, training setup, or a clearly new feature family. Make the proposed change easy to distinguish from the listed attempts, and preserve the required metric and output artifacts.",
+                "Use the recent Memory and Previous attempts sections as a partial record of what has already been tried; in hypothesis mode, use Branch context for the active ancestor path. Avoid near-duplicate changes when the same feature family, model setup, or training idea already appears there. If the recent record is dominated by small feature tweaks with marginal score movement, choose a more distinct controlled experiment instead: a different model family, ensembling strategy, calibration, feature selection, training setup, or a clearly new feature family. Make the proposed change easy to distinguish from the listed attempts, and preserve the required metric and output artifacts.",
                 "The solution sketch should be 3-5 sentences.",
                 "Don't suggest to do EDA.",
             ],
@@ -2052,13 +2156,11 @@ class Agent:
             ),
             "Instructions": {},
         }
-        self._add_memory_or_branch_context(prompt, parent_node=parent_node)
-        previous_attempts = _format_previous_child_attempts(
-            parent_node,
+        self._add_parent_history_context(
+            prompt,
+            parent_node=parent_node,
             epsilon=improvement_epsilon,
         )
-        if previous_attempts is not None:
-            prompt["Previous attempts from this parent"] = previous_attempts
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Preprocessing improvement sketch guideline": [

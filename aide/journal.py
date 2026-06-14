@@ -424,9 +424,7 @@ class Journal(DataClassJsonMixin):
         public_scores_by_node_id: dict[str, float] | None = None,
     ) -> str:
         """Generate a summary of the journal for the agent."""
-        public_scores_by_node_id = public_scores_by_node_id or {}
         good_nodes = self.good_nodes
-        best_node = self.get_best_node()
         steps = [
             n.step
             for n in good_nodes
@@ -457,36 +455,74 @@ class Journal(DataClassJsonMixin):
                 and not isinstance(n.step, bool)
                 and n.step in full_steps
             )
-            summary_part = f"Step: {_format_step_value(n.step)}\n"
-            summary_part += f"Design: {_summary_plan_text(n.plan)}\n"
-            if include_code and include_full_node:
-                summary_part += f"Code: {n.code}\n"
-            if include_full_node:
-                analysis_text = _summary_analysis_text(n.analysis)
-                if analysis_text:
-                    summary_part += f"Results: {analysis_text}\n"
-                if n.validity_warning:
-                    summary_part += f"Validity warning: {n.validity_warning}\n"
-            best_marker = " (current best)" if n is best_node else ""
-            summary_part += f"Validation Metric: {n.metric.value:.5f}{best_marker}\n"
-            public_score = public_scores_by_node_id.get(n.id)
+            summary.append(
+                self._format_summary_node(
+                    n,
+                    include_code=include_code and include_full_node,
+                    include_full_node=include_full_node,
+                    public_scores_by_node_id=public_scores_by_node_id,
+                )
+            )
+        return "\n-------------------------------\n".join(summary)
+
+    def generate_node_summary(
+        self,
+        nodes: list[Node],
+        *,
+        include_code: bool = False,
+        public_scores_by_node_id: dict[str, float] | None = None,
+    ) -> str:
+        """Generate a summary for a specific ordered list of journal nodes."""
+        return "\n-------------------------------\n".join(
+            self._format_summary_node(
+                n,
+                include_code=include_code,
+                include_full_node=True,
+                public_scores_by_node_id=public_scores_by_node_id,
+            )
+            for n in nodes
+        )
+
+    def _format_summary_node(
+        self,
+        node: Node,
+        *,
+        include_code: bool,
+        include_full_node: bool,
+        public_scores_by_node_id: dict[str, float] | None,
+    ) -> str:
+        public_scores_by_node_id = public_scores_by_node_id or {}
+        best_node = self.get_best_node()
+        summary_part = f"Step: {_format_step_value(node.step)}\n"
+        summary_part += f"Design: {_summary_plan_text(node.plan)}\n"
+        if include_code:
+            summary_part += f"Code: {node.code}\n"
+        if include_full_node:
+            analysis_text = _summary_analysis_text(node.analysis)
+            if analysis_text:
+                summary_part += f"Results: {analysis_text}\n"
+            if node.validity_warning:
+                summary_part += f"Validity warning: {node.validity_warning}\n"
+        if node.metric is not None and node.metric.value is not None:
+            best_marker = " (current best)" if node is best_node else ""
+            summary_part += f"Validation Metric: {node.metric.value:.5f}{best_marker}\n"
+            public_score = public_scores_by_node_id.get(node.id)
             if public_score is not None:
                 summary_part += (
                     _format_public_cv_interpretation(
-                        cv_score=float(n.metric.value),
+                        cv_score=float(node.metric.value),
                         public_score=public_score,
-                        maximize=n.metric.maximize is not False,
+                        maximize=node.metric.maximize is not False,
                     )
                     + "\n"
                 )
-            delta = _format_node_parent_delta(n)
-            if delta is not None:
-                summary_part += f"{delta}\n"
-            outcome = _format_node_parent_outcome(n)
-            if outcome is not None:
-                summary_part += f"{outcome}\n"
-            summary.append(summary_part)
-        return "\n-------------------------------\n".join(summary)
+        delta = _format_node_parent_delta(node)
+        if delta is not None:
+            summary_part += f"{delta}\n"
+        outcome = _format_node_parent_outcome(node)
+        if outcome is not None:
+            summary_part += f"{outcome}\n"
+        return summary_part
 
     def _ancestor_path(self, node: Node) -> list[Node]:
         path: list[Node] = []

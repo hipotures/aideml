@@ -5223,3 +5223,132 @@ def test_standard_improve_prompt_omits_prior_child_attempts_without_children(
     agent._improve(parent)
 
     assert "Previous attempts from this parent" not in captured["prompt"]
+
+
+def test_standard_improve_prompt_uses_improving_ancestor_memory_and_adjacent_siblings(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.0
+
+    root = _node(0.900, code="root", plan="Root baseline")
+    worse_root_child = _node(0.890, code="worse", plan="Worse root child")
+    improved_child = _node(0.910, code="improved", plan="Improved ancestor")
+    current_parent = _node(
+        0.905,
+        code="current",
+        plan="Non-improving current parent",
+    )
+    child_attempt = _node(0.904, code="attempt", plan="Current parent child attempt")
+    unrelated_global = _node(0.990, code="other", plan="Unrelated global winner")
+
+    worse_root_child.parent = root
+    root.children.add(worse_root_child)
+    improved_child.parent = root
+    root.children.add(improved_child)
+    current_parent.parent = improved_child
+    improved_child.children.add(current_parent)
+    child_attempt.parent = current_parent
+    current_parent.children.add(child_attempt)
+
+    journal = Journal()
+    for node in [
+        root,
+        worse_root_child,
+        improved_child,
+        current_parent,
+        child_attempt,
+        unrelated_global,
+    ]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(current_parent)
+
+    keys = list(captured["prompt"])
+    assert keys.index("Previous attempts from this parent") == keys.index("Memory") + 1
+
+    memory = captured["prompt"]["Memory"]
+    assert "Root baseline" in memory
+    assert "Improved ancestor" in memory
+    assert "Non-improving current parent" not in memory
+    assert "Worse root child" not in memory
+    assert "Unrelated global winner" not in memory
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Current parent child attempt" in attempts
+    assert "step 4 from 3: did_not_improve" in attempts
+
+
+def test_standard_improve_prompt_caps_ancestor_and_sibling_entries_together(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    cfg.agent.memory_recent_steps = 100
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.0
+
+    journal = Journal()
+    root = _node(0.900, code="root", plan="path 0")
+    journal.append(root)
+    current = root
+
+    for step in range(1, 50):
+        child = _node(
+            0.900 + step / 1000.0,
+            code=f"path {step}",
+            plan=f"path {step}",
+        )
+        child.parent = current
+        current.children.add(child)
+        journal.append(child)
+        current = child
+
+    for idx in range(5):
+        attempt = _node(
+            0.948 - idx / 1000.0,
+            code=f"attempt {idx}",
+            plan=f"attempt {idx}",
+        )
+        attempt.parent = current
+        current.children.add(attempt)
+        journal.append(attempt)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(current)
+
+    memory = captured["prompt"]["Memory"]
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    memory_steps = [
+        int(match.group(1))
+        for match in re.finditer(r"^Step: (\d+)$", memory, flags=re.MULTILINE)
+    ]
+    attempt_steps = [
+        int(match.group(1))
+        for match in re.finditer(r"^- step (\d+) from", attempts, flags=re.MULTILINE)
+    ]
+    combined_steps = memory_steps + attempt_steps
+
+    assert len(combined_steps) == 50
+    assert min(combined_steps) == 5
+    assert max(combined_steps) == 54
+    assert set(range(0, 5)).isdisjoint(combined_steps)

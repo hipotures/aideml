@@ -1048,6 +1048,66 @@ def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):
     assert "base_feature" in node.code
 
 
+def test_agent_autogluon_improve_prompt_keeps_memory_and_siblings_adjacent(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    parent = Node(
+        plan="base preprocess",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    df = df.copy()\n"
+            "    df['base_feature'] = 1\n"
+            "    return df\n",
+            cfg,
+        ),
+    )
+    parent.metric = MetricValue(0.9, maximize=True)
+    parent.is_buggy = False
+    prior_child = Node(
+        plan="prior child attempt",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    df = df.copy()\n"
+            "    df['base_feature'] = 0\n"
+            "    return df\n",
+            cfg,
+        ),
+        parent=parent,
+    )
+    prior_child.metric = MetricValue(0.89, maximize=True)
+    prior_child.is_buggy = False
+    parent.children.add(prior_child)
+
+    journal = Journal()
+    journal.append(parent)
+    journal.append(prior_child)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    captured = {}
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return (
+            "improve feature",
+            "def preprocess(df):\n"
+            "    df = df.copy()\n"
+            "    df['base_feature'] = 2\n"
+            "    return df\n",
+        )
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    keys = list(captured["prompt"])
+    assert keys.index("Previous attempts from this parent") == keys.index("Memory") + 1
+    assert "base preprocess" in captured["prompt"]["Memory"]
+    assert (
+        "prior child attempt"
+        in captured["prompt"]["Previous attempts from this parent"]
+    )
+
+
 def test_parse_result_marker_short_circuits_feedback_review(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
