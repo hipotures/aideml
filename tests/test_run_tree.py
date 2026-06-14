@@ -2063,12 +2063,12 @@ def test_render_tree_copy_text_exports_full_tree_without_view_header():
         ),
         width=80,
     )
-    copied = render_tree_copy_text("AIDE", view, width=80)
+    copied = render_tree_copy_text('AIDE: "test-run"', view, width=80)
 
     assert "Solution tree" in viewport
     assert "0.92000" not in viewport
-    assert copied.startswith("# AIDE\n●\n")
-    assert "# AIDE\n\n" not in copied
+    assert copied.startswith("● test-run\n")
+    assert "# AIDE" not in copied
     assert "Solution tree" not in copied
     assert "0.90000" in copied
     assert "0.91000" in copied

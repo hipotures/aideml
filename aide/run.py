@@ -4305,9 +4305,11 @@ def render_tree_copy_text(title: str, view: TreeView, *, width: int = 100) -> st
     tree_lines = [item.line for item in view.items if item.item_id != "header"]
     body = _render_copy_body(Group(*tree_lines), width=width)
     title = title.strip()
+    run_match = re.fullmatch(r'AIDE:\s*"(.+)"', title)
+    root_label = run_match.group(1) if run_match else title
     if body:
-        return f"# {title}\n●\n{body}\n"
-    return f"# {title}\n●\n"
+        return f"● {root_label}\n{body}\n"
+    return f"● {root_label}\n"
 
 
 def _clean_log_copy_line(line: str) -> str:
