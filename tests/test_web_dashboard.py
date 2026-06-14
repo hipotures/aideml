@@ -182,11 +182,10 @@ def test_web_tree_lines_do_not_duplicate_existing_active_generated_node():
         active_step=generated.step,
     )
 
-    assert [line.label for line in lines] == [
-        "0.91000·0",
-        "generated·1",
+    assert [(line.label, line.kind) for line in lines] == [
+        ("0.91000·0", "best"),
+        ("executing·1", "active"),
     ]
-    assert all(line.kind != "active" for line in lines)
 
 
 def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():

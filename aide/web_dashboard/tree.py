@@ -277,14 +277,17 @@ def build_web_tree_lines(
         desktop_prefix: str,
         is_last: bool,
     ) -> None:
-        label, kind = _line_for_node(
-            node,
-            best_node=best_node,
-            public_best_node=public_best_node,
-            plateau_block_epsilon=plateau_block_epsilon,
-            public_node_ids=public_node_ids,
-            public_bonus_node_ids=public_bonus_node_ids,
-        )
+        if node is active_existing_node and active_stage is not None:
+            label, kind = active_label(), "active"
+        else:
+            label, kind = _line_for_node(
+                node,
+                best_node=best_node,
+                public_best_node=public_best_node,
+                plateau_block_epsilon=plateau_block_epsilon,
+                public_node_ids=public_node_ids,
+                public_bonus_node_ids=public_bonus_node_ids,
+            )
         branch = "└" if is_last else "├"
         lines.append(
             WebTreeLine(
