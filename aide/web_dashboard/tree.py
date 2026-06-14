@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from aide.journal import Journal, Node
-from aide.research import hypothesis_id_for_node, root_hypothesis_id_for_node
+from aide.research import root_hypothesis_id_for_node
 from aide.utils.metric import MetricValue
 from aide.utils.plateau import (
     DEFAULT_PLATEAU_BLOCK_EPSILON,
@@ -22,9 +22,13 @@ def _node_order_key(journal: Journal, node: Node) -> tuple[bool, int, float, str
 
 
 def _hypothesis_or_step_suffix(node: Node) -> str:
-    hypothesis_id = hypothesis_id_for_node(node)
-    if node.parent is None and hypothesis_id is not None:
-        return f"·{hypothesis_id}"
+    if len(node.research_hypotheses_offered) == 1:
+        if node.parent is not None and node.step is not None:
+            return f"·{node.research_hypotheses_offered[0]}#{node.step}"
+        return f"·{node.research_hypotheses_offered[0]}"
+    root_hypothesis_id = root_hypothesis_id_for_node(node)
+    if root_hypothesis_id is not None and node.step is not None:
+        return f"·{root_hypothesis_id}#{node.step}"
     if node.step is not None:
         return f"·{node.step}"
     return ""
