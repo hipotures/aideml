@@ -5773,6 +5773,7 @@ def run(argv: list[str] | None = None):
                     tree_lines=build_web_tree_lines(
                         journal,
                         virtual_root_rows=_hypothesis_root_inventory_rows(cfg, journal),
+                        active_node=agent.active_node,
                         active_parent_node=agent.active_parent_node,
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),

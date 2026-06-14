@@ -181,6 +181,7 @@ def build_web_tree_lines(
     journal: Journal,
     *,
     virtual_root_rows: list[dict[str, object]] | None = None,
+    active_node: Node | None = None,
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
@@ -191,6 +192,7 @@ def build_web_tree_lines(
     public_score_bonus_cap: float = 0.0,
 ) -> list[WebTreeLine]:
     journal_nodes = set(journal.nodes)
+    active_existing_node = active_node if active_node in journal_nodes else None
     public_scores_by_node_id = public_scores_by_node_id or {}
     public_node_ids = {
         node.id
@@ -234,13 +236,13 @@ def build_web_tree_lines(
     def active_label() -> str:
         stage = active_stage or "running"
         if stage == "generating":
-            label = "generating..."
+            label = "generating"
         elif stage == "executing":
-            label = "executing..."
+            label = "executing"
         elif stage == "reviewing":
-            label = "reviewing result..."
+            label = "reviewing result"
         else:
-            label = f"{stage}..."
+            label = stage
         label_hypothesis_id = active_hypothesis_id
         if (
             active_parent_node is not None
@@ -256,6 +258,8 @@ def build_web_tree_lines(
 
     def append_active(prefix: str, desktop_prefix: str, is_last: bool) -> None:
         if active_stage is None:
+            return
+        if active_existing_node is not None:
             return
         branch = "└" if is_last else "├"
         lines.append(

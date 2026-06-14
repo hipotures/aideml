@@ -160,8 +160,33 @@ def test_web_tree_lines_accept_active_step_placeholder():
         active_step=48,
     )
 
-    assert lines[1].label == "generating...·48"
+    assert lines[1].label == "generating·48"
     assert lines[1].kind == "active"
+
+
+def test_web_tree_lines_do_not_duplicate_existing_active_generated_node():
+    journal = Journal()
+    root = _scored_node(0.91)
+    generated = Node(code="print('pending')", plan="pending", parent=root)
+    generated.status = "generated"
+    generated.is_buggy = False
+    generated.metric = None
+    journal.append(root)
+    journal.append(generated)
+
+    lines = build_web_tree_lines(
+        journal,
+        active_node=generated,
+        active_parent_node=root,
+        active_stage="executing",
+        active_step=generated.step,
+    )
+
+    assert [line.label for line in lines] == [
+        "0.91000·0",
+        "generated·1",
+    ]
+    assert all(line.kind != "active" for line in lines)
 
 
 def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():
