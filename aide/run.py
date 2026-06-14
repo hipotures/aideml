@@ -5873,8 +5873,9 @@ def run(argv: list[str] | None = None):
 
     def handle_pending_panel_copy(
         *,
-        left_view: TreeView,
+        tree_copy_view: TreeView,
         data_panel_content,
+        active_artifact_dir: Path | None,
         left_width: int,
         right_width: int,
     ) -> None:
@@ -5888,7 +5889,7 @@ def run(argv: list[str] | None = None):
             panel_name = "aide"
             panel_title = f'AIDE: "{cfg.exp_name}"'
             width = left_width
-            text = render_tree_copy_text(panel_title, left_view, width=width)
+            text = render_tree_copy_text(panel_title, tree_copy_view, width=width)
         elif action == "copy_run_data_panel":
             panel_name = "run-data"
             panel_title = "Run data"
@@ -6040,8 +6041,9 @@ def run(argv: list[str] | None = None):
             (0, 1, 0, 1),
         )
         handle_pending_panel_copy(
-            left_view=left_view,
+            tree_copy_view=current_tree_view(blink_on=False),
             data_panel_content=data_panel_content,
+            active_artifact_dir=active_artifact_dir,
             left_width=left_copy_width,
             right_width=right_copy_width,
         )

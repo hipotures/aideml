@@ -2102,6 +2102,18 @@ def test_render_log_copy_text_exports_full_active_log_without_view_clipping(tmp_
     assert "\x1b[" not in copied
 
 
+def test_live_panel_copy_uses_full_tree_and_active_log_sources():
+    source = Path(__file__).parents[1] / "aide" / "run.py"
+    text = source.read_text(encoding="utf-8")
+
+    assert "tree_copy_view: TreeView" in text
+    assert "active_artifact_dir: Path | None" in text
+    assert "tree_copy_view=current_tree_view(blink_on=False)" in text
+    assert "active_artifact_dir=active_artifact_dir" in text
+    assert "render_tree_copy_text(panel_title, tree_copy_view" in text
+    assert "render_log_copy_text(\n                panel_title,\n                active_artifact_dir," in text
+
+
 def test_osc52_clipboard_sequence_encodes_text_for_terminal_clipboard():
     sequence = osc52_clipboard_sequence("hello", tmux=False)
 
