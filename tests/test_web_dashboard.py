@@ -255,6 +255,26 @@ def test_web_server_serves_html_snapshot_and_404():
         server.stop()
 
 
+def test_web_dashboard_state_can_share_snapshots_through_file(tmp_path):
+    snapshot_path = tmp_path / "web_snapshot.json"
+    publisher = WebDashboardState(snapshot_path=snapshot_path)
+    reader = WebDashboardState(snapshot_path=snapshot_path)
+
+    publisher.update(
+        WebDashboardSnapshot(
+            run_id="3-s6e6-v15-feature-search",
+            tree_lines=[WebTreeLine(prefix="└", label="0.96826·0", kind="best")],
+            status="Running...",
+        )
+    )
+
+    snapshot = reader.get_snapshot()
+
+    assert snapshot.run_id == "3-s6e6-v15-feature-search"
+    assert snapshot.status == "Running..."
+    assert snapshot.tree_lines[0].label == "0.96826·0"
+
+
 def test_web_server_reads_static_html_from_disk_on_each_request(tmp_path):
     static_dir = tmp_path / "static"
     static_dir.mkdir()
