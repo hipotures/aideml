@@ -21,6 +21,13 @@ def is_csv_file(f: Path) -> bool:
     return f.suffix == ".csv" or f.name.endswith(".csv.gz")
 
 
+def _display_name(path: Path | str) -> str:
+    name = str(path)
+    if name.endswith(".csv.gz"):
+        return name[: -len(".gz")]
+    return name
+
+
 def _visible_files(path: Path) -> list[Path]:
     files = [p for p in Path(path).iterdir() if not p.is_dir()]
     names = {p.name for p in files}
@@ -58,7 +65,9 @@ def file_tree(path: Path, depth=0) -> str:
     dirs = [p for p in Path(path).iterdir() if p.is_dir()]
     max_n = 4 if len(files) > 30 else 8
     for p in sorted(files)[:max_n]:
-        result.append(f"{' ' * depth * 4}{p.name} ({get_file_len_size(p)[1]})")
+        result.append(
+            f"{' ' * depth * 4}{_display_name(p.name)} ({get_file_len_size(p)[1]})"
+        )
     if len(files) > max_n:
         result.append(f"{' ' * depth * 4}... and {len(files) - max_n} other files")
 
@@ -155,13 +164,13 @@ def generate(
     structure and previews of individual files
     """
     out = []
-    detailed_files = set(detailed_files or [])
+    detailed_files = {_display_name(file_name) for file_name in detailed_files or []}
     if include_file_tree:
         out.append(f"```\n{file_tree(base_path)}```")
 
     if include_file_details:
         for fn in _walk(base_path):
-            file_name = str(fn.relative_to(base_path))
+            file_name = _display_name(fn.relative_to(base_path))
 
             if is_csv_file(fn):
                 out.append(

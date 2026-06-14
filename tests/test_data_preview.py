@@ -10,8 +10,9 @@ def test_generate_previews_gzip_compressed_csv(tmp_path):
 
     preview = generate(tmp_path)
 
-    assert "train.csv.gz (3 lines)" in preview
-    assert "-> train.csv.gz has 2 rows and 2 columns." in preview
+    assert "train.csv (3 lines)" in preview
+    assert "-> train.csv has 2 rows and 2 columns." in preview
+    assert "train.csv.gz" not in preview
     assert "id (int64)" in preview
     assert "target (int64)" in preview
 

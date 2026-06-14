@@ -23,7 +23,7 @@ from .autogluon_preprocess import (
 from .backend import FunctionSpec, query
 from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
-from .journal import Journal, Node
+from .journal import Journal, Node, _summary_analysis_text, _summary_plan_text
 from .refactor_sidecar import RefactorConfig, maybe_refactor_response_py
 from .research import (
     build_data_overview,
@@ -639,13 +639,6 @@ def _branch_candidate_rejection_reason(
     return "accepted"
 
 
-def _compact_attempt_text(text: str | None, *, max_chars: int = 220) -> str:
-    compact = " ".join(str(text or "").split())
-    if len(compact) <= max_chars:
-        return compact
-    return compact[: max_chars - 3].rstrip() + "..."
-
-
 def _format_metric_value(node: Node) -> str:
     if node.metric is None or node.metric.value is None:
         return "metric=n/a"
@@ -698,10 +691,18 @@ def _previous_child_attempt_entries(
         if not child.is_terminal_failure
     ]
     attempts = sorted(attempts, key=_node_step_sort_value)
-    return [
-        (child, _best_working_descendant(child) if child.is_buggy else None)
-        for child in attempts
-    ]
+    entries: list[tuple[Node, Node | None]] = []
+    for child in attempts:
+        if child.is_buggy:
+            replacement = _best_working_descendant(child)
+            if replacement is None:
+                continue
+            entries.append((child, replacement))
+            continue
+        if child.metric is None or child.metric.value is None:
+            continue
+        entries.append((child, None))
+    return entries
 
 
 def _limit_parent_history_entries(
@@ -766,6 +767,7 @@ def _format_previous_child_attempts(
         ),
         "",
     ]
+    blocks: list[str] = []
     for child, replacement in attempt_entries:
         display_node = replacement or child
         if child.is_timeout_failure:
@@ -787,21 +789,22 @@ def _format_previous_child_attempts(
             if display_node.metric is not None and display_node.metric.value is not None
             else None
         )
-        delta = (
-            f", delta={child_value - parent_value:+.6f}"
-            if child_value is not None and parent_value is not None
-            else ""
-        )
         step = "?" if display_node.step is None else str(display_node.step)
         parent_step = "?" if parent_node.step is None else str(parent_node.step)
-        summary = _compact_attempt_text(display_node.plan) or _compact_attempt_text(
-            display_node.analysis
-        )
-        lines.append(
-            f"- step {step} from {parent_step}: {status}, "
-            f"{_format_metric_value(display_node)}{delta}; attempt={summary}"
-        )
-    return "\n".join(lines)
+        block = f"Step: {step}\n"
+        block += f"Design: {_summary_plan_text(display_node.plan)}\n"
+        analysis_text = _summary_analysis_text(display_node.analysis)
+        if analysis_text:
+            block += f"Results: {analysis_text}\n"
+        if child_value is not None:
+            block += f"Validation Metric: {child_value:.5f}\n"
+        else:
+            block += "Validation Metric: n/a\n"
+        if child_value is not None and parent_value is not None:
+            block += f"delta={child_value - parent_value:+.6f};\n"
+        block += f"step {step} from {parent_step}: {status}"
+        blocks.append(block)
+    return "\n".join(lines) + "\n-------------------------------\n".join(blocks)
 
 
 def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:

@@ -5078,13 +5078,13 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "explain the concrete difference" in attempts
     assert "Add rank blend mode" in attempts
     assert "Remove count encoding features" in attempts
-    assert "0.954672" in attempts
+    assert "Validation Metric: 0.95467" in attempts
     assert "step 1 from 0: did_not_improve" in attempts
     assert "step 2 from 0: did_not_improve" in attempts
     assert "did_not_improve" in attempts
 
 
-def test_standard_improve_prompt_includes_timeout_child_attempt(tmp_path):
+def test_standard_improve_prompt_omits_timeout_child_without_working_descendant(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = False
     cfg.agent.data_preview = False
@@ -5114,14 +5114,10 @@ def test_standard_improve_prompt_includes_timeout_child_attempt(tmp_path):
 
     agent._improve(parent)
 
-    attempts = captured["prompt"]["Previous attempts from this parent"]
-    assert "Try a heavier feature search" in attempts
-    assert "step ?" not in attempts
-    assert "timeout" in attempts
-    assert "bug" not in attempts
+    assert "Previous attempts from this parent" not in captured["prompt"]
 
 
-def test_standard_improve_prompt_includes_unfixed_bug_child_attempt(tmp_path):
+def test_standard_improve_prompt_omits_unfixed_bug_child_attempt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = False
     cfg.agent.data_preview = False
@@ -5150,9 +5146,42 @@ def test_standard_improve_prompt_includes_unfixed_bug_child_attempt(tmp_path):
 
     agent._improve(parent)
 
-    attempts = captured["prompt"]["Previous attempts from this parent"]
-    assert "Add risky feature family" in attempts
-    assert "bug, metric=n/a" in attempts
+    assert "Previous attempts from this parent" not in captured["prompt"]
+
+
+def test_standard_improve_prompt_omits_multi_step_unfixed_bug_branch(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    journal = Journal()
+    journal.append(parent)
+    current = parent
+    for idx in range(4):
+        bug = Node(
+            code=f"raise RuntimeError('bug {idx}')",
+            plan=f"Bug branch attempt {idx}.",
+            parent=current,
+        )
+        bug.metric = WorstMetricValue()
+        bug.is_buggy = True
+        bug.analysis = f"RuntimeError: bug {idx}"
+        bug.exc_type = "RuntimeError"
+        journal.append(bug)
+        current = bug
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    assert "Previous attempts from this parent" not in captured["prompt"]
 
 
 def test_standard_improve_prompt_replaces_fixed_bug_child_with_working_descendant(
@@ -5196,9 +5225,10 @@ def test_standard_improve_prompt_replaces_fixed_bug_child_with_working_descendan
 
     attempts = captured["prompt"]["Previous attempts from this parent"]
     assert "Add risky feature family" not in attempts
-    assert "bug, metric=n/a" not in attempts
+    assert "step 1 from 0: bug" not in attempts
     assert "Fix missing feature and keep the feature family" in attempts
-    assert "step 2 from 0: improved, metric=0.954900" in attempts
+    assert "Validation Metric: 0.95490" in attempts
+    assert "step 2 from 0: improved" in attempts
 
 
 def test_standard_improve_prompt_omits_prior_child_attempts_without_children(
@@ -5344,7 +5374,7 @@ def test_standard_improve_prompt_caps_ancestor_and_sibling_entries_together(
     ]
     attempt_steps = [
         int(match.group(1))
-        for match in re.finditer(r"^- step (\d+) from", attempts, flags=re.MULTILINE)
+        for match in re.finditer(r"^Step: (\d+)$", attempts, flags=re.MULTILINE)
     ]
     combined_steps = memory_steps + attempt_steps
 
