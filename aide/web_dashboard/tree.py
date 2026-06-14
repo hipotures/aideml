@@ -298,7 +298,11 @@ def build_web_tree_lines(
             )
         )
         children = visible_children(node)
-        has_active_child = node is active_parent_node and active_stage is not None
+        has_active_child = (
+            node is active_parent_node
+            and active_stage is not None
+            and active_existing_node is None
+        )
         next_prefix = f"{prefix}{' ' if is_last else '│'}"
         next_desktop_prefix = f"{desktop_prefix}{'    ' if is_last else '│   '}"
         for index, child in enumerate(children):
