@@ -5079,6 +5079,8 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "Add rank blend mode" in attempts
     assert "Remove count encoding features" in attempts
     assert "0.954672" in attempts
+    assert "step 1 from 0: did_not_improve" in attempts
+    assert "step 2 from 0: did_not_improve" in attempts
     assert "did_not_improve" in attempts
 
 
@@ -5196,7 +5198,7 @@ def test_standard_improve_prompt_replaces_fixed_bug_child_with_working_descendan
     assert "Add risky feature family" not in attempts
     assert "bug, metric=n/a" not in attempts
     assert "Fix missing feature and keep the feature family" in attempts
-    assert "step 2: improved, metric=0.954900" in attempts
+    assert "step 2 from 0: improved, metric=0.954900" in attempts
 
 
 def test_standard_improve_prompt_omits_prior_child_attempts_without_children(

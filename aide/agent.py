@@ -731,12 +731,13 @@ def _format_previous_child_attempts(
             else ""
         )
         step = "?" if display_node.step is None else str(display_node.step)
+        parent_step = "?" if parent_node.step is None else str(parent_node.step)
         summary = _compact_attempt_text(display_node.plan) or _compact_attempt_text(
             display_node.analysis
         )
         lines.append(
-            f"- step {step}: {status}, {_format_metric_value(display_node)}{delta}; "
-            f"attempt={summary}"
+            f"- step {step} from {parent_step}: {status}, "
+            f"{_format_metric_value(display_node)}{delta}; attempt={summary}"
         )
     return "\n".join(lines)
 

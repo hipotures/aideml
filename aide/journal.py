@@ -61,6 +61,37 @@ def _branch_design_text(
     return text
 
 
+def _format_step_value(step: int | None) -> str:
+    if isinstance(step, int) and not isinstance(step, bool):
+        return str(step)
+    return "?"
+
+
+def _format_node_parent_delta(node: "Node") -> str | None:
+    if node.parent is None:
+        return None
+    if (
+        node.metric is None
+        or node.metric.value is None
+        or node.parent.metric is None
+        or node.parent.metric.value is None
+    ):
+        return None
+    return f"delta={float(node.metric.value) - float(node.parent.metric.value):+.6f};"
+
+
+def _format_node_parent_outcome(node: "Node") -> str | None:
+    if node.parent is None:
+        return None
+    if node.metric is None or node.parent.metric is None:
+        return None
+    status = "improved" if node.metric > node.parent.metric else "did_not_improve"
+    return (
+        f"step {_format_step_value(node.step)} "
+        f"from {_format_step_value(node.parent.step)}: {status}"
+    )
+
+
 def _format_public_cv_interpretation(
     *,
     cv_score: float,
@@ -426,7 +457,8 @@ class Journal(DataClassJsonMixin):
                 and not isinstance(n.step, bool)
                 and n.step in full_steps
             )
-            summary_part = f"Design: {_summary_plan_text(n.plan)}\n"
+            summary_part = f"Step: {_format_step_value(n.step)}\n"
+            summary_part += f"Design: {_summary_plan_text(n.plan)}\n"
             if include_code and include_full_node:
                 summary_part += f"Code: {n.code}\n"
             if include_full_node:
@@ -447,6 +479,12 @@ class Journal(DataClassJsonMixin):
                     )
                     + "\n"
                 )
+            delta = _format_node_parent_delta(n)
+            if delta is not None:
+                summary_part += f"{delta}\n"
+            outcome = _format_node_parent_outcome(n)
+            if outcome is not None:
+                summary_part += f"{outcome}\n"
             summary.append(summary_part)
         return "\n-------------------------------\n".join(summary)
 
@@ -492,6 +530,7 @@ class Journal(DataClassJsonMixin):
                 labels.append("direct parent")
             label_suffix = f" / {' / '.join(labels)}" if labels else ""
             lines.append(f"Ancestor {idx}{label_suffix}:")
+            lines.append(f"Step: {_format_step_value(ancestor.step)}")
             if len(ancestor.research_hypotheses_offered) == 1:
                 lines.append(
                     f"Hypothesis ID: {ancestor.research_hypotheses_offered[0]}"
@@ -516,6 +555,12 @@ class Journal(DataClassJsonMixin):
                             maximize=ancestor.metric.maximize is not False,
                         ).splitlines()
                     )
+            delta = _format_node_parent_delta(ancestor)
+            if delta is not None:
+                lines.append(delta)
+            outcome = _format_node_parent_outcome(ancestor)
+            if outcome is not None:
+                lines.append(outcome)
             if idx != len(ancestors):
                 lines.extend(["", "-------------------------------"])
             lines.append("")

@@ -62,6 +62,30 @@ def test_journal_summary_formats_validation_metric_to_five_decimals():
     assert "presets=medium_quality" not in summary
 
 
+def test_journal_summary_includes_step_parent_delta_and_outcome():
+    journal = Journal()
+    parent = Node(code="print('parent')", plan="parent plan")
+    parent.metric = MetricValue(0.967794, maximize=True)
+    parent.is_buggy = False
+    journal.append(parent)
+    child = Node(code="print('child')", plan="child plan", parent=parent)
+    child.metric = MetricValue(0.967719, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    summary = journal.generate_summary()
+    child_section = next(
+        section
+        for section in summary.split("\n-------------------------------\n")
+        if "Design: child plan" in section
+    )
+
+    assert "Step: 1" in child_section
+    assert "Validation Metric: 0.96772" in child_section
+    assert "delta=-0.000075;" in child_section
+    assert "step 1 from 0: did_not_improve" in child_section
+
+
 def test_journal_summary_includes_public_score_context_when_available():
     journal = Journal()
     node = Node(code="print('ok')", plan="plan")
@@ -360,13 +384,17 @@ def test_journal_generates_branch_context_from_root_to_parent_only():
     assert "ancestor nodes of this parent, ordered from root to direct parent" in context
     assert "Branch path:\n000101 -> 000202" in context
     assert "Ancestor 1 / root:" in context
+    assert "Step: 0" in context
     assert "Hypothesis ID: 000101" in context
     assert "Design: Root hypothesis plan" in context
     assert "Validation Metric: 0.91000" in context
     assert "Ancestor 2 / direct parent:" in context
+    assert "Step: 1" in context
     assert "Hypothesis ID: 000202" in context
     assert "Design: Child hypothesis plan" in context
     assert "Validation Metric: 0.92000" in context
+    assert "delta=+0.010000;" in context
+    assert "step 1 from 0: improved" in context
     assert "000999" not in context
     assert "Unrelated root plan" not in context
     assert "000303" not in context
