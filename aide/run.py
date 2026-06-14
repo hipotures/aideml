@@ -4280,7 +4280,7 @@ def panel_copy_path(panel_name: str, run_id: str, *, tmp_dir: Path = Path("/tmp"
     return tmp_dir / f"panel-{name}-{run}.txt"
 
 
-def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
+def _render_copy_body(renderable, *, width: int = 100) -> str:
     buffer = io.StringIO()
     console = Console(
         file=buffer,
@@ -4290,7 +4290,11 @@ def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
         record=True,
     )
     console.print(renderable)
-    body = console.export_text(styles=False).rstrip()
+    return console.export_text(styles=False).rstrip()
+
+
+def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
+    body = _render_copy_body(renderable, width=width)
     title = title.strip()
     if body:
         return f"# {title}\n\n{body}\n"
@@ -4299,7 +4303,11 @@ def render_panel_copy_text(title: str, renderable, *, width: int = 100) -> str:
 
 def render_tree_copy_text(title: str, view: TreeView, *, width: int = 100) -> str:
     tree_lines = [item.line for item in view.items if item.item_id != "header"]
-    return render_panel_copy_text(title, Group(*tree_lines), width=width)
+    body = _render_copy_body(Group(*tree_lines), width=width)
+    title = title.strip()
+    if body:
+        return f"# {title}\n●\n{body}\n"
+    return f"# {title}\n●\n"
 
 
 def _clean_log_copy_line(line: str) -> str:
