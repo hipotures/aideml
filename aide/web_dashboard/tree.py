@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from aide.journal import Journal, Node
-from aide.research import root_hypothesis_id_for_node
+from aide.research import hypothesis_id_for_node, root_hypothesis_id_for_node
 from aide.utils.metric import MetricValue
 from aide.utils.plateau import (
     DEFAULT_PLATEAU_BLOCK_EPSILON,
@@ -22,15 +22,11 @@ def _node_order_key(journal: Journal, node: Node) -> tuple[bool, int, float, str
 
 
 def _hypothesis_or_step_suffix(node: Node) -> str:
-    if len(node.research_hypotheses_offered) == 1:
-        if node.step is not None:
-            return f"·{node.research_hypotheses_offered[0]}#{node.step}"
-        return f"·{node.research_hypotheses_offered[0]}"
-    root_hypothesis_id = root_hypothesis_id_for_node(node)
-    if root_hypothesis_id is not None and node.step is not None:
-        return f"·{root_hypothesis_id}#{node.step}"
+    hypothesis_id = hypothesis_id_for_node(node)
+    if node.parent is None and hypothesis_id is not None:
+        return f"·{hypothesis_id}"
     if node.step is not None:
-        return f"·step-{node.step:06d}"
+        return f"·{node.step}"
     return ""
 
 
@@ -184,6 +180,7 @@ def build_web_tree_lines(
     active_parent_node: Node | None = None,
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
+    active_step: int | None = None,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     public_scores_by_node_id: dict[str, float] | None = None,
     public_score_bonus_weight: float = 0.0,
@@ -249,6 +246,8 @@ def build_web_tree_lines(
             label_hypothesis_id = None
         if label_hypothesis_id:
             return f"{label}·{label_hypothesis_id}"
+        if active_step is not None:
+            return f"{label}·{active_step}"
         return label
 
     def append_active(prefix: str, desktop_prefix: str, is_last: bool) -> None:

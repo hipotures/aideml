@@ -148,6 +148,22 @@ def test_web_tree_lines_keep_public_marker_on_blocked_submitted_node():
     assert lines[1].kind == "blocked public"
 
 
+def test_web_tree_lines_accept_active_step_placeholder():
+    journal = Journal()
+    root = _scored_node(0.91)
+    journal.append(root)
+
+    lines = build_web_tree_lines(
+        journal,
+        active_parent_node=root,
+        active_stage="generating",
+        active_step=48,
+    )
+
+    assert lines[1].label == "generating...·48"
+    assert lines[1].kind == "active"
+
+
 def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():
     journal = Journal()
     parent = _scored_node(0.965327)
