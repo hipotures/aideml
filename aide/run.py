@@ -5351,7 +5351,7 @@ def run(argv: list[str] | None = None):
     pending_artifact_dir: Path | None = None
     display_node: Node | None = None
     active_root_generations: list[ActiveRootGeneration] = []
-    web_state = WebDashboardState(snapshot_path=cfg.log_dir / "web_snapshot.json")
+    web_state = WebDashboardState()
     web_server: AideWebServer | None = None
     if cfg.web.enabled:
         try:
