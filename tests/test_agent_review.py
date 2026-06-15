@@ -501,6 +501,27 @@ def test_branch_hypothesis_description_is_single_full_design_text():
     assert "Implementation:" not in description
 
 
+def test_branch_hypothesis_description_keeps_long_feature_strategy():
+    long_strategy = " ".join(f"mechanism_{idx}" for idx in range(500))
+
+    description = _format_branch_hypothesis_description(
+        SimpleNamespace(
+            title="Generic Long Feature Mechanism",
+            summary="Exercise a long feature strategy.",
+            feature_strategy=long_strategy,
+            rationale="Fallback rationale should not be used.",
+            implementation_hint="Implementation text should not be used.",
+            expected_effect="Expected effect should not be used.",
+            risk="Risk should not be used.",
+        )
+    )
+
+    assert long_strategy in description
+    assert "mechanism_499" in description
+    assert not description.endswith("...")
+    assert "Fallback rationale" not in description
+
+
 def test_branch_context_rejects_technical_root_when_description_map_is_missing_id():
     journal = Journal()
     root = Node(

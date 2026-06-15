@@ -1022,7 +1022,7 @@ def _format_branch_hypothesis_description(hypothesis: Any) -> str:
     feature_strategy = _compact_branch_hypothesis_text(
         getattr(hypothesis, "feature_strategy", None)
         or getattr(hypothesis, "rationale", None),
-        max_chars=2200,
+        max_chars=12000,
     )
     if feature_strategy:
         parts.append(feature_strategy)
