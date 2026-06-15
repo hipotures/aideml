@@ -1130,6 +1130,16 @@ def test_agent_autogluon_improve_prompt_keeps_memory_and_siblings_adjacent(
         "prior child attempt"
         in captured["prompt"]["Previous attempts from this parent"]
     )
+    history_rule = captured["prompt"]["Instructions"][
+        "Experiment-history interpretation rule"
+    ]
+    history_rule_text = " ".join(history_rule)
+    assert "scored experimental evidence" in history_rule_text
+    assert "feature-mechanism families" in history_rule_text
+    assert "Do not output this analysis" in history_rule_text
+    assert "redshift" not in history_rule_text
+    assert "aux" not in history_rule_text.lower()
+    assert "class" not in history_rule_text.lower()
 
 
 def test_parse_result_marker_short_circuits_feedback_review(tmp_path, monkeypatch):

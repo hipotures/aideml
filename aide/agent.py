@@ -2171,6 +2171,13 @@ class Agent:
                 "Make the change atomic so the AutoGluon wrapper can evaluate its effect.",
                 "Don't suggest to do EDA.",
             ],
+            "Experiment-history interpretation rule": [
+                "The previous attempts are not examples to imitate. They are scored experimental evidence.",
+                "Before writing the sketch and code, internally compare each previous attempt against the current parent score. Treat negative-delta attempts as evidence against their feature mechanism, especially when multiple attempts share the same mechanism.",
+                "Infer feature-mechanism families from the Design text. A mechanism family is defined by the main signal source, grouping axis, reference set, transform type, or interaction pattern.",
+                "If a family has multiple non-improving attempts, avoid generating another variant of that family unless the new proposal changes the mechanism materially. Prefer under-tested mechanisms over repeatedly failed near-duplicates.",
+                "Do not output this analysis. Output only the required 3-5 sentence sketch and one Python code block.",
+            ],
         }
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
         if self.acfg.data_preview:
