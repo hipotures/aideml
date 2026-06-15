@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
-from aide.agent import Agent, review_func_spec
+from aide.agent import Agent, _format_branch_hypothesis_description, review_func_spec
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.utils.config import _load_cfg, prep_cfg
@@ -466,6 +467,33 @@ def test_branch_context_uses_hypothesis_description_for_loaded_library_root_plan
     assert "Hypothesis ID: 000021" in context
     assert "Title: Explicit Photometric Sky Formula Features" in context
     assert "Loaded library autogluon root code for hypothesis 000021" not in context
+
+
+def test_branch_hypothesis_description_is_feature_only():
+    description = _format_branch_hypothesis_description(
+        SimpleNamespace(
+            title="Explicit Photometric Sky Formula Features",
+            summary="Test a fully specified feature block.",
+            feature_family="explicit_photometric_sky_formula_features",
+            feature_strategy="Build color, sky, redshift, and rank features.",
+            autogluon_feature_transfer={
+                "source": (
+                    "legacy feature engineering only; model, fold, calibration, "
+                    "and blending logic intentionally omitted"
+                )
+            },
+            rationale="Baseline model panel: CatBoost and XGBoost. No stacking.",
+            implementation_hint="Do not implement stacking or calibration.",
+        )
+    )
+
+    assert "Title: Explicit Photometric Sky Formula Features" in description
+    assert "Feature family: explicit_photometric_sky_formula_features" in description
+    assert "Feature strategy: Build color, sky, redshift, and rank features." in description
+    assert "AutoGluon transfer: legacy feature engineering only" in description
+    assert "Baseline model panel" not in description
+    assert "stacking" not in description
+    assert "Implementation:" not in description
 
 
 def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_path):

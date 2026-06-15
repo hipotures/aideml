@@ -1019,18 +1019,26 @@ def _format_branch_hypothesis_description(hypothesis: Any) -> str:
             + _compact_branch_hypothesis_text(hypothesis.summary, max_chars=420)
         ),
     ]
-    rationale = _compact_branch_hypothesis_text(
-        hypothesis.rationale,
-        max_chars=900,
+    feature_family = _compact_branch_hypothesis_text(
+        getattr(hypothesis, "feature_family", None),
+        max_chars=220,
     )
-    if rationale:
-        lines.append(f"Rationale: {rationale}")
-    implementation = _compact_branch_hypothesis_text(
-        hypothesis.implementation_hint,
-        max_chars=700,
+    if feature_family:
+        lines.append(f"Feature family: {feature_family}")
+    feature_strategy = _compact_branch_hypothesis_text(
+        getattr(hypothesis, "feature_strategy", None),
+        max_chars=1200,
     )
-    if implementation:
-        lines.append(f"Implementation: {implementation}")
+    if feature_strategy:
+        lines.append(f"Feature strategy: {feature_strategy}")
+    autogluon_transfer = getattr(hypothesis, "autogluon_feature_transfer", None)
+    if isinstance(autogluon_transfer, dict):
+        source = _compact_branch_hypothesis_text(
+            autogluon_transfer.get("source"),
+            max_chars=260,
+        )
+        if source:
+            lines.append(f"AutoGluon transfer: {source}")
     return "\n".join(lines)
 
 
