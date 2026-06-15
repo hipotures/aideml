@@ -344,10 +344,11 @@ def test_standard_search_keeps_best_parent_after_non_improving_child_limit(
     assert saturated.id not in trace["rejections"]
 
 
-def test_search_policy_keeps_tiny_improving_child_unblocked(tmp_path):
+def test_search_policy_rejects_sub_epsilon_improving_child(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.search.debug_prob = 0.0
     cfg.agent.search.exploration_weight = 0.0
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.00006
     cfg.agent.search.plateau_block_epsilon = 0.00001
     journal = Journal()
     parent = _good_node(0.967787)
@@ -358,10 +359,14 @@ def test_search_policy_keeps_tiny_improving_child_unblocked(tmp_path):
 
     selected = agent.search_policy()
 
-    assert selected is child
+    assert selected is parent
     trace = agent.last_search_decision
     assert trace is not None
-    assert child.id not in trace["rejections"]
+    assert trace["rejections"][child.id]["stage"] == "min_improvement"
+    assert (
+        trace["rejections"][child.id]["reason"]
+        == "does_not_clear_min_improvement_epsilon"
+    )
 
 
 def test_search_policy_blocks_non_improving_plateau_child(tmp_path):
@@ -392,7 +397,7 @@ def test_search_policy_keeps_child_outside_plateau_epsilon(tmp_path):
     cfg.agent.search.plateau_block_epsilon = 0.00001
     journal = Journal()
     parent = _good_node(0.965327)
-    child = _good_node(0.965385, parent=parent)
+    child = _good_node(0.965388, parent=parent)
     for node in [parent, child]:
         journal.append(node)
     agent = Agent(task_desc="task", cfg=cfg, journal=journal)

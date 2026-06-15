@@ -435,7 +435,7 @@ def _is_hypothesis_parent_saturated(
     return _non_improving_child_count(node, epsilon=epsilon, score_fn=score_fn) >= limit
 
 
-def _is_hypothesis_branch_candidate(
+def _is_min_improvement_branch_candidate(
     node: Node,
     *,
     epsilon: float = 0.0,
@@ -1269,6 +1269,9 @@ class Agent:
                         f"{plateau_epsilon:g}_of_nearest_scored_ancestor"
                     ),
                 }
+        improvement_epsilon = float(
+            getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
+        )
         if self._is_hypothesis_mode():
             if forced_hypothesis_root is not None:
                 before_forced_scope = list(good_nodes)
@@ -1302,9 +1305,6 @@ class Agent:
                     selected_forced_parent,
                     "forced_child_hypothesis_queue",
                 )
-            improvement_epsilon = float(
-                getattr(search_cfg, "hypothesis_min_improvement_epsilon", 0.0)
-            )
             before_child_candidates = list(good_nodes)
             good_nodes = filter_hypothesis_candidate_parents(
                 self.cfg,
@@ -1322,7 +1322,7 @@ class Agent:
             good_nodes = [
                 node
                 for node in good_nodes
-                if _is_hypothesis_branch_candidate(
+                if _is_min_improvement_branch_candidate(
                     node,
                     epsilon=improvement_epsilon,
                     score_fn=score_for_search,
@@ -1372,9 +1372,35 @@ class Agent:
             logger.debug("[search policy] drafting new node (no good nodes)")
             return finish(None, "no_good_nodes_after_filters")
 
+        selectable_nodes = good_nodes
+        if not self._is_hypothesis_mode():
+            selectable_nodes = [
+                node
+                for node in good_nodes
+                if _is_min_improvement_branch_candidate(
+                    node,
+                    epsilon=improvement_epsilon,
+                    score_fn=score_for_search,
+                )
+            ]
+            trace["counts"]["after_min_improvement"] = len(selectable_nodes)
+            for node in good_nodes:
+                if node not in selectable_nodes:
+                    trace["rejections"][node.id] = {
+                        "stage": "min_improvement",
+                        "reason": _branch_candidate_rejection_reason(
+                            node,
+                            epsilon=improvement_epsilon,
+                            score_fn=score_for_search,
+                        ),
+                    }
+        if not selectable_nodes:
+            logger.debug("[search policy] drafting new node (no selectable nodes)")
+            return finish(None, "no_selectable_nodes_after_min_improvement")
+
         exploration_weight = float(getattr(search_cfg, "exploration_weight", 0.0))
         if exploration_weight <= 0:
-            greedy_node = max(good_nodes, key=score_for_search)
+            greedy_node = max(selectable_nodes, key=score_for_search)
             ranked = sorted(good_nodes, key=score_for_search, reverse=True)
             trace["top_candidates"] = [
                 {
@@ -1408,7 +1434,7 @@ class Agent:
             )
             for node in good_nodes
         }
-        best_policy_node = max(good_nodes, key=score_for_search)
+        best_policy_node = max(selectable_nodes, key=score_for_search)
         min_best_children = int(
             getattr(search_cfg, "best_score_min_children_before_exploration", 0)
         )
@@ -1424,7 +1450,7 @@ class Agent:
         selected_node = (
             best_policy_node
             if selection_override is not None
-            else max(good_nodes, key=lambda node: policy_scores[node])
+            else max(selectable_nodes, key=lambda node: policy_scores[node])
         )
         ranked = sorted(good_nodes, key=lambda node: policy_scores[node], reverse=True)
         selected_policy_payload = _search_policy_payload(
