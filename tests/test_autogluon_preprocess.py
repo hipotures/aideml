@@ -1180,7 +1180,7 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     other_parent.metric = MetricValue(0.7, maximize=True)
     other_parent.is_buggy = False
     other_child = Node(
-        plan="small winning outside design",
+        plan="small winning outside design below epsilon",
         code=build_autogluon_wrapper(
             "def preprocess(df):\n"
             "    return df.copy()\n",
@@ -1190,8 +1190,19 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     )
     other_child.metric = MetricValue(0.70001, maximize=True)
     other_child.is_buggy = False
+    strong_other_child = Node(
+        plan="winning outside design",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+        parent=other_parent,
+    )
+    strong_other_child.metric = MetricValue(0.81, maximize=True)
+    strong_other_child.is_buggy = False
     duplicate_other_child = Node(
-        plan="small winning outside design",
+        plan="winning outside design",
         code=build_autogluon_wrapper(
             "def preprocess(df):\n"
             "    return df.copy()\n",
@@ -1219,6 +1230,7 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
         prior_child,
         other_parent,
         other_child,
+        strong_other_child,
         duplicate_other_child,
         losing_other_child,
     ]:
@@ -1246,7 +1258,8 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
         "Other improving hypotheses outside this node tree"
     ) + 1
     other = captured["prompt"]["Other improving hypotheses outside this node tree"]
-    assert other.count("Design: small winning outside design") == 1
+    assert other.count("Design: winning outside design") == 1
+    assert "small winning outside design below epsilon" not in other
     assert "losing outside design" not in other
     assert "non improving current-tree child" not in other
     assert "Step:" not in other
