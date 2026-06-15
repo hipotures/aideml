@@ -50,6 +50,36 @@ def test_codex_backend_uses_cli_with_reasoning_effort(tmp_path, monkeypatch):
     assert "user" in seen["stdin"]
 
 
+def test_codex_backend_enables_search_flag(tmp_path, monkeypatch):
+    seen = {}
+
+    class FakeTmp:
+        def __enter__(self):
+            return str(tmp_path)
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        (tmp_path / "response_raw.txt").write_text("answer")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
+    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+
+    output, *_ = backend_codex.query(
+        system_message="system",
+        user_message=None,
+        model="gpt-5.5",
+        web_search=True,
+    )
+
+    assert output == "answer"
+    assert seen["cmd"][:2] == ["codex", "--search"]
+    assert seen["cmd"].index("--search") < seen["cmd"].index("exec")
+
+
 def test_codex_backend_parses_schema_response(tmp_path, monkeypatch):
     class FakeTmp:
         def __enter__(self):

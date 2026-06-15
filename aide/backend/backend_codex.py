@@ -30,6 +30,7 @@ def _codex_command(
     *,
     model: str,
     reasoning_effort: str | None,
+    web_search: bool,
     work_dir: Path,
     output_schema: bool,
     schema_path: Path,
@@ -48,6 +49,8 @@ def _codex_command(
         "--model",
         model,
     ]
+    if web_search:
+        command.insert(1, "--search")
     if reasoning_effort is not None:
         command.extend(["-c", f'model_reasoning_effort="{reasoning_effort}"'])
     if output_schema:
@@ -126,6 +129,7 @@ def query(
     filtered_kwargs: dict = select_values(notnone, model_kwargs)
     model = filtered_kwargs["model"]
     reasoning_effort = filtered_kwargs.pop("reasoning_effort", None)
+    web_search = bool(filtered_kwargs.pop("web_search", False))
     log_dir = filtered_kwargs.pop("llm_log_dir", None)
     log_prefix = filtered_kwargs.pop("llm_log_prefix", "")
     prompt = _prompt_text(system_message, user_message)
@@ -150,6 +154,7 @@ def query(
         command = _codex_command(
             model=model,
             reasoning_effort=reasoning_effort,
+            web_search=web_search,
             work_dir=work_dir,
             output_schema=func_spec is not None,
             schema_path=schema_path,

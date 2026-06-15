@@ -2134,6 +2134,7 @@ class Agent:
                 reasoning_effort=self.acfg.code.reasoning_effort,
                 temperature=self.acfg.code.temp,
                 timeout=self.acfg.code.timeout,
+                web_search=bool(getattr(self.acfg.code, "web_search", False)),
                 llm_log_dir=self._pending_llm_log_dir,
                 llm_log_context=self._generation_log_context(),
             )

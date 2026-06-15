@@ -1045,6 +1045,7 @@ def test_agent_code_web_search_option_writes_markdown_summary(
 
     def fake_query(**kwargs):
         captured["prompt"] = kwargs["system_message"]
+        captured["web_search"] = kwargs.get("web_search")
         events = [
             {
                 "type": "item.completed",
@@ -1089,6 +1090,7 @@ def test_agent_code_web_search_option_writes_markdown_summary(
 
     assert plan == "Add a simple feature."
     assert "def preprocess" in code
+    assert captured["web_search"] is True
     assert "Web search" in captured["prompt"]["Instructions"]
     assert any(
         "domain or method background relevant to the task" in item
