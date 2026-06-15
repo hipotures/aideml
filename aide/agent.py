@@ -1875,7 +1875,7 @@ class Agent:
             self.journal,
             parent_node=parent_node,
             attempt_entries=attempt_entries,
-            epsilon=epsilon,
+            epsilon=0.0,
         )
         if other_improving_hypotheses is not None:
             prompt["Other improving hypotheses outside this node tree"] = (

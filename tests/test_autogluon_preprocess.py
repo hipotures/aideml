@@ -1146,6 +1146,7 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     tmp_path,
 ):
     cfg = _cfg(tmp_path)
+    cfg.agent.search.hypothesis_min_improvement_epsilon = 0.1
     parent = Node(
         plan="base preprocess",
         code=build_autogluon_wrapper(
@@ -1179,7 +1180,7 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     other_parent.metric = MetricValue(0.7, maximize=True)
     other_parent.is_buggy = False
     other_child = Node(
-        plan="winning outside design",
+        plan="small winning outside design",
         code=build_autogluon_wrapper(
             "def preprocess(df):\n"
             "    return df.copy()\n",
@@ -1187,10 +1188,10 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
         ),
         parent=other_parent,
     )
-    other_child.metric = MetricValue(0.71, maximize=True)
+    other_child.metric = MetricValue(0.70001, maximize=True)
     other_child.is_buggy = False
     duplicate_other_child = Node(
-        plan="winning outside design",
+        plan="small winning outside design",
         code=build_autogluon_wrapper(
             "def preprocess(df):\n"
             "    return df.copy()\n",
@@ -1245,7 +1246,7 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
         "Other improving hypotheses outside this node tree"
     ) + 1
     other = captured["prompt"]["Other improving hypotheses outside this node tree"]
-    assert other.count("Design: winning outside design") == 1
+    assert other.count("Design: small winning outside design") == 1
     assert "losing outside design" not in other
     assert "non improving current-tree child" not in other
     assert "Step:" not in other
