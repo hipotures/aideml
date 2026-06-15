@@ -15,7 +15,6 @@ from aide.autogluon_preprocess import (
     parse_result_marker,
     resolve_autogluon_settings,
     resolve_autogluon_included_model_types,
-    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from aide.interpreter import ExecutionResult
@@ -255,41 +254,6 @@ def test_validate_preprocess_source_rejects_misnamed_aux_argument():
             "    return df\n",
             target_col="PitNextLap",
         )
-
-
-def test_sanitize_preprocess_prompt_text_removes_unavailable_columns():
-    text = (
-        "Goal: predict `PitNextLap`.\n"
-        "The identifier column is `id`.\n"
-        "TyreLife (float64) has useful signal.\n"
-        "__is_train__ is hidden.\n"
-    )
-
-    sanitized = sanitize_preprocess_prompt_text(
-        text,
-        unavailable_columns=["id", "PitNextLap", "__is_train__"],
-    )
-
-    assert "TyreLife" in sanitized
-    assert "PitNextLap" not in sanitized
-    assert "`id`" not in sanitized
-    assert "__is_train__" not in sanitized
-
-
-def test_sanitize_preprocess_prompt_text_removes_dangling_target_sentence_fragment():
-    text = (
-        "`PitNextLap` should contain probabilities for the positive class, not hard class\n"
-        "labels.\n"
-        "TyreLife (float64) has useful signal.\n"
-    )
-
-    sanitized = sanitize_preprocess_prompt_text(
-        text,
-        unavailable_columns=["id", "PitNextLap", "__is_train__"],
-    )
-
-    assert "TyreLife" in sanitized
-    assert "labels." not in sanitized
 
 
 def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
@@ -902,8 +866,8 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "AutoGluon preprocess mode contract" in captured["prompt"]["Instructions"]
     prompt_text = str(captured["prompt"])
     assert "TyreLife" in prompt_text
-    assert "PitNextLap" not in prompt_text
-    assert "`id`" not in prompt_text
+    assert "PitNextLap" in prompt_text
+    assert "`id`" in prompt_text
     assert "__is_train__" not in prompt_text
     assert "__aide_row_id__" not in prompt_text
     assert "must replace the previous preprocess function" in prompt_text

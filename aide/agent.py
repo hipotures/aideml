@@ -17,7 +17,6 @@ from .autogluon_preprocess import (
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
     parse_result_marker,
-    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from .backend import FunctionSpec, query
@@ -1815,21 +1814,12 @@ class Agent:
             prefix += f"[Showing last {max_bytes} bytes of process_stdout.log]\n\n"
         return prefix + text
 
-    def _autogluon_unavailable_columns(self) -> list[str]:
-        columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
-        if columns is None:
-            return []
-        return [column for column in columns if column]
-
     def _autogluon_target_column(self) -> str | None:
         columns = infer_sample_submission_columns(self.cfg.workspace_dir / "input")
         return columns[1] if columns is not None else None
 
     def _autogluon_prompt_text(self, text: Any) -> str:
-        return sanitize_preprocess_prompt_text(
-            text,
-            unavailable_columns=self._autogluon_unavailable_columns(),
-        )
+        return str(text or "")
 
     def _add_autogluon_context(self, prompt: dict[str, Any]) -> None:
         aux_name = aux_file_name(self.cfg)

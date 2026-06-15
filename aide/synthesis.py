@@ -17,7 +17,6 @@ from .autogluon_preprocess import (
     extract_preprocess_source,
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
-    sanitize_preprocess_prompt_text,
     validate_preprocess_source,
 )
 from .journal import Journal, Node
@@ -608,14 +607,6 @@ def collect_top_synthesis_solutions(
     ]
 
 
-def _preprocess_unavailable_columns(cfg: Config) -> list[str]:
-    for base_dir in (Path(cfg.workspace_dir) / "input", Path(cfg.data_dir)):
-        columns = infer_sample_submission_columns(base_dir)
-        if columns is not None:
-            return [column for column in columns if column]
-    return []
-
-
 def collect_synthesis_context(
     *,
     cfg: Config,
@@ -626,16 +617,6 @@ def collect_synthesis_context(
     best_node = journal.get_best_node()
     task_desc_for_prompt = task_desc
     data_overview_for_prompt = build_data_overview(cfg)
-    if is_autogluon_preprocess_mode(cfg):
-        unavailable_columns = _preprocess_unavailable_columns(cfg)
-        task_desc_for_prompt = sanitize_preprocess_prompt_text(
-            task_desc,
-            unavailable_columns=unavailable_columns,
-        )
-        data_overview_for_prompt = sanitize_preprocess_prompt_text(
-            data_overview_for_prompt,
-            unavailable_columns=unavailable_columns,
-        )
     return {
         "run_id": cfg.exp_name,
         "checkpoint_step": completed_steps,

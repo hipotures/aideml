@@ -24,30 +24,6 @@ def baseline_preprocess_source() -> str:
     return "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df.copy()\n"
 
 
-def sanitize_preprocess_prompt_text(
-    text: Any,
-    *,
-    unavailable_columns: list[str | None] | tuple[str | None, ...] = (),
-) -> str:
-    """Remove references to columns that are not passed to preprocess(df)."""
-    blocked = [str(col) for col in unavailable_columns if col]
-    if not blocked:
-        return str(text or "")
-
-    patterns = [
-        re.compile(rf"(?<![A-Za-z0-9_]){re.escape(col)}(?![A-Za-z0-9_])")
-        for col in blocked
-    ]
-    kept: list[str] = []
-    for line in str(text or "").splitlines():
-        if any(pattern.search(line) for pattern in patterns):
-            continue
-        if line.strip() == "labels.":
-            continue
-        kept.append(line)
-    return "\n".join(kept).strip()
-
-
 _PITSTOP_LEAKAGE_PATTERNS = (
     "next_pitstop",
     "next_pit_stop",
