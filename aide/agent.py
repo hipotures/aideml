@@ -2153,9 +2153,14 @@ class Agent:
         )
         prompt: Any = {
             "Introduction": (
-                "You are improving only the feature preprocessing function for a "
-                "fixed AutoGluon training wrapper. Keep the wrapper behavior "
-                "unchanged and make one atomic, leakage-safe feature improvement."
+                "You are a Kaggle grandmaster and senior machine learning engineer "
+                "working on a feature-search experiment for a fixed AutoGluon "
+                "training wrapper. Your job is to study the previous preprocess "
+                "function, the scored Memory, and the previous attempts from this "
+                "parent, then make one coherent, atomic, leakage-safe improvement "
+                "to the feature preprocessing only. Keep the wrapper behavior "
+                "unchanged: do not change training, validation, model settings, "
+                "submission logic, row order, or row count."
             ),
             "Task description": self._autogluon_prompt_text(self.task_desc),
             "Previous preprocess function": wrap_code(
