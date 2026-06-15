@@ -1091,6 +1091,10 @@ def test_agent_code_web_search_option_writes_markdown_summary(
     assert "def preprocess" in code
     assert "Web search" in captured["prompt"]["Instructions"]
     assert any(
+        "domain or method background relevant to the task" in item
+        for item in captured["prompt"]["Instructions"]["Web search"]
+    )
+    assert any(
         "open and read the relevant sources" in item
         for item in captured["prompt"]["Instructions"]["Web search"]
     )

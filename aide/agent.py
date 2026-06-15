@@ -860,7 +860,7 @@ def _repeated_failure_instruction(
 def _web_search_prompt_instruction() -> list[str]:
     return [
         "Web search is enabled for this code-generation call.",
-        "Use web_search when current public Kaggle context, competition discussions, notebooks, package documentation, or recent implementation details may help choose the next coding approach.",
+        "Use web_search to gather useful external context for this competition: public Kaggle discussions, notebooks, package documentation, recent implementation details, and domain or method background relevant to the task.",
         "When web_search returns useful results, open and read the relevant sources before relying on them; do not base the coding plan only on search-result snippets.",
         "If web_search is not useful or not available, continue normally without inventing sources.",
     ]
