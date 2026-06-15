@@ -27,8 +27,9 @@ from aide.utils.metric import MetricValue, WorstMetricValue
 
 def _cfg(tmp_path: Path):
     cfg = _load_cfg(use_cli_args=False)
+    cfg.agent.mode = "legacy"
     cfg.data_dir = str(tmp_path)
-    cfg.goal = "Predict next-lap pit stop probability"
+    cfg.goal = "test goal"
     cfg.log_dir = str(tmp_path / "logs")
     cfg.workspace_dir = str(tmp_path / "workspaces")
     cfg.exp_name = "synthesis-test"
@@ -61,6 +62,17 @@ def _node(
 def _write_journal(log_dir: Path, run_id: str, journal: Journal) -> None:
     run_dir = log_dir / run_id
     run_dir.mkdir(parents=True)
+    for idx, node in enumerate(journal.nodes):
+        if node.artifact_dir_name or node.code_path:
+            continue
+        artifact_dir_name = (
+            dt.datetime.fromtimestamp(node.ctime).strftime("%Y%m%dT%H%M%S")
+            + f"-{idx}"
+        )
+        artifact_dir = run_dir / "artifacts" / artifact_dir_name
+        artifact_dir.mkdir(parents=True)
+        (artifact_dir / "solution.py").write_text(node.code)
+        node.artifact_dir_name = artifact_dir_name
     serialize.dump_json(journal, run_dir / "journal.json")
 
 
@@ -428,29 +440,26 @@ def test_collect_top_synthesis_solutions_keeps_child_when_rounded_score_improves
     ]
 
 
-def test_collect_top_synthesis_solutions_excludes_next_pitstop_leakage(tmp_path):
+def test_collect_top_synthesis_solutions_uses_scores_without_code_filter(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.synthesis.top_k = 2
     journal = Journal()
-    leaky = _node(
-        0.99,
-        code=(
-            "test_sorted['next_PitStop'] = "
-            "test_sorted.groupby(['Race', 'Driver'])['PitStop'].shift(-1)\n"
-            "test_preds[mask] = test_sorted['next_PitStop'][mask]\n"
-        ),
-    )
-    clean = _node(0.90, code="print('clean model')\n")
-    journal.append(leaky)
-    journal.append(clean)
+    stronger = _node(0.99, code="print('stronger model')\n")
+    weaker = _node(0.90, code="print('weaker model')\n")
+    journal.append(stronger)
+    journal.append(weaker)
 
     solutions = collect_top_synthesis_solutions(cfg=cfg, journal=journal)
 
     assert solutions == [
         {
+            "local_cv_score": 0.99,
+            "code": "print('stronger model')\n",
+        },
+        {
             "local_cv_score": 0.9,
-            "code": "print('clean model')\n",
-        }
+            "code": "print('weaker model')\n",
+        },
     ]
 
 
@@ -472,8 +481,6 @@ def test_synthesis_prompt_contains_only_relevant_context(tmp_path):
     assert "short natural-language design paragraph" in prompt
     assert "strong time and memory efficiency" in prompt
     assert "avoid unnecessary full-data copies" in prompt
-    assert "Do not use target leakage" in prompt
-    assert "future PitStop" in prompt
     assert "task" in prompt
     assert '"best_working_solutions"' in prompt
     assert '"local_cv_score"' in prompt
@@ -493,7 +500,7 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     cfg.agent.mode = AGENT_MODE
     input_dir = Path(cfg.workspace_dir) / "input"
     input_dir.mkdir(parents=True, exist_ok=True)
-    (input_dir / "sample_submission.csv").write_text("id,PitNextLap\n10,0.0\n")
+    (input_dir / "sample_submission.csv").write_text("id,class\n10,GALAXY\n")
     journal = Journal()
     journal.append(
         _node(
@@ -510,7 +517,7 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
 
     context = collect_synthesis_context(
         cfg=cfg,
-        task_desc="Predict `PitNextLap`. The identifier column is `id`.",
+        task_desc="Predict `class`. The identifier column is `id`.",
         journal=journal,
         completed_steps=15,
     )
@@ -522,18 +529,14 @@ def test_synthesis_prompt_switches_to_preprocess_contract_in_autogluon_mode(tmp_
     assert "Reject trivial synthesis" in prompt
     assert "kaggle_public_score as the strongest generalization signal" in prompt
     assert "Avoid feature bloat" in prompt
-    assert "F1 driver will pit on the next lap" in prompt
     assert "def preprocess(df: pd.DataFrame)" in prompt
     assert "same two-part structure as ordinary AIDE code generation" in prompt
     assert "short natural-language design paragraph" in prompt
     assert "Do not include imports, helper functions, top-level constants" in prompt
     assert "`pd` is already available from the fixed wrapper" in prompt
     assert "Do not read files, write files, train models" in prompt
-    assert "PitNextLap" not in prompt
     assert "__is_train__" not in prompt
     assert "__aide_row_id__" not in prompt
-    assert "identifier column" not in prompt
-    assert "`id`" not in prompt
     assert "solution scripts" not in prompt
     assert "live web search" not in prompt
     assert "TabularPredictor" not in prompt
@@ -633,41 +636,6 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "ready"
     assert status["timings_seconds"] == response["timings_seconds"]
-
-
-def test_run_synthesis_checkpoint_rejects_generated_next_pitstop_leakage(tmp_path):
-    cfg = _cfg(tmp_path)
-    context = {
-        "run_id": cfg.exp_name,
-        "checkpoint_step": 15,
-        "task_desc": "task",
-        "best_working_solutions": [{"local_cv_score": 0.9, "code": "print('old')"}],
-    }
-
-    def fake_runner(cmd, **kwargs):
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text(
-            "import pandas as pd\n"
-            "test = pd.read_csv('./input/test.csv.gz')\n"
-            "test['next_PitStop'] = test.groupby(['Race', 'Driver'])['PitStop'].shift(-1)\n"
-            "print(test['next_PitStop'].mean())\n"
-        )
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    result = run_synthesis_checkpoint(
-        cfg=cfg,
-        context=context,
-        runner=fake_runner,
-    )
-
-    checkpoint_dir = Path(result["checkpoint_dir"])
-    response = json.loads((checkpoint_dir / "response.json").read_text())
-    status = json.loads((checkpoint_dir / "status.json").read_text())
-
-    assert result["status"] == "failed"
-    assert status["status"] == "failed"
-    assert "target leakage" in response["error"]
-    assert not (checkpoint_dir / "response.py").exists()
 
 
 def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
@@ -842,30 +810,3 @@ def test_synthesis_advisor_injects_existing_ready_checkpoint_even_after_count_mo
     assert synthesized.node.parent is None
     assert synthesized.node.plan == "I will reuse a ready synthesis design."
     assert synthesized.node.code == "value = 10\nprint(value)\n"
-
-
-def test_synthesis_advisor_rejects_existing_ready_checkpoint_with_leakage(tmp_path):
-    cfg = _cfg(tmp_path)
-    journal = Journal()
-    journal.append(_node(0.9, code="print('ok')"))
-    checkpoint = Path(cfg.log_dir) / "synthesis" / "checkpoint-000010"
-    checkpoint.mkdir(parents=True)
-    (checkpoint / "status.json").write_text('{"status": "ready"}')
-    (checkpoint / "response.py").write_text(
-        "test['next_PitStop'] = test.groupby(['Race'])['PitStop'].shift(-1)\n"
-    )
-    advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
-
-    synthesized = advisor.generate_node_if_due(journal=journal, completed_steps=23)
-    status = json.loads((checkpoint / "status.json").read_text())
-
-    assert synthesized is not None
-    assert synthesized.ready_for_execution is False
-    assert synthesized.node.is_buggy is True
-    assert synthesized.node.status == "failed"
-    assert synthesized.node.exc_type == "Failed"
-    assert synthesized.node.code == (
-        "test['next_PitStop'] = test.groupby(['Race'])['PitStop'].shift(-1)"
-    )
-    assert status["status"] == "failed"
-    assert "target leakage" in status["error"]

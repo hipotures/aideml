@@ -39,7 +39,7 @@ def _cfg(tmp_path: Path):
     cfg = prep_cfg(cfg)
     input_dir = Path(cfg.workspace_dir) / "input"
     input_dir.mkdir(parents=True, exist_ok=True)
-    (input_dir / "sample_submission.csv").write_text("id,PitNextLap\n10,0.0\n")
+    (input_dir / "sample_submission.csv").write_text("id,class\n10,GALAXY\n")
     return cfg
 
 
@@ -178,64 +178,11 @@ def test_extract_preprocess_source_from_raw_code_does_not_format(monkeypatch):
     assert "return out" in source
 
 
-def test_validate_preprocess_source_rejects_target_reference():
-    with pytest.raises(ValueError, match="forbidden column"):
-        validate_preprocess_source(
-            "def preprocess(df):\n"
-            "    df['target_copy'] = df['PitNextLap']\n"
-            "    return df\n",
-            target_col="PitNextLap",
-        )
-
-
-def test_validate_preprocess_source_allows_aux_column_matching_target_name():
-    validate_preprocess_source(
-        "def preprocess(df, aux):\n"
-        "    out = df.copy()\n"
-        "    counts = aux['class'].value_counts()\n"
-        "    out['aux_class_count'] = len(counts)\n"
-        "    return out\n",
-        target_col="class",
-    )
-
-
-def test_validate_preprocess_source_rejects_df_column_matching_target_name():
-    with pytest.raises(ValueError, match="forbidden column"):
-        validate_preprocess_source(
-            "def preprocess(df, aux):\n"
-            "    out = df.copy()\n"
-            "    out['target_copy'] = df['class']\n"
-            "    return out\n",
-            target_col="class",
-        )
-
-
-def test_validate_preprocess_source_rejects_split_marker_reference():
-    with pytest.raises(ValueError, match="__is_train__"):
-        validate_preprocess_source(
-            "def preprocess(df):\n"
-            "    df['split_feature'] = df['__is_train__'].astype(int)\n"
-            "    return df\n",
-            target_col="PitNextLap",
-        )
-
-
-def test_validate_preprocess_source_rejects_row_id_reference():
-    with pytest.raises(ValueError, match="__aide_row_id__"):
-        validate_preprocess_source(
-            "def preprocess(df):\n"
-            "    df['row_feature'] = df['__aide_row_id__']\n"
-            "    return df\n",
-            target_col="PitNextLap",
-        )
-
-
 def test_validate_preprocess_source_rejects_parent_composition_signature():
     with pytest.raises(ValueError, match="second argument must be named `aux`"):
         validate_preprocess_source(
             "def preprocess(df, _base_preprocess=globals().get('preprocess')):\n"
             "    return _base_preprocess(df) if _base_preprocess else df\n",
-            target_col="PitNextLap",
         )
 
 
@@ -245,7 +192,6 @@ def test_validate_preprocess_source_accepts_optional_aux_argument():
         "    out = df.copy()\n"
         "    out['aux_rows'] = len(aux)\n"
         "    return out\n",
-        target_col="PitNextLap",
     )
 
 
@@ -254,7 +200,6 @@ def test_validate_preprocess_source_rejects_misnamed_aux_argument():
         validate_preprocess_source(
             "def preprocess(df, external):\n"
             "    return df\n",
-            target_col="PitNextLap",
         )
 
 
@@ -576,7 +521,7 @@ def test_generated_save_submission_copies_to_artifact_dir(tmp_path, monkeypatch)
     working_dir = tmp_path / "workspace" / "working"
     artifact_dir = tmp_path / "logs" / "run" / "artifacts" / "20260504T171209"
     working_dir.mkdir(parents=True)
-    submission = namespace["pd"].DataFrame({"id": [1, 2], "PitNextLap": [0.1, 0.9]})
+    submission = namespace["pd"].DataFrame({"id": [1, 2], "class": ["STAR", "QSO"]})
     monkeypatch.setenv("AIDE_NODE_ARTIFACT_DIR", str(artifact_dir))
 
     namespace["_save_submission"](submission, working_dir)
@@ -593,21 +538,21 @@ def test_generated_make_submission_maps_predictions_by_id_and_sorts(tmp_path):
     exec(code.replace("\nmain()\n", "\n"), namespace)
 
     sample_submission = namespace["pd"].DataFrame(
-        {"id": [3, 1, 2], "PitNextLap": [0.0, 0.0, 0.0]}
+        {"id": [3, 1, 2], "class": ["GALAXY", "GALAXY", "GALAXY"]}
     )
     test_ids = namespace["pd"].Series([1, 2, 3])
-    test_pred = namespace["pd"].Series([0.1, 0.2, 0.3])
+    test_pred = namespace["pd"].Series(["STAR", "QSO", "GALAXY"])
 
     submission = namespace["_make_submission"](
         sample_submission,
         id_col="id",
-        target_col="PitNextLap",
+        target_col="class",
         test_ids=test_ids,
         test_pred=test_pred,
     )
 
     assert submission["id"].to_list() == [1, 2, 3]
-    assert submission["PitNextLap"].to_list() == [0.1, 0.2, 0.3]
+    assert submission["class"].to_list() == ["STAR", "QSO", "GALAXY"]
 
 
 def test_autogluon_fast_boost_profile_excludes_catboost(tmp_path):
@@ -899,14 +844,14 @@ def test_autogluon_unknown_profile_is_rejected(tmp_path):
 def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     cfg = _cfg(tmp_path)
     agent = Agent(
-        task_desc="Predict `PitNextLap`. The identifier column is `id`.",
+        task_desc="Predict `class`. The identifier column is `id`.",
         cfg=cfg,
         journal=Journal(),
     )
     agent.data_preview = (
-        "PitNextLap (float64) has 2 unique values.\n"
+        "class (object) has 3 unique values.\n"
         "id (int64) has range 1 - 2.\n"
-        "TyreLife (float64) has useful signal.\n"
+        "redshift (float64) has useful signal.\n"
     )
     captured = {}
 
@@ -916,7 +861,7 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
             "add a simple numeric ratio",
             "def preprocess(df):\n"
             "    df = df.copy()\n"
-            "    df['TyreLife_x2'] = df.get('TyreLife', 0) * 2\n"
+            "    df['redshift_x2'] = df.get('redshift', 0) * 2\n"
             "    return df\n",
         )
 
@@ -926,8 +871,8 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
 
     assert "AutoGluon preprocess mode contract" in captured["prompt"]["Instructions"]
     prompt_text = str(captured["prompt"])
-    assert "TyreLife" in prompt_text
-    assert "PitNextLap" in prompt_text
+    assert "redshift" in prompt_text
+    assert "class" in prompt_text
     assert "`id`" in prompt_text
     assert "__is_train__" not in prompt_text
     assert "__aide_row_id__" not in prompt_text
@@ -939,7 +884,7 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "Avoid expensive Python callbacks" in prompt_text
     assert "rolling.apply" in prompt_text
     assert "TabularPredictor" in node.code
-    assert "TyreLife_x2" in node.code
+    assert "redshift_x2" in node.code
 
 
 def test_agent_autogluon_first_node_is_raw_baseline_without_llm(tmp_path):

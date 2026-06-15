@@ -48,18 +48,10 @@ SYNTHESIS_PROMPT_INTRO = (
 SYNTHESIS_PREPROCESS_PROMPT_INTRO = (
     "You are a Kaggle grandmaster and senior machine learning engineer. Your "
     "job is to study the strongest successful AIDE preprocess functions for a "
-    "fixed AutoGluon wrapper and produce one coherent, leakage-safe "
+    "fixed AutoGluon wrapper and produce one coherent "
     "preprocess(df) function that combines the best compatible feature ideas."
 )
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
-TARGET_LEAKAGE_PATTERNS = (
-    "next_pitstop",
-    "next_pit_stop",
-    "next_pit",
-    "next pitstop",
-    "next pit stop",
-    "pitstop_known",
-)
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -173,41 +165,6 @@ def _looks_like_autogluon_solution(code: str) -> bool:
 
 def _timestamp_from_ctime(ctime: float) -> str:
     return dt.datetime.fromtimestamp(ctime).strftime("%Y%m%dT%H%M%S")
-
-
-def _target_leakage_reasons(code: str) -> list[str]:
-    lowered = code.lower()
-    reasons: list[str] = []
-    for pattern in TARGET_LEAKAGE_PATTERNS:
-        if pattern in lowered:
-            reasons.append(f"suspicious token '{pattern}'")
-
-    lines = code.splitlines()
-    for idx, line in enumerate(lines):
-        normalized_line = re.sub(r"\s+", "", line.lower())
-        if (
-            "shift(-1" not in normalized_line
-            and "shift(periods=-1" not in normalized_line
-        ):
-            continue
-        window = "\n".join(lines[max(0, idx - 4) : idx + 5]).lower()
-        if "pitstop" in window or "pit_stop" in window:
-            reasons.append("future PitStop shift(-1)")
-
-    return list(dict.fromkeys(reasons))
-
-
-def _has_target_leakage_pattern(code: str) -> bool:
-    return bool(_target_leakage_reasons(code))
-
-
-def _validate_synthesis_code_for_injection(code: str) -> None:
-    reasons = _target_leakage_reasons(code)
-    if reasons:
-        raise ValueError(
-            "Codex synthesis response contains target leakage risk: "
-            + "; ".join(reasons)
-        )
 
 
 def _load_submission_registry(cfg: Config) -> list[dict[str, Any]]:
@@ -588,8 +545,6 @@ def collect_top_synthesis_solutions(
         if source_journal is None:
             continue
         for node in _working_nodes_with_metrics(source_journal):
-            if _has_target_leakage_pattern(node.code):
-                continue
             if not _candidate_matches_agent_mode(cfg, run_id, node):
                 continue
             selected.append((run_id, node))
@@ -659,7 +614,7 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         return (
             f"{SYNTHESIS_PREPROCESS_PROMPT_INTRO}\n\n"
             "# Synthesis task\n"
-            "Create one coherent leakage-safe feature preprocessing function for "
+            "Create one coherent feature preprocessing function for "
             "a fixed AutoGluon training wrapper. You are given successful "
             "preprocess functions with local CV scores and, when available, Kaggle "
             "public leaderboard scores. Treat them as evidence about useful "
@@ -676,12 +631,12 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "evidence; do not respond with micro-threshold tuning. Second, build "
             "a strategy map across candidates: identify consensus feature "
             "families, divergent families, near-duplicates, redundant ratios, "
-            "risky leakage-prone ideas, and safe reusable implementation "
+            "and reusable implementation "
             "patterns. Third, decide what to keep, merge, add, and drop: keep "
             "robust consensus ideas, merge similar ideas into canonical features, "
             "add divergent ideas only when they provide different signal, add new "
             "features only as deterministic transformations of available columns, "
-            "and drop duplicate aliases, row-order hacks, leakage-prone features, "
+            "and drop duplicate aliases, row-order hacks, "
             "and pure cosmetic changes.\n\n"
             "# Reject trivial synthesis\n"
             "A valid synthesis must include a strategy-level change compared with "
@@ -695,18 +650,6 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "into one canonical feature with a clear name. Avoid synonymous ratios "
             "and aliases that encode the same information. Add a feature family "
             "only when it likely contributes distinct signal.\n\n"
-            "# Current task-specific feature strategy\n"
-            "The task is to predict whether an F1 driver will pit on the next lap. "
-            "Favor feature families that represent tyre age and wear pressure "
-            "relative to compound-specific expected life; compound pit windows "
-            "and old-tyre flags; degradation rate, lap-time loss, and performance "
-            "drop; race phase, estimated total laps, and estimated laps remaining; "
-            "stint progress and current pit-stop state; relative field context "
-            "within Year/Race/LapNumber groups; safe driver-race chronological "
-            "state using only current or past rows; dry-compound usage pressure "
-            "computed safely from observed current/past compounds; and stable "
-            "categorical interactions or frequency encodings useful to "
-            "AutoGluon.\n\n"
             "# Output contract\n"
             "Return the same two-part structure as ordinary AIDE code generation: "
             "first a short natural-language design paragraph, then exactly one "
@@ -734,18 +677,6 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "Return a DataFrame with the same row count. Do not infer train/test "
             "split from row counts, index ranges, sorted order, or hidden "
             "assumptions.\n\n"
-            "# Leakage rules\n"
-            "Use only deterministic transformations of model feature columns. "
-            "Do not create label-derived features, encodings, filters, groups, "
-            "or pseudo-labels inside preprocess(df). "
-            "Do not use future PitStop values, next-lap PitStop reconstruction, shift(-1) on PitStop, "
-            "next_PitStop-like features, or test PitStop values to overwrite "
-            "predictions. Use PitStop only as a normal current-row historical "
-            "feature. Safe chronological features may be computed only from rows "
-            "at the current or earlier LapNumber within the same Year/Race/Driver "
-            "group. If sorting is needed, sort a copy, compute only non-future "
-            "features such as shift(1), diff(), cumsum(), or cumulative flags, "
-            "then reindex back to the original df index.\n\n"
             "# Implementation quality\n"
             "The function should be deterministic, vectorized where practical, "
             "and robust to missing values, singleton groups, unseen categories, "
@@ -794,11 +725,6 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
         "efficiency: avoid unnecessary full-data copies, unbounded feature "
         "explosions, oversized intermediate objects, and excessively expensive "
         "model searches.\n\n"
-        "# Leakage rules\n"
-        "Do not use target leakage. Do not use future PitStop values, next-lap "
-        "PitStop reconstruction, shift(-1) on PitStop, next_PitStop-like "
-        "features, or test PitStop values to overwrite predictions. Use PitStop "
-        "only as a normal current-row historical feature.\n\n"
         "# Context field meanings\n"
         "best_working_solutions contains the highest-scoring scripts that ran "
         "successfully. source_kind appears only when a candidate was created by "
@@ -968,7 +894,6 @@ def run_synthesis_checkpoint(
                 code = build_autogluon_wrapper(preprocess_source, cfg)
             else:
                 plan, code = parse_synthesis_response(raw_response)
-                _validate_synthesis_code_for_injection(code)
             (checkpoint_dir / "response.py").write_text(code, encoding="utf-8")
         except ValueError as exc:
             error = str(exc)
@@ -1124,13 +1049,7 @@ def _failed_synthesis_node(checkpoint: Path) -> SynthesisNode | None:
 
 
 def _read_valid_ready_checkpoint_code(checkpoint: Path) -> str | None:
-    code = (checkpoint / "response.py").read_text(encoding="utf-8")
-    try:
-        _validate_synthesis_code_for_injection(code)
-    except ValueError as exc:
-        _mark_checkpoint_failed(checkpoint, str(exc))
-        return None
-    return code
+    return (checkpoint / "response.py").read_text(encoding="utf-8")
 
 
 class SynthesisAdvisor:

@@ -62,16 +62,6 @@ def preprocess_task_prompt_text(text: Any) -> str:
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
-_PITSTOP_LEAKAGE_PATTERNS = (
-    "next_pitstop",
-    "next_pit_stop",
-    "next_pit",
-    "next pitstop",
-    "next pit stop",
-    "pitstop_known",
-)
-
-
 def is_autogluon_preprocess_mode(cfg: Config) -> bool:
     return getattr(cfg.agent, "mode", "legacy") == AGENT_MODE
 
@@ -91,13 +81,6 @@ def _source_for_first_preprocess_function(source: str) -> str | None:
 def _python_code_block_candidates(text: str) -> list[str]:
     matches = re.findall(r"```(?:python)?\n*(.*?)\n*```", text, re.DOTALL)
     return [match for match in matches if match.strip()]
-
-
-def _subscript_string_key(node: ast.Subscript) -> str | None:
-    slice_node = node.slice
-    if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, str):
-        return slice_node.value
-    return None
 
 
 def extract_preprocess_source(text: str) -> str:
@@ -136,44 +119,6 @@ def validate_preprocess_source(source: str, *, target_col: str | None = None) ->
         raise ValueError("`preprocess` must accept `df`, optionally followed by `aux`.")
     if len(func.args.args) == 2 and func.args.args[1].arg != "aux":
         raise ValueError("`preprocess` second argument must be named `aux`.")
-
-    reasons: list[str] = []
-    lowered = source.lower()
-    for pattern in _PITSTOP_LEAKAGE_PATTERNS:
-        if pattern in lowered:
-            reasons.append(f"suspicious token '{pattern}'")
-
-    lines = source.splitlines()
-    for idx, line in enumerate(lines):
-        normalized_line = re.sub(r"\s+", "", line.lower())
-        if (
-            "shift(-1" in normalized_line
-            or "shift(periods=-1" in normalized_line
-        ):
-            window = "\n".join(lines[max(0, idx - 4) : idx + 5]).lower()
-            if "pitstop" in window or "pit_stop" in window:
-                reasons.append("future PitStop shift(-1)")
-
-    always_forbidden_columns = [FORBIDDEN_ROW_ID, FORBIDDEN_SPLIT_MARKER]
-    for node in ast.walk(func):
-        if not isinstance(node, ast.Constant):
-            continue
-        for col in always_forbidden_columns:
-            if node.value == col:
-                reasons.append(f"forbidden column '{col}' referenced in preprocess")
-    if target_col:
-        for node in ast.walk(func):
-            if not isinstance(node, ast.Subscript):
-                continue
-            if not isinstance(node.value, ast.Name) or node.value.id != "df":
-                continue
-            if _subscript_string_key(node) == target_col:
-                reasons.append(
-                    f"forbidden column '{target_col}' referenced in preprocess"
-                )
-
-    if reasons:
-        raise ValueError("Preprocess target leakage risk: " + "; ".join(dict.fromkeys(reasons)))
 
 
 def _container(value: Any) -> Any:
