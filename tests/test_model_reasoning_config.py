@@ -34,6 +34,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
 
     assert cfg.agent.code.model == "gpt-5.4-mini"
     assert cfg.agent.code.reasoning_effort == "low"
+    assert cfg.agent.code.web_search is False
     assert cfg.agent.feedback.model == "gpt-5.4-mini"
     assert cfg.agent.feedback.reasoning_effort == "low"
     assert cfg.report.model == "gpt-5.4-mini"
@@ -87,6 +88,19 @@ def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypa
 
     assert cfg.research.root_hypothesis_model == "gpt-root-hypothesis"
     assert cfg.research.reasoning_effort == "medium"
+
+
+def test_agent_code_web_search_env_overrides_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("AIDE_AGENT_CODE_WEB_SEARCH", raising=False)
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_CODE_WEB_SEARCH=true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path, load_env=True), load_env=True)
+
+    assert cfg.agent.code.web_search is True
 
 
 def test_search_best_score_min_children_env_overrides_default(tmp_path, monkeypatch):

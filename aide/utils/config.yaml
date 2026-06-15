@@ -141,6 +141,7 @@ agent:
     temp: 0.5
     reasoning_effort: low
     timeout: 600
+    web_search: false
 
   # LLM settings for evaluating program output / tracebacks
   feedback:

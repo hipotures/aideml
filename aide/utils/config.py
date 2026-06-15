@@ -121,6 +121,7 @@ class StageConfig:
     temp: float | None
     reasoning_effort: str | None = None
     timeout: int | None = None
+    web_search: bool = False
 
 
 @dataclass(frozen=True)
@@ -447,6 +448,7 @@ def _apply_env_aliases(
             str.strip,
         ),
         "AIDE_AGENT_CODE_TIMEOUT": ("agent.code.timeout", _env_int),
+        "AIDE_AGENT_CODE_WEB_SEARCH": ("agent.code.web_search", _env_bool),
         "AIDE_AGENT_FEEDBACK_MODEL": ("agent.feedback.model", str.strip),
         "AIDE_AGENT_FEEDBACK_REASONING_EFFORT": (
             "agent.feedback.reasoning_effort",

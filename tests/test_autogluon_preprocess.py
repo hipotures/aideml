@@ -1,4 +1,5 @@
 import os
+import json
 import time
 from pathlib import Path
 
@@ -1029,6 +1030,74 @@ def test_agent_generation_logs_code_response_to_preallocated_artifact(
     assert (artifact_dir / "request.md").exists()
     assert "TyreLife_x2" in (artifact_dir / "response.py").read_text()
     assert not (artifact_dir / "llm_communication.md").exists()
+
+
+def test_agent_code_web_search_option_writes_markdown_summary(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    cfg.agent.code.web_search = True
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    captured = {}
+
+    def fake_query(**kwargs):
+        captured["prompt"] = kwargs["system_message"]
+        events = [
+            {
+                "type": "item.completed",
+                "item": {
+                    "type": "web_search",
+                    "query": "playground s6e6 kaggle discussion",
+                    "action": {
+                        "type": "search",
+                        "query": "playground s6e6 kaggle discussion",
+                        "queries": [
+                            "playground s6e6 kaggle discussion",
+                            "playground s6e6 winning notebook",
+                        ],
+                    },
+                },
+            },
+            {
+                "type": "item.completed",
+                "item": {
+                    "type": "web_search",
+                    "query": "https://www.kaggle.com/competitions/example/discussion/1",
+                    "action": {"type": "other"},
+                },
+            },
+        ]
+        (artifact_dir / "codex_events.jsonl").write_text(
+            "\n".join(json.dumps(event) for event in events),
+            encoding="utf-8",
+        )
+        return (
+            "Add a simple feature.\n"
+            "```python\n"
+            "def preprocess(df):\n"
+            "    return df.copy()\n"
+            "```"
+        )
+
+    monkeypatch.setitem(agent.plan_and_code_query.__globals__, "query", fake_query)
+    agent._pending_llm_log_dir = artifact_dir
+
+    plan, code = agent.plan_and_code_query({"Instructions": {}})
+
+    assert plan == "Add a simple feature."
+    assert "def preprocess" in code
+    assert "Web search" in captured["prompt"]["Instructions"]
+    summary = (artifact_dir / "web_search.md").read_text(encoding="utf-8")
+    assert "# Web Search" in summary
+    assert "## Search Queries" in summary
+    assert "- playground s6e6 kaggle discussion" in summary
+    assert "- playground s6e6 winning notebook" in summary
+    assert "## Opened Pages" in summary
+    assert "- https://www.kaggle.com/competitions/example/discussion/1" in summary
+    assert '"type":' not in summary
 
 
 def test_agent_autogluon_improve_prompt_uses_previous_preprocess(tmp_path):

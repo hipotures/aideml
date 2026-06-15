@@ -857,6 +857,89 @@ def _repeated_failure_instruction(
     return {}
 
 
+def _web_search_prompt_instruction() -> list[str]:
+    return [
+        "Web search is enabled for this code-generation call.",
+        "Use web_search when current public Kaggle context, competition discussions, notebooks, package documentation, or recent implementation details may help choose the next coding approach.",
+        "If web_search is not useful or not available, continue normally without inventing sources.",
+    ]
+
+
+def _add_code_web_search_instruction(prompt: Any) -> Any:
+    instruction = _web_search_prompt_instruction()
+    if isinstance(prompt, dict):
+        prompt = dict(prompt)
+        instructions = prompt.get("Instructions")
+        if isinstance(instructions, dict):
+            instructions = dict(instructions)
+        else:
+            instructions = {}
+        instructions["Web search"] = instruction
+        prompt["Instructions"] = instructions
+        return prompt
+    return (
+        f"{prompt}\n\n"
+        "# Web search\n\n"
+        + "\n".join(f"- {item}" for item in instruction)
+        + "\n"
+    )
+
+
+def _web_search_event_summary(events_path: Path) -> str | None:
+    if not events_path.exists():
+        return None
+    queries: list[str] = []
+    urls: list[str] = []
+
+    def add_unique(items: list[str], value: Any) -> None:
+        text = str(value or "").strip()
+        if text and text not in items:
+            items.append(text)
+
+    for line in events_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = event.get("item") if isinstance(event, dict) else None
+        if not isinstance(item, dict) or item.get("type") != "web_search":
+            continue
+        action = item.get("action")
+        if not isinstance(action, dict):
+            action = {}
+        action_type = str(action.get("type") or "").strip()
+        item_query = str(item.get("query") or "").strip()
+
+        if action_type == "search":
+            add_unique(queries, action.get("query") or item_query)
+            for query in action.get("queries") or []:
+                add_unique(queries, query)
+        elif item_query.startswith(("http://", "https://")):
+            add_unique(urls, item_query)
+        else:
+            for key in ("url", "href"):
+                value = action.get(key)
+                if isinstance(value, str) and value.startswith(("http://", "https://")):
+                    add_unique(urls, value)
+
+    if not queries and not urls:
+        return None
+
+    lines = ["# Web Search", ""]
+    if queries:
+        lines.extend(["## Search Queries", ""])
+        lines.extend(f"- {query}" for query in queries)
+        lines.append("")
+    if urls:
+        lines.extend(["## Opened Pages", ""])
+        lines.extend(f"- {url}" for url in urls)
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _ancestor_ids(node: Node) -> set[str]:
     ids: set[str] = set()
     current: Node | None = node
@@ -2037,6 +2120,8 @@ class Agent:
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
         """Generate a natural language plan + code in the same LLM call and split them apart."""
         completion_text = None
+        if bool(getattr(self.acfg.code, "web_search", False)):
+            prompt = _add_code_web_search_instruction(prompt)
         for _ in range(retries):
             completion_text = query(
                 system_message=prompt,
@@ -2048,6 +2133,7 @@ class Agent:
                 llm_log_dir=self._pending_llm_log_dir,
                 llm_log_context=self._generation_log_context(),
             )
+            self._write_web_search_summary()
 
             code = extract_code(completion_text)
             nl_text = extract_text_up_to_code(completion_text)
@@ -2064,6 +2150,18 @@ class Agent:
             print("Plan + code extraction failed, retrying...")
         print("Final plan + code extraction attempt failed, giving up...")
         return "", completion_text  # type: ignore
+
+    def _write_web_search_summary(self) -> None:
+        if self._pending_llm_log_dir is None:
+            return
+        artifact_dir = Path(self._pending_llm_log_dir)
+        summary_path = artifact_dir / "web_search.md"
+        summary = _web_search_event_summary(artifact_dir / "codex_events.jsonl")
+        if summary is None:
+            if summary_path.exists():
+                summary_path.unlink()
+            return
+        summary_path.write_text(summary, encoding="utf-8")
 
     def _maybe_refactor_generated_response(self) -> None:
         if self._pending_llm_log_dir is None:
