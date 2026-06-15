@@ -836,6 +836,7 @@ def _repeated_failure_instruction(
         return {
             "Strong repeated-failure evidence": [
                 "More than 10 valid sibling attempts for this selected parent did not improve over the parent score.",
+                "First identify the dominant repeated feature-mechanism families among those failed siblings.",
                 "Do not make a larger, more complex, or lightly reworded variant of a feature-mechanism family that appears repeatedly among those failures.",
                 "Choose a materially different mechanism, or make a compact simplification, replacement, robustness transform, pruning step, or low-amplitude interaction tied to the selected parent's existing preprocessing stack.",
                 "The next change must be easy to distinguish from the repeated failed sibling families.",
@@ -851,6 +852,66 @@ def _repeated_failure_instruction(
             ]
         }
     return {}
+
+
+def _ancestor_ids(node: Node) -> set[str]:
+    ids: set[str] = set()
+    current: Node | None = node
+    while current is not None:
+        ids.add(current.id)
+        current = current.parent
+    return ids
+
+
+def _descendant_ids(node: Node) -> set[str]:
+    ids: set[str] = set()
+    stack = list(node.children)
+    while stack:
+        current = stack.pop()
+        ids.add(current.id)
+        stack.extend(current.children)
+    return ids
+
+
+def _format_other_improving_hypotheses(
+    journal: Journal,
+    *,
+    parent_node: Node,
+    attempt_entries: list[tuple[Node, Node | None]],
+    epsilon: float,
+) -> str | None:
+    excluded_ids = _ancestor_ids(parent_node) | _descendant_ids(parent_node)
+    for child, replacement in attempt_entries:
+        excluded_ids.add(child.id)
+        if replacement is not None:
+            excluded_ids.add(replacement.id)
+
+    blocks: list[str] = []
+    seen_designs: set[str] = set()
+    for node in sorted(journal.nodes, key=_node_step_sort_value):
+        if node.id in excluded_ids or node.parent is None or node.is_buggy:
+            continue
+        if node.metric is None or node.metric.value is None:
+            continue
+        if not _node_improves_parent(node, node.parent, epsilon=epsilon):
+            continue
+        design = _summary_plan_text(node.plan).strip()
+        if not design:
+            continue
+        design_key = " ".join(design.lower().split())
+        if design_key in seen_designs:
+            continue
+        seen_designs.add(design_key)
+        blocks.append(f"Design: {design}")
+
+    if not blocks:
+        return None
+    intro = (
+        "These are unique designs from other nodes outside the selected parent "
+        "tree that improved their own parent score. Use them as successful "
+        "feature-mechanism references, not as examples to copy blindly."
+    )
+    return intro + "\n\n" + "\n---\n".join(blocks)
 
 
 def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:
@@ -1810,6 +1871,16 @@ class Agent:
                 sorted(ancestor_nodes, key=_node_step_sort_value),
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
             )
+        other_improving_hypotheses = _format_other_improving_hypotheses(
+            self.journal,
+            parent_node=parent_node,
+            attempt_entries=attempt_entries,
+            epsilon=epsilon,
+        )
+        if other_improving_hypotheses is not None:
+            prompt["Other improving hypotheses outside this node tree"] = (
+                other_improving_hypotheses
+            )
         previous_attempts = _format_previous_child_attempts(
             parent_node,
             epsilon=epsilon,
@@ -2212,7 +2283,7 @@ class Agent:
         prompt["Instructions"] |= self._prompt_resp_fmt
         prompt["Instructions"] |= {
             "Preprocessing improvement sketch guideline": [
-                "The solution sketch should describe one specific feature engineering improvement.",
+                "The solution sketch should describe one specific preprocessing change.",
                 "Make the change atomic so the AutoGluon wrapper can evaluate its effect.",
                 "Don't suggest to do EDA.",
             ],

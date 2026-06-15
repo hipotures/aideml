@@ -1142,6 +1142,116 @@ def test_agent_autogluon_improve_prompt_keeps_memory_and_siblings_adjacent(
     assert "class" not in history_rule_text.lower()
 
 
+def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
+    tmp_path,
+):
+    cfg = _cfg(tmp_path)
+    parent = Node(
+        plan="base preprocess",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+    )
+    parent.metric = MetricValue(0.9, maximize=True)
+    parent.is_buggy = False
+    prior_child = Node(
+        plan="non improving current-tree child",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+        parent=parent,
+    )
+    prior_child.metric = MetricValue(0.89, maximize=True)
+    prior_child.is_buggy = False
+
+    other_parent = Node(
+        plan="outside parent",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+    )
+    other_parent.metric = MetricValue(0.7, maximize=True)
+    other_parent.is_buggy = False
+    other_child = Node(
+        plan="winning outside design",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+        parent=other_parent,
+    )
+    other_child.metric = MetricValue(0.71, maximize=True)
+    other_child.is_buggy = False
+    duplicate_other_child = Node(
+        plan="winning outside design",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+        parent=other_parent,
+    )
+    duplicate_other_child.metric = MetricValue(0.72, maximize=True)
+    duplicate_other_child.is_buggy = False
+    losing_other_child = Node(
+        plan="losing outside design",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+        parent=other_parent,
+    )
+    losing_other_child.metric = MetricValue(0.69, maximize=True)
+    losing_other_child.is_buggy = False
+
+    journal = Journal()
+    for node in [
+        parent,
+        prior_child,
+        other_parent,
+        other_child,
+        duplicate_other_child,
+        losing_other_child,
+    ]:
+        journal.append(node)
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    captured = {}
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return (
+            "improve feature",
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+        )
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    keys = list(captured["prompt"])
+    assert keys.index("Other improving hypotheses outside this node tree") == (
+        keys.index("Memory") + 1
+    )
+    assert keys.index("Previous attempts from this parent") == keys.index(
+        "Other improving hypotheses outside this node tree"
+    ) + 1
+    other = captured["prompt"]["Other improving hypotheses outside this node tree"]
+    assert other.count("Design: winning outside design") == 1
+    assert "losing outside design" not in other
+    assert "non improving current-tree child" not in other
+    assert "Step:" not in other
+    assert "Validation Metric:" not in other
+
+
 @pytest.mark.parametrize(
     ("child_count", "expected_key", "unexpected_key"),
     [
