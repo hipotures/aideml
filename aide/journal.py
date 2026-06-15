@@ -51,7 +51,11 @@ def _branch_design_text(
 ) -> str:
     text = _summary_plan_text(node.plan)
     if (
-        text.startswith("Seeded scored ROOT hypothesis ")
+        (
+            text.startswith("Seeded scored ROOT hypothesis ")
+            or text.startswith("Loaded library autogluon root code for hypothesis ")
+            or text.startswith("Loaded library legacy root code for hypothesis ")
+        )
         and len(node.research_hypotheses_offered) == 1
     ):
         hypothesis_id = node.research_hypotheses_offered[0]

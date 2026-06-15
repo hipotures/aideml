@@ -595,6 +595,10 @@ def record_generated_only_node(
     node: Node,
     experiment_id: str,
 ) -> None:
+    active_parent = getattr(agent, "active_parent_node", None)
+    if node.parent is None and active_parent is not None and node is not active_parent:
+        node.parent = active_parent
+        active_parent.children.add(node)
     mark_node_generated_only(node)
     agent.save_hypothesis_root_code_for_node(node, activate=False)
     append_node_with_best_score_notification(

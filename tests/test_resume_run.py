@@ -649,6 +649,39 @@ def test_record_generated_only_node_marks_saves_and_appends():
     assert agent.activate is False
 
 
+def test_record_generated_only_node_restores_active_parent_when_missing():
+    parent = Node(code="print('parent')", plan="parent")
+    node = Node(code="print('generated')", plan="generated")
+    journal = Journal(nodes=[parent])
+
+    class AgentStub:
+        active_parent_node = parent
+        saved_node: Node | None = None
+        activate: bool | None = None
+
+        def save_hypothesis_root_code_for_node(
+            self,
+            node: Node,
+            *,
+            activate: bool = True,
+        ) -> None:
+            self.saved_node = node
+            self.activate = activate
+
+    agent = AgentStub()
+
+    record_generated_only_node(
+        agent=agent,
+        journal=journal,
+        node=node,
+        experiment_id="test-run",
+    )
+
+    assert node.parent is parent
+    assert node in parent.children
+    assert journal.nodes == [parent, node]
+
+
 def test_save_parallel_generate_only_run_persists_journal(tmp_path):
     cfg = _load_cfg(use_cli_args=False)
     cfg.data_dir = str(tmp_path)

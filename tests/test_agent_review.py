@@ -435,6 +435,39 @@ def test_branch_context_uses_hypothesis_description_for_seeded_root_plan():
     assert "Seeded scored ROOT hypothesis 000019" not in context
 
 
+def test_branch_context_uses_hypothesis_description_for_loaded_library_root_plan():
+    journal = Journal()
+    root = Node(
+        code="root",
+        plan="Loaded library autogluon root code for hypothesis 000021 from autogluon-002.py.",
+    )
+    root.metric = MetricValue(0.96627, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000021"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child improvement plan", parent=root)
+    child.metric = MetricValue(0.96667, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    context = journal.generate_branch_context(
+        child,
+        hypothesis_descriptions_by_id={
+            "000021": (
+                "Title: Explicit Photometric Sky Formula Features\n"
+                "Summary: Test a fully specified photometric, sky, redshift, "
+                "galactic, frequency, and rank feature block."
+            )
+        },
+    )
+
+    assert "Hypothesis ID: 000021" in context
+    assert "Title: Explicit Photometric Sky Formula Features" in context
+    assert "Loaded library autogluon root code for hypothesis 000021" not in context
+
+
 def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = True
