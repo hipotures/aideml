@@ -5320,7 +5320,7 @@ def test_standard_improve_prompt_uses_improving_ancestor_memory_and_adjacent_sib
     assert "step 4 from 3: did_not_improve" in attempts
 
 
-def test_standard_improve_prompt_keeps_sub_epsilon_improving_ancestor_in_memory(
+def test_standard_improve_prompt_excludes_sub_epsilon_improving_ancestor_from_memory(
     tmp_path,
 ):
     cfg = _cfg(tmp_path)
@@ -5357,7 +5357,7 @@ def test_standard_improve_prompt_keeps_sub_epsilon_improving_ancestor_in_memory(
 
     memory = captured["prompt"]["Memory"]
     assert "Root baseline" in memory
-    assert "Small real gain parent" in memory
+    assert "Small real gain parent" not in memory
 
 
 def test_standard_improve_prompt_caps_ancestor_and_sibling_entries_together(
