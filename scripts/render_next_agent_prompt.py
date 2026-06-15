@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from aide.agent import Agent
+from aide.agent import Agent, _add_code_web_search_instruction
 from aide.backend.utils import compile_prompt_to_md, write_llm_request_files
 from aide.journal import Journal, Node
 from aide.run import load_resume_state
@@ -185,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
 
         def fake_plan_and_code(prompt: Any, retries: int = 3) -> tuple[str, str]:
             del retries
+            if bool(getattr(agent.acfg.code, "web_search", False)):
+                prompt = _add_code_web_search_instruction(prompt)
             _write_prompt_artifact(
                 prompt=prompt,
                 out_dir=out_dir,

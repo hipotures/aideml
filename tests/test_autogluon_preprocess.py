@@ -1090,6 +1090,10 @@ def test_agent_code_web_search_option_writes_markdown_summary(
     assert plan == "Add a simple feature."
     assert "def preprocess" in code
     assert "Web search" in captured["prompt"]["Instructions"]
+    assert any(
+        "open and read the relevant sources" in item
+        for item in captured["prompt"]["Instructions"]["Web search"]
+    )
     summary = (artifact_dir / "web_search.md").read_text(encoding="utf-8")
     assert "# Web Search" in summary
     assert "## Search Queries" in summary
