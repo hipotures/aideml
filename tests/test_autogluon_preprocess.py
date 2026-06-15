@@ -280,6 +280,22 @@ def test_preprocess_task_prompt_text_removes_full_solution_only_instructions():
         "123,A\n"
         "```\n\n"
         "`target` must contain one of `A`, `B`, or `C`.\n"
+        "\n"
+        "## Data description\n"
+        "- **train.csv** - training data with the multiclass target column `target`\n"
+        "- **test.csv** - test data without the target column\n"
+        "\n"
+        "Additional auxiliary data description for `external.csv`:\n\n"
+        "External reference data.\n\n"
+        "Common columns with the competition data:\n"
+        "feature_a, feature_b, target.\n\n"
+        "Columns present in this original dataset but not in the competition files:\n"
+        "extra_a.\n\n"
+        "Competition columns not present in this original dataset:\n"
+        "row_id, metadata_a.\n\n"
+        "Generated code should decide whether and how to use this file. Any merge,\n"
+        "filtering, cleaning of sentinel magnitudes, or column mapping must be done\n"
+        "explicitly by the generated solution code.\n"
     )
 
     rendered = preprocess_task_prompt_text(text)
@@ -294,6 +310,10 @@ def test_preprocess_task_prompt_text_removes_full_solution_only_instructions():
     assert "sample_weight" not in rendered
     assert "The submission file must contain" not in rendered
     assert "row_id,target" not in rendered
+    assert "Data description" in rendered
+    assert "Additional auxiliary data description" not in rendered
+    assert "External reference data" not in rendered
+    assert "Competition columns not present" not in rendered
 
 
 def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):

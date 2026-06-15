@@ -49,6 +49,16 @@ def preprocess_task_prompt_text(text: Any) -> str:
         cleaned,
         flags=re.DOTALL,
     )
+    cleaned = re.sub(
+        (
+            r"\n*Additional auxiliary data description for `[^`]+`:\n\n.*?"
+            r"Generated code should decide whether and how to use this file\..*?"
+            r"explicitly by the generated solution code\.\n*"
+        ),
+        "\n",
+        cleaned,
+        flags=re.DOTALL,
+    )
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
