@@ -13,6 +13,7 @@ from aide.autogluon_preprocess import (
     build_autogluon_wrapper,
     extract_preprocess_source,
     parse_result_marker,
+    preprocess_task_prompt_text,
     resolve_autogluon_settings,
     resolve_autogluon_included_model_types,
     validate_preprocess_source,
@@ -254,6 +255,45 @@ def test_validate_preprocess_source_rejects_misnamed_aux_argument():
             "    return df\n",
             target_col="PitNextLap",
         )
+
+
+def test_preprocess_task_prompt_text_removes_full_solution_only_instructions():
+    text = (
+        "## Goal\n"
+        "Predict the target for each object in the test set.\n\n"
+        "For each row in `test.csv`, predict the `target` label. The target column in\n"
+        "`train.csv` is `target`; the identifier column is `row_id`.\n\n"
+        "## Evaluation\n"
+        "Submissions are evaluated using balanced accuracy. Higher is better.\n\n"
+        "Competition-specific modeling hint: if using CatBoost for this multiclass task,\n"
+        "include `auto_class_weights=\"Balanced\"` unless explicitly testing a different\n"
+        "class-weighting strategy; this has empirically improved local CV and public\n"
+        "leaderboard score for this competition.\n"
+        "Analogous balanced-class settings should be used for other multiclass tree\n"
+        "models unless explicitly testing a different class-weighting strategy: for\n"
+        "LightGBM use `class_weight=\"balanced\"`, and for XGBoost pass fold-specific\n"
+        "`sample_weight=compute_sample_weight(class_weight=\"balanced\", y=y_train)` to\n"
+        "`.fit()`.\n\n"
+        "The submission file must contain a header and exactly these columns:\n\n"
+        "```csv\n"
+        "row_id,target\n"
+        "123,A\n"
+        "```\n\n"
+        "`target` must contain one of `A`, `B`, or `C`.\n"
+    )
+
+    rendered = preprocess_task_prompt_text(text)
+
+    assert "Predict the target" in rendered
+    assert "`target` label" in rendered
+    assert "identifier column is `row_id`" in rendered
+    assert "fixed wrapper evaluates feature changes using balanced accuracy" in rendered
+    assert "`target` must contain one of" in rendered
+    assert "auto_class_weights" not in rendered
+    assert "class_weight" not in rendered
+    assert "sample_weight" not in rendered
+    assert "The submission file must contain" not in rendered
+    assert "row_id,target" not in rendered
 
 
 def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):

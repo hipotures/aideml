@@ -24,6 +24,34 @@ def baseline_preprocess_source() -> str:
     return "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df.copy()\n"
 
 
+def preprocess_task_prompt_text(text: Any) -> str:
+    """Remove full-solution instructions that cannot be acted on by preprocess(df)."""
+    cleaned = str(text or "")
+    cleaned = cleaned.replace(
+        "Submissions are evaluated using balanced accuracy. Higher is better.",
+        "The fixed wrapper evaluates feature changes using balanced accuracy. Higher is better.",
+    )
+    cleaned = re.sub(
+        (
+            r"\n*Competition-specific modeling hint:.*?"
+            r"`\.fit\(\)`\.\n*"
+        ),
+        "\n\n",
+        cleaned,
+        flags=re.DOTALL,
+    )
+    cleaned = re.sub(
+        (
+            r"\n*The submission file must contain a header and exactly these "
+            r"columns:\n\n```csv\n.*?```\n*"
+        ),
+        "\n",
+        cleaned,
+        flags=re.DOTALL,
+    )
+    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+
 _PITSTOP_LEAKAGE_PATTERNS = (
     "next_pitstop",
     "next_pit_stop",

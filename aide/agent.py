@@ -17,6 +17,7 @@ from .autogluon_preprocess import (
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
     parse_result_marker,
+    preprocess_task_prompt_text,
     validate_preprocess_source,
 )
 from .backend import FunctionSpec, query
@@ -1495,7 +1496,7 @@ class Agent:
                 "Your returned preprocess function must replace the previous preprocess function. It is not composed with the previous function automatically.",
                 "Do not call `globals().get(\"preprocess\")`, do not add extra preprocess arguments beyond optional `aux`, and do not assume any previous preprocess function is callable at runtime.",
                 "Columns created by a previous preprocess function are not present in df at entry. If your new feature needs previous derived columns, preserve or recompute the code that creates them inside the returned function.",
-                "Use only columns visible in the sanitized feature overview or in previous preprocess functions.",
+                "Use only columns visible in the feature overview or in previous preprocess functions.",
                 "Do not add defensive cleanup for hidden wrapper columns or columns that are not present in preprocess(df).",
                 "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
                 "Do not change row count or reorder rows.",
@@ -1819,14 +1820,14 @@ class Agent:
         return columns[1] if columns is not None else None
 
     def _autogluon_prompt_text(self, text: Any) -> str:
-        return str(text or "")
+        return preprocess_task_prompt_text(text)
 
     def _add_autogluon_context(self, prompt: dict[str, Any]) -> None:
         aux_name = aux_file_name(self.cfg)
         if aux_name is None:
             prompt["Fixed AutoGluon wrapper context"] = (
                 "The fixed wrapper passes only model feature columns to preprocess(df). "
-                "Use only columns visible in the sanitized feature overview or in "
+                "Use only columns visible in the feature overview or in "
                 "previous preprocess functions. Do not add defensive cleanup for "
                 "columns that are not present in preprocess(df)."
             )
@@ -1835,7 +1836,7 @@ class Agent:
         prompt["Fixed AutoGluon wrapper context"] = (
             "The fixed wrapper passes only model feature columns to preprocess(df, aux). "
             f"It also loads `./input/{aux_name}` once and passes that raw auxiliary "
-            "dataset as the `aux` DataFrame. Use only columns visible in the sanitized "
+            "dataset as the `aux` DataFrame. Use only columns visible in the "
             "feature overview, the auxiliary data overview, or previous preprocess "
             "functions. Do not add defensive cleanup for columns that are not present "
             "in preprocess(df, aux)."

@@ -17,6 +17,7 @@ from .autogluon_preprocess import (
     extract_preprocess_source,
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
+    preprocess_task_prompt_text,
     validate_preprocess_source,
 )
 from .journal import Journal, Node
@@ -615,7 +616,11 @@ def collect_synthesis_context(
     completed_steps: int,
 ) -> dict[str, Any]:
     best_node = journal.get_best_node()
-    task_desc_for_prompt = task_desc
+    task_desc_for_prompt = (
+        preprocess_task_prompt_text(task_desc)
+        if is_autogluon_preprocess_mode(cfg)
+        else task_desc
+    )
     data_overview_for_prompt = build_data_overview(cfg)
     return {
         "run_id": cfg.exp_name,
@@ -722,7 +727,7 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
             "# Data contract\n"
             "`df` contains concatenated train features followed by Kaggle "
             "prediction/test features, with only model feature columns present. "
-            "Use only columns visible in the sanitized feature overview or in "
+            "Use only columns visible in the feature overview or in "
             "candidate preprocess functions. Do not add defensive cleanup for "
             "hidden wrapper columns or columns that are not present in "
             "preprocess(df). Row order must be preserved. "
