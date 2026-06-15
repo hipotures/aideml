@@ -753,6 +753,10 @@ def _format_previous_child_attempts(
         attempt_entries = _previous_child_attempt_entries(parent_node)[-limit:]
     if not attempt_entries:
         return None
+    attempt_entries = sorted(
+        attempt_entries,
+        key=lambda entry: _node_step_sort_value(entry[1] or entry[0]),
+    )
     parent_value = (
         float(parent_node.metric.value)
         if parent_node.metric is not None and parent_node.metric.value is not None
