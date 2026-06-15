@@ -1142,6 +1142,81 @@ def test_agent_autogluon_improve_prompt_keeps_memory_and_siblings_adjacent(
     assert "class" not in history_rule_text.lower()
 
 
+@pytest.mark.parametrize(
+    ("child_count", "expected_key", "unexpected_key"),
+    [
+        (4, None, "Repeated non-improving sibling evidence"),
+        (
+            5,
+            "Repeated non-improving sibling evidence",
+            "Strong repeated-failure evidence",
+        ),
+        (
+            11,
+            "Strong repeated-failure evidence",
+            "Repeated non-improving sibling evidence",
+        ),
+    ],
+)
+def test_agent_autogluon_improve_prompt_adds_repeated_failure_rule_by_count(
+    tmp_path,
+    child_count,
+    expected_key,
+    unexpected_key,
+):
+    cfg = _cfg(tmp_path)
+    parent = Node(
+        plan="base preprocess",
+        code=build_autogluon_wrapper(
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+            cfg,
+        ),
+    )
+    parent.metric = MetricValue(0.9, maximize=True)
+    parent.is_buggy = False
+
+    journal = Journal()
+    journal.append(parent)
+    for idx in range(child_count):
+        child = Node(
+            plan=f"non improving child {idx}",
+            code=build_autogluon_wrapper(
+                "def preprocess(df):\n"
+                "    return df.copy()\n",
+                cfg,
+            ),
+            parent=parent,
+        )
+        child.metric = MetricValue(0.89 - idx / 1000.0, maximize=True)
+        child.is_buggy = False
+        parent.children.add(child)
+        journal.append(child)
+
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    captured = {}
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return (
+            "improve feature",
+            "def preprocess(df):\n"
+            "    return df.copy()\n",
+        )
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    instructions = captured["prompt"]["Instructions"]
+    if expected_key is None:
+        assert "Repeated non-improving sibling evidence" not in instructions
+        assert "Strong repeated-failure evidence" not in instructions
+    else:
+        assert expected_key in instructions
+        assert unexpected_key not in instructions
+
+
 def test_parse_result_marker_short_circuits_feedback_review(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     agent = Agent(task_desc="task", cfg=cfg, journal=Journal())

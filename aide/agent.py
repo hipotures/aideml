@@ -811,6 +811,48 @@ def _format_previous_child_attempts(
     return "\n".join(lines) + "\n-------------------------------\n".join(blocks)
 
 
+def _non_improving_valid_attempt_count(
+    parent_node: Node,
+    attempt_entries: list[tuple[Node, Node | None]],
+    *,
+    epsilon: float,
+) -> int:
+    if parent_node.metric is None or parent_node.metric.value is None:
+        return 0
+    count = 0
+    for child, replacement in attempt_entries:
+        display_node = replacement or child
+        if display_node.metric is None or display_node.metric.value is None:
+            continue
+        if not _node_improves_parent(display_node, parent_node, epsilon=epsilon):
+            count += 1
+    return count
+
+
+def _repeated_failure_instruction(
+    non_improving_valid_attempts: int,
+) -> dict[str, list[str]]:
+    if non_improving_valid_attempts > 10:
+        return {
+            "Strong repeated-failure evidence": [
+                "More than 10 valid sibling attempts for this selected parent did not improve over the parent score.",
+                "Do not make a larger, more complex, or lightly reworded variant of a feature-mechanism family that appears repeatedly among those failures.",
+                "Choose a materially different mechanism, or make a compact simplification, replacement, robustness transform, pruning step, or low-amplitude interaction tied to the selected parent's existing preprocessing stack.",
+                "The next change must be easy to distinguish from the repeated failed sibling families.",
+            ]
+        }
+    if non_improving_valid_attempts >= 5:
+        return {
+            "Repeated non-improving sibling evidence": [
+                "At least 5 valid sibling attempts for this selected parent did not improve over the parent score.",
+                "Before choosing the next preprocessing change, treat the previous sibling attempts as negative evidence against near-duplicate feature mechanisms.",
+                "Avoid another minor variant of a repeatedly non-improving mechanism unless the new change is materially different in signal source, grouping axis, reference set, transform type, or interaction pattern.",
+                "Prefer an under-tested mechanism while keeping the change atomic.",
+            ]
+        }
+    return {}
+
+
 def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:
     compact = " ".join(str(text or "").split())
     if len(compact) <= max_chars:
@@ -1736,16 +1778,18 @@ class Agent:
         *,
         parent_node: Node,
         epsilon: float,
-    ) -> None:
+    ) -> list[tuple[Node, Node | None]]:
         if self._is_hypothesis_mode() or _is_hypothesis_branch(parent_node):
             self._add_memory_or_branch_context(prompt, parent_node=parent_node)
+            attempt_entries = _previous_child_attempt_entries(parent_node)[-10:]
             previous_attempts = _format_previous_child_attempts(
                 parent_node,
                 epsilon=epsilon,
+                entries=attempt_entries,
             )
             if previous_attempts is not None:
                 prompt["Previous attempts from this parent"] = previous_attempts
-            return
+            return attempt_entries
 
         configured_entries = self.acfg.memory_recent_steps
         max_entries = (
@@ -1773,6 +1817,7 @@ class Agent:
         )
         if previous_attempts is not None:
             prompt["Previous attempts from this parent"] = previous_attempts
+        return attempt_entries
 
     def _branch_hypothesis_descriptions_by_id(self) -> dict[str, str]:
         try:
@@ -2159,7 +2204,7 @@ class Agent:
             ),
             "Instructions": {},
         }
-        self._add_parent_history_context(
+        attempt_entries = self._add_parent_history_context(
             prompt,
             parent_node=parent_node,
             epsilon=improvement_epsilon,
@@ -2179,6 +2224,13 @@ class Agent:
                 "Do not output this analysis. Output only the required 3-5 sentence sketch and one Python code block.",
             ],
         }
+        prompt["Instructions"] |= _repeated_failure_instruction(
+            _non_improving_valid_attempt_count(
+                parent_node,
+                attempt_entries,
+                epsilon=improvement_epsilon,
+            )
+        )
         prompt["Instructions"] |= self._prompt_autogluon_preprocess_guideline
         if self.acfg.data_preview:
             prompt["Data Overview"] = self._autogluon_prompt_text(self.data_preview)
