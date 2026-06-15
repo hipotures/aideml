@@ -33,6 +33,7 @@ from .research import (
     clear_hypothesis_root_generation_failure,
     count_scored_working_nodes,
     disabled_hypothesis_ids,
+    effective_agent_gpu_enabled,
     effective_hypothesis_root_limit,
     generate_research_hypotheses_for_pipeline,
     hypothesis_id_for_node,
@@ -980,7 +981,7 @@ def node_runtime_matches_cfg(cfg: Config, node: Node) -> bool:
     node_gpu = False
     if isinstance(runtime, dict):
         node_gpu = bool(runtime.get("gpu", False))
-    return node_gpu == bool(getattr(cfg.agent, "gpu", False))
+    return node_gpu == effective_agent_gpu_enabled(cfg)
 
 
 def next_generated_only_node(
@@ -4179,7 +4180,7 @@ def build_agent_mode_summary_lines(
     gpu_line = Text()
     gpu_line.append("▶ gpu       ", style=TUI_ROW_LABEL_STYLE)
     gpu_line.append(
-        "true" if bool(getattr(cfg.agent, "gpu", False)) else "false",
+        "true" if effective_agent_gpu_enabled(cfg) else "false",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
     run_line = Text()
@@ -6542,7 +6543,7 @@ def run(argv: list[str] | None = None):
                                     node=runtime_mismatched_generated_node,
                                     extra={
                                         "hypothesis_id": mismatched_hypothesis_id,
-                                        "agent_gpu": bool(cfg.agent.gpu),
+                                        "agent_gpu": effective_agent_gpu_enabled(cfg),
                                     },
                                 )
                         elif not pipeline_skip_execution():
@@ -6620,7 +6621,7 @@ def run(argv: list[str] | None = None):
                                         root_selection.source_hash
                                     )
                                     node.research_runtime_config = {
-                                        "gpu": bool(cfg.agent.gpu)
+                                        "gpu": effective_agent_gpu_enabled(cfg)
                                     }
                                     record_manual_prompt_node(cfg, node)
                                     _mark_node_generation_failure(node, exc)

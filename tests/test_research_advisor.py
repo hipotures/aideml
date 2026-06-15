@@ -17,6 +17,7 @@ from aide.run import (
     format_hypothesis_only_finish_message,
     generate_reserved_hypothesis_root,
 )
+from aide.utils.artifact_manifest import parse_autogluon_config
 from aide.research import (
     ResearchAdvisor,
     build_data_overview,
@@ -2805,6 +2806,134 @@ def test_hypothesis_root_code_loader_requires_matching_gpu_variant(tmp_path):
     assert root_code.path.name == "legacy-002.py"
     assert root_code.gpu is True
     assert root_code.code == "print('gpu')\n"
+
+
+def test_autogluon_root_code_loader_rewraps_stale_manifest_gpu_code_for_cpu(
+    tmp_path,
+):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    cfg.agent.gpu = True
+    cfg.agent.autogluon.profile = "full_boost_gpu"
+    cfg.agent.autogluon.included_model_types = None
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    preprocess_source = (
+        "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n"
+        "    out = df.copy()\n"
+        "    out['x2'] = out['x'] * 2\n"
+        "    return out\n"
+    )
+    (hypothesis_dir / "autogluon-001.py").write_text(
+        build_autogluon_wrapper(preprocess_source, cfg),
+        encoding="utf-8",
+    )
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "autogluon": [
+                        {"file": "autogluon-001.py", "status": "ok", "gpu": False}
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    cfg.agent.gpu = False
+    cfg.agent.autogluon.profile = "full_boost"
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "autogluon-001.py"
+    assert root_code.gpu is False
+    assert "out['x2'] = out['x'] * 2" in root_code.code
+    ag_config = parse_autogluon_config(root_code.code)
+    assert ag_config is not None
+    assert ag_config["use_gpu"] is False
+    assert ag_config["hyperparameters"]["XGB"][0]["device"] == "cpu"
+    assert ag_config["hyperparameters"]["XGB"][0]["ag_args_fit"] == {"num_gpus": 0}
+    assert ag_config["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 0}
+    assert ag_config["hyperparameters"]["CAT"][0]["ag_args_fit"] == {"num_gpus": 0}
+
+    saved_path = research.save_hypothesis_root_code(
+        cfg,
+        hypothesis_id="000001",
+        code=root_code.code,
+        is_buggy=False,
+        node_id="node-cpu",
+        activate=False,
+        repo_root=tmp_path,
+    )
+
+    assert saved_path.name == "autogluon-002.py"
+    saved_config = parse_autogluon_config(saved_path.read_text(encoding="utf-8"))
+    assert saved_config is not None
+    assert saved_config["use_gpu"] is False
+    assert saved_config["hyperparameters"]["XGB"][0]["device"] == "cpu"
+
+
+def test_autogluon_root_code_loader_rewraps_cpu_code_for_gpu_profile(tmp_path):
+    cfg = _manual_cfg(tmp_path)
+    cfg.agent.mode = AGENT_MODE
+    cfg.agent.gpu = False
+    cfg.agent.autogluon.profile = "full_boost"
+    cfg.agent.autogluon.included_model_types = None
+    _write_manual_hypothesis(tmp_path, "playground-series-s6e5", "000001")
+    hypothesis_dir = (
+        tmp_path / "research_hypotheses" / "playground-series-s6e5" / "000001"
+    )
+    preprocess_source = (
+        "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n"
+        "    out = df.copy()\n"
+        "    out['x3'] = out['x'] * 3\n"
+        "    return out\n"
+    )
+    (hypothesis_dir / "autogluon-001.py").write_text(
+        build_autogluon_wrapper(preprocess_source, cfg),
+        encoding="utf-8",
+    )
+    (hypothesis_dir / "code_manifest.json").write_text(
+        json.dumps(
+            {
+                "versions": {
+                    "autogluon": [
+                        {"file": "autogluon-001.py", "status": "ok", "gpu": False}
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    cfg.agent.gpu = False
+    cfg.agent.autogluon.profile = "full_boost_gpu"
+    root_code = research.load_hypothesis_root_code(
+        cfg,
+        "000001",
+        repo_root=tmp_path,
+    )
+
+    assert root_code is not None
+    assert root_code.path.name == "autogluon-001.py"
+    assert root_code.gpu is True
+    assert "out['x3'] = out['x'] * 3" in root_code.code
+    ag_config = parse_autogluon_config(root_code.code)
+    assert ag_config is not None
+    assert ag_config["use_gpu"] is True
+    assert ag_config["hyperparameters"]["XGB"][0]["device"] == "cuda"
+    assert ag_config["hyperparameters"]["XGB"][0]["ag_args_fit"] == {"num_gpus": 1}
+    assert ag_config["hyperparameters"]["GBM"][0]["device"] == "cuda"
+    assert ag_config["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
+    assert ag_config["hyperparameters"]["CAT"][0]["task_type"] == "GPU"
+    assert ag_config["hyperparameters"]["CAT"][0]["ag_args_fit"] == {"num_gpus": 1}
 
 
 def test_hypothesis_root_code_loader_rejects_cpu_only_code_when_gpu_enabled(

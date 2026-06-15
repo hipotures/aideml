@@ -17,11 +17,14 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from .autogluon_preprocess import (
+    build_autogluon_wrapper,
     extract_preprocess_source,
     is_autogluon_preprocess_mode,
+    resolve_autogluon_settings,
 )
 from .journal import Journal, Node
 from .utils import data_preview
+from .utils.artifact_manifest import parse_autogluon_config
 from .utils.config import Config, aux_file_name
 from .utils.metric import MetricValue
 from .utils.path_portability import (
@@ -409,8 +412,19 @@ def _manifest_active_file(manifest: dict[str, Any], agent_mode: str) -> str | No
     return None
 
 
-def _cfg_agent_gpu_enabled(cfg: Config) -> bool:
+def effective_agent_gpu_enabled(cfg: Config) -> bool:
+    if is_autogluon_preprocess_mode(cfg):
+        try:
+            use_gpu = resolve_autogluon_settings(cfg).get("use_gpu")
+        except (TypeError, ValueError):
+            use_gpu = None
+        if use_gpu is not None:
+            return bool(use_gpu)
     return bool(getattr(getattr(cfg, "agent", None), "gpu", False))
+
+
+def _cfg_agent_gpu_enabled(cfg: Config) -> bool:
+    return effective_agent_gpu_enabled(cfg)
 
 
 def _manifest_entry_gpu(entry: dict[str, Any] | None) -> bool:
@@ -427,11 +441,82 @@ def _manifest_entry_runtime_matches(
     return _manifest_entry_gpu(entry) == bool(gpu)
 
 
+def _code_runtime_matches(
+    path: Path,
+    entry: dict[str, Any] | None,
+    *,
+    agent_mode: str,
+    gpu: bool,
+) -> bool:
+    if agent_mode != "autogluon":
+        return _manifest_entry_runtime_matches(entry, gpu=gpu)
+    try:
+        ag_config = parse_autogluon_config(path.read_text(encoding="utf-8"))
+    except OSError:
+        ag_config = None
+    if ag_config is None or ag_config.get("use_gpu") is None:
+        return _manifest_entry_runtime_matches(entry, gpu=gpu)
+    return bool(ag_config.get("use_gpu")) == bool(gpu)
+
+
+def _rewrap_autogluon_root_code_for_current_runtime(
+    cfg: Config,
+    *,
+    hypothesis_id: str,
+    agent_mode: str,
+    versions: dict[int, Path],
+    manifest: dict[str, Any],
+    required_gpu: bool,
+) -> HypothesisRootCode | None:
+    if agent_mode != "autogluon" or not is_autogluon_preprocess_mode(cfg):
+        return None
+
+    candidates: list[tuple[int, Path, dict[str, Any] | None]] = []
+    for version, path in versions.items():
+        entry = _manifest_entry_for_file(
+            manifest,
+            agent_mode=agent_mode,
+            file_name=path.name,
+        )
+        if entry is not None and not _manifest_entry_is_loadable(entry):
+            continue
+        if _code_runtime_matches(
+            path,
+            entry,
+            agent_mode=agent_mode,
+            gpu=required_gpu,
+        ):
+            continue
+        candidates.append((version, path, entry))
+    if not candidates:
+        return None
+
+    version, path, _entry = max(candidates, key=lambda item: item[0])
+    try:
+        preprocess_source = extract_preprocess_source(path.read_text(encoding="utf-8"))
+        code = build_autogluon_wrapper(
+            preprocess_source,
+            cfg,
+            research_hypothesis_id=hypothesis_id,
+        )
+    except ValueError:
+        return None
+    return HypothesisRootCode(
+        hypothesis_id=hypothesis_id,
+        agent_mode=agent_mode,
+        path=path,
+        code=code,
+        version=version,
+        gpu=required_gpu,
+    )
+
+
 def load_hypothesis_root_code(
     cfg: Config,
     hypothesis_id: str,
     *,
     repo_root: Path = REPO_ROOT,
+    allow_runtime_rewrap: bool = True,
 ) -> HypothesisRootCode | None:
     """Load the active flat-library root code for a hypothesis and agent mode."""
     source_dir = _manual_library_dir(cfg, repo_root=repo_root)
@@ -460,7 +545,12 @@ def load_hypothesis_root_code(
     if (
         active_path is not None
         and active_path in versions.values()
-        and _manifest_entry_runtime_matches(active_entry, gpu=required_gpu)
+        and _code_runtime_matches(
+            active_path,
+            active_entry,
+            agent_mode=agent_mode,
+            gpu=required_gpu,
+        )
     ):
         path = active_path
         version = next(number for number, candidate in versions.items() if candidate == path)
@@ -468,16 +558,27 @@ def load_hypothesis_root_code(
         compatible_versions = {
             number: candidate
             for number, candidate in versions.items()
-            if _manifest_entry_runtime_matches(
+            if _code_runtime_matches(
+                candidate,
                 _manifest_entry_for_file(
                     manifest,
                     agent_mode=agent_mode,
                     file_name=candidate.name,
                 ),
+                agent_mode=agent_mode,
                 gpu=required_gpu,
             )
         }
         if not compatible_versions:
+            if allow_runtime_rewrap:
+                return _rewrap_autogluon_root_code_for_current_runtime(
+                    cfg,
+                    hypothesis_id=hypothesis_id,
+                    agent_mode=agent_mode,
+                    versions=versions,
+                    manifest=manifest,
+                    required_gpu=required_gpu,
+                )
             return None
         version = max(compatible_versions)
         path = compatible_versions[version]
@@ -509,6 +610,7 @@ def load_scored_hypothesis_root_code(
         cfg,
         hypothesis_id,
         repo_root=repo_root,
+        allow_runtime_rewrap=False,
     )
     if root_code is None:
         return None
@@ -754,9 +856,14 @@ def save_hypothesis_root_code(
         highest_entry.get("buggy") is True if highest_entry is not None else False
     )
     current_gpu = _cfg_agent_gpu_enabled(cfg)
-    highest_runtime_matches = _manifest_entry_runtime_matches(
-        highest_entry,
-        gpu=current_gpu,
+    highest_runtime_matches = (
+        highest_path is not None
+        and _code_runtime_matches(
+            highest_path,
+            highest_entry,
+            agent_mode=agent_mode,
+            gpu=current_gpu,
+        )
     )
 
     status = "generated" if not activate else "bug" if is_buggy else "ok"
@@ -792,7 +899,13 @@ def save_hypothesis_root_code(
             if (
                 isinstance(entry, dict)
                 and entry.get("node_id") == node_id
-                and _manifest_entry_runtime_matches(entry, gpu=current_gpu)
+                and isinstance(entry.get("file"), str)
+                and _code_runtime_matches(
+                    hypothesis_dir / entry["file"],
+                    entry,
+                    agent_mode=agent_mode,
+                    gpu=current_gpu,
+                )
             ):
                 existing_entry = entry
                 break
@@ -1151,7 +1264,7 @@ def _research_request_cfg_snapshot(cfg: Config) -> dict[str, Any]:
         "data_dir": str(cfg.data_dir),
         "agent": {
             "mode": getattr(cfg.agent, "mode", None),
-            "gpu": bool(getattr(cfg.agent, "gpu", False)),
+            "gpu": effective_agent_gpu_enabled(cfg),
             "aux": getattr(cfg.agent, "aux", None),
             "aux_file_name": aux_file_name(cfg),
         },
