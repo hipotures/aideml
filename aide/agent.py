@@ -2153,13 +2153,13 @@ class Agent:
         )
         prompt: Any = {
             "Introduction": (
-                "You are a Kaggle grandmaster and senior machine learning engineer "
-                "working on a feature-search experiment for a fixed AutoGluon "
-                "training wrapper. Your job is to study the previous preprocess "
-                "function, the scored Memory, and the previous attempts from this "
-                "parent, then make one coherent, atomic, leakage-safe improvement "
-                "to the feature preprocessing only. Keep the wrapper behavior "
-                "unchanged: do not change training, validation, model settings, "
+                "You are a Kaggle grandmaster and senior machine learning engineer\n"
+                "working on a feature-search experiment for a fixed AutoGluon\n"
+                "training wrapper. Your job is to study the previous preprocess\n"
+                "function, the scored Memory, and the previous attempts from this\n"
+                "parent, then make one coherent, atomic, leakage-safe improvement\n"
+                "to the feature preprocessing only. Keep the wrapper behavior\n"
+                "unchanged: do not change training, validation, model settings,\n"
                 "submission logic, row order, or row count."
             ),
             "Task description": self._autogluon_prompt_text(self.task_desc),
