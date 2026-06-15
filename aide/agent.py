@@ -860,8 +860,11 @@ def _repeated_failure_instruction(
 def _web_search_prompt_instruction() -> list[str]:
     return [
         "Web search is enabled for this code-generation call.",
-        "Use web_search to gather useful external context for this competition: public Kaggle discussions, notebooks, package documentation, recent implementation details, and domain or method background relevant to the task.",
-        "When web_search returns useful results, open and read the relevant sources before relying on them; do not base the coding plan only on search-result snippets.",
+        "First study the selected parent preprocess code, Memory, and previous sibling attempts, then derive a tentative preprocessing hypothesis from that local experiment history.",
+        "Use web_search to check external context that may support, refine, or reject that hypothesis: public Kaggle discussions, notebooks, package documentation, recent implementation details, and domain or method background relevant to the task.",
+        "Open the most relevant result pages, read their page content, and analyze the retrieved information before using it. Do not rely only on search result titles, snippets, or URLs.",
+        "Analyze whether the retrieved sources support, change, or rule out the tentative hypothesis, then write the final sketch and code.",
+        "Do not output the search analysis unless it is directly needed in the final answer.",
         "If web_search is not useful or not available, continue normally without inventing sources.",
     ]
 

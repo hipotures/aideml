@@ -1095,7 +1095,15 @@ def test_agent_code_web_search_option_writes_markdown_summary(
         for item in captured["prompt"]["Instructions"]["Web search"]
     )
     assert any(
-        "open and read the relevant sources" in item
+        "tentative preprocessing hypothesis" in item
+        for item in captured["prompt"]["Instructions"]["Web search"]
+    )
+    assert any(
+        "read their page content" in item
+        for item in captured["prompt"]["Instructions"]["Web search"]
+    )
+    assert any(
+        "support, change, or rule out" in item
         for item in captured["prompt"]["Instructions"]["Web search"]
     )
     summary = (artifact_dir / "web_search.md").read_text(encoding="utf-8")
