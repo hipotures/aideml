@@ -1759,7 +1759,7 @@ class Agent:
 
         if ancestor_nodes:
             prompt["Memory"] = self.journal.generate_node_summary(
-                ancestor_nodes,
+                sorted(ancestor_nodes, key=_node_step_sort_value),
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
             )
         previous_attempts = _format_previous_child_attempts(
