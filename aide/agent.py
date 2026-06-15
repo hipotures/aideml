@@ -1012,34 +1012,21 @@ def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:
 
 
 def _format_branch_hypothesis_description(hypothesis: Any) -> str:
-    lines = [
-        f"Title: {hypothesis.title}",
-        (
-            "Summary: "
-            + _compact_branch_hypothesis_text(hypothesis.summary, max_chars=420)
-        ),
-    ]
-    feature_family = _compact_branch_hypothesis_text(
-        getattr(hypothesis, "feature_family", None),
-        max_chars=220,
-    )
-    if feature_family:
-        lines.append(f"Feature family: {feature_family}")
+    parts: list[str] = []
+    title = _compact_branch_hypothesis_text(hypothesis.title, max_chars=220)
+    if title:
+        parts.append(title)
+    summary = _compact_branch_hypothesis_text(hypothesis.summary, max_chars=520)
+    if summary:
+        parts.append(summary)
     feature_strategy = _compact_branch_hypothesis_text(
-        getattr(hypothesis, "feature_strategy", None),
-        max_chars=1200,
+        getattr(hypothesis, "feature_strategy", None)
+        or getattr(hypothesis, "rationale", None),
+        max_chars=2200,
     )
     if feature_strategy:
-        lines.append(f"Feature strategy: {feature_strategy}")
-    autogluon_transfer = getattr(hypothesis, "autogluon_feature_transfer", None)
-    if isinstance(autogluon_transfer, dict):
-        source = _compact_branch_hypothesis_text(
-            autogluon_transfer.get("source"),
-            max_chars=260,
-        )
-        if source:
-            lines.append(f"AutoGluon transfer: {source}")
-    return "\n".join(lines)
+        parts.append(feature_strategy)
+    return " ".join(parts)
 
 
 class Agent:
@@ -1955,6 +1942,9 @@ class Agent:
                 recent_steps=self.acfg.memory_recent_steps,
                 full_recent_steps=self.acfg.memory_full_recent_steps,
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
+                hypothesis_descriptions_by_id=(
+                    self._branch_hypothesis_descriptions_by_id()
+                ),
             )
 
     def _add_parent_history_context(
@@ -1994,6 +1984,9 @@ class Agent:
             prompt["Memory"] = self.journal.generate_node_summary(
                 sorted(ancestor_nodes, key=_node_step_sort_value),
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
+                hypothesis_descriptions_by_id=(
+                    self._branch_hypothesis_descriptions_by_id()
+                ),
             )
         other_improving_hypotheses = _format_other_improving_hypotheses(
             self.journal,
@@ -2587,15 +2580,16 @@ class Agent:
         )
         root_code = load_hypothesis_root_code(self.cfg, hypothesis_id)
         if root_code is not None:
+            plan = _format_branch_hypothesis_description(selection.hypotheses[0])
+            if not plan:
+                raise ValueError(
+                    f"Missing hypothesis description for loaded root {hypothesis_id}."
+                )
             metadata = {
                 "research_mode": "hypothesis",
                 "research_hypotheses_offered": [hypothesis_id],
                 "research_source_hash": selection.source_hash,
             }
-            plan = (
-                f"Loaded library {root_code.agent_mode} root code for "
-                f"hypothesis {hypothesis_id} from {root_code.path.name}."
-            )
             return self._apply_research_metadata(
                 self._new_node(plan=plan, code=root_code.code),
                 metadata,

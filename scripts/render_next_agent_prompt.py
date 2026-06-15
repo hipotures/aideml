@@ -107,6 +107,27 @@ def _journal_before_step(journal: Journal, step: int) -> Journal:
     return Journal(nodes=kept)
 
 
+def _restore_research_metadata(reconstructed: Journal, resume_journal: Journal) -> None:
+    by_id = {node.id: node for node in resume_journal.nodes}
+    by_step = {
+        node.step: node
+        for node in resume_journal.nodes
+        if node.step is not None
+    }
+    for node in reconstructed.nodes:
+        source = by_id.get(node.id) or by_step.get(node.step)
+        if source is None:
+            continue
+        node.research_mode = source.research_mode
+        node.research_hypotheses_offered = list(source.research_hypotheses_offered)
+        node.research_source_hash = source.research_source_hash
+        node.research_runtime_config = source.research_runtime_config
+        node.research_hypotheses_llm_claimed_used = list(
+            source.research_hypotheses_llm_claimed_used
+        )
+        node.research_usage_note = source.research_usage_note
+
+
 def _write_prompt_artifact(
     *,
     prompt: Any,
@@ -163,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True)
 
-        cfg, _resume_journal = load_resume_state(
+        cfg, resume_journal = load_resume_state(
             run_id=run_id,
             top_log_dir=run_dir.parent,
             top_workspace_dir=workspace_root,
@@ -173,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         full_journal = reconstruct_journal_from_artifacts(run_dir)
         if not full_journal.nodes:
             raise ValueError(f"No artifact manifests found for run: {run_dir}")
+        _restore_research_metadata(full_journal, resume_journal)
         target_node = _find_step(full_journal.nodes, args.step)
         parent_node = target_node.parent
         render_journal = _journal_before_step(full_journal, args.step)

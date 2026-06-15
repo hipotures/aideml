@@ -127,7 +127,6 @@ class ManualHypothesis:
     prompt_enabled: bool = True
     feature_family: str | None = None
     feature_strategy: str | None = None
-    autogluon_feature_transfer: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -333,11 +332,6 @@ def _read_manual_hypothesis(path: Path) -> ManualHypothesis:
             payload["feature_strategy"].strip()
             if isinstance(payload.get("feature_strategy"), str)
             and payload["feature_strategy"].strip()
-            else None
-        ),
-        autogluon_feature_transfer=(
-            payload["autogluon_feature_transfer"]
-            if isinstance(payload.get("autogluon_feature_transfer"), dict)
             else None
         ),
         implementation_hint=payload["implementation_hint"].strip(),

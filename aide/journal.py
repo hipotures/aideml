@@ -51,18 +51,29 @@ def _branch_design_text(
 ) -> str:
     text = _summary_plan_text(node.plan)
     if (
-        (
-            text.startswith("Seeded scored ROOT hypothesis ")
-            or text.startswith("Loaded library autogluon root code for hypothesis ")
-            or text.startswith("Loaded library legacy root code for hypothesis ")
-        )
+        node.parent is None
         and len(node.research_hypotheses_offered) == 1
+        and hypothesis_descriptions_by_id is not None
     ):
         hypothesis_id = node.research_hypotheses_offered[0]
-        description = (hypothesis_descriptions_by_id or {}).get(hypothesis_id)
+        description = hypothesis_descriptions_by_id.get(hypothesis_id)
         if description:
             return description.strip()
+        raise ValueError(
+            f"Missing branch design description for hypothesis {hypothesis_id}."
+        )
     return text
+
+
+def _summary_design_text(
+    node: "Node",
+    *,
+    hypothesis_descriptions_by_id: dict[str, str] | None = None,
+) -> str:
+    return _branch_design_text(
+        node,
+        hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+    )
 
 
 def _format_step_value(step: int | None) -> str:
@@ -426,6 +437,7 @@ class Journal(DataClassJsonMixin):
         recent_steps: int | None = None,
         full_recent_steps: int | None = None,
         public_scores_by_node_id: dict[str, float] | None = None,
+        hypothesis_descriptions_by_id: dict[str, str] | None = None,
     ) -> str:
         """Generate a summary of the journal for the agent."""
         good_nodes = self.good_nodes
@@ -465,6 +477,7 @@ class Journal(DataClassJsonMixin):
                     include_code=include_code and include_full_node,
                     include_full_node=include_full_node,
                     public_scores_by_node_id=public_scores_by_node_id,
+                    hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
                 )
             )
         return "\n-------------------------------\n".join(summary)
@@ -475,6 +488,7 @@ class Journal(DataClassJsonMixin):
         *,
         include_code: bool = False,
         public_scores_by_node_id: dict[str, float] | None = None,
+        hypothesis_descriptions_by_id: dict[str, str] | None = None,
     ) -> str:
         """Generate a summary for a specific ordered list of journal nodes."""
         return "\n-------------------------------\n".join(
@@ -483,6 +497,7 @@ class Journal(DataClassJsonMixin):
                 include_code=include_code,
                 include_full_node=True,
                 public_scores_by_node_id=public_scores_by_node_id,
+                hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
             )
             for n in nodes
         )
@@ -494,11 +509,19 @@ class Journal(DataClassJsonMixin):
         include_code: bool,
         include_full_node: bool,
         public_scores_by_node_id: dict[str, float] | None,
+        hypothesis_descriptions_by_id: dict[str, str] | None = None,
     ) -> str:
         public_scores_by_node_id = public_scores_by_node_id or {}
         best_node = self.get_best_node()
         summary_part = f"Step: {_format_step_value(node.step)}\n"
-        summary_part += f"Design: {_summary_plan_text(node.plan)}\n"
+        summary_part += (
+            "Design: "
+            + _summary_design_text(
+                node,
+                hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+            )
+            + "\n"
+        )
         if include_code:
             summary_part += f"Code: {node.code}\n"
         if include_full_node:
@@ -571,10 +594,6 @@ class Journal(DataClassJsonMixin):
             label_suffix = f" / {' / '.join(labels)}" if labels else ""
             lines.append(f"Ancestor {idx}{label_suffix}:")
             lines.append(f"Step: {_format_step_value(ancestor.step)}")
-            if len(ancestor.research_hypotheses_offered) == 1:
-                lines.append(
-                    f"Hypothesis ID: {ancestor.research_hypotheses_offered[0]}"
-                )
             design = _branch_design_text(
                 ancestor,
                 hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,

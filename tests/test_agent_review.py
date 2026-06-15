@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from aide.agent import Agent, _format_branch_hypothesis_description, review_func_spec
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
@@ -386,16 +388,15 @@ def test_journal_generates_branch_context_from_root_to_parent_only():
     assert "Branch path:\n000101 -> 000202" in context
     assert "Ancestor 1 / root:" in context
     assert "Step: 0" in context
-    assert "Hypothesis ID: 000101" in context
     assert "Design: Root hypothesis plan" in context
     assert "Validation Metric: 0.91000" in context
     assert "Ancestor 2 / direct parent:" in context
     assert "Step: 1" in context
-    assert "Hypothesis ID: 000202" in context
     assert "Design: Child hypothesis plan" in context
     assert "Validation Metric: 0.92000" in context
     assert "delta=+0.010000;" in context
     assert "step 1 from 0: improved" in context
+    assert "Hypothesis ID:" not in context
     assert "000999" not in context
     assert "Unrelated root plan" not in context
     assert "000303" not in context
@@ -423,24 +424,24 @@ def test_branch_context_uses_hypothesis_description_for_seeded_root_plan():
         child,
         hypothesis_descriptions_by_id={
             "000019": (
-                "Title: Source-Derived Photometric Sky Feature Baseline\n"
-                "Summary: Rebuild the source feature recipe with a simple balanced panel.\n"
-                "Rationale: Isolate the reusable photometric, sky, and auxiliary feature set."
+                "Reusable Root Feature Mechanism rebuild the stored feature "
+                "recipe with a simple validation panel."
             )
         },
     )
 
-    assert "Hypothesis ID: 000019" in context
-    assert "Title: Source-Derived Photometric Sky Feature Baseline" in context
-    assert "Summary: Rebuild the source feature recipe" in context
+    assert "Branch path:\n000019" in context
+    assert "Hypothesis ID:" not in context
+    assert "Design: Reusable Root Feature Mechanism" in context
+    assert "rebuild the stored feature recipe" in context
     assert "Seeded scored ROOT hypothesis 000019" not in context
 
 
-def test_branch_context_uses_hypothesis_description_for_loaded_library_root_plan():
+def test_branch_context_uses_hypothesis_description_for_technical_root_plan():
     journal = Journal()
     root = Node(
         code="root",
-        plan="Loaded library autogluon root code for hypothesis 000021 from autogluon-002.py.",
+        plan="Technical root placeholder that must not appear in prompts.",
     )
     root.metric = MetricValue(0.96627, maximize=True)
     root.is_buggy = False
@@ -457,43 +458,68 @@ def test_branch_context_uses_hypothesis_description_for_loaded_library_root_plan
         child,
         hypothesis_descriptions_by_id={
             "000021": (
-                "Title: Explicit Photometric Sky Formula Features\n"
-                "Summary: Test a fully specified photometric, sky, redshift, "
-                "galactic, frequency, and rank feature block."
+                "Generic Root Feature Mechanism Test a fully specified "
+                "feature block with a simple validation panel. Build grouped "
+                "numeric and categorical features."
             )
         },
     )
 
-    assert "Hypothesis ID: 000021" in context
-    assert "Title: Explicit Photometric Sky Formula Features" in context
-    assert "Loaded library autogluon root code for hypothesis 000021" not in context
+    assert "Branch path:\n000021" in context
+    assert "Hypothesis ID:" not in context
+    assert "Design: Generic Root Feature Mechanism" in context
+    assert "Build grouped numeric and categorical features." in context
+    assert "Technical root placeholder" not in context
 
 
-def test_branch_hypothesis_description_is_feature_only():
+def test_branch_hypothesis_description_is_single_full_design_text():
     description = _format_branch_hypothesis_description(
         SimpleNamespace(
-            title="Explicit Photometric Sky Formula Features",
+            title="Generic Root Feature Mechanism",
             summary="Test a fully specified feature block.",
-            feature_family="explicit_photometric_sky_formula_features",
-            feature_strategy="Build color, sky, redshift, and rank features.",
-            autogluon_feature_transfer={
-                "source": (
-                    "legacy feature engineering only; model, fold, calibration, "
-                    "and blending logic intentionally omitted"
-                )
-            },
-            rationale="Baseline model panel: CatBoost and XGBoost. No stacking.",
-            implementation_hint="Do not implement stacking or calibration.",
+            feature_family="generic_feature_mechanism",
+            feature_strategy="Build grouped numeric and categorical features.",
+            rationale="Compare one model per family. Do not add stacking.",
+            implementation_hint="Do not implement calibration.",
+            expected_effect="This may improve balanced accuracy.",
+            risk="The feature block may be slow.",
         )
     )
 
-    assert "Title: Explicit Photometric Sky Formula Features" in description
-    assert "Feature family: explicit_photometric_sky_formula_features" in description
-    assert "Feature strategy: Build color, sky, redshift, and rank features." in description
-    assert "AutoGluon transfer: legacy feature engineering only" in description
-    assert "Baseline model panel" not in description
-    assert "stacking" not in description
+    assert description.startswith("Generic Root Feature Mechanism")
+    assert "Test a fully specified feature block." in description
+    assert "Build grouped numeric and categorical features." in description
+    assert "Compare one model per family. Do not add stacking." not in description
+    assert "Do not implement calibration." not in description
+    assert "may improve balanced accuracy" not in description
+    assert "may be slow" not in description
+    assert "\n" not in description
+    assert "Title:" not in description
+    assert "Summary:" not in description
+    assert "Feature family:" not in description
+    assert "Feature strategy:" not in description
     assert "Implementation:" not in description
+
+
+def test_branch_context_rejects_technical_root_when_description_map_is_missing_id():
+    journal = Journal()
+    root = Node(
+        code="root",
+        plan="Technical root placeholder that must not appear in prompts.",
+    )
+    root.metric = MetricValue(0.96627, maximize=True)
+    root.is_buggy = False
+    root.research_mode = "hypothesis"
+    root.research_hypotheses_offered = ["000021"]
+    journal.append(root)
+
+    child = Node(code="child", plan="Child improvement plan", parent=root)
+    child.metric = MetricValue(0.96667, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    with pytest.raises(ValueError, match="Missing branch design description"):
+        journal.generate_branch_context(child, hypothesis_descriptions_by_id={})
 
 
 def test_hypothesis_branch_context_includes_public_score_context_in_prompt(tmp_path):
