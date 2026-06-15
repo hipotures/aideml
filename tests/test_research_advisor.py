@@ -5079,6 +5079,8 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "Add rank blend mode" in attempts
     assert "Remove count encoding features" in attempts
     assert "Validation Metric: 0.95467" in attempts
+    assert "delta=+0.000000;" in attempts
+    assert "delta=-0.000774;" in attempts
     assert "step 1 from 0: did_not_improve" in attempts
     assert "step 2 from 0: did_not_improve" in attempts
     assert "did_not_improve" in attempts

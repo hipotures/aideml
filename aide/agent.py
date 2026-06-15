@@ -805,7 +805,10 @@ def _format_previous_child_attempts(
         else:
             block += "Validation Metric: n/a\n"
         if child_value is not None and parent_value is not None:
-            block += f"delta={child_value - parent_value:+.6f};\n"
+            delta = child_value - parent_value
+            if abs(delta) <= max(0.0, float(epsilon)):
+                delta = 0.0
+            block += f"delta={delta:+.6f};\n"
         block += f"step {step} from {parent_step}: {status}"
         blocks.append(block)
     return "\n".join(lines) + "\n-------------------------------\n".join(blocks)
