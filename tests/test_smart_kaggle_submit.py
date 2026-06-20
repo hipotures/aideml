@@ -131,6 +131,45 @@ def test_collect_candidates_reads_scores_and_marks_submit_ready(tmp_path):
     )
 
 
+def test_submission_only_blend_candidate_is_ready_without_local_score(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,class\n1,A\n")
+
+    candidate = smart_kaggle_submit.Candidate(
+        competition="playground-series-s6e6",
+        run="blended",
+        step=5,
+        node_id="node-submission-only",
+        parent_node_id=None,
+        ancestor_node_ids=(),
+        timestamp="20260620T120000-auto-submission",
+        ctime=1.0,
+        local_score=None,
+        metric_maximize=None,
+        is_buggy=False,
+        submission_path=submission_path,
+        sha256="a" * 64,
+        algo="Leg",
+        eval_metric="balanced_accuracy",
+        origin="auto_blend",
+        submission_only=True,
+        blend_kind="submission",
+        blend_mode="vote",
+        blend_weighting="uniform",
+        blend_recipe_hash="abcd1234",
+        blend_component_count=4,
+    )
+
+    assert candidate.is_submit_ready
+    assert (
+        smart_kaggle_submit.build_kaggle_message(candidate)
+        == "cv=nan | run=blended | step=5 | "
+        "aide_ts=20260620T120000-auto-submission | node=node-sub | "
+        "sha=aaaaaaaaaa | algo=Leg | metric=balanced_accuracy | "
+        "blend=sub | bmode=vote | w=uniform | n=4 | recipe=abcd1234"
+    )
+
+
 def test_collect_candidates_reports_progress_per_node(tmp_path):
     logs_dir = tmp_path / "logs"
     _write_journal(

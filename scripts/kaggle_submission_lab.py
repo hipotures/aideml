@@ -216,6 +216,7 @@ def _record_looks_autogluon(record: dict[str, Any]) -> bool:
 def _record_is_seed_copy(record: dict[str, Any]) -> bool:
     return (
         record.get("kind") != "profile_eval"
+        and record.get("origin") not in {"manual_blend", "auto_blend"}
         and bool(record.get("source_sha256"))
     )
 
@@ -318,6 +319,7 @@ def build_manifest_records(
         )
         metric = node.get("metric") or {}
         status = str(manifest.get("status") or node.get("status") or "unknown")
+        run_stats = manifest.get("run_stats") or {}
         hypothesis_id = (
             node.get("hypothesis_id")
             or manifest.get("hypothesis_id")
@@ -332,6 +334,7 @@ def build_manifest_records(
                 "step": node.get("step"),
                 "node_id": node.get("id"),
                 "parent_node_id": node.get("parent_id"),
+                "origin": node.get("origin") or manifest.get("origin"),
                 "local_score": manifest.get("local_score", metric.get("value")),
                 "metric_maximize": manifest.get(
                     "metric_maximize",
@@ -371,6 +374,12 @@ def build_manifest_records(
                 or manifest.get("source_solution_path"),
                 "source_solution_sha256": source.get("source_solution_sha256")
                 or manifest.get("source_solution_sha256"),
+                "submission_only": bool(run_stats.get("submission_only")),
+                "blend_kind": run_stats.get("blend_kind"),
+                "blend_mode": run_stats.get("blend_mode"),
+                "blend_weighting": run_stats.get("blend_weighting"),
+                "blend_recipe_hash": run_stats.get("blend_recipe_hash"),
+                "blend_component_count": run_stats.get("blend_component_count"),
             }
         )
     return records
@@ -494,11 +503,15 @@ def refresh_index(
 
 
 def _record_is_submit_ready(record: dict[str, Any]) -> bool:
+    score_or_submission_only = record.get("local_score") is not None or (
+        bool(record.get("submission_only"))
+        and record.get("origin") in {"manual_blend", "auto_blend"}
+    )
     return (
         record.get("status") == "ok"
         and not _record_is_seed_copy(record)
         and not record.get("is_buggy")
-        and record.get("local_score") is not None
+        and score_or_submission_only
         and record.get("sha256") is not None
         and _record_path(record.get("submission_path", "")).exists()
     )
@@ -1823,6 +1836,13 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         hypothesis_id=record.get("hypothesis_id"),
         source_sha256=record.get("source_sha256"),
         exec_time=record.get("exec_time"),
+        origin=record.get("origin"),
+        submission_only=bool(record.get("submission_only")),
+        blend_kind=record.get("blend_kind"),
+        blend_mode=record.get("blend_mode"),
+        blend_weighting=record.get("blend_weighting"),
+        blend_recipe_hash=record.get("blend_recipe_hash"),
+        blend_component_count=record.get("blend_component_count"),
     )
 
 

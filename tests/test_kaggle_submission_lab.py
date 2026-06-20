@@ -169,6 +169,63 @@ def test_refresh_index_reads_eval_metric_from_autogluon_resolved_settings(tmp_pa
     assert index["records"][0]["eval_metric"] == "balanced_accuracy"
 
 
+def test_submission_only_blend_without_cv_is_submit_ready(tmp_path):
+    logs_dir = tmp_path / "logs"
+    artifact = _write_artifact(
+        logs_dir,
+        "blended",
+        "20260620T120000-auto-submission",
+        code="BLEND_MODE = 'vote'\n",
+        submission="id,class\n1,A\n",
+    )
+    submission_sha = kaggle_submission_lab.sha256_file(artifact / "submission.csv")
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "source_node",
+                "competition": "playground-series-s6e6",
+                "run": "blended",
+                "timestamp": "20260620T120000-auto-submission",
+                "artifact_dir": str(artifact),
+                "status": "ok",
+                "local_score": None,
+                "metric_maximize": None,
+                "is_buggy": False,
+                "hypothesis_id": "auto-blend-submission",
+                "sha256": submission_sha,
+                "node": {
+                    "id": "node-submission-only",
+                    "step": 1,
+                    "ctime": _ctime("20260620T120000"),
+                    "origin": "auto_blend",
+                    "metric": {"value": None, "maximize": None, "name": "balanced_accuracy"},
+                    "is_buggy": False,
+                },
+                "run_stats": {
+                    "submission_only": True,
+                    "blend_kind": "submission",
+                    "blend_mode": "vote",
+                    "blend_weighting": "uniform",
+                    "blend_recipe_hash": "abcd1234",
+                },
+            }
+        )
+    )
+
+    index = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=logs_dir / "submission_index.json",
+        competition="playground-series-s6e6",
+        reindex=True,
+    )
+    record = index["records"][0]
+
+    assert record["submission_only"] is True
+    assert record["origin"] == "auto_blend"
+    assert kaggle_submission_lab._record_is_submit_ready(record)
+
+
 def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     logs_dir = tmp_path / "logs"
     run_name = "legacy-run"

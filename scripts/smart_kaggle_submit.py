@@ -62,12 +62,23 @@ class Candidate:
     hypothesis_id: str | None = None
     source_sha256: str | None = None
     exec_time: float | None = None
+    origin: str | None = None
+    submission_only: bool = False
+    blend_kind: str | None = None
+    blend_mode: str | None = None
+    blend_weighting: str | None = None
+    blend_recipe_hash: str | None = None
+    blend_component_count: int | None = None
 
     @property
     def is_submit_ready(self) -> bool:
+        has_score_or_submission_only = self.local_score is not None or (
+            self.submission_only
+            and self.origin in {"manual_blend", "auto_blend"}
+        )
         return (
             not self.is_buggy
-            and self.local_score is not None
+            and has_score_or_submission_only
             and self.submission_path.exists()
             and self.sha256 is not None
             and self.validation_error is None
@@ -670,10 +681,22 @@ def build_kaggle_message(candidate: Candidate) -> str:
     metric = f" | metric={candidate.eval_metric}" if candidate.eval_metric else ""
     exec_time = _format_message_duration(candidate.exec_time)
     time = f" | time={exec_time}" if exec_time else ""
+    blend = ""
+    if candidate.blend_kind:
+        blend_value = "sub" if candidate.blend_kind == "submission" else candidate.blend_kind
+        blend = f" | blend={blend_value}"
+        if candidate.blend_mode:
+            blend += f" | bmode={candidate.blend_mode}"
+        if candidate.blend_weighting:
+            blend += f" | w={candidate.blend_weighting}"
+        if candidate.blend_component_count is not None:
+            blend += f" | n={candidate.blend_component_count}"
+        if candidate.blend_recipe_hash:
+            blend += f" | recipe={candidate.blend_recipe_hash[:12]}"
     return (
         f"cv={score} | run={candidate.run} | step={candidate.step} | "
         f"aide_ts={candidate.timestamp} | node={node} | "
-        f"sha={(candidate.sha256 or '')[:10]}{algo}{metric}{time}"
+        f"sha={(candidate.sha256 or '')[:10]}{algo}{metric}{time}{blend}"
     )
 
 
@@ -760,6 +783,13 @@ def submit_candidates(
             "hypothesis_id": candidate.hypothesis_id,
             "source_sha256": candidate.source_sha256,
             "algo": candidate.algo,
+            "origin": candidate.origin,
+            "submission_only": candidate.submission_only,
+            "blend_kind": candidate.blend_kind,
+            "blend_mode": candidate.blend_mode,
+            "blend_weighting": candidate.blend_weighting,
+            "blend_recipe_hash": candidate.blend_recipe_hash,
+            "blend_component_count": candidate.blend_component_count,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "response": _response_to_jsonable(response),
