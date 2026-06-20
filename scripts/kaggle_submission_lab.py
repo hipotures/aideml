@@ -43,7 +43,7 @@ DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
 DEFAULT_TABLE_LIMIT = 20
-INDEX_VERSION = 2
+INDEX_VERSION = 3
 SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
 
 
@@ -380,6 +380,8 @@ def build_manifest_records(
                 "blend_weighting": run_stats.get("blend_weighting"),
                 "blend_recipe_hash": run_stats.get("blend_recipe_hash"),
                 "blend_component_count": run_stats.get("blend_component_count"),
+                "blend_component_sha256": run_stats.get("component_sha256")
+                or run_stats.get("blend_component_sha256"),
             }
         )
     return records
@@ -1843,6 +1845,7 @@ def _record_to_candidate(record: dict[str, Any]) -> smart.Candidate:
         blend_weighting=record.get("blend_weighting"),
         blend_recipe_hash=record.get("blend_recipe_hash"),
         blend_component_count=record.get("blend_component_count"),
+        blend_component_sha256=record.get("blend_component_sha256"),
     )
 
 

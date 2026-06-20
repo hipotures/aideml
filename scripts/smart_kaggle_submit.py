@@ -69,6 +69,7 @@ class Candidate:
     blend_weighting: str | None = None
     blend_recipe_hash: str | None = None
     blend_component_count: int | None = None
+    blend_component_sha256: dict[str, str] | None = None
 
     @property
     def is_submit_ready(self) -> bool:
@@ -790,6 +791,7 @@ def submit_candidates(
             "blend_weighting": candidate.blend_weighting,
             "blend_recipe_hash": candidate.blend_recipe_hash,
             "blend_component_count": candidate.blend_component_count,
+            "blend_component_sha256": candidate.blend_component_sha256,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "response": _response_to_jsonable(response),

@@ -9,7 +9,7 @@ anthropic>=0.20.0
 pandas==2.1.4
 pytest~=9.0.3
 requests>=2.32.4
-kaggle
+kaggle==2.2.2
 scikit-learn==1.7.2
 rich==13.7.0
 scipy==1.11.4
