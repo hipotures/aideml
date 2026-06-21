@@ -6,6 +6,8 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from requests import HTTPError
+from requests.models import Response
 from rich.console import Console
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "smart_kaggle_submit.py"
@@ -670,6 +672,30 @@ class FakeKaggleClient:
         return {"ok": True}
 
 
+class FailingKaggleClient(FakeKaggleClient):
+    def __init__(self, *, fail_at: int, body: str):
+        super().__init__()
+        self.fail_at = fail_at
+        self.body = body
+
+    def competition_submit(self, file_name, message, competition, quiet=False):
+        self.calls.append(
+            {
+                "file_name": file_name,
+                "message": message,
+                "competition": competition,
+                "quiet": quiet,
+            }
+        )
+        if len(self.calls) == self.fail_at:
+            response = Response()
+            response.status_code = 400
+            response.url = "https://api.kaggle.com/v1/competitions/submit"
+            response._content = self.body.encode("utf-8")
+            raise HTTPError("400 Client Error: Bad Request", response=response)
+        return {"ok": True}
+
+
 class FakeRemoteSubmission:
     def __init__(
         self,
@@ -958,6 +984,49 @@ def test_submit_candidates_records_each_successful_submission(tmp_path):
         run="run-a",
         step=1,
         timestamp="20260502T101000",
+    )
+
+
+def test_submit_candidates_preserves_successes_and_reports_http_body(tmp_path):
+    first = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(1, "a" * 64),
+        submission_path=tmp_path / "first.csv",
+    )
+    second = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(2, "b" * 64),
+        submission_path=tmp_path / "second.csv",
+    )
+    first.submission_path.write_text("id,target\n1,0.1\n")
+    second.submission_path.write_text("id,target\n1,0.2\n")
+    registry = SubmissionRegistry(tmp_path / "registry.json")
+    client = FailingKaggleClient(
+        fail_at=2,
+        body='{"code":400,"message":"Daily submission limit exceeded"}',
+    )
+
+    with pytest.raises(smart_kaggle_submit.KaggleSubmitError) as exc_info:
+        submit_candidates(
+            [first, second],
+            registry=registry,
+            client=client,
+            competition="playground-series-s6e5",
+        )
+
+    assert "Daily submission limit exceeded" in str(exc_info.value)
+    assert "bbbbbbbbbb" in str(exc_info.value)
+    assert SubmissionRegistry.load(tmp_path / "registry.json").is_submitted(
+        competition="playground-series-s6e5",
+        sha256=first.sha256,
+        run=first.run,
+        step=first.step,
+        timestamp=first.timestamp,
+    )
+    assert not SubmissionRegistry.load(tmp_path / "registry.json").is_submitted(
+        competition="playground-series-s6e5",
+        sha256=second.sha256,
+        run=second.run,
+        step=second.step,
+        timestamp=second.timestamp,
     )
 
 

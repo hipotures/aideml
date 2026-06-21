@@ -2026,12 +2026,16 @@ def main(argv: list[str] | None = None) -> int:
     if sha_filters:
         if client is None:
             client = smart._build_kaggle_client()
-        submitted = submit_records(
-            track(selected, description="Submitting to Kaggle"),
-            registry=registry,
-            client=client,
-            competition=args.competition,
-        )
+        try:
+            submitted = submit_records(
+                track(selected, description="Submitting to Kaggle"),
+                registry=registry,
+                client=client,
+                competition=args.competition,
+            )
+        except smart.KaggleSubmitError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 1
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
         if args.output_format == "rich":

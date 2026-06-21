@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from requests import HTTPError
+
 from aide.utils.submission_validation import (
     validate_submission_file as validate_submission_against_sample,
 )
@@ -37,6 +39,10 @@ from rich.table import Table
 DEFAULT_COMPETITION = "playground-series-s6e6"
 DEFAULT_LOGS_DIR = Path("logs")
 DEFAULT_REGISTRY = Path("logs/submission_registry.json")
+
+
+class KaggleSubmitError(RuntimeError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -740,6 +746,29 @@ def _response_to_jsonable(response: Any) -> Any:
     return repr(response)
 
 
+def _http_error_details(exc: HTTPError) -> str:
+    response = getattr(exc, "response", None)
+    if response is None:
+        return str(exc)
+    parts = [str(exc)]
+    status_code = getattr(response, "status_code", None)
+    if status_code is not None:
+        parts.append(f"status={status_code}")
+    text = getattr(response, "text", None)
+    if text:
+        parts.append(f"body={text}")
+    return " | ".join(parts)
+
+
+def _submit_error_message(candidate: Candidate, upload_path: Path, exc: HTTPError) -> str:
+    return (
+        "Kaggle submit failed for "
+        f"sha={(candidate.sha256 or '')[:10]} "
+        f"run={candidate.run} step={candidate.step} "
+        f"file={upload_path.name}: {_http_error_details(exc)}"
+    )
+
+
 def submit_candidates(
     candidates: Iterable[Candidate],
     *,
@@ -761,12 +790,15 @@ def submit_candidates(
             continue
         message = build_kaggle_message(candidate)
         upload_path = prepare_upload_file(candidate)
-        response = client.competition_submit(
-            str(upload_path),
-            message,
-            competition,
-            quiet=False,
-        )
+        try:
+            response = client.competition_submit(
+                str(upload_path),
+                message,
+                competition,
+                quiet=False,
+            )
+        except HTTPError as exc:
+            raise KaggleSubmitError(_submit_error_message(candidate, upload_path, exc)) from exc
         entry = {
             "competition": competition,
             "run": candidate.run,
@@ -1307,12 +1339,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.submit:
         if client is None:
             client = _build_kaggle_client()
-        submitted = submit_candidates(
-            track(selected, description="Submitting to Kaggle"),
-            registry=registry,
-            client=client,
-            competition=args.competition,
-        )
+        try:
+            submitted = submit_candidates(
+                track(selected, description="Submitting to Kaggle"),
+                registry=registry,
+                client=client,
+                competition=args.competition,
+            )
+        except KaggleSubmitError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 1
         console.print(f"Submitted {len(submitted)} candidate(s).")
     else:
         render_dry_run(
