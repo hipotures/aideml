@@ -144,6 +144,25 @@
         },
         "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
         "analysis": "REPL child process died unexpectedly"
+      },
+      {
+        "file": "autogluon-009.py",
+        "buggy": true,
+        "status": "bug",
+        "node_id": "46ca0aab1a2e41a0b9c16900994e7714",
+        "score": null,
+        "created_at": "2026-06-13T03:07:34",
+        "exec_time": 0.0,
+        "gpu": true,
+        "aux": true,
+        "exception_type": "RuntimeError",
+        "exception_info": {
+          "args": [
+            "REPL child process died unexpectedly"
+          ]
+        },
+        "terminal_output": "RuntimeError: REPL child process died unexpectedly\n",
+        "analysis": "REPL child process died unexpectedly"
       }
     ],
     "legacy": [
