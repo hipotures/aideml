@@ -146,6 +146,10 @@ def test_enrich_records_with_registry_adds_public_score(tmp_path):
                 "sha256": "a" * 64,
                 "public_score": "0.96842",
                 "remote_status": "COMPLETE",
+                "blend_component_sha256": {
+                    "a": "b" * 64,
+                    "c": "d" * 64,
+                },
             }
         ],
     )
@@ -158,6 +162,10 @@ def test_enrich_records_with_registry_adds_public_score(tmp_path):
 
     assert records[0]["public_score"] == "0.96842"
     assert records[0]["remote_status"] == "COMPLETE"
+    assert records[0]["blend_component_sha256"] == {
+        "a": "b" * 64,
+        "c": "d" * 64,
+    }
 
 
 def test_bad_blend_component_sets_use_public_score_feedback():

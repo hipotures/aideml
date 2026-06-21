@@ -173,8 +173,9 @@ def enrich_records_with_registry(
                 "remote_status",
                 "blend_component_sha256",
             ):
-                if entry.get(key) not in {None, ""}:
-                    item[key] = entry.get(key)
+                value = entry.get(key)
+                if value is not None and value != "":
+                    item[key] = value
             break
         enriched.append(item)
     return enriched
