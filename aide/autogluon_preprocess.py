@@ -77,6 +77,7 @@ def _lightgbm_gpu_categorical_positive_int(value, name):
 
 
 def _apply_lightgbm_gpu_categorical_fallback(ag_config, train_frame, test_frame):
+    updated_config = copy.deepcopy(ag_config)
     config = _lightgbm_gpu_categorical_fallback_config(ag_config)
     action = config["action"]
     max_cardinality = int(config["max_categorical_cardinality"])
@@ -88,10 +89,10 @@ def _apply_lightgbm_gpu_categorical_fallback(ag_config, train_frame, test_frame)
     }
     if action == "none":
         stats["reason"] = "disabled"
-        return ag_config, train_frame, test_frame, stats
-    if not _lightgbm_ag_config_uses_gpu(ag_config):
+        return updated_config, train_frame, test_frame, stats
+    if not _lightgbm_ag_config_uses_gpu(updated_config):
         stats["reason"] = "lightgbm_not_gpu"
-        return ag_config, train_frame, test_frame, stats
+        return updated_config, train_frame, test_frame, stats
 
     high_cardinality = _high_cardinality_categorical_columns(
         train_frame,
@@ -99,7 +100,7 @@ def _apply_lightgbm_gpu_categorical_fallback(ag_config, train_frame, test_frame)
     )
     if not high_cardinality:
         stats["reason"] = "no_high_cardinality_categorical_columns"
-        return ag_config, train_frame, test_frame, stats
+        return updated_config, train_frame, test_frame, stats
 
     stats["triggered"] = True
     stats["columns"] = {
@@ -121,13 +122,13 @@ def _apply_lightgbm_gpu_categorical_fallback(ag_config, train_frame, test_frame)
         drop_columns = list(high_cardinality)
         stats["dropped_columns"] = [str(column) for column in drop_columns]
         return (
-            ag_config,
+            updated_config,
             train_frame.drop(columns=drop_columns),
             test_frame.drop(columns=drop_columns, errors="ignore"),
             stats,
         )
     if action == "fallback_to_cpu":
-        updated_config, changed = _lightgbm_ag_config_forced_to_cpu(ag_config)
+        updated_config, changed = _lightgbm_ag_config_forced_to_cpu(updated_config)
         stats["forced_cpu"] = changed
         return updated_config, train_frame, test_frame, stats
     raise ValueError(f"Unsupported LightGBM categorical fallback action: {action!r}")

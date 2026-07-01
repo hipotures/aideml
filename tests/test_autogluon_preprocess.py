@@ -941,6 +941,31 @@ def test_autogluon_wrapper_lightgbm_categorical_fallback_is_noop_for_cpu_profile
     assert ag_config["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 0}
 
 
+def test_autogluon_wrapper_preserves_config_after_noop_lightgbm_fallback_update(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost"
+    cfg.agent.autogluon.included_model_types = None
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    train_frame = pd.DataFrame({"cat": [f"level_{idx}" for idx in range(513)]})
+    test_frame = pd.DataFrame({"cat": ["new"]})
+    ag_config_update, _train_out, _test_out, stats = namespace[
+        "_apply_lightgbm_gpu_categorical_fallback"
+    ](
+        namespace["AIDE_AG_CONFIG"],
+        train_frame,
+        test_frame,
+    )
+
+    namespace["AIDE_AG_CONFIG"].clear()
+    namespace["AIDE_AG_CONFIG"].update(ag_config_update)
+
+    assert stats["reason"] == "lightgbm_not_gpu"
+    assert namespace["_configured_metric"]() == "balanced_accuracy"
+
+
 def test_autogluon_unknown_profile_is_rejected(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profile = "slow_magic"
