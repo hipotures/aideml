@@ -32,6 +32,7 @@ from aide.run import (
     build_root_hypotheses_view,
     build_final_tree_renderable,
     emit_completion_bell,
+    format_run_panel_title,
     model_settings_for_run,
     osc52_clipboard_sequence,
     panel_copy_path,
@@ -98,6 +99,17 @@ def test_run_help_prints_usage_without_loading_config(capsys):
     assert "--resume" in captured.out
     assert "key=value" in captured.out
     assert captured.err == ""
+
+
+def test_format_run_panel_title_puts_project_before_run(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = tmp_path / "aide" / "example_tasks" / "playground-series-s6e7"
+    cfg.exp_name = "2-smiling-topaz-oarfish"
+
+    assert (
+        format_run_panel_title(cfg)
+        == "playground-series-s6e7 · run 2-smiling-topaz-oarfish"
+    )
 
 
 def test_arrow_key_reader_maps_p_to_public_refresh():

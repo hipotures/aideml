@@ -4162,6 +4162,18 @@ def build_run_log_summary(
     )
 
 
+def _project_name_for_title(cfg: Config) -> str:
+    data_dir = getattr(cfg, "data_dir", None)
+    if data_dir is None:
+        return "unknown-project"
+    name = Path(str(data_dir)).name
+    return name or "unknown-project"
+
+
+def format_run_panel_title(cfg: Config) -> str:
+    return f"{_project_name_for_title(cfg)} · run {cfg.exp_name}"
+
+
 ModelSetting = tuple[str, str, str | None]
 
 
@@ -5937,7 +5949,7 @@ def run(argv: list[str] | None = None):
         pending_copy_action = None
         if action == "copy_aide_panel":
             panel_name = "aide"
-            panel_title = f'AIDE: "{cfg.exp_name}"'
+            panel_title = f"AIDE: {format_run_panel_title(cfg)}"
             width = left_width
             text = render_tree_copy_text(panel_title, tree_copy_view, width=width)
         elif action == "copy_run_data_panel":
@@ -6100,7 +6112,10 @@ def run(argv: list[str] | None = None):
 
         tree_panel = Panel(
             Padding(left_panel_content, (0, 1, 0, 1)),
-            title=f'[b]AIDE (1): [bold green]"{cfg.exp_name}[/b]"',
+            title=(
+                "[b]AIDE (1): "
+                f"[bold green]{format_run_panel_title(cfg)}[/bold green][/b]"
+            ),
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
                 f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
