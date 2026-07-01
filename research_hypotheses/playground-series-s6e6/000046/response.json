@@ -1,0 +1,19 @@
+{
+  "status": "failed",
+  "run_id": "2-strict-hairy-starling",
+  "checkpoint_step": 0,
+  "exit_code": 0,
+  "duration_seconds": 0.127184450160712,
+  "timings_seconds": {
+    "build_prompt": 0.00038964906707406044,
+    "write_inputs": 0.003928249003365636,
+    "codex_subprocess": 0.12258414318785071,
+    "read_response": 0.00025575910694897175,
+    "parse_response": 2.255011349916458e-05,
+    "total": 0.127184450160712
+  },
+  "raw_response": "",
+  "parsed_response": null,
+  "stderr": "",
+  "error": "Codex response was not valid JSON."
+}
