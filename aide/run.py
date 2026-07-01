@@ -207,6 +207,38 @@ class RuntimeOptions:
     public_tree_scores: bool = False
 
 
+AIDE_CLI_HELP = """\
+usage: aide [runtime options] [key=value ...]
+
+Run an AIDE experiment. Configuration values are passed as OmegaConf dotlist
+overrides in key=value form.
+
+Runtime options:
+  -h, --help                         Show this help message and exit.
+  --resume [RUN_ID]                  Resume a run, or the latest run if omitted.
+  --show-invalid-submission-branches Include invalid submission branches in views.
+  --public-tree-scores               Use public score bonuses in tree selection.
+  --force-check-submissions          Re-check submission metadata while resuming.
+  --telegram-test-message            Send a Telegram test message before running.
+  --debug                            Enable memory debug logging.
+  --web                              Enable the web dashboard.
+  --web-host HOST                    Set the web dashboard host.
+  --web-port PORT                    Set the web dashboard port.
+  --skip-execution                   Generate code without executing it.
+  --generate-only [IDS...]           Generate root candidates without execution.
+  --seed-from-sha SHA                Seed from a previous artifact SHA prefix.
+  --seed-source-run RUN_ID           Restrict seed lookup to one source run.
+
+Examples:
+  aide data_dir=aide/example_tasks/playground-series-s6e7 desc_file=aide/example_tasks/playground-series-s6e7.md
+  aide --resume agent.steps=200
+"""
+
+
+def format_cli_help() -> str:
+    return textwrap.dedent(AIDE_CLI_HELP).strip()
+
+
 @dataclass(frozen=True)
 class TreeViewItem:
     item_id: str
@@ -5100,6 +5132,9 @@ def run_with_live_refresh(
 
 def run(argv: list[str] | None = None):
     raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if any(arg in {"-h", "--help"} for arg in raw_argv):
+        print(format_cli_help())
+        return 0
     resume_request, runtime_options, cli_args = parse_runtime_args(raw_argv)
     if runtime_options.telegram_test_message:
         send_telegram_test_message()

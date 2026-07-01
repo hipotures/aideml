@@ -56,6 +56,7 @@ from aide.run import (
     render_log_copy_text,
     render_panel_copy_text,
     render_tree_copy_text,
+    run,
     run_with_live_refresh,
     save_panel_copy,
     stage_status_message,
@@ -87,6 +88,16 @@ def test_parse_runtime_args_enables_public_tree_scores():
     assert resume.requested is False
     assert runtime.public_tree_scores is True
     assert remaining == ["agent.search.public_score_bonus_weight=0.25"]
+
+
+def test_run_help_prints_usage_without_loading_config(capsys):
+    assert run(["--help"]) == 0
+
+    captured = capsys.readouterr()
+    assert "usage: aide" in captured.out
+    assert "--resume" in captured.out
+    assert "key=value" in captured.out
+    assert captured.err == ""
 
 
 def test_arrow_key_reader_maps_p_to_public_refresh():
