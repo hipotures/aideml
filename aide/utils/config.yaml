@@ -176,6 +176,9 @@ agent:
     profile: s6e6_boost_gpu
     # Dedicated timeout for generated preprocess(df), separate from AutoGluon fit time_limit.
     preprocess_timeout: 180
+    lightgbm_gpu_categorical_fallback:
+      max_categorical_cardinality: 512
+      action: fallback_to_cpu
     profiles:
       fast_boost:
         included_model_types: [XGB, GBM]

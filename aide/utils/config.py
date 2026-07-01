@@ -205,6 +205,7 @@ class AutoGluonConfig:
     presets: str = "medium_quality"
     time_limit: int = 600
     preprocess_timeout: int = 180
+    lightgbm_gpu_categorical_fallback: dict | None = None
     validation_fraction: float = 0.2
     seed: int = 42
     included_model_types: list[str] | None = None

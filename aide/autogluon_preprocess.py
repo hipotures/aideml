@@ -20,6 +20,197 @@ FORBIDDEN_ROW_ID = "__aide_row_id__"
 BASELINE_PLAN_PREFIX = "AutoGluon raw baseline"
 
 
+_LIGHTGBM_GPU_CATEGORICAL_FALLBACK_HELPER_SOURCE = r'''
+def _lightgbm_gpu_categorical_fallback_config(ag_config):
+    section = ag_config.get("lightgbm_gpu_categorical_fallback")
+    if section is None:
+        section = {}
+        default_action = "none"
+    elif isinstance(section, dict):
+        default_action = "fallback_to_cpu"
+    else:
+        raise ValueError("AIDE_AG_CONFIG['lightgbm_gpu_categorical_fallback'] must be a mapping")
+    return {
+        "action": _lightgbm_gpu_categorical_fallback_action(
+            section.get("action"),
+            default=default_action,
+        ),
+        "max_categorical_cardinality": _lightgbm_gpu_categorical_positive_int(
+            section.get("max_categorical_cardinality", 512),
+            "lightgbm_gpu_categorical_fallback.max_categorical_cardinality",
+        ),
+    }
+
+
+def _lightgbm_gpu_categorical_fallback_action(value, *, default):
+    if value is None:
+        return default
+    normalized = str(value).strip().lower().replace("-", "_")
+    aliases = {
+        "off": "none",
+        "false": "none",
+        "disabled": "none",
+        "none": "none",
+        "drop": "drop_columns",
+        "drop_column": "drop_columns",
+        "drop_columns": "drop_columns",
+        "fallback2cpu": "fallback_to_cpu",
+        "fallback_to_cpu": "fallback_to_cpu",
+        "cpu": "fallback_to_cpu",
+    }
+    if normalized not in aliases:
+        raise ValueError(
+            "lightgbm_gpu_categorical_fallback.action must be one of: "
+            "none, fallback_to_cpu, drop_columns"
+        )
+    return aliases[normalized]
+
+
+def _lightgbm_gpu_categorical_positive_int(value, name):
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if numeric <= 0:
+        raise ValueError(f"{name} must be greater than 0")
+    return numeric
+
+
+def _apply_lightgbm_gpu_categorical_fallback(ag_config, train_frame, test_frame):
+    config = _lightgbm_gpu_categorical_fallback_config(ag_config)
+    action = config["action"]
+    max_cardinality = int(config["max_categorical_cardinality"])
+    stats = {
+        "action": action,
+        "max_categorical_cardinality": max_cardinality,
+        "triggered": False,
+        "columns": {},
+    }
+    if action == "none":
+        stats["reason"] = "disabled"
+        return ag_config, train_frame, test_frame, stats
+    if not _lightgbm_ag_config_uses_gpu(ag_config):
+        stats["reason"] = "lightgbm_not_gpu"
+        return ag_config, train_frame, test_frame, stats
+
+    high_cardinality = _high_cardinality_categorical_columns(
+        train_frame,
+        max_cardinality=max_cardinality,
+    )
+    if not high_cardinality:
+        stats["reason"] = "no_high_cardinality_categorical_columns"
+        return ag_config, train_frame, test_frame, stats
+
+    stats["triggered"] = True
+    stats["columns"] = {
+        str(column): int(cardinality)
+        for column, cardinality in high_cardinality.items()
+    }
+    column_summary = ",".join(
+        f"{column}:{cardinality}"
+        for column, cardinality in sorted(stats["columns"].items())
+    )
+    print(
+        "AIDE_RUNTIME|lightgbm_gpu_categorical_fallback"
+        f"|action={action}"
+        f"|threshold={max_cardinality}"
+        f"|columns={column_summary}",
+        flush=True,
+    )
+    if action == "drop_columns":
+        drop_columns = list(high_cardinality)
+        stats["dropped_columns"] = [str(column) for column in drop_columns]
+        return (
+            ag_config,
+            train_frame.drop(columns=drop_columns),
+            test_frame.drop(columns=drop_columns, errors="ignore"),
+            stats,
+        )
+    if action == "fallback_to_cpu":
+        updated_config, changed = _lightgbm_ag_config_forced_to_cpu(ag_config)
+        stats["forced_cpu"] = changed
+        return updated_config, train_frame, test_frame, stats
+    raise ValueError(f"Unsupported LightGBM categorical fallback action: {action!r}")
+
+
+def _high_cardinality_categorical_columns(frame, *, max_cardinality):
+    high_cardinality = {}
+    for column in frame.columns:
+        series = frame[column]
+        if not _is_categorical_series(series):
+            continue
+        cardinality = int(series.nunique(dropna=False))
+        if cardinality > max_cardinality:
+            high_cardinality[column] = cardinality
+    return high_cardinality
+
+
+def _is_categorical_series(series):
+    dtype = series.dtype
+    return bool(
+        pd.api.types.is_object_dtype(dtype)
+        or pd.api.types.is_string_dtype(dtype)
+        or pd.api.types.is_categorical_dtype(dtype)
+    )
+
+
+def _lightgbm_ag_config_uses_gpu(ag_config):
+    return any(_lightgbm_config_uses_gpu(config) for config in _lightgbm_configs(ag_config))
+
+
+def _lightgbm_ag_config_forced_to_cpu(ag_config):
+    ag_config = copy.deepcopy(ag_config)
+    changed = False
+    for config in _lightgbm_configs(ag_config):
+        if not _lightgbm_config_uses_gpu(config):
+            continue
+        if "device" in config:
+            config["device"] = "cpu"
+        if "device_type" in config:
+            config["device_type"] = "cpu"
+        if "device" not in config and "device_type" not in config:
+            config["device"] = "cpu"
+        ag_args_fit = (
+            dict(config.get("ag_args_fit") or {})
+            if isinstance(config.get("ag_args_fit"), dict)
+            else {}
+        )
+        ag_args_fit["num_gpus"] = 0
+        config["ag_args_fit"] = ag_args_fit
+        changed = True
+    return ag_config, changed
+
+
+def _lightgbm_configs(ag_config):
+    included = ag_config.get("included_model_types") or []
+    if included and "GBM" not in included:
+        return []
+    hyperparameters = ag_config.get("hyperparameters")
+    if not isinstance(hyperparameters, dict):
+        return []
+    raw_configs = hyperparameters.get("GBM")
+    if isinstance(raw_configs, dict):
+        return [raw_configs]
+    if isinstance(raw_configs, list):
+        return [config for config in raw_configs if isinstance(config, dict)]
+    return []
+
+
+def _lightgbm_config_uses_gpu(config):
+    for key in ("device", "device_type"):
+        value = config.get(key)
+        if isinstance(value, str) and value.strip().lower() in {"cuda", "gpu"}:
+            return True
+    ag_args_fit = config.get("ag_args_fit")
+    if isinstance(ag_args_fit, dict):
+        try:
+            return int(ag_args_fit.get("num_gpus") or 0) > 0
+        except (TypeError, ValueError):
+            return False
+    return False
+'''
+
+
 def baseline_preprocess_source() -> str:
     return "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df.copy()\n"
 
@@ -191,6 +382,61 @@ def _force_cpu_boost_hyperparameters(settings: dict[str, Any]) -> None:
                 ag_args_fit["num_gpus"] = 0
 
 
+def lightgbm_gpu_categorical_fallback_options(value: object) -> dict[str, object]:
+    section = _container(value)
+    if section is None:
+        section = {}
+        default_action = "none"
+    elif isinstance(section, dict):
+        default_action = "fallback_to_cpu"
+    else:
+        raise ValueError("agent.autogluon.lightgbm_gpu_categorical_fallback must be a mapping")
+    return {
+        "action": _categorical_fallback_action_option(
+            section.get("action"),
+            default=default_action,
+        ),
+        "max_categorical_cardinality": _positive_int_option(
+            section.get("max_categorical_cardinality", 512),
+            "agent.autogluon.lightgbm_gpu_categorical_fallback.max_categorical_cardinality",
+        ),
+    }
+
+
+def _categorical_fallback_action_option(value: object, *, default: str) -> str:
+    if value is None:
+        return default
+    normalized = str(value).strip().lower().replace("-", "_")
+    aliases = {
+        "off": "none",
+        "false": "none",
+        "disabled": "none",
+        "none": "none",
+        "drop": "drop_columns",
+        "drop_column": "drop_columns",
+        "drop_columns": "drop_columns",
+        "fallback2cpu": "fallback_to_cpu",
+        "fallback_to_cpu": "fallback_to_cpu",
+        "cpu": "fallback_to_cpu",
+    }
+    if normalized not in aliases:
+        raise ValueError(
+            "agent.autogluon.lightgbm_gpu_categorical_fallback.action must be one of: "
+            "none, fallback_to_cpu, drop_columns"
+        )
+    return aliases[normalized]
+
+
+def _positive_int_option(value: object, name: str) -> int:
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if numeric <= 0:
+        raise ValueError(f"{name} must be greater than 0")
+    return numeric
+
+
 def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     ag = cfg.agent.autogluon
     profiles = dict(_container(getattr(ag, "profiles", {})) or {})
@@ -215,6 +461,9 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
         "included_model_types": None,
+        "lightgbm_gpu_categorical_fallback": _container(
+            getattr(ag, "lightgbm_gpu_categorical_fallback", None)
+        ),
     }
     validation_strategy = getattr(ag, "validation_strategy", None)
     if validation_strategy is not None:
@@ -250,6 +499,11 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         _prioritize_xgboost_hyperparameters(settings)
     if "fit_args" in settings:
         settings["fit_args"] = dict(settings.get("fit_args") or {})
+    settings["lightgbm_gpu_categorical_fallback"] = (
+        lightgbm_gpu_categorical_fallback_options(
+            settings.get("lightgbm_gpu_categorical_fallback")
+        )
+    )
     if settings.get("validation_strategy") not in {None, "holdout", "autogluon"}:
         raise ValueError(
             "AutoGluon validation_strategy must be one of: holdout, autogluon"
@@ -332,6 +586,9 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     if aux_name is not None:
         visible["aux_file"] = aux_name
     visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
+    fallback = settings.get("lightgbm_gpu_categorical_fallback")
+    if isinstance(fallback, dict):
+        visible["lightgbm_gpu_categorical_fallback"] = dict(fallback)
     return visible
 
 
@@ -354,6 +611,7 @@ import json
 import shutil
 import warnings
 import contextlib
+import copy
 import inspect
 import logging
 import os
@@ -375,6 +633,9 @@ RESULT_MARKER = {RESULT_MARKER!r}
 FORBIDDEN_SPLIT_MARKER = {FORBIDDEN_SPLIT_MARKER!r}
 FORBIDDEN_ROW_ID = {FORBIDDEN_ROW_ID!r}
 CLASS_WEIGHT_COL = "__aide_class_weight__"
+
+
+{_LIGHTGBM_GPU_CATEGORICAL_FALLBACK_HELPER_SOURCE.strip()}
 
 
 {preprocess_source.strip()}
@@ -955,6 +1216,16 @@ def main() -> None:
 
     train_fe = preprocessed.iloc[:len(train_df)].copy()
     test_fe = preprocessed.iloc[len(train_df):].copy()
+    AIDE_AG_CONFIG_UPDATE, train_fe, test_fe, lightgbm_categorical_fallback_stats = (
+        _apply_lightgbm_gpu_categorical_fallback(
+            AIDE_AG_CONFIG,
+            train_fe,
+            test_fe,
+        )
+    )
+    AIDE_AG_CONFIG.clear()
+    AIDE_AG_CONFIG.update(AIDE_AG_CONFIG_UPDATE)
+    feature_count = int(len(train_fe.columns))
     train_model = train_fe.copy()
     train_model[target_col] = y_train.to_numpy()
     if AIDE_AG_CONFIG.get("class_balance") == "balanced":
@@ -1097,6 +1368,7 @@ def main() -> None:
         "preprocess_time": float(preprocess_time),
         "training_time": float(training_time),
         "eval_metric": actual_eval_metric,
+        "lightgbm_gpu_categorical_fallback": lightgbm_categorical_fallback_stats,
         "models": model_records,
         "prediction_artifacts": prediction_artifacts,
     }}

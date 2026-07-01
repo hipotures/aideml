@@ -832,6 +832,115 @@ def test_autogluon_gpu_profiles_use_cuda_gbm(tmp_path):
         assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
 
 
+def test_autogluon_settings_default_lightgbm_gpu_categorical_fallback(tmp_path):
+    cfg = _cfg(tmp_path)
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["lightgbm_gpu_categorical_fallback"] == {
+        "action": "fallback_to_cpu",
+        "max_categorical_cardinality": 512,
+    }
+
+    cfg.agent.autogluon.lightgbm_gpu_categorical_fallback = {
+        "action": "fallback2cpu",
+        "max_categorical_cardinality": 1024,
+    }
+    alias_settings = resolve_autogluon_settings(cfg)
+
+    assert alias_settings["lightgbm_gpu_categorical_fallback"] == {
+        "action": "fallback_to_cpu",
+        "max_categorical_cardinality": 1024,
+    }
+
+
+def test_autogluon_wrapper_falls_back_lightgbm_gpu_to_cpu_for_high_cardinality_categories(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost_gpu"
+    cfg.agent.autogluon.included_model_types = None
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    train_frame = pd.DataFrame(
+        {
+            "cat": [f"level_{idx}" for idx in range(513)],
+            "small_cat": ["a", "b", "a"] * 171,
+            "num": range(513),
+        }
+    )
+    test_frame = pd.DataFrame({"cat": ["new"], "small_cat": ["a"], "num": [1]})
+
+    ag_config, train_out, test_out, stats = namespace["_apply_lightgbm_gpu_categorical_fallback"](
+        namespace["AIDE_AG_CONFIG"],
+        train_frame,
+        test_frame,
+    )
+
+    assert stats["triggered"] is True
+    assert stats["action"] == "fallback_to_cpu"
+    assert stats["columns"] == {"cat": 513}
+    assert train_out is train_frame
+    assert test_out is test_frame
+    assert ag_config["hyperparameters"]["GBM"][0]["device"] == "cpu"
+    assert ag_config["hyperparameters"]["GBM"][0]["ag_args_fit"]["num_gpus"] == 0
+    assert ag_config["hyperparameters"]["XGB"][0]["device"] == "cuda"
+    assert ag_config["hyperparameters"]["CAT"][0]["task_type"] == "GPU"
+
+
+def test_autogluon_wrapper_can_drop_high_cardinality_categories(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost_gpu"
+    cfg.agent.autogluon.included_model_types = None
+    cfg.agent.autogluon.lightgbm_gpu_categorical_fallback = {
+        "action": "drop",
+        "max_categorical_cardinality": 2,
+    }
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    train_frame = pd.DataFrame({"cat": ["a", "b", "c"], "small": ["x", "x", "y"]})
+    test_frame = pd.DataFrame({"cat": ["d"], "small": ["x"]})
+
+    _ag_config, train_out, test_out, stats = namespace["_apply_lightgbm_gpu_categorical_fallback"](
+        namespace["AIDE_AG_CONFIG"],
+        train_frame,
+        test_frame,
+    )
+
+    assert stats["action"] == "drop_columns"
+    assert stats["triggered"] is True
+    assert stats["columns"] == {"cat": 3}
+    assert stats["dropped_columns"] == ["cat"]
+    assert train_out.columns.to_list() == ["small"]
+    assert test_out.columns.to_list() == ["small"]
+
+
+def test_autogluon_wrapper_lightgbm_categorical_fallback_is_noop_for_cpu_profile(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "full_boost"
+    cfg.agent.autogluon.included_model_types = None
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    namespace = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    train_frame = pd.DataFrame({"cat": [f"level_{idx}" for idx in range(513)]})
+    test_frame = pd.DataFrame({"cat": ["new"]})
+
+    ag_config, train_out, test_out, stats = namespace["_apply_lightgbm_gpu_categorical_fallback"](
+        namespace["AIDE_AG_CONFIG"],
+        train_frame,
+        test_frame,
+    )
+
+    assert stats["triggered"] is False
+    assert stats["reason"] == "lightgbm_not_gpu"
+    assert train_out is train_frame
+    assert test_out is test_frame
+    assert ag_config["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 0}
+
+
 def test_autogluon_unknown_profile_is_rejected(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profile = "slow_magic"
