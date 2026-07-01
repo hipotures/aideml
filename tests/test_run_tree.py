@@ -108,7 +108,7 @@ def test_format_run_panel_title_puts_project_before_run(tmp_path):
 
     assert (
         format_run_panel_title(cfg)
-        == "playground-series-s6e7 · run 2-smiling-topaz-oarfish"
+        == "playground-series-s6e7 · 2-smiling-topaz-oarfish"
     )
 
 

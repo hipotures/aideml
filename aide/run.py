@@ -4171,7 +4171,7 @@ def _project_name_for_title(cfg: Config) -> str:
 
 
 def format_run_panel_title(cfg: Config) -> str:
-    return f"{_project_name_for_title(cfg)} · run {cfg.exp_name}"
+    return f"{_project_name_for_title(cfg)} · {cfg.exp_name}"
 
 
 ModelSetting = tuple[str, str, str | None]
