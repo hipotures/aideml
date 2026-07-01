@@ -1,0 +1,22 @@
+Original student health behavior dataset.
+
+This is the original source-style dataset associated with the synthetic
+Playground Series S6E7 competition data. It can be used as raw auxiliary data,
+but it is not automatically merged with train.csv.gz or test.csv.gz.
+
+Common feature columns with the competition data:
+sleep_duration, heart_rate, bmi, calorie_expenditure, step_count,
+exercise_duration, water_intake, diet_type, stress_level, sleep_quality,
+physical_activity_level, smoking_alcohol, gender.
+
+Columns present in this auxiliary dataset but not in the competition files:
+student_id, timestamp.
+
+The auxiliary dataset also contains the target column health_condition with the
+same classes as the competition: at-risk, unhealthy, and fit. Treat those labels
+as external training labels only when the implementation is explicitly
+leakage-safe. Do not assume student_id matches the competition id column.
+
+Generated code should decide whether and how to use this file. Any auxiliary
+statistics, encodings, joins, timestamp processing, or filtering must be done
+explicitly by the generated solution code.

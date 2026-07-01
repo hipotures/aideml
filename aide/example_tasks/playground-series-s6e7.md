@@ -23,3 +23,4 @@ id,health_condition
 - **train.csv.gz** - gzip-compressed training data with the multiclass target column `health_condition`
 - **test.csv.gz** - gzip-compressed test data without the target column
 - **sample_submission.csv.gz** - gzip-compressed sample submission in the required format
+- **student_health_dataset_50k.csv.gz** - gzip-compressed source-style auxiliary student health dataset; use with `agent.aux=student_health_dataset_50k.csv.gz`
