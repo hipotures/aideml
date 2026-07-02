@@ -4,12 +4,14 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable
 
+from dotenv import dotenv_values
 from rich import box
 from rich.console import Console
 from rich.progress import (
@@ -45,6 +47,16 @@ DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
 DEFAULT_TABLE_LIMIT = 20
 INDEX_VERSION = 3
 SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
+
+
+def default_competition() -> str:
+    env_value = os.getenv("AIDE_PROJECT_NAME", "").strip()
+    if env_value:
+        return env_value
+    dotenv_value = dotenv_values(Path(".env")).get("AIDE_PROJECT_NAME")
+    if dotenv_value:
+        return str(dotenv_value).strip() or DEFAULT_COMPETITION
+    return DEFAULT_COMPETITION
 
 
 def sha256_file(path: Path) -> str:
@@ -1879,7 +1891,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Submission index viewer and Kaggle submitter."
     )
-    parser.add_argument("--competition", default=DEFAULT_COMPETITION)
+    parser.add_argument("--competition", default=default_competition())
     parser.add_argument("--logs-dir", type=Path, default=DEFAULT_LOGS_DIR)
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX_PATH)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)

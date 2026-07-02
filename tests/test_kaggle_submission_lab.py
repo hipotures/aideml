@@ -35,6 +35,18 @@ def _write_artifact(
     return artifact_dir
 
 
+def test_parse_args_defaults_competition_from_project_dotenv(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text(
+        "AIDE_PROJECT_NAME=playground-series-s6e7\n",
+        encoding="utf-8",
+    )
+
+    args = kaggle_submission_lab.parse_args([])
+
+    assert args.competition == "playground-series-s6e7"
+
+
 def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     logs_dir = tmp_path / "logs"
     artifact = _write_artifact(
