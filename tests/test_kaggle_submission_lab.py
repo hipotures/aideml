@@ -1120,37 +1120,48 @@ def test_candidate_tree_ignores_manual_invalid_scores(tmp_path):
     assert invalid[columns.index("submit")] == "invalid"
 
 
-def test_tree_kind_profile_labels_seeded_source_node_as_source():
+def test_tree_kind_profile_labels_source_branch_and_rerun_with_algo_profile():
     assert (
         kaggle_submission_lab._tree_kind_profile(
             {
                 "kind": "source_node",
-                "source_sha256": "source-parent-sha",
-                "profile": "full_boost",
+                "profile": "full_boost_gpu_ens_stack_v1",
+                "algo": "AG",
             }
         )
-        == "source"
+        == "source/ag-full-boost-gpu-ens-stack-v1"
+    )
+    assert (
+        kaggle_submission_lab._tree_kind_profile(
+            {
+                "kind": "source_node",
+                "parent_node_id": "parent-node",
+                "profile": "full_boost_gpu_ens_stack_v1",
+                "algo": "AG",
+            }
+        )
+        == "branch/ag-full-boost-gpu-ens-stack-v1"
     )
     assert (
         kaggle_submission_lab._tree_kind_profile(
             {
                 "kind": "profile_eval",
                 "source_sha256": "source-parent-sha",
-                "profile": "full_boost",
+                "profile": "best_boost_gpu_1h_v1",
+                "algo": "AG",
             }
         )
-        == "full"
+        == "rerun/ag-best-boost-gpu-1h-v1"
     )
     assert (
         kaggle_submission_lab._tree_kind_profile(
             {
-                "kind": "profile_eval",
-                "source_sha256": "source-parent-sha",
-                "profile": "full_boost",
-                "source_solution_path": "logs/run/artifacts/ts/solution_best_1h_v6_cpu.py",
+                "kind": "source_node",
+                "parent_node_id": "parent-node",
+                "algo": "Leg",
             }
         )
-        == "solution_best_1h_v6_cpu.py"
+        == "branch/legacy"
     )
 
 

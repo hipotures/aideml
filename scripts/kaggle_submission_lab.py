@@ -1444,13 +1444,36 @@ def _tree_state(row: dict[str, Any]) -> str:
     return str(row.get("status") or "-")
 
 
-def _tree_kind_profile(row: dict[str, Any]) -> str:
+def _tree_origin_label(row: dict[str, Any]) -> str:
     if _tree_row_is_profile_eval(row):
-        source_solution_path = row.get("source_solution_path")
-        if source_solution_path:
-            return Path(str(source_solution_path)).name
-        return _short_profile(row.get("profile")) or "rerun"
+        return "rerun"
+    if row.get("parent_node_id"):
+        return "branch"
     return "source"
+
+
+def _tree_algo_label(row: dict[str, Any]) -> str:
+    algo = _format_algo(row, unknown_if_missing=True)
+    if algo == "AG":
+        return "ag"
+    if algo == "Leg":
+        return "legacy"
+    return str(algo or "unknown").lower()
+
+
+def _tree_profile_label(row: dict[str, Any]) -> str:
+    text = str(row.get("profile") or "").strip()
+    if not text:
+        return ""
+    return re.sub(r"-+", "-", text.replace("_", "-")).strip("-").lower()
+
+
+def _tree_kind_profile(row: dict[str, Any]) -> str:
+    origin = _tree_origin_label(row)
+    algo = _tree_algo_label(row)
+    profile = _tree_profile_label(row)
+    suffix = f"-{profile}" if profile else ""
+    return f"{origin}/{algo}{suffix}"
 
 
 def _tree_family_sort_key(
