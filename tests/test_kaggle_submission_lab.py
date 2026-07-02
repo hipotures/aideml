@@ -47,6 +47,11 @@ def test_parse_args_defaults_competition_from_project_dotenv(tmp_path, monkeypat
     assert args.competition == "playground-series-s6e7"
 
 
+def test_timestamp_date_normalizes_iso_and_artifact_timestamps():
+    assert kaggle_submission_lab._timestamp_date("20260702T005425-e57324ca-2") == "20260702"
+    assert kaggle_submission_lab._timestamp_date("2026-07-01T14:05:14Z") == "20260701"
+
+
 def test_refresh_index_records_result_manifests_without_journal(tmp_path):
     logs_dir = tmp_path / "logs"
     artifact = _write_artifact(

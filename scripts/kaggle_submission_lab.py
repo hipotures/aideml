@@ -635,6 +635,9 @@ def _format_public_score(value: Any) -> str:
 
 def _timestamp_date(value: Any) -> str:
     text = str(value or "")
+    iso_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", text)
+    if iso_match is not None:
+        return "".join(iso_match.groups())
     return text[:8] if len(text) >= 8 else text
 
 
