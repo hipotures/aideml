@@ -195,9 +195,11 @@ def _format_runtime_note(
     timeout_text = _format_runtime_minutes(timeout_s)
     fraction = runtime_s / timeout_s
     if fraction >= 1.0:
+        budget_relation = "at" if runtime_text == timeout_text else "above"
         return (
-            f"Runtime warning: this attempt reached the execution limit: "
-            f"{runtime_text} of {timeout_text}."
+            f"Runtime warning: this scored attempt finished in {runtime_text}, "
+            f"{budget_relation} the current {timeout_text} runtime budget; it did not time out, "
+            "but future variants are at high risk and should reduce cost."
         )
     if fraction >= RUNTIME_WARNING_FRACTION:
         return (

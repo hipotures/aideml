@@ -146,6 +146,23 @@ def test_journal_summary_warns_when_runtime_near_timeout():
     assert "Runtime warning: this attempt ran near the execution limit: 28m of 30m." in summary
 
 
+def test_journal_summary_describes_scored_runtime_over_current_budget_without_timeout():
+    journal = Journal()
+    node = Node(code="print('scored')", plan="scored over current budget")
+    node.metric = MetricValue(0.951000, maximize=True)
+    node.is_buggy = False
+    node.exec_time = 31 * 60
+    journal.append(node)
+
+    summary = journal.generate_summary(exec_timeout_s=30 * 60)
+
+    assert (
+        "Runtime warning: this scored attempt finished in 31m, above the current "
+        "30m runtime budget; it did not time out"
+    ) in summary
+    assert "reached the execution limit" not in summary
+
+
 def test_journal_summary_includes_public_score_context_when_available():
     journal = Journal()
     node = Node(code="print('ok')", plan="plan")
