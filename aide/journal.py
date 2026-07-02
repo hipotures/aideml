@@ -23,6 +23,10 @@ OOM_FAILURE_PARENT_LIMIT = 3
 SEEDED_BASE_SUMMARY_PREFIX = "Seeded base artifact"
 PUBLIC_CV_CLOSE_TOLERANCE_PCT = 0.05
 PUBLIC_CV_MEANINGFUL_TOLERANCE_PCT = 0.20
+RUNTIME_CAUTION_FRACTION = 0.50
+RUNTIME_WARNING_FRACTION = 0.83
+RUNTIME_SIGNIFICANT_INCREASE_RATIO = 1.50
+RUNTIME_SIGNIFICANT_INCREASE_TIMEOUT_FRACTION = 0.10
 
 
 def _summary_analysis_text(analysis: str | None) -> str:
@@ -104,6 +108,110 @@ def _format_node_parent_outcome(node: "Node") -> str | None:
     return (
         f"step {_format_step_value(node.step)} "
         f"from {_format_step_value(node.parent.step)}: {status}"
+    )
+
+
+def _seconds_value(value: float | int | None) -> float | None:
+    try:
+        seconds = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if seconds <= 0:
+        return None
+    return seconds
+
+
+def _format_runtime_minutes(seconds: float) -> str:
+    minutes = int(round(seconds / 60.0))
+    return f"{max(1, minutes)}m"
+
+
+def _oriented_metric_delta(node: "Node", parent: "Node") -> float | None:
+    if (
+        node.metric is None
+        or node.metric.value is None
+        or parent.metric is None
+        or parent.metric.value is None
+    ):
+        return None
+    raw_delta = float(node.metric.value) - float(parent.metric.value)
+    return raw_delta if node.metric.maximize is not False else -raw_delta
+
+
+def _format_runtime_note(
+    node: "Node",
+    *,
+    exec_timeout_s: float | int | None = None,
+    runtime_score_epsilon: float = 0.0,
+    parent_node: "Node | None" = None,
+) -> str | None:
+    runtime_s = _seconds_value(node.exec_time)
+    timeout_s = _seconds_value(exec_timeout_s)
+    parent = parent_node if parent_node is not None else node.parent
+
+    if node.is_timeout_failure:
+        elapsed = runtime_s or timeout_s
+        if elapsed is None:
+            return (
+                "Runtime warning: this attempt timed out; future variants must cap "
+                "or simplify the expensive step before adding more work."
+            )
+        return (
+            f"Runtime warning: this attempt timed out after {_format_runtime_minutes(elapsed)}; "
+            "future variants must cap or simplify the expensive step before adding more work."
+        )
+
+    if runtime_s is None:
+        return None
+
+    if parent is not None and timeout_s is not None:
+        parent_runtime_s = _seconds_value(parent.exec_time)
+        if parent_runtime_s is not None:
+            significant_increase = (
+                runtime_s >= parent_runtime_s * RUNTIME_SIGNIFICANT_INCREASE_RATIO
+                and runtime_s - parent_runtime_s
+                >= timeout_s * RUNTIME_SIGNIFICANT_INCREASE_TIMEOUT_FRACTION
+            )
+            if significant_increase:
+                metric_delta = _oriented_metric_delta(node, parent)
+                parent_text = _format_runtime_minutes(parent_runtime_s)
+                runtime_text = _format_runtime_minutes(runtime_s)
+                if metric_delta is None or metric_delta <= max(0.0, runtime_score_epsilon):
+                    return (
+                        "Runtime caution: runtime increased from parent "
+                        f"{parent_text} to {runtime_text} without a meaningful validation gain; "
+                        "avoid expanding this direction unless the next change explicitly reduces cost."
+                    )
+                return (
+                    "Runtime note: runtime increased from parent "
+                    f"{parent_text} to {runtime_text}, but validation improved meaningfully; "
+                    "preserve this runtime budget before adding more expensive work."
+                )
+
+    if timeout_s is None:
+        return f"Runtime note: completed in {_format_runtime_minutes(runtime_s)}."
+
+    runtime_text = _format_runtime_minutes(runtime_s)
+    timeout_text = _format_runtime_minutes(timeout_s)
+    fraction = runtime_s / timeout_s
+    if fraction >= 1.0:
+        return (
+            f"Runtime warning: this attempt reached the execution limit: "
+            f"{runtime_text} of {timeout_text}."
+        )
+    if fraction >= RUNTIME_WARNING_FRACTION:
+        return (
+            f"Runtime warning: this attempt ran near the execution limit: "
+            f"{runtime_text} of {timeout_text}."
+        )
+    if fraction >= RUNTIME_CAUTION_FRACTION:
+        return (
+            f"Runtime caution: this attempt used a substantial share of the execution limit: "
+            f"{runtime_text} of {timeout_text}."
+        )
+    return (
+        f"Runtime note: completed comfortably within the execution limit: "
+        f"{runtime_text} of {timeout_text}."
     )
 
 
@@ -438,6 +546,8 @@ class Journal(DataClassJsonMixin):
         full_recent_steps: int | None = None,
         public_scores_by_node_id: dict[str, float] | None = None,
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
+        exec_timeout_s: float | int | None = None,
+        runtime_score_epsilon: float = 0.0,
     ) -> str:
         """Generate a summary of the journal for the agent."""
         good_nodes = self.good_nodes
@@ -478,6 +588,8 @@ class Journal(DataClassJsonMixin):
                     include_full_node=include_full_node,
                     public_scores_by_node_id=public_scores_by_node_id,
                     hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+                    exec_timeout_s=exec_timeout_s,
+                    runtime_score_epsilon=runtime_score_epsilon,
                 )
             )
         return "\n-------------------------------\n".join(summary)
@@ -489,6 +601,8 @@ class Journal(DataClassJsonMixin):
         include_code: bool = False,
         public_scores_by_node_id: dict[str, float] | None = None,
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
+        exec_timeout_s: float | int | None = None,
+        runtime_score_epsilon: float = 0.0,
     ) -> str:
         """Generate a summary for a specific ordered list of journal nodes."""
         return "\n-------------------------------\n".join(
@@ -498,6 +612,8 @@ class Journal(DataClassJsonMixin):
                 include_full_node=True,
                 public_scores_by_node_id=public_scores_by_node_id,
                 hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+                exec_timeout_s=exec_timeout_s,
+                runtime_score_epsilon=runtime_score_epsilon,
             )
             for n in nodes
         )
@@ -510,6 +626,8 @@ class Journal(DataClassJsonMixin):
         include_full_node: bool,
         public_scores_by_node_id: dict[str, float] | None,
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
+        exec_timeout_s: float | int | None = None,
+        runtime_score_epsilon: float = 0.0,
     ) -> str:
         public_scores_by_node_id = public_scores_by_node_id or {}
         best_node = self.get_best_node()
@@ -543,6 +661,13 @@ class Journal(DataClassJsonMixin):
                     )
                     + "\n"
                 )
+        runtime_note = _format_runtime_note(
+            node,
+            exec_timeout_s=exec_timeout_s,
+            runtime_score_epsilon=runtime_score_epsilon,
+        )
+        if runtime_note is not None:
+            summary_part += f"{runtime_note}\n"
         delta = _format_node_parent_delta(node)
         if delta is not None:
             summary_part += f"{delta}\n"
@@ -565,6 +690,8 @@ class Journal(DataClassJsonMixin):
         *,
         public_scores_by_node_id: dict[str, float] | None = None,
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
+        exec_timeout_s: float | int | None = None,
+        runtime_score_epsilon: float = 0.0,
     ) -> str:
         """Generate hypothesis-mode context for the selected parent branch."""
         public_scores_by_node_id = public_scores_by_node_id or {}
@@ -614,6 +741,13 @@ class Journal(DataClassJsonMixin):
                             maximize=ancestor.metric.maximize is not False,
                         ).splitlines()
                     )
+            runtime_note = _format_runtime_note(
+                ancestor,
+                exec_timeout_s=exec_timeout_s,
+                runtime_score_epsilon=runtime_score_epsilon,
+            )
+            if runtime_note is not None:
+                lines.append(runtime_note)
             delta = _format_node_parent_delta(ancestor)
             if delta is not None:
                 lines.append(delta)

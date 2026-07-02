@@ -5215,11 +5215,13 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "did_not_improve" in attempts
 
 
-def test_standard_improve_prompt_omits_timeout_child_without_working_descendant(tmp_path):
+def test_standard_improve_prompt_includes_timeout_child_without_working_descendant(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = False
     cfg.agent.data_preview = False
+    cfg.exec.timeout = 30 * 60
     parent = _node(0.954674, code="print('strong parent')", plan="parent")
+    parent.exec_time = 20 * 60
     timeout = Node(
         code="while True: pass",
         plan="Try a heavier feature search.",
@@ -5230,6 +5232,7 @@ def test_standard_improve_prompt_omits_timeout_child_without_working_descendant(
     timeout.analysis = "Execution exceeded the configured timeout."
     timeout._term_out = ["TimeoutError: Execution exceeded the time limit"]
     timeout.exc_type = "TimeoutError"
+    timeout.exec_time = 30 * 60
     journal = Journal()
     for node in [parent, timeout]:
         journal.append(node)
@@ -5245,7 +5248,11 @@ def test_standard_improve_prompt_omits_timeout_child_without_working_descendant(
 
     agent._improve(parent)
 
-    assert "Previous attempts from this parent" not in captured["prompt"]
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Try a heavier feature search" in attempts
+    assert "Runtime warning: this attempt timed out after 30m" in attempts
+    assert "future variants must cap or simplify the expensive step" in attempts
+    assert "step 1 from 0: timeout" in attempts
 
 
 def test_standard_improve_prompt_omits_unfixed_bug_child_attempt(tmp_path):

@@ -23,7 +23,13 @@ from .autogluon_preprocess import (
 from .backend import FunctionSpec, query
 from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
-from .journal import Journal, Node, _summary_analysis_text, _summary_plan_text
+from .journal import (
+    Journal,
+    Node,
+    _format_runtime_note,
+    _summary_analysis_text,
+    _summary_plan_text,
+)
 from .refactor_sidecar import RefactorConfig, maybe_refactor_response_py
 from .research import (
     build_data_overview,
@@ -693,6 +699,9 @@ def _previous_child_attempt_entries(
     attempts = sorted(attempts, key=_node_step_sort_value)
     entries: list[tuple[Node, Node | None]] = []
     for child in attempts:
+        if child.is_timeout_failure:
+            entries.append((child, None))
+            continue
         if child.is_buggy:
             replacement = _best_working_descendant(child)
             if replacement is None:
@@ -747,6 +756,8 @@ def _format_previous_child_attempts(
     epsilon: float,
     limit: int = 10,
     entries: list[tuple[Node, Node | None]] | None = None,
+    exec_timeout_s: float | int | None = None,
+    runtime_score_epsilon: float = 0.0,
 ) -> str | None:
     attempt_entries = entries
     if attempt_entries is None:
@@ -804,6 +815,14 @@ def _format_previous_child_attempts(
             block += f"Validation Metric: {child_value:.5f}\n"
         else:
             block += "Validation Metric: n/a\n"
+        runtime_note = _format_runtime_note(
+            display_node,
+            exec_timeout_s=exec_timeout_s,
+            runtime_score_epsilon=runtime_score_epsilon,
+            parent_node=parent_node,
+        )
+        if runtime_note is not None:
+            block += f"{runtime_note}\n"
         if child_value is not None and parent_value is not None:
             delta = child_value - parent_value
             if abs(delta) <= max(0.0, float(epsilon)):
@@ -1933,7 +1952,15 @@ class Agent:
                     parent_node,
                     public_scores_by_node_id=self.prompt_public_scores_by_node_id,
                     hypothesis_descriptions_by_id=(
-                        self._branch_hypothesis_descriptions_by_id()
+                        self._branch_hypothesis_descriptions_by_id() or None
+                    ),
+                    exec_timeout_s=self.cfg.exec.timeout,
+                    runtime_score_epsilon=float(
+                        getattr(
+                            self.acfg.search,
+                            "hypothesis_min_improvement_epsilon",
+                            0.0,
+                        )
                     ),
                 )
             return
@@ -1943,7 +1970,15 @@ class Agent:
                 full_recent_steps=self.acfg.memory_full_recent_steps,
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
                 hypothesis_descriptions_by_id=(
-                    self._branch_hypothesis_descriptions_by_id()
+                    self._branch_hypothesis_descriptions_by_id() or None
+                ),
+                exec_timeout_s=self.cfg.exec.timeout,
+                runtime_score_epsilon=float(
+                    getattr(
+                        self.acfg.search,
+                        "hypothesis_min_improvement_epsilon",
+                        0.0,
+                    )
                 ),
             )
 
@@ -1961,6 +1996,8 @@ class Agent:
                 parent_node,
                 epsilon=epsilon,
                 entries=attempt_entries,
+                exec_timeout_s=self.cfg.exec.timeout,
+                runtime_score_epsilon=epsilon,
             )
             if previous_attempts is not None:
                 prompt["Previous attempts from this parent"] = previous_attempts
@@ -1985,8 +2022,10 @@ class Agent:
                 sorted(ancestor_nodes, key=_node_step_sort_value),
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
                 hypothesis_descriptions_by_id=(
-                    self._branch_hypothesis_descriptions_by_id()
+                    self._branch_hypothesis_descriptions_by_id() or None
                 ),
+                exec_timeout_s=self.cfg.exec.timeout,
+                runtime_score_epsilon=epsilon,
             )
         other_improving_hypotheses = _format_other_improving_hypotheses(
             self.journal,
@@ -2002,6 +2041,8 @@ class Agent:
             parent_node,
             epsilon=epsilon,
             entries=attempt_entries,
+            exec_timeout_s=self.cfg.exec.timeout,
+            runtime_score_epsilon=epsilon,
         )
         if previous_attempts is not None:
             prompt["Previous attempts from this parent"] = previous_attempts

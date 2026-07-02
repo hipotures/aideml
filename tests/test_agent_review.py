@@ -89,6 +89,63 @@ def test_journal_summary_includes_step_parent_delta_and_outcome():
     assert "step 1 from 0: did_not_improve" in child_section
 
 
+def test_journal_summary_includes_runtime_note_from_configured_timeout():
+    journal = Journal()
+    node = Node(code="print('ok')", plan="fast enough plan")
+    node.metric = MetricValue(0.950000, maximize=True)
+    node.is_buggy = False
+    node.exec_time = 7 * 60
+    journal.append(node)
+
+    summary = journal.generate_summary(exec_timeout_s=30 * 60)
+
+    assert "Runtime note: completed comfortably within the execution limit: 7m of 30m." in summary
+
+
+def test_journal_summary_warns_for_large_runtime_increase_without_gain():
+    journal = Journal()
+    parent = Node(code="print('parent')", plan="parent plan")
+    parent.metric = MetricValue(0.950206, maximize=True)
+    parent.is_buggy = False
+    parent.exec_time = 21 * 60
+    journal.append(parent)
+
+    child = Node(code="print('child')", plan="expensive child", parent=parent)
+    child.metric = MetricValue(0.950210, maximize=True)
+    child.is_buggy = False
+    child.exec_time = 63 * 60
+    journal.append(child)
+
+    summary = journal.generate_summary(
+        exec_timeout_s=2 * 60 * 60,
+        runtime_score_epsilon=0.00006,
+    )
+    child_section = next(
+        section
+        for section in summary.split("\n-------------------------------\n")
+        if "Design: expensive child" in section
+    )
+
+    assert (
+        "Runtime caution: runtime increased from parent 21m to 63m without a meaningful "
+        "validation gain; avoid expanding this direction unless the next change explicitly "
+        "reduces cost."
+    ) in child_section
+
+
+def test_journal_summary_warns_when_runtime_near_timeout():
+    journal = Journal()
+    node = Node(code="print('near')", plan="near timeout plan")
+    node.metric = MetricValue(0.951000, maximize=True)
+    node.is_buggy = False
+    node.exec_time = 28 * 60
+    journal.append(node)
+
+    summary = journal.generate_summary(exec_timeout_s=30 * 60)
+
+    assert "Runtime warning: this attempt ran near the execution limit: 28m of 30m." in summary
+
+
 def test_journal_summary_includes_public_score_context_when_available():
     journal = Journal()
     node = Node(code="print('ok')", plan="plan")
