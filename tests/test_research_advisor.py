@@ -5174,9 +5174,9 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
         plan="Add rank blend mode to the existing blend candidates.",
         parent=parent,
     )
-    near_copy.metric = MetricValue(0.954672, maximize=True)
+    near_copy.metric = MetricValue(0.954700, maximize=True)
     near_copy.is_buggy = False
-    near_copy.analysis = "rank blend did not improve"
+    near_copy.analysis = "rank blend did not clear epsilon"
     worse = Node(
         code="print('remove features')",
         plan="Remove count encoding features.",
@@ -5207,8 +5207,10 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "explain the concrete difference" in attempts
     assert "Add rank blend mode" in attempts
     assert "Remove count encoding features" in attempts
-    assert "Validation Metric: 0.95467" in attempts
-    assert "delta=+0.000000;" in attempts
+    assert "Validation Metric: 0.95470" in attempts
+    assert (
+        "delta=+0.000026 (below epsilon +0.000200; treated as noise/no improvement);"
+    ) in attempts
     assert "delta=-0.000774;" in attempts
     assert "step 1 from 0: did_not_improve" in attempts
     assert "step 2 from 0: did_not_improve" in attempts

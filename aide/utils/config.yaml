@@ -166,7 +166,7 @@ agent:
     # exact hypothesis and do not create child-hypothesis branches.
     forced_hypothesis: null
     hypothesis_max_non_improving_children_per_parent: 10
-    hypothesis_min_improvement_epsilon: 0.00006
+    hypothesis_min_improvement_epsilon: 0.0002
     plateau_block_epsilon: 0.00001
     public_score_bonus_weight: 0.0
     public_score_bonus_cap: 0.0005

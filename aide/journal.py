@@ -86,7 +86,7 @@ def _format_step_value(step: int | None) -> str:
     return "?"
 
 
-def _format_node_parent_delta(node: "Node") -> str | None:
+def _node_parent_delta_values(node: "Node") -> tuple[float, float] | None:
     if node.parent is None:
         return None
     if (
@@ -96,15 +96,43 @@ def _format_node_parent_delta(node: "Node") -> str | None:
         or node.parent.metric.value is None
     ):
         return None
-    return f"delta={float(node.metric.value) - float(node.parent.metric.value):+.6f};"
+    raw_delta = float(node.metric.value) - float(node.parent.metric.value)
+    oriented_delta = raw_delta if node.metric.maximize is not False else -raw_delta
+    return raw_delta, oriented_delta
 
 
-def _format_node_parent_outcome(node: "Node") -> str | None:
+def _format_node_parent_delta(
+    node: "Node",
+    *,
+    improvement_epsilon: float = 0.0,
+) -> str | None:
+    deltas = _node_parent_delta_values(node)
+    if deltas is None:
+        return None
+    raw_delta, oriented_delta = deltas
+    epsilon = max(0.0, float(improvement_epsilon))
+    text = f"delta={raw_delta:+.6f}"
+    if epsilon > 0.0 and 0.0 < oriented_delta <= epsilon:
+        text += (
+            f" (below epsilon {epsilon:+.6f}; "
+            "treated as noise/no improvement)"
+        )
+    return f"{text};"
+
+
+def _format_node_parent_outcome(
+    node: "Node",
+    *,
+    improvement_epsilon: float = 0.0,
+) -> str | None:
     if node.parent is None:
         return None
-    if node.metric is None or node.parent.metric is None:
+    deltas = _node_parent_delta_values(node)
+    if deltas is None:
         return None
-    status = "improved" if node.metric > node.parent.metric else "did_not_improve"
+    _, oriented_delta = deltas
+    epsilon = max(0.0, float(improvement_epsilon))
+    status = "improved" if oriented_delta > epsilon else "did_not_improve"
     return (
         f"step {_format_step_value(node.step)} "
         f"from {_format_step_value(node.parent.step)}: {status}"
@@ -174,17 +202,34 @@ def _format_runtime_note(
             )
             if significant_increase:
                 metric_delta = _oriented_metric_delta(node, parent)
+                epsilon = max(0.0, runtime_score_epsilon)
                 parent_text = _format_runtime_minutes(parent_runtime_s)
                 runtime_text = _format_runtime_minutes(runtime_s)
-                if metric_delta is None or metric_delta <= max(0.0, runtime_score_epsilon):
+                if metric_delta is None:
                     return (
                         "Runtime caution: runtime increased from parent "
-                        f"{parent_text} to {runtime_text} without a meaningful validation gain; "
+                        f"{parent_text} to {runtime_text} without a measurable validation delta; "
                         "avoid expanding this direction unless the next change explicitly reduces cost."
+                    )
+                if metric_delta <= epsilon:
+                    if epsilon > 0.0 and metric_delta > 0.0:
+                        return (
+                            "Runtime caution: runtime increased from parent "
+                            f"{parent_text} to {runtime_text}, but validation only changed "
+                            f"by {metric_delta:+.6f}, below epsilon {epsilon:+.6f}; "
+                            "treat this as noise/no improvement and avoid expanding this "
+                            "direction unless the next change explicitly reduces cost."
+                        )
+                    return (
+                        "Runtime caution: runtime increased from parent "
+                        f"{parent_text} to {runtime_text} without validation improvement "
+                        f"above epsilon {epsilon:+.6f}; avoid expanding this direction "
+                        "unless the next change explicitly reduces cost."
                     )
                 return (
                     "Runtime note: runtime increased from parent "
-                    f"{parent_text} to {runtime_text}, but validation improved meaningfully; "
+                    f"{parent_text} to {runtime_text}, and validation improved by "
+                    f"{metric_delta:+.6f} above epsilon {epsilon:+.6f}; "
                     "preserve this runtime budget before adding more expensive work."
                 )
 
@@ -670,10 +715,16 @@ class Journal(DataClassJsonMixin):
         )
         if runtime_note is not None:
             summary_part += f"{runtime_note}\n"
-        delta = _format_node_parent_delta(node)
+        delta = _format_node_parent_delta(
+            node,
+            improvement_epsilon=runtime_score_epsilon,
+        )
         if delta is not None:
             summary_part += f"{delta}\n"
-        outcome = _format_node_parent_outcome(node)
+        outcome = _format_node_parent_outcome(
+            node,
+            improvement_epsilon=runtime_score_epsilon,
+        )
         if outcome is not None:
             summary_part += f"{outcome}\n"
         return summary_part
@@ -750,10 +801,16 @@ class Journal(DataClassJsonMixin):
             )
             if runtime_note is not None:
                 lines.append(runtime_note)
-            delta = _format_node_parent_delta(ancestor)
+            delta = _format_node_parent_delta(
+                ancestor,
+                improvement_epsilon=runtime_score_epsilon,
+            )
             if delta is not None:
                 lines.append(delta)
-            outcome = _format_node_parent_outcome(ancestor)
+            outcome = _format_node_parent_outcome(
+                ancestor,
+                improvement_epsilon=runtime_score_epsilon,
+            )
             if outcome is not None:
                 lines.append(outcome)
             if idx != len(ancestors):

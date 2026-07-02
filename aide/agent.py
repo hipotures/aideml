@@ -825,9 +825,20 @@ def _format_previous_child_attempts(
             block += f"{runtime_note}\n"
         if child_value is not None and parent_value is not None:
             delta = child_value - parent_value
-            if abs(delta) <= max(0.0, float(epsilon)):
-                delta = 0.0
-            block += f"delta={delta:+.6f};\n"
+            oriented_delta = (
+                delta
+                if display_node.metric is None
+                or display_node.metric.maximize is not False
+                else -delta
+            )
+            epsilon_value = max(0.0, float(epsilon))
+            delta_text = f"delta={delta:+.6f}"
+            if epsilon_value > 0.0 and 0.0 < oriented_delta <= epsilon_value:
+                delta_text += (
+                    f" (below epsilon {epsilon_value:+.6f}; "
+                    "treated as noise/no improvement)"
+                )
+            block += f"{delta_text};\n"
         block += f"step {step} from {parent_step}: {status}"
         blocks.append(block)
     return "\n".join(lines) + "\n-------------------------------\n".join(blocks)

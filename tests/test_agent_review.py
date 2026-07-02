@@ -89,6 +89,32 @@ def test_journal_summary_includes_step_parent_delta_and_outcome():
     assert "step 1 from 0: did_not_improve" in child_section
 
 
+def test_journal_summary_treats_parent_delta_below_epsilon_as_noise():
+    journal = Journal()
+    parent = Node(code="print('parent')", plan="parent plan")
+    parent.metric = MetricValue(0.950142, maximize=True)
+    parent.is_buggy = False
+    journal.append(parent)
+
+    child = Node(code="print('child')", plan="tiny positive delta", parent=parent)
+    child.metric = MetricValue(0.950206, maximize=True)
+    child.is_buggy = False
+    journal.append(child)
+
+    summary = journal.generate_summary(runtime_score_epsilon=0.0002)
+    child_section = next(
+        section
+        for section in summary.split("\n-------------------------------\n")
+        if "Design: tiny positive delta" in section
+    )
+
+    assert (
+        "delta=+0.000064 (below epsilon +0.000200; treated as noise/no improvement);"
+    ) in child_section
+    assert "step 1 from 0: did_not_improve" in child_section
+    assert "step 1 from 0: improved" not in child_section
+
+
 def test_journal_summary_includes_runtime_note_from_configured_timeout():
     journal = Journal()
     node = Node(code="print('ok')", plan="fast enough plan")
@@ -127,9 +153,10 @@ def test_journal_summary_warns_for_large_runtime_increase_without_gain():
     )
 
     assert (
-        "Runtime caution: runtime increased from parent 21m to 63m without a meaningful "
-        "validation gain; avoid expanding this direction unless the next change explicitly "
-        "reduces cost."
+        "Runtime caution: runtime increased from parent 21m to 63m, but validation only "
+        "changed by +0.000004, below epsilon +0.000060; treat this as noise/no "
+        "improvement and avoid expanding this direction unless the next change "
+        "explicitly reduces cost."
     ) in child_section
 
 

@@ -699,7 +699,7 @@ def test_search_policy_blocks_parent_after_three_oom_children_when_enabled(
     cfg.agent.search.disable_oom_saturated_parents = True
     journal = Journal()
     blocked_parent = _good_node(0.95110)
-    good_child = _good_node(0.95120, parent=blocked_parent)
+    good_child = _good_node(0.95131, parent=blocked_parent)
     fallback = _good_node(0.95090)
     journal.append(blocked_parent)
     journal.append(good_child)
@@ -1352,8 +1352,8 @@ def test_search_policy_exploits_best_remaining_score_after_top_saturates(
 
     journal = Journal()
     lower_parent = _hypothesis_node(_good_node(0.95237), "000011")
-    next_best = _hypothesis_node(_good_node(0.95249, parent=lower_parent), "000703")
-    saturated_top = _hypothesis_node(_good_node(0.95264, parent=next_best), "000459")
+    next_best = _hypothesis_node(_good_node(0.95260, parent=lower_parent), "000703")
+    saturated_top = _hypothesis_node(_good_node(0.95284, parent=next_best), "000459")
     stale_children = [
         _hypothesis_node(_good_node(0.95237, parent=saturated_top), "000749"),
         _hypothesis_node(_good_node(0.95257, parent=saturated_top), "000052"),
