@@ -1202,6 +1202,19 @@ def code_ahead_has_capacity(
     return completed_work_units + pending_count < total_steps
 
 
+def should_wait_for_code_ahead(
+    *,
+    code_ahead_enabled: bool,
+    has_pending_generated_node: bool,
+    has_in_flight_generation: bool,
+) -> bool:
+    return (
+        code_ahead_enabled
+        and has_in_flight_generation
+        and not has_pending_generated_node
+    )
+
+
 def next_runtime_mismatched_generated_root_node(
     cfg: Config,
     journal: Journal,
@@ -6251,6 +6264,24 @@ def run(argv: list[str] | None = None):
             live.update(generate_live(), refresh=True)
             time.sleep(LIVE_REFRESH_INTERVAL_SECONDS)
 
+    def next_pending_generated_node() -> Node | None:
+        if pipeline_skip_execution():
+            return None
+        return next_generated_only_node(
+            journal,
+            cfg=cfg,
+            forced_root=getattr(
+                cfg.agent.search,
+                "forced_root",
+                None,
+            ),
+            forced_hypothesis=getattr(
+                cfg.agent.search,
+                "forced_hypothesis",
+                None,
+            ),
+        )
+
     def execution_tick(live: Live, active_node_to_exclude: Node | None) -> None:
         drain_code_ahead(live)
         maybe_start_code_ahead(live, active_node_to_exclude=active_node_to_exclude)
@@ -6916,7 +6947,14 @@ def run(argv: list[str] | None = None):
                     node_already_in_journal = False
                     display_node = None
                     try:
-                        wait_for_code_ahead_if_running(live)
+                        drain_code_ahead(live)
+                        if should_wait_for_code_ahead(
+                            code_ahead_enabled=code_ahead_enabled(),
+                            has_pending_generated_node=next_pending_generated_node()
+                            is not None,
+                            has_in_flight_generation=code_ahead_future is not None,
+                        ):
+                            wait_for_code_ahead_if_running(live)
                         root_hypotheses_to_generate = (
                             pipeline_root_hypotheses_to_generate()
                         )
@@ -7062,24 +7100,7 @@ def run(argv: list[str] | None = None):
                                     ),
                                 )
                                 break
-                        pending_generated_node = (
-                            None
-                            if pipeline_skip_execution()
-                            else next_generated_only_node(
-                                journal,
-                                cfg=cfg,
-                                forced_root=getattr(
-                                    cfg.agent.search,
-                                    "forced_root",
-                                    None,
-                                ),
-                                forced_hypothesis=getattr(
-                                    cfg.agent.search,
-                                    "forced_hypothesis",
-                                    None,
-                                ),
-                            )
-                        )
+                        pending_generated_node = next_pending_generated_node()
                         runtime_mismatched_generated_node = (
                             None
                             if pipeline_skip_execution()

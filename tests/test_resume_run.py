@@ -35,6 +35,7 @@ from aide.run import (
     should_cleanup_workspace_on_exit,
     should_stop_after_generate_only_roots,
     should_code_ahead_run,
+    should_wait_for_code_ahead,
     validate_code_ahead,
     validate_hypothesis_root_generate_workers,
 )
@@ -1126,6 +1127,22 @@ def test_code_ahead_capacity_counts_pending_and_in_flight_against_limit():
         total_steps=5,
         completed_work_units=3,
         pending_count=2,
+    )
+
+
+def test_code_ahead_wait_decision_does_not_block_ready_generated_draft():
+    assert not should_wait_for_code_ahead(
+        code_ahead_enabled=True,
+        has_pending_generated_node=True,
+        has_in_flight_generation=True,
+    )
+
+
+def test_code_ahead_wait_decision_blocks_when_generation_is_only_next_work():
+    assert should_wait_for_code_ahead(
+        code_ahead_enabled=True,
+        has_pending_generated_node=False,
+        has_in_flight_generation=True,
     )
 
 
