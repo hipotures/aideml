@@ -277,7 +277,7 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "def preprocess(df):" in code
     assert "AIDE_RESULT_JSON:" in code
     assert "'time_limit': 600" in code
-    assert "'preprocess_timeout': 180" in code
+    assert "'preprocess_timeout': 600" in code
     assert "train_features = train_df.drop(columns=[target_col, id_col]" in code
     assert "_make_combined_frame(train_features, test_features)" in code
     assert "df[HELPER_ROW_ID]" not in code
@@ -716,7 +716,7 @@ def test_autogluon_xgb_medium_gpu_balanced_10m_profile(tmp_path):
     assert settings["included_model_types"] == ["XGB"]
     assert settings["presets"] == "medium_quality"
     assert settings["time_limit"] == 600
-    assert settings["preprocess_timeout"] == 180
+    assert settings["preprocess_timeout"] == 600
     assert settings["validation_strategy"] == "holdout"
     assert settings["class_balance"] == "balanced"
     assert settings["use_gpu"] is True
@@ -1014,7 +1014,7 @@ def test_agent_autogluon_draft_wraps_preprocess_response(tmp_path):
     assert "Do not call `globals().get(\"preprocess\")`" in prompt_text
     assert "Mechanical simplifications are allowed only" in prompt_text
     assert "Do not optimize by changing algorithms" in prompt_text
-    assert "dedicated timeout of 180 seconds" in prompt_text
+    assert "dedicated timeout of 600 seconds" in prompt_text
     assert "Avoid expensive Python callbacks" in prompt_text
     assert "rolling.apply" in prompt_text
     assert "TabularPredictor" in node.code

@@ -458,7 +458,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     settings = {
         "presets": ag.presets,
         "time_limit": int(ag.time_limit),
-        "preprocess_timeout": int(getattr(ag, "preprocess_timeout", 180)),
+        "preprocess_timeout": int(getattr(ag, "preprocess_timeout", 600)),
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
         "included_model_types": None,
@@ -488,7 +488,7 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         settings["included_model_types"] = list(settings["included_model_types"])
     _force_cpu_boost_hyperparameters(settings)
     settings["time_limit"] = int(settings["time_limit"])
-    settings["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
+    settings["preprocess_timeout"] = int(settings.get("preprocess_timeout", 600))
     settings["validation_fraction"] = float(settings["validation_fraction"])
     settings["seed"] = int(settings["seed"])
     if "use_gpu" in settings and settings["use_gpu"] is not None:
@@ -586,7 +586,7 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     aux_name = aux_file_name(cfg)
     if aux_name is not None:
         visible["aux_file"] = aux_name
-    visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 180))
+    visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 600))
     fallback = settings.get("lightgbm_gpu_categorical_fallback")
     if isinstance(fallback, dict):
         visible["lightgbm_gpu_categorical_fallback"] = dict(fallback)
@@ -1199,7 +1199,7 @@ def main() -> None:
         )
     print("AIDE AutoGluon: starting preprocess", flush=True)
     preprocess_started_at = time.time()
-    with _preprocess_timeout(int(AIDE_AG_CONFIG.get("preprocess_timeout", 180))):
+    with _preprocess_timeout(int(AIDE_AG_CONFIG.get("preprocess_timeout", 600))):
         preprocessed = _run_preprocess(combined, aux_df)
     preprocess_time = time.time() - preprocess_started_at
     feature_count = int(len(preprocessed.columns))
