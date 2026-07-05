@@ -1125,7 +1125,10 @@ class Agent:
             metadata.get("research_hypotheses_offered", [])
         )
         node.research_source_hash = metadata.get("research_source_hash")
-        node.research_runtime_config = {"gpu": bool(self.acfg.gpu)}
+        node.research_runtime_config = {
+            "agent_mode": self.acfg.mode,
+            "gpu": bool(self.acfg.gpu),
+        }
         record_manual_prompt_node(self.cfg, node)
         return node
 

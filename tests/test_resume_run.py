@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 
 from aide.agent import Agent
 from aide.journal import Journal, Node
+from aide.research import effective_agent_gpu_enabled
 from aide.run import (
     allocate_node_artifact_slot,
     _completed_work_units,
@@ -881,6 +882,72 @@ def test_next_generated_only_node_requires_matching_gpu_runtime(tmp_path):
     assert next_generated_only_node(journal, cfg=cfg) is gpu_node
 
 
+def test_next_generated_only_node_requires_matching_agent_mode_runtime(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-generated-only-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-generated-only-run"
+    cfg.exp_name = "2-generated-only-run"
+    cfg.agent.mode = "autogluon_preprocess"
+    cfg = prep_cfg(cfg)
+
+    journal = Journal()
+    runtime_gpu = effective_agent_gpu_enabled(cfg)
+    legacy_node = Node(code="print('legacy')", plan="generated")
+    legacy_node.research_runtime_config = {
+        "agent_mode": "legacy",
+        "gpu": runtime_gpu,
+    }
+    mark_node_generated_only(legacy_node)
+    journal.append(legacy_node)
+
+    assert next_generated_only_node(journal, cfg=cfg) is None
+
+    autogluon_node = Node(code="print('autogluon')", plan="generated")
+    autogluon_node.research_runtime_config = {
+        "agent_mode": "autogluon_preprocess",
+        "gpu": runtime_gpu,
+    }
+    mark_node_generated_only(autogluon_node)
+    journal.append(autogluon_node)
+
+    assert next_generated_only_node(journal, cfg=cfg) is autogluon_node
+
+
+def test_next_generated_only_node_reads_agent_mode_from_artifact_context(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-generated-only-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-generated-only-run"
+    cfg.exp_name = "2-generated-only-run"
+    cfg.agent.mode = "autogluon_preprocess"
+    cfg = prep_cfg(cfg)
+
+    artifact_dir = Path(cfg.log_dir) / "artifacts" / "legacy-artifact"
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "context.json").write_text(
+        json.dumps(
+            {
+                "agent_mode": "legacy",
+                "agent_gpu": effective_agent_gpu_enabled(cfg),
+            }
+        ),
+        encoding="utf-8",
+    )
+    legacy_node = Node(
+        code="print('legacy')",
+        plan="generated",
+        artifact_dir_name="legacy-artifact",
+    )
+    mark_node_generated_only(legacy_node)
+    journal = Journal()
+    journal.append(legacy_node)
+
+    assert next_generated_only_node(journal, cfg=cfg) is None
+
+
 def test_artifacts_prevent_workspace_cleanup_with_empty_journal(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     (log_dir / "artifacts" / "20260101T000000-abcdef12-0").mkdir(parents=True)
@@ -1322,6 +1389,41 @@ def test_load_resume_state_applies_env_model_over_saved_config(tmp_path, monkeyp
 
     assert cfg.agent.code.model == "gpt-5.3-codex-spark"
     assert cfg.agent.code.reasoning_effort == "medium"
+
+
+def test_load_resume_state_preserves_saved_agent_mode_over_env(tmp_path, monkeypatch):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    config_path = tmp_path / "logs" / "2-existing-run" / "config.yaml"
+    cfg_data = OmegaConf.load(config_path)
+    cfg_data.agent.mode = "autogluon_preprocess"
+    OmegaConf.save(cfg_data, config_path)
+    monkeypatch.setenv("AIDE_AGENT_MODE", "legacy")
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=[],
+    )
+
+    assert cfg.agent.mode == "autogluon_preprocess"
+
+
+def test_load_resume_state_cli_agent_mode_override_wins_over_saved_mode(
+    tmp_path,
+    monkeypatch,
+):
+    _write_run(tmp_path, "2-existing-run", steps=20, mtime=time.time())
+    monkeypatch.setenv("AIDE_AGENT_MODE", "legacy")
+
+    cfg, _journal = load_resume_state(
+        run_id="2-existing-run",
+        top_log_dir=tmp_path / "logs",
+        top_workspace_dir=tmp_path / "workspaces",
+        cli_overrides=["agent.mode=autogluon_preprocess"],
+    )
+
+    assert cfg.agent.mode == "autogluon_preprocess"
 
 
 def test_load_resume_state_applies_dotenv_model_over_saved_config(tmp_path, monkeypatch):

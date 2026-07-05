@@ -545,6 +545,14 @@ def _migrate_resume_research_model_key(cfg: Any) -> None:
     del cfg.research.model
 
 
+def _saved_resume_agent_mode(cfg: Any) -> str | None:
+    try:
+        mode = cfg.agent.mode
+    except Exception:
+        return None
+    return str(mode) if mode is not None else None
+
+
 def apply_runtime_web_options(cfg: Config, runtime: RuntimeOptions) -> None:
     if runtime.web_enabled:
         cfg.web.enabled = True
@@ -642,6 +650,23 @@ def mark_node_generated_only(node: Node) -> None:
     node.analysis = "Generated only; execution skipped by --skip-execution."
 
 
+def _runtime_config_for_cfg(cfg: Config) -> dict[str, object]:
+    return {
+        "agent_mode": str(getattr(cfg.agent, "mode", "")),
+        "gpu": effective_agent_gpu_enabled(cfg),
+    }
+
+
+def _remember_generated_node_runtime(cfg: Config, node: Node) -> None:
+    runtime = (
+        dict(node.research_runtime_config)
+        if isinstance(node.research_runtime_config, dict)
+        else {}
+    )
+    runtime.update(_runtime_config_for_cfg(cfg))
+    node.research_runtime_config = runtime
+
+
 def _mark_node_generation_failure(node: Node, exc: Exception) -> None:
     message = str(exc) or exc.__class__.__name__
     node._term_out = [f"{exc.__class__.__name__}: {message}\n"]
@@ -681,6 +706,9 @@ def record_generated_only_node(
     if node.parent is None and active_parent is not None and node is not active_parent:
         node.parent = active_parent
         active_parent.children.add(node)
+    agent_cfg = getattr(agent, "cfg", None)
+    if agent_cfg is not None:
+        _remember_generated_node_runtime(agent_cfg, node)
     mark_node_generated_only(node)
     agent.save_hypothesis_root_code_for_node(node, activate=False)
     append_node_with_best_score_notification(
@@ -698,6 +726,7 @@ def persist_generated_node_before_execution(
     node: Node,
     progress_callback: Callable[[str], None] | None = None,
 ) -> None:
+    _remember_generated_node_runtime(cfg, node)
     mark_node_generated_only(node)
     agent.save_hypothesis_root_code_for_node(node, activate=False)
     journal.append(node)
@@ -1038,6 +1067,7 @@ def recover_generated_only_root_artifacts(
         node.research_hypotheses_offered = [hypothesis_id]
         node.research_source_hash = source_hashes.get(hypothesis_id)
         node.research_runtime_config = {
+            "agent_mode": str(context.get("agent_mode", cfg.agent.mode)),
             "gpu": bool(context.get("agent_gpu", False)),
         }
         record_manual_prompt_node(cfg, node)
@@ -1070,14 +1100,52 @@ def _matches_forced_hypothesis(node: Node, forced_hypothesis: str | None) -> boo
     return hypothesis_id_for_node(node) == forced_hypothesis
 
 
+def _normalize_runtime_agent_mode(value: object) -> str | None:
+    if value is None:
+        return None
+    mode = str(value)
+    if mode == "autogluon":
+        return AGENT_MODE
+    return mode
+
+
+def _generated_artifact_runtime_config(cfg: Config, node: Node) -> dict[str, object]:
+    artifact_dir_name = getattr(node, "artifact_dir_name", None)
+    if not artifact_dir_name:
+        return {}
+    context_path = Path(cfg.log_dir) / "artifacts" / artifact_dir_name / "context.json"
+    try:
+        context = json.loads(context_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    runtime: dict[str, object] = {}
+    if "agent_mode" in context:
+        runtime["agent_mode"] = context["agent_mode"]
+    if "agent_gpu" in context:
+        runtime["gpu"] = bool(context["agent_gpu"])
+    return runtime
+
+
 def node_runtime_matches_cfg(cfg: Config, node: Node) -> bool:
+    runtime = (
+        dict(node.research_runtime_config)
+        if isinstance(node.research_runtime_config, dict)
+        else {}
+    )
+    for key, value in _generated_artifact_runtime_config(cfg, node).items():
+        runtime.setdefault(key, value)
+
+    node_mode = _normalize_runtime_agent_mode(runtime.get("agent_mode"))
+    cfg_mode = _normalize_runtime_agent_mode(getattr(cfg.agent, "mode", None))
+    if node_mode is not None and cfg_mode is not None and node_mode != cfg_mode:
+        return False
+
+    if "gpu" in runtime:
+        return bool(runtime["gpu"]) == effective_agent_gpu_enabled(cfg)
+
     if getattr(node, "research_mode", None) != "hypothesis":
         return True
-    runtime = getattr(node, "research_runtime_config", None)
-    node_gpu = False
-    if isinstance(runtime, dict):
-        node_gpu = bool(runtime.get("gpu", False))
-    return node_gpu == effective_agent_gpu_enabled(cfg)
+    return not effective_agent_gpu_enabled(cfg)
 
 
 def next_generated_only_node(
@@ -1241,9 +1309,12 @@ def load_resume_state(
         ).strip()
     )
     cfg = OmegaConf.load(config_path)
+    saved_agent_mode = _saved_resume_agent_mode(cfg)
     _migrate_resume_memory_prompt_defaults(cfg)
     _migrate_resume_research_model_key(cfg)
     _apply_env_aliases(cfg, dotenv_env=dotenv_env)
+    if saved_agent_mode is not None and not _cli_sets_key(cli_overrides, "agent.mode"):
+        cfg.agent.mode = saved_agent_mode
     if (
         not forced_root_overridden
         and not forced_root_env_overridden
@@ -6062,6 +6133,7 @@ def run(argv: list[str] | None = None):
         node = rebind_code_ahead_node(result)
         if node.artifact_dir_name is None:
             node.artifact_dir_name = result.job.artifact_dir_name
+        _remember_generated_node_runtime(cfg, node)
         mark_node_generated_only(node)
         agent.save_hypothesis_root_code_for_node(node, activate=False)
         journal.append(node)
@@ -7121,6 +7193,7 @@ def run(argv: list[str] | None = None):
                                         root_selection.source_hash
                                     )
                                     node.research_runtime_config = {
+                                        "agent_mode": str(cfg.agent.mode),
                                         "gpu": effective_agent_gpu_enabled(cfg)
                                     }
                                     record_manual_prompt_node(cfg, node)
