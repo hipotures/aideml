@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -103,17 +104,40 @@ def test_xgboost_transform_adds_aux_profile_rates_and_numeric_distances():
     assert out["aux_numeric_distance_fit"].notna().all()
 
 
-def test_parse_args_defaults_to_full_s6e7_experiment():
+def test_combined_transform_contains_top_feature_families():
+    module = _load_module()
+    df, aux = _sample_frames()
+
+    out = module.transform_combined_top_features(df, aux)
+
+    expected_columns = {
+        "diet_type_frequency",
+        "diet_type_ordinal",
+        "sleep_duration_zscore",
+        "healthy_behavior_score",
+        "aux_profile_rate_fit",
+        "aux_numeric_distance_fit",
+        "sleep_duration_abs_decimal_residual",
+        "sleep_duration_is_integer_like",
+        "sleep_duration_is_tenth_like",
+        "numeric_exact_boundary_hit_count",
+        "numeric_integer_grid_hit_fraction",
+    }
+    assert expected_columns.issubset(out.columns)
+
+
+def test_parse_args_defaults_to_one_combined_s6e7_experiment():
     module = _load_module()
 
     args = module.parse_args([])
 
-    assert args.algorithm == "all"
+    assert not hasattr(args, "algorithm")
+    assert args.profile
     assert args.data_dir.name == "playground-series-s6e7"
-    assert args.output_dir.name == "s6e7_top_boost_transforms"
+    assert args.output_dir.name == "experiments"
 
 
-def test_run_algorithm_trains_scores_and_writes_submission(tmp_path):
+def test_run_combined_model_trains_once_scores_and_writes_one_submission(tmp_path):
     module = _load_module()
     df, aux = _sample_frames()
     train = df.copy()
@@ -163,29 +187,57 @@ def test_run_algorithm_trains_scores_and_writes_submission(tmp_path):
     def predictor_factory(**kwargs):
         return FakePredictor(**kwargs)
 
-    result = module.run_algorithm(
-        "lightgbm",
+    result = module.run_combined_model(
         data_dir=data_dir,
         output_dir=output_dir,
         predictor_factory=predictor_factory,
+        profile="full_boost",
         time_limit=5,
         use_gpu=False,
+        refresh_index=False,
+        timestamp="20260706T010203-test",
     )
 
-    assert result.algorithm == "lightgbm"
+    assert result.name == "combined_top_features"
+    assert result.profile == "full_boost"
     assert result.cv_score == 0.75
-    assert result.submission_path == output_dir / "lightgbm" / "submission.csv"
-    assert result.metrics_path == output_dir / "lightgbm" / "metrics.json"
+    assert result.submission_path == output_dir / "submission.csv"
+    assert result.artifact_dir == output_dir / "artifacts" / "20260706T010203-test"
+    assert result.artifact_submission_path == result.artifact_dir / "submission.csv"
+    assert result.metrics_path == output_dir / "metrics.json"
+    assert result.index_path is None
     submission = pd.read_csv(result.submission_path)
     assert submission.to_dict("list") == {
         "id": [10, 11],
         "health_condition": ["fit", "fit"],
     }
+    artifact_submission = pd.read_csv(result.artifact_submission_path)
+    assert artifact_submission.to_dict("list") == submission.to_dict("list")
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert metrics["profile"] == "full_boost"
+    assert metrics["autogluon"]["profile"] == "full_boost"
+    assert metrics["autogluon"]["time_limit"] == 5
+    manifest = json.loads(
+        (result.artifact_dir / "aide_result.json").read_text(encoding="utf-8")
+    )
+    assert manifest["kind"] == "profile_eval"
+    assert manifest["status"] == "ok"
+    assert manifest["local_score"] == 0.75
+    assert manifest["profile"] == "full_boost"
+    solution_code = (result.artifact_dir / "solution.py").read_text(encoding="utf-8")
+    assert "AIDE_AG_CONFIG" in solution_code
     predictor = created_predictors[0]
     assert predictor.kwargs["label"] == "health_condition"
     assert predictor.kwargs["eval_metric"] == "balanced_accuracy"
-    assert predictor.fit_kwargs["included_model_types"] == ["GBM"]
-    assert predictor.fit_kwargs["hyperparameters"] == {"GBM": [{}]}
+    assert predictor.kwargs["sample_weight"] == module.CLASS_WEIGHT_COL
+    assert predictor.fit_kwargs["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert predictor.fit_kwargs["hyperparameters"] == {
+        "XGB": [{}],
+        "GBM": [{}],
+        "CAT": [{}],
+    }
     assert predictor.fit_kwargs["time_limit"] == 5
+    assert predictor.fit_kwargs["save_space"] is True
+    assert predictor.fit_kwargs["fit_weighted_ensemble"] is False
     assert "id" not in predictor.fit_kwargs["train_data"].columns
     assert "id" not in predictor.fit_kwargs["tuning_data"].columns
