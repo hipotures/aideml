@@ -699,9 +699,6 @@ def _previous_child_attempt_entries(
     attempts = sorted(attempts, key=_node_step_sort_value)
     entries: list[tuple[Node, Node | None]] = []
     for child in attempts:
-        if child.status == "generated":
-            entries.append((child, None))
-            continue
         if child.is_timeout_failure:
             entries.append((child, None))
             continue
@@ -788,16 +785,6 @@ def _format_previous_child_attempts(
     blocks: list[str] = []
     for child, replacement in attempt_entries:
         display_node = replacement or child
-        if display_node.status == "generated":
-            step = "?" if display_node.step is None else str(display_node.step)
-            block = f"Step: {step}\n"
-            block += f"Design: {_summary_plan_text(display_node.plan)}\n"
-            block += (
-                "Status: queued for execution; generated code is waiting for "
-                "model run and score."
-            )
-            blocks.append(block)
-            continue
         if child.is_timeout_failure:
             status = "timeout"
         elif replacement is not None:
