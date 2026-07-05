@@ -4,6 +4,7 @@ import argparse
 import datetime as dt
 import json
 from pathlib import Path
+import shutil
 import time
 from typing import Any, Callable, NamedTuple
 
@@ -512,12 +513,16 @@ def _resolve_autogluon_profile(
     resolved.setdefault("included_model_types", ["XGB", "GBM", "CAT"])
     resolved.setdefault("presets", "medium_quality")
     resolved.setdefault("time_limit", 600)
-    resolved.setdefault("validation_strategy", "holdout")
     resolved.setdefault("class_balance", "balanced")
     resolved.setdefault("fit_args", {})
     resolved["included_model_types"] = [
         str(model_type) for model_type in resolved["included_model_types"]
     ]
+    validation_strategy = resolved.get("validation_strategy")
+    if validation_strategy not in {None, "holdout", "autogluon"}:
+        raise ValueError(
+            "AutoGluon validation_strategy must be one of: holdout, autogluon"
+        )
     return resolved
 
 
@@ -598,17 +603,21 @@ def run_combined_model(
     if sample_weight_col is not None:
         train_model[sample_weight_col] = _balanced_sample_weight(y_train)
 
-    train_part, valid_part = _holdout_split(
+    train_part, valid_part, validation_strategy_resolved = _training_frames(
         train_model,
         target_col=target_col,
         validation_fraction=validation_fraction,
         seed=seed,
+        validation_strategy=profile_settings.get("validation_strategy"),
+        presets=presets,
+        fit_args=fit_args,
     )
 
     run_dir = output_dir
     run_dir.mkdir(parents=True, exist_ok=True)
     timestamp = timestamp or _artifact_timestamp(run_dir / "artifacts")
     model_dir = run_dir / "models" / timestamp
+    shutil.rmtree(model_dir, ignore_errors=True)
     predictor_kwargs = dict(
         label=target_col,
         eval_metric="balanced_accuracy",
@@ -621,7 +630,6 @@ def run_combined_model(
     predictor = predictor_factory(**predictor_kwargs)
     fit_kwargs = {
         "train_data": train_part,
-        "tuning_data": valid_part,
         "presets": presets,
         "time_limit": time_limit,
         "included_model_types": included_model_types,
@@ -632,14 +640,20 @@ def run_combined_model(
         ),
         "num_gpus": 1 if profile_use_gpu else 0,
     }
+    if valid_part is not None:
+        fit_kwargs["tuning_data"] = valid_part
     fit_kwargs.update(fit_args)
     _log("starting AutoGluon fit")
     predictor.fit(**fit_kwargs)
     _log("finished AutoGluon fit")
 
     _log("starting validation and test prediction")
-    scores = predictor.evaluate(valid_part, silent=True)
-    cv_score = float(scores["balanced_accuracy"])
+    leaderboard = predictor.leaderboard(silent=True)
+    if valid_part is not None:
+        scores = predictor.evaluate(valid_part, silent=True)
+        cv_score = float(scores["balanced_accuracy"])
+    else:
+        cv_score = _score_from_leaderboard(leaderboard)
     test_pred = predictor.predict(test_fe).reset_index(drop=True)
     submission = sample_submission.copy()
     submission[target_col] = test_pred.to_numpy()
@@ -647,7 +661,6 @@ def run_combined_model(
     submission.to_csv(submission_path, index=False)
     _log(f"submission saved to {submission_path}")
 
-    leaderboard = predictor.leaderboard(silent=True)
     elapsed = time.monotonic() - started_at
     artifact_dir = run_dir / "artifacts" / timestamp
     artifact_submission_path = artifact_dir / "submission.csv"
@@ -660,7 +673,7 @@ def run_combined_model(
         "eval_metric": "balanced_accuracy",
         "feature_count": int(len(train_fe.columns)),
         "train_rows": int(len(train_part)),
-        "validation_rows": int(len(valid_part)),
+        "validation_rows": int(len(valid_part)) if valid_part is not None else 0,
         "test_rows": int(len(test_fe)),
         "submission_path": str(submission_path),
         "artifact_submission_path": str(artifact_submission_path),
@@ -681,6 +694,7 @@ def run_combined_model(
             "feature_count": int(len(train_fe.columns)),
             "eval_metric": "balanced_accuracy",
             "validation_strategy": profile_settings.get("validation_strategy"),
+            "validation_strategy_resolved": validation_strategy_resolved,
         },
         "leaderboard": _records_from_frame(leaderboard),
     }
@@ -776,6 +790,50 @@ def _holdout_split(
         random_state=seed,
         stratify=stratify,
     )
+
+
+def _training_frames(
+    frame: pd.DataFrame,
+    *,
+    target_col: str,
+    validation_fraction: float,
+    seed: int,
+    validation_strategy: str | None,
+    presets: str,
+    fit_args: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame | None, str]:
+    if _autogluon_bagged_mode(presets=presets, fit_args=fit_args):
+        _log(
+            "bagged mode detected; using AutoGluon internal OOF validation "
+            "without tuning_data"
+        )
+        return frame, None, "autogluon_oof"
+    if validation_strategy == "holdout":
+        train_part, valid_part = _holdout_split(
+            frame,
+            target_col=target_col,
+            validation_fraction=validation_fraction,
+            seed=seed,
+        )
+        return train_part, valid_part, "holdout"
+
+    _log("using AutoGluon internal validation without tuning_data")
+    return frame, None, "autogluon"
+
+
+def _autogluon_bagged_mode(*, presets: str, fit_args: dict[str, Any]) -> bool:
+    if int(fit_args.get("num_bag_folds") or 0) > 0:
+        return True
+    if bool(fit_args.get("auto_stack")):
+        return True
+    preset_names = [str(value).lower() for value in _preset_values(presets)]
+    return any(name in {"best_quality", "high_quality"} for name in preset_names)
+
+
+def _preset_values(presets: str) -> list[str]:
+    if isinstance(presets, list | tuple):
+        return [str(value) for value in presets]
+    return [str(presets)]
 
 
 def _balanced_sample_weight(labels: pd.Series) -> pd.Series:
@@ -1040,6 +1098,13 @@ def _records_from_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
     for record in frame.to_dict("records"):
         records.append({key: _json_safe(value) for key, value in record.items()})
     return records
+
+
+def _score_from_leaderboard(frame: pd.DataFrame) -> float:
+    for score_col in ("score_val", "score_test"):
+        if score_col in frame.columns and frame[score_col].notna().any():
+            return float(frame[score_col].max())
+    raise ValueError("AutoGluon leaderboard does not contain score_val or score_test")
 
 
 def _json_safe(value: Any) -> Any:

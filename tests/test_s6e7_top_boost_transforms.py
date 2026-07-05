@@ -241,3 +241,71 @@ def test_run_combined_model_trains_once_scores_and_writes_one_submission(tmp_pat
     assert predictor.fit_kwargs["fit_weighted_ensemble"] is False
     assert "id" not in predictor.fit_kwargs["train_data"].columns
     assert "id" not in predictor.fit_kwargs["tuning_data"].columns
+
+
+def test_full_best_gpu_profile_uses_autogluon_validation_without_tuning_data(tmp_path):
+    module = _load_module()
+    df, aux = _sample_frames()
+    train = pd.concat([df, df], ignore_index=True)
+    train.insert(0, "id", range(1, len(train) + 1))
+    train["health_condition"] = ["fit", "unhealthy", "at-risk", "fit", "unhealthy", "at-risk"]
+    test = df.iloc[:2].copy()
+    test.insert(0, "id", [10, 11])
+    sample_submission = pd.DataFrame(
+        {"id": [10, 11], "health_condition": ["fit", "fit"]}
+    )
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    train.to_csv(data_dir / "train.csv", index=False)
+    test.to_csv(data_dir / "test.csv", index=False)
+    sample_submission.to_csv(data_dir / "sample_submission.csv", index=False)
+    aux.to_csv(data_dir / "student_health_dataset_50k.csv", index=False)
+    output_dir = tmp_path / "out"
+    created_predictors = []
+
+    class FakePredictor:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.fit_kwargs = None
+            created_predictors.append(self)
+
+        def fit(self, **kwargs):
+            self.fit_kwargs = kwargs
+            return self
+
+        def evaluate(self, valid_data, silent=True):
+            raise AssertionError("best_quality profile should not use holdout evaluate")
+
+        def predict(self, frame):
+            return pd.Series(["fit"] * len(frame))
+
+        def leaderboard(self, silent=True):
+            assert silent is True
+            return pd.DataFrame(
+                [
+                    {"model": "XGBoost_BAG_L1", "score_val": 0.81, "stack_level": 1},
+                    {"model": "WeightedEnsemble_L2", "score_val": 0.83, "stack_level": 2},
+                ]
+            )
+
+    result = module.run_combined_model(
+        data_dir=data_dir,
+        output_dir=output_dir,
+        predictor_factory=lambda **kwargs: FakePredictor(**kwargs),
+        profile="full_best_30m_gpu",
+        use_gpu=False,
+        refresh_index=False,
+        timestamp="20260706T020304-test",
+    )
+
+    predictor = created_predictors[0]
+    assert "tuning_data" not in predictor.fit_kwargs
+    assert len(predictor.fit_kwargs["train_data"]) == len(train)
+    assert predictor.fit_kwargs["presets"] == "best_quality"
+    assert predictor.fit_kwargs["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert predictor.fit_kwargs["num_gpus"] == 0
+    assert result.cv_score == 0.83
+    metrics = json.loads(result.metrics_path.read_text(encoding="utf-8"))
+    assert metrics["validation_rows"] == 0
+    assert metrics["run_stats"]["validation_strategy_resolved"] == "autogluon_oof"
