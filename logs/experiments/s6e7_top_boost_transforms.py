@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, NamedTuple
 
 import pandas as pd
 
@@ -28,6 +29,15 @@ NUMERIC_COLUMNS = [
 
 HEALTH_LABELS = ["at-risk", "unhealthy", "fit"]
 MISSING_TOKEN = "__missing__"
+CLASS_WEIGHT_COL = "__aide_class_weight__"
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+DEFAULT_DATA_DIR = repo_root() / "aide" / "example_tasks" / "playground-series-s6e7"
+DEFAULT_OUTPUT_DIR = repo_root() / "logs" / "experiments" / "s6e7_top_boost_transforms"
 
 TOP_BOOSTER_RESULTS = {
     "xgboost": {
@@ -352,33 +362,318 @@ TRANSFORMS: dict[str, Callable[[pd.DataFrame, pd.DataFrame | None], pd.DataFrame
 }
 
 
+class ExperimentResult(NamedTuple):
+    algorithm: str
+    cv_score: float
+    submission_path: Path
+    metrics_path: Path
+    model_dir: Path
+    feature_count: int
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Apply top s6e7 feature transforms found per boosting algorithm.",
+        description=(
+            "Train s6e7 AutoGluon booster experiments using the top feature "
+            "transforms found in 2-whimsical-albatross-from-camelot."
+        ),
     )
-    parser.add_argument("input_csv", type=Path)
     parser.add_argument(
         "--algorithm",
-        choices=sorted(TRANSFORMS),
-        required=True,
+        choices=["all", *sorted(TRANSFORMS)],
+        default="all",
+        help="Booster experiment to run. Defaults to all three boosters.",
     )
-    parser.add_argument("--aux-csv", type=Path)
-    parser.add_argument("--output-csv", type=Path, required=True)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=DEFAULT_DATA_DIR,
+        help="Directory containing train/test/sample_submission and optional aux CSV.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Directory where per-algorithm models, metrics, and submissions are written.",
+    )
+    parser.add_argument("--time-limit", type=int, default=600)
+    parser.add_argument("--presets", default="medium_quality")
+    parser.add_argument("--validation-fraction", type=float, default=0.2)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Disable GPU hyperparameter settings and run AutoGluon on CPU.",
+    )
     return parser.parse_args(argv)
+
+
+def run_algorithm(
+    algorithm: str,
+    *,
+    data_dir: Path,
+    output_dir: Path,
+    predictor_factory: Callable[..., Any] | None = None,
+    time_limit: int = 600,
+    presets: str = "medium_quality",
+    validation_fraction: float = 0.2,
+    seed: int = 42,
+    use_gpu: bool = True,
+) -> ExperimentResult:
+    if algorithm not in TRANSFORMS:
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+    predictor_factory = predictor_factory or _default_predictor_factory
+
+    train_df = _read_input_csv(data_dir, "train")
+    test_df = _read_input_csv(data_dir, "test")
+    sample_submission = _read_input_csv(data_dir, "sample_submission")
+    aux_df = _read_optional_input_csv(data_dir, "student_health_dataset_50k")
+
+    id_col = sample_submission.columns[0]
+    target_col = sample_submission.columns[1]
+    if target_col not in train_df.columns:
+        raise ValueError(f"Target column {target_col!r} not found in train data")
+
+    y_train = train_df[target_col].reset_index(drop=True)
+    train_features = train_df.drop(columns=[target_col, id_col], errors="ignore")
+    test_features = test_df.drop(columns=[id_col], errors="ignore")
+    combined = pd.concat([train_features, test_features], ignore_index=True, sort=False)
+    transformed = TRANSFORMS[algorithm](combined, aux_df)
+    _validate_transformed(transformed, combined)
+
+    train_fe = transformed.iloc[: len(train_df)].copy()
+    test_fe = transformed.iloc[len(train_df) :].copy()
+    train_model = train_fe.copy()
+    train_model[target_col] = y_train.to_numpy()
+    train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)
+
+    train_part, valid_part = _holdout_split(
+        train_model,
+        target_col=target_col,
+        validation_fraction=validation_fraction,
+        seed=seed,
+    )
+
+    run_dir = output_dir / algorithm
+    run_dir.mkdir(parents=True, exist_ok=True)
+    model_dir = run_dir / "autogluon_model"
+    predictor = predictor_factory(
+        label=target_col,
+        eval_metric="balanced_accuracy",
+        path=str(model_dir),
+        verbosity=2,
+        sample_weight=CLASS_WEIGHT_COL,
+        weight_evaluation=False,
+    )
+    fit_kwargs = {
+        "train_data": train_part,
+        "tuning_data": valid_part,
+        "presets": presets,
+        "time_limit": time_limit,
+        "included_model_types": [_autogluon_model_type(algorithm)],
+        "hyperparameters": _autogluon_hyperparameters(algorithm, use_gpu=use_gpu),
+        "num_gpus": 1 if use_gpu else 0,
+    }
+    predictor.fit(**fit_kwargs)
+
+    scores = predictor.evaluate(valid_part, silent=True)
+    cv_score = float(scores["balanced_accuracy"])
+    test_pred = predictor.predict(test_fe).reset_index(drop=True)
+    submission = sample_submission.copy()
+    submission[target_col] = test_pred.to_numpy()
+    submission_path = run_dir / "submission.csv"
+    submission.to_csv(submission_path, index=False)
+
+    leaderboard = predictor.leaderboard(silent=True)
+    metrics = {
+        "algorithm": algorithm,
+        "source": TOP_BOOSTER_RESULTS[algorithm],
+        "cv_score": cv_score,
+        "eval_metric": "balanced_accuracy",
+        "feature_count": int(len(train_fe.columns)),
+        "train_rows": int(len(train_part)),
+        "validation_rows": int(len(valid_part)),
+        "test_rows": int(len(test_fe)),
+        "submission_path": str(submission_path),
+        "model_dir": str(model_dir),
+        "leaderboard": _records_from_frame(leaderboard),
+    }
+    metrics_path = run_dir / "metrics.json"
+    metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8")
+
+    return ExperimentResult(
+        algorithm=algorithm,
+        cv_score=cv_score,
+        submission_path=submission_path,
+        metrics_path=metrics_path,
+        model_dir=model_dir,
+        feature_count=int(len(train_fe.columns)),
+    )
+
+
+def _default_predictor_factory(**kwargs: Any) -> Any:
+    from autogluon.tabular import TabularPredictor
+
+    return TabularPredictor(**kwargs)
+
+
+def _read_input_csv(data_dir: Path, stem: str) -> pd.DataFrame:
+    path = _input_csv_path(data_dir, stem)
+    if path is None:
+        raise FileNotFoundError(
+            f"Could not find {stem}.csv or {stem}.csv.gz under {data_dir}"
+        )
+    return pd.read_csv(path)
+
+
+def _read_optional_input_csv(data_dir: Path, stem: str) -> pd.DataFrame | None:
+    path = _input_csv_path(data_dir, stem)
+    if path is None:
+        return None
+    return pd.read_csv(path)
+
+
+def _input_csv_path(data_dir: Path, stem: str) -> Path | None:
+    for suffix in (".csv", ".csv.gz"):
+        path = data_dir / f"{stem}{suffix}"
+        if path.exists():
+            return path
+    return None
+
+
+def _validate_transformed(transformed: pd.DataFrame, original: pd.DataFrame) -> None:
+    if len(transformed) != len(original):
+        raise ValueError(
+            f"Transform changed row count: original={len(original)} transformed={len(transformed)}"
+        )
+    forbidden = {"id", "health_condition", CLASS_WEIGHT_COL}
+    overlap = forbidden.intersection(transformed.columns)
+    if overlap:
+        raise ValueError(f"Transform created forbidden columns: {sorted(overlap)}")
+
+
+def _holdout_split(
+    frame: pd.DataFrame,
+    *,
+    target_col: str,
+    validation_fraction: float,
+    seed: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    from sklearn.model_selection import train_test_split
+
+    labels = frame[target_col]
+    counts = labels.value_counts(dropna=False)
+    stratify = labels if len(counts) > 1 and int(counts.min()) >= 2 else None
+    return train_test_split(
+        frame,
+        test_size=validation_fraction,
+        random_state=seed,
+        stratify=stratify,
+    )
+
+
+def _balanced_sample_weight(labels: pd.Series) -> pd.Series:
+    counts = labels.value_counts(dropna=False)
+    if counts.empty:
+        raise ValueError("Cannot compute class weights for empty labels")
+    weights_by_class = len(labels) / (len(counts) * counts.astype(float))
+    return labels.map(weights_by_class).astype("float32")
+
+
+def _autogluon_model_type(algorithm: str) -> str:
+    return {
+        "xgboost": "XGB",
+        "lightgbm": "GBM",
+        "catboost": "CAT",
+    }[algorithm]
+
+
+def _autogluon_hyperparameters(
+    algorithm: str,
+    *,
+    use_gpu: bool,
+) -> dict[str, list[dict[str, Any]]]:
+    model_type = _autogluon_model_type(algorithm)
+    if not use_gpu:
+        return {model_type: [{}]}
+    return {
+        "xgboost": {
+            "XGB": [
+                {
+                    "ag_args": {"priority": 999},
+                    "ag_args_fit": {"num_gpus": 1},
+                    "device": "cuda",
+                    "tree_method": "hist",
+                }
+            ]
+        },
+        "lightgbm": {"GBM": [{"ag_args_fit": {"num_gpus": 1}, "device": "cuda"}]},
+        "catboost": {
+            "CAT": [
+                {
+                    "ag_args_fit": {"num_gpus": 1},
+                    "devices": "0",
+                    "gpu_ram_part": 0.8,
+                    "task_type": "GPU",
+                }
+            ]
+        },
+    }[algorithm]
+
+
+def _records_from_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    records = []
+    for record in frame.to_dict("records"):
+        records.append({key: _json_safe(value) for key, value in record.items()})
+    return records
+
+
+def _json_safe(value: Any) -> Any:
+    if pd.isna(value):
+        return None
+    if hasattr(value, "item"):
+        return value.item()
+    return value
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    frame = pd.read_csv(args.input_csv)
-    aux = pd.read_csv(args.aux_csv) if args.aux_csv is not None else None
-    transformed = TRANSFORMS[args.algorithm](frame, aux)
-    args.output_csv.parent.mkdir(parents=True, exist_ok=True)
-    transformed.to_csv(args.output_csv, index=False)
-    print(
-        f"wrote {args.algorithm} transform: rows={len(transformed)} cols={len(transformed.columns)} "
-        f"path={args.output_csv}",
-        flush=True,
+    algorithms = sorted(TRANSFORMS) if args.algorithm == "all" else [args.algorithm]
+    results = []
+    for algorithm in algorithms:
+        print(f"running {algorithm} experiment", flush=True)
+        result = run_algorithm(
+            algorithm,
+            data_dir=args.data_dir,
+            output_dir=args.output_dir,
+            time_limit=args.time_limit,
+            presets=args.presets,
+            validation_fraction=args.validation_fraction,
+            seed=args.seed,
+            use_gpu=not args.cpu,
+        )
+        results.append(result)
+        print(
+            f"{algorithm}: cv_balanced_accuracy={result.cv_score:.6f} "
+            f"submission={result.submission_path}",
+            flush=True,
+        )
+    summary = pd.DataFrame(
+        [
+            {
+                "algorithm": result.algorithm,
+                "cv_score": result.cv_score,
+                "feature_count": result.feature_count,
+                "submission_path": str(result.submission_path),
+                "metrics_path": str(result.metrics_path),
+            }
+            for result in results
+        ]
     )
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = args.output_dir / "summary.csv"
+    summary.to_csv(summary_path, index=False)
+    print(f"summary={summary_path}", flush=True)
     return 0
 
 

@@ -101,3 +101,91 @@ def test_xgboost_transform_adds_aux_profile_rates_and_numeric_distances():
     assert out.loc[0, "aux_profile_rate_fit"] == 1.0
     assert out.loc[1, "aux_profile_rate_unhealthy"] == 1.0
     assert out["aux_numeric_distance_fit"].notna().all()
+
+
+def test_parse_args_defaults_to_full_s6e7_experiment():
+    module = _load_module()
+
+    args = module.parse_args([])
+
+    assert args.algorithm == "all"
+    assert args.data_dir.name == "playground-series-s6e7"
+    assert args.output_dir.name == "s6e7_top_boost_transforms"
+
+
+def test_run_algorithm_trains_scores_and_writes_submission(tmp_path):
+    module = _load_module()
+    df, aux = _sample_frames()
+    train = df.copy()
+    train.insert(0, "id", [1, 2, 3])
+    train["health_condition"] = ["fit", "unhealthy", "at-risk"]
+    test = df.iloc[:2].copy()
+    test.insert(0, "id", [10, 11])
+    sample_submission = pd.DataFrame(
+        {"id": [10, 11], "health_condition": ["fit", "fit"]}
+    )
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    train.to_csv(data_dir / "train.csv", index=False)
+    test.to_csv(data_dir / "test.csv", index=False)
+    sample_submission.to_csv(data_dir / "sample_submission.csv", index=False)
+    aux.to_csv(data_dir / "student_health_dataset_50k.csv", index=False)
+    output_dir = tmp_path / "out"
+    created_predictors = []
+
+    class FakePredictor:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.fit_kwargs = None
+            created_predictors.append(self)
+
+        def fit(self, **kwargs):
+            self.fit_kwargs = kwargs
+            return self
+
+        def evaluate(self, valid_data, silent=True):
+            assert silent is True
+            assert "health_condition" in valid_data.columns
+            return {"balanced_accuracy": 0.75}
+
+        def predict(self, frame):
+            assert "id" not in frame.columns
+            assert "health_condition" not in frame.columns
+            return pd.Series(["fit"] * len(frame))
+
+        def leaderboard(self, silent=True):
+            assert silent is True
+            return pd.DataFrame(
+                [{"model": "LightGBM", "score_val": 0.75, "stack_level": 1}]
+            )
+
+    def predictor_factory(**kwargs):
+        return FakePredictor(**kwargs)
+
+    result = module.run_algorithm(
+        "lightgbm",
+        data_dir=data_dir,
+        output_dir=output_dir,
+        predictor_factory=predictor_factory,
+        time_limit=5,
+        use_gpu=False,
+    )
+
+    assert result.algorithm == "lightgbm"
+    assert result.cv_score == 0.75
+    assert result.submission_path == output_dir / "lightgbm" / "submission.csv"
+    assert result.metrics_path == output_dir / "lightgbm" / "metrics.json"
+    submission = pd.read_csv(result.submission_path)
+    assert submission.to_dict("list") == {
+        "id": [10, 11],
+        "health_condition": ["fit", "fit"],
+    }
+    predictor = created_predictors[0]
+    assert predictor.kwargs["label"] == "health_condition"
+    assert predictor.kwargs["eval_metric"] == "balanced_accuracy"
+    assert predictor.fit_kwargs["included_model_types"] == ["GBM"]
+    assert predictor.fit_kwargs["hyperparameters"] == {"GBM": [{}]}
+    assert predictor.fit_kwargs["time_limit"] == 5
+    assert "id" not in predictor.fit_kwargs["train_data"].columns
+    assert "id" not in predictor.fit_kwargs["tuning_data"].columns
