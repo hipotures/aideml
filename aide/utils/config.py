@@ -184,6 +184,7 @@ class SearchConfig:
     max_debug_depth: int
     debug_prob: float
     num_drafts: int
+    code_ahead: int = 0
     exploration_weight: float = 0.0
     best_score_min_children_before_exploration: int = 5
     disable_oom_saturated_parents: bool = False
@@ -456,6 +457,7 @@ def _apply_env_aliases(
             str.strip,
         ),
         "AIDE_AGENT_SEARCH_NUM_DRAFTS": ("agent.search.num_drafts", _env_int),
+        "AIDE_AGENT_SEARCH_CODE_AHEAD": ("agent.search.code_ahead", _env_int),
         "AIDE_AGENT_SEARCH_MAX_DEBUG_DEPTH": (
             "agent.search.max_debug_depth",
             _env_int,

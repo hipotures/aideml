@@ -1,5 +1,6 @@
 import atexit
 import base64
+import copy
 import datetime as dt
 import io
 import json
@@ -263,6 +264,13 @@ class ActiveRootGeneration:
     launched_index: int
 
 
+@dataclass(frozen=True)
+class ActiveCodeAheadGeneration:
+    parent_node: Node | None
+    launched_index: int
+    active_step: int | None = None
+
+
 @dataclass
 class ParallelRootFailureState:
     attempts_by_hypothesis: dict[str, int] = field(default_factory=dict)
@@ -290,6 +298,22 @@ class ParallelRootJob:
 @dataclass(frozen=True)
 class ParallelRootResult:
     job: ParallelRootJob
+    node: Node
+
+
+@dataclass(frozen=True)
+class CodeAheadJob:
+    parent_node: Node | None
+    node_ctime: float
+    artifact_dir_name: str
+    artifact_dir: Path
+    active_step: int
+    launched_index: int
+
+
+@dataclass(frozen=True)
+class CodeAheadResult:
+    job: CodeAheadJob
     node: Node
 
 
@@ -444,6 +468,15 @@ def validate_hypothesis_root_generate_workers(cfg: Config) -> int:
     return raw
 
 
+def validate_code_ahead(cfg: Config) -> int:
+    raw = getattr(cfg.agent.search, "code_ahead", 0)
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise ValueError("agent.search.code_ahead must be an integer from 0 to 8.")
+    if raw < 0 or raw > 8:
+        raise ValueError("agent.search.code_ahead must be an integer from 0 to 8.")
+    return raw
+
+
 def should_parallel_generate_only_roots(
     *,
     skip_execution: bool,
@@ -458,6 +491,23 @@ def should_parallel_generate_only_roots(
         and research_mode == "hypothesis"
         and hypothesis_root_generate_workers > 1
         and not forced_hypothesis_ids
+    )
+
+
+def should_code_ahead_run(
+    *,
+    code_ahead: int,
+    skip_execution: bool,
+    research_mode: str,
+    synthesis_enabled: bool,
+    agent_mode: str,
+) -> bool:
+    return (
+        code_ahead > 0
+        and not skip_execution
+        and research_mode != "hypothesis"
+        and not synthesis_enabled
+        and agent_mode in {"legacy", "autogluon_preprocess"}
     )
 
 
@@ -741,6 +791,16 @@ def maybe_seed_scored_hypothesis_roots(
         existing_roots_by_id[hypothesis_id] = node
         seeded_count += 1
     return seeded_count
+
+
+def _completed_work_units(
+    journal: Journal,
+    *,
+    generated_only_evaluations: int = 0,
+) -> int:
+    seeded_roots = sum(1 for node in journal.nodes if _is_seeded_scored_root_node(node))
+    completed_nodes = sum(1 for node in journal.nodes if node.status != "generated")
+    return completed_nodes - seeded_roots + generated_only_evaluations
 
 
 def should_seed_scored_hypothesis_roots_for_run(runtime_options: RuntimeOptions) -> bool:
@@ -1036,6 +1096,42 @@ def next_generated_only_node(
                 continue
             return node
     return None
+
+
+def code_ahead_pending_count(
+    journal: Journal,
+    *,
+    cfg: Config | None = None,
+    forced_root: str | None = None,
+    forced_hypothesis: str | None = None,
+    in_flight_count: int = 0,
+) -> int:
+    pending = 0
+    for node in journal.nodes:
+        if node.status != "generated":
+            continue
+        if not _matches_forced_hypothesis_root(node, forced_root):
+            continue
+        if not _matches_forced_hypothesis(node, forced_hypothesis):
+            continue
+        if cfg is not None and not node_runtime_matches_cfg(cfg, node):
+            continue
+        pending += 1
+    return pending + max(0, in_flight_count)
+
+
+def code_ahead_has_capacity(
+    *,
+    code_ahead: int,
+    total_steps: int,
+    completed_work_units: int,
+    pending_count: int,
+) -> bool:
+    if code_ahead <= 0:
+        return False
+    if pending_count >= code_ahead:
+        return False
+    return completed_work_units + pending_count < total_steps
 
 
 def next_runtime_mismatched_generated_root_node(
@@ -1623,6 +1719,7 @@ def build_tree_view(
     active_hypothesis_id: str | None = None,
     active_step: int | None = None,
     active_root_generations: list[ActiveRootGeneration] | None = None,
+    active_code_ahead_generations: list[ActiveCodeAheadGeneration] | None = None,
     blink_on: bool = True,
     show_invalid_submission_branches: bool = False,
     disable_oom_saturated_parents: bool = False,
@@ -1650,6 +1747,7 @@ def build_tree_view(
     journal_nodes = set(journal.nodes)
     active_existing_node = active_node if active_node in journal_nodes else None
     active_root_generations = active_root_generations or []
+    active_code_ahead_generations = active_code_ahead_generations or []
     latest_active_root = (
         max(active_root_generations, key=lambda item: item.launched_index)
         if active_root_generations
@@ -1712,7 +1810,12 @@ def build_tree_view(
             return len(prefix) + 2
         return len(prefix)
 
-    def append_active(parent_id: str, ancestor_has_next: list[bool]) -> None:
+    def append_active(
+        parent_id: str,
+        ancestor_has_next: list[bool],
+        *,
+        is_last: bool = True,
+    ) -> None:
         nonlocal active_item_id
         if active_stage is None:
             return
@@ -1724,7 +1827,7 @@ def build_tree_view(
             "│   " if has_next else "    "
             for has_next in ancestor_has_next
         )
-        prefix += "└── "
+        prefix += "└── " if is_last else "├── "
         placeholder_hypothesis_id = active_hypothesis_id
         if (
             active_parent_node is not None
@@ -1750,6 +1853,44 @@ def build_tree_view(
             )
         )
         active_item_id = "active"
+
+    def code_ahead_for_parent(parent_node: Node | None) -> list[ActiveCodeAheadGeneration]:
+        return sorted(
+            (
+                generation
+                for generation in active_code_ahead_generations
+                if generation.parent_node is parent_node
+            ),
+            key=lambda item: item.launched_index,
+        )
+
+    def append_code_ahead_generations(
+        parent_id: str,
+        ancestor_has_next: list[bool],
+        generations: list[ActiveCodeAheadGeneration],
+    ) -> None:
+        for index, generation in enumerate(generations):
+            prefix = "".join(
+                "│   " if has_next else "    "
+                for has_next in ancestor_has_next
+            )
+            prefix += "└── " if index == len(generations) - 1 else "├── "
+            line = Text(prefix)
+            line.append_text(
+                _tree_active_placeholder_line(
+                    active_stage="generating",
+                    active_step=generation.active_step,
+                    blink_on=blink_on,
+                )
+            )
+            append_item(
+                TreeViewItem(
+                    f"code-ahead:{generation.launched_index}",
+                    parent_id,
+                    line,
+                    focus_start=len(prefix),
+                )
+            )
 
     def append_active_root_generations(parent_id: str) -> None:
         nonlocal active_item_id
@@ -1863,15 +2004,25 @@ def build_tree_view(
         ]
         next_ancestors = [*ancestor_has_next, not is_last]
         has_active_child = node is active_parent_node and active_existing_node is None
+        code_ahead_children = code_ahead_for_parent(node)
+        trailing_placeholder_count = (
+            (1 if has_active_child else 0) + len(code_ahead_children)
+        )
         for index, child in enumerate(visible_children):
             append_rec(
                 child,
                 node.id,
                 next_ancestors,
-                index == len(visible_children) - 1 and not has_active_child,
+                index == len(visible_children) - 1
+                and trailing_placeholder_count == 0,
             )
         if node is active_parent_node:
-            append_active(node.id, next_ancestors)
+            append_active(
+                node.id,
+                next_ancestors,
+                is_last=not code_ahead_children,
+            )
+        append_code_ahead_generations(node.id, next_ancestors, code_ahead_children)
 
     def append_virtual_hypothesis_root(
         row: dict[str, object],
@@ -2010,6 +2161,7 @@ def build_tree_view(
         and not active_root_generations
         and not active_virtual_root
     )
+    root_code_ahead_generations = code_ahead_for_parent(None)
     def root_entry_sort_key(entry: tuple[str, Node | dict[str, object]]):
         kind, value = entry
         if kind == "node":
@@ -2053,7 +2205,11 @@ def build_tree_view(
     root_position = 0
     for kind, value in root_entries:
         root_position += 1
-        has_active_after_roots = has_root_active or bool(active_root_generations)
+        has_active_after_roots = (
+            has_root_active
+            or bool(active_root_generations)
+            or bool(root_code_ahead_generations)
+        )
         if kind == "node":
             assert isinstance(value, Node)
             append_rec(
@@ -2076,7 +2232,12 @@ def build_tree_view(
     if active_parent_node is None and active_root_generations:
         append_active_root_generations("header")
     elif has_root_active:
-        append_active("header", [])
+        append_active("header", [], is_last=not root_code_ahead_generations)
+    append_code_ahead_generations(
+        "header",
+        [],
+        root_code_ahead_generations,
+    )
 
     return TreeView(
         items=items,
@@ -4205,6 +4366,7 @@ def build_agent_mode_summary_lines(
     *,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
+    code_ahead_pending: int = 0,
 ) -> list[Text]:
     if cfg is None:
         return []
@@ -4256,6 +4418,19 @@ def build_agent_mode_summary_lines(
             style=TUI_NEUTRAL_VALUE_STYLE,
         )
         lines.append(workers_line)
+    code_ahead_limit = (
+        getattr(getattr(getattr(cfg, "agent", None), "search", None), "code_ahead", 0)
+        if cfg is not None
+        else 0
+    )
+    if code_ahead_limit:
+        ahead_line = Text()
+        ahead_line.append("▶ ahead     ", style=TUI_ROW_LABEL_STYLE)
+        ahead_line.append(
+            f"{max(0, code_ahead_pending)}/{code_ahead_limit}",
+            style=TUI_NEUTRAL_VALUE_STYLE,
+        )
+        lines.append(ahead_line)
     return lines
 
 
@@ -4264,11 +4439,13 @@ def build_agent_mode_summary(
     *,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
+    code_ahead_pending: int = 0,
 ) -> Group | None:
     lines = build_agent_mode_summary_lines(
         cfg,
         skip_execution=skip_execution,
         hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+        code_ahead_pending=code_ahead_pending,
     )
     if not lines:
         return None
@@ -4498,6 +4675,7 @@ def build_run_data(
     include_generated_hypothesis_roots: bool = True,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
+    code_ahead_pending: int = 0,
     selected_hypothesis_ids: tuple[str, ...] = (),
     content_width: int | None = None,
 ) -> Group:
@@ -4548,6 +4726,7 @@ def build_run_data(
         cfg,
         skip_execution=skip_execution,
         hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+        code_ahead_pending=code_ahead_pending,
     )
     model_agent_summary = build_side_by_side_summary(
         model_summary_lines,
@@ -4968,6 +5147,55 @@ def generate_reserved_hypothesis_root(
     return ParallelRootResult(job=job, node=node)
 
 
+def _node_by_id(journal: Journal, node_id: str | None) -> Node | None:
+    if node_id is None:
+        return None
+    for node in journal.nodes:
+        if node.id == node_id:
+            return node
+    return None
+
+
+def generate_code_ahead_node(
+    *,
+    base_agent: Agent,
+    journal: Journal,
+    job: CodeAheadJob,
+) -> CodeAheadResult:
+    worker_journal = copy.deepcopy(journal)
+    parent_id = job.parent_node.id if job.parent_node is not None else None
+    worker_parent = _node_by_id(worker_journal, parent_id)
+    worker_agent = Agent(
+        task_desc=base_agent.task_desc,
+        cfg=base_agent.cfg,
+        journal=worker_journal,
+    )
+    worker_agent.public_scores_by_node_id = dict(base_agent.public_scores_by_node_id)
+    worker_agent.prompt_public_scores_by_node_id = dict(
+        base_agent.prompt_public_scores_by_node_id
+    )
+    worker_agent.data_preview = base_agent.data_preview
+    if worker_agent.data_preview is None:
+        worker_agent.update_data_preview()
+    node = worker_agent.generate_node(
+        worker_parent,
+        node_ctime=job.node_ctime,
+        llm_log_dir=job.artifact_dir,
+    )
+    if node.artifact_dir_name is None:
+        node.artifact_dir_name = job.artifact_dir_name
+    return CodeAheadResult(job=job, node=node)
+
+
+def rebind_code_ahead_node(result: CodeAheadResult) -> Node:
+    node = result.node
+    parent = result.job.parent_node
+    node.parent = parent
+    if parent is not None:
+        parent.children.add(node)
+    return node
+
+
 def enforce_journal_submission_contract(
     cfg,
     journal: Journal,
@@ -5201,6 +5429,7 @@ def run(argv: list[str] | None = None):
 
     apply_runtime_web_options(cfg, runtime_options)
     hypothesis_root_generate_workers = validate_hypothesis_root_generate_workers(cfg)
+    code_ahead_limit = validate_code_ahead(cfg)
 
     logger.info(f'Starting run "{cfg.exp_name}"')
     os.environ["AIDE_RUN_ID"] = cfg.exp_name
@@ -5341,7 +5570,6 @@ def run(argv: list[str] | None = None):
 
     debug_log("interpreter_ready", phase="startup")
 
-    global_step = len(journal)
     generated_only_evaluations = 0
     hypothesis_only_root_count = 0
     hypothesis_only_created: list[Any] = []
@@ -5358,10 +5586,12 @@ def run(argv: list[str] | None = None):
                 seen.add(hypothesis_id)
 
     def completed_work_units() -> int:
-        seeded_roots = sum(
-            1 for node in journal.nodes if _is_seeded_scored_root_node(node)
+        return _completed_work_units(
+            journal,
+            generated_only_evaluations=generated_only_evaluations,
         )
-        return len(journal) - seeded_roots + generated_only_evaluations
+
+    global_step = completed_work_units()
 
     def pipeline_root_hypothesis_quota() -> int:
         try:
@@ -5447,6 +5677,14 @@ def run(argv: list[str] | None = None):
     pending_artifact_dir: Path | None = None
     display_node: Node | None = None
     active_root_generations: list[ActiveRootGeneration] = []
+    active_code_ahead_generations: list[ActiveCodeAheadGeneration] = []
+    code_ahead_executor: ThreadPoolExecutor | None = None
+    code_ahead_future: Future[CodeAheadResult] | None = None
+    code_ahead_job: CodeAheadJob | None = None
+    code_ahead_launched_counter = 0
+    code_ahead_error: BaseException | None = None
+    if code_ahead_limit > 0:
+        code_ahead_executor = ThreadPoolExecutor(max_workers=1)
     web_state = WebDashboardState()
     web_server: AideWebServer | None = None
     if cfg.web.enabled:
@@ -5760,6 +5998,192 @@ def run(argv: list[str] | None = None):
             )
         ]
 
+    def code_ahead_enabled() -> bool:
+        return should_code_ahead_run(
+            code_ahead=code_ahead_limit,
+            skip_execution=pipeline_skip_execution(),
+            research_mode=str(getattr(cfg.research, "mode", "llm")),
+            synthesis_enabled=bool(getattr(cfg.synthesis, "enabled", False)),
+            agent_mode=str(getattr(cfg.agent, "mode", "")),
+        )
+
+    def current_code_ahead_pending_count(
+        *,
+        extra_exclude: Node | None = None,
+    ) -> int:
+        excluded = {
+            node
+            for node in (agent.active_node, extra_exclude)
+            if node is not None
+        }
+        count = 0
+        for node in journal.nodes:
+            if node in excluded:
+                continue
+            if node.status != "generated":
+                continue
+            if not node_runtime_matches_cfg(cfg, node):
+                continue
+            count += 1
+        return count + (1 if code_ahead_future is not None else 0)
+
+    def refresh_active_code_ahead_generation() -> None:
+        nonlocal active_code_ahead_generations
+        if code_ahead_future is None or code_ahead_job is None:
+            active_code_ahead_generations = []
+            return
+        active_code_ahead_generations = [
+            ActiveCodeAheadGeneration(
+                parent_node=code_ahead_job.parent_node,
+                active_step=code_ahead_job.active_step,
+                launched_index=code_ahead_job.launched_index,
+            )
+        ]
+
+    def select_code_ahead_parent() -> Node | None:
+        planner_journal = copy.deepcopy(journal)
+        planner_agent = Agent(
+            task_desc=agent.task_desc,
+            cfg=cfg,
+            journal=planner_journal,
+        )
+        planner_agent.public_scores_by_node_id = dict(agent.public_scores_by_node_id)
+        planner_agent.prompt_public_scores_by_node_id = dict(
+            agent.prompt_public_scores_by_node_id
+        )
+        planner_agent.data_preview = agent.data_preview
+        parent_copy = planner_agent.prepare_step()
+        return _node_by_id(journal, parent_copy.id) if parent_copy is not None else None
+
+    def persist_code_ahead_result(
+        result: CodeAheadResult,
+        live: Live,
+    ) -> Node:
+        node = rebind_code_ahead_node(result)
+        if node.artifact_dir_name is None:
+            node.artifact_dir_name = result.job.artifact_dir_name
+        mark_node_generated_only(node)
+        agent.save_hypothesis_root_code_for_node(node, activate=False)
+        journal.append(node)
+        save_run(
+            cfg,
+            journal,
+            current_node=None,
+            progress_callback=lambda message: update_save_status(message, live),
+        )
+        return node
+
+    def maybe_start_code_ahead(
+        live: Live,
+        *,
+        active_node_to_exclude: Node | None = None,
+    ) -> None:
+        nonlocal code_ahead_future, code_ahead_job, code_ahead_launched_counter
+        if not code_ahead_enabled():
+            return
+        if code_ahead_executor is None or code_ahead_future is not None:
+            return
+        if code_ahead_error is not None:
+            return
+        pending_count = current_code_ahead_pending_count(
+            extra_exclude=active_node_to_exclude,
+        )
+        active_execution_count = 1 if (
+            active_node_to_exclude is not None or agent.active_node is not None
+        ) else 0
+        if not code_ahead_has_capacity(
+            code_ahead=code_ahead_limit,
+            total_steps=cfg.agent.steps,
+            completed_work_units=completed_work_units() + active_execution_count,
+            pending_count=pending_count,
+        ):
+            return
+        parent_node = select_code_ahead_parent()
+        code_ahead_launched_counter += 1
+        active_step = len(journal)
+        node_ctime, artifact_dir_name, artifact_dir = allocate_node_artifact_slot(
+            cfg.log_dir,
+            step=active_step,
+            workspace_dir=cfg.workspace_dir,
+        )
+        code_ahead_job = CodeAheadJob(
+            parent_node=parent_node,
+            node_ctime=node_ctime,
+            artifact_dir_name=artifact_dir_name,
+            artifact_dir=artifact_dir,
+            active_step=active_step,
+            launched_index=code_ahead_launched_counter,
+        )
+        debug_log(
+            "before_code_ahead_generate",
+            phase="generate",
+            node=parent_node,
+            extra={
+                "node_ctime": node_ctime,
+                "llm_log_dir": str(artifact_dir),
+                "code_ahead": code_ahead_limit,
+            },
+        )
+        code_ahead_future = code_ahead_executor.submit(
+            generate_code_ahead_node,
+            base_agent=agent,
+            journal=journal,
+            job=code_ahead_job,
+        )
+        refresh_active_code_ahead_generation()
+        live.update(generate_live(), refresh=True)
+
+    def drain_code_ahead(live: Live) -> None:
+        nonlocal code_ahead_future, code_ahead_job, code_ahead_error, display_node
+        nonlocal operator_notice
+        if code_ahead_future is None:
+            return
+        if not code_ahead_future.done():
+            return
+        future = code_ahead_future
+        code_ahead_future = None
+        job = code_ahead_job
+        code_ahead_job = None
+        refresh_active_code_ahead_generation()
+        try:
+            result = future.result()
+        except BaseException as exc:  # noqa: BLE001 - surface async generation errors
+            code_ahead_error = exc
+            operator_message = f"{exc.__class__.__name__}: {exc}"
+            debug_log(
+                "code_ahead_generate_exception",
+                phase="generate",
+                node=job.parent_node if job is not None else None,
+                extra={"exception": operator_message},
+            )
+            operator_notice = f"Code-ahead generation failed: {operator_message}"
+            return
+        node = persist_code_ahead_result(result, live)
+        display_node = node
+        debug_log(
+            "after_code_ahead_generate",
+            phase="generate",
+            node=node,
+            extra={"llm_log_dir": str(result.job.artifact_dir)},
+        )
+        maybe_start_code_ahead(live)
+
+    def wait_for_code_ahead_if_running(live: Live) -> None:
+        if not code_ahead_enabled() or code_ahead_future is None:
+            return
+        while code_ahead_future is not None:
+            waiting_on = code_ahead_future
+            drain_code_ahead(live)
+            if code_ahead_future is not waiting_on:
+                break
+            live.update(generate_live(), refresh=True)
+            time.sleep(LIVE_REFRESH_INTERVAL_SECONDS)
+
+    def execution_tick(live: Live, active_node_to_exclude: Node | None) -> None:
+        drain_code_ahead(live)
+        maybe_start_code_ahead(live, active_node_to_exclude=active_node_to_exclude)
+        drain_left_panel_navigation(current_left_panel_view(blink_on=True))
+
     def _plain_web_text(value: object) -> str:
         text = str(value or "")
         text = re.sub(r"\[[^\]]+\]", "", text)
@@ -5804,6 +6228,19 @@ def run(argv: list[str] | None = None):
                     WebRunDatum(
                         "refactor",
                         "on" if cfg.refactor.enabled else "off",
+                    ),
+                    *(
+                        [
+                            WebRunDatum(
+                                "ahead",
+                                (
+                                    f"{current_code_ahead_pending_count()}/"
+                                    f"{code_ahead_limit}"
+                                ),
+                            )
+                        ]
+                        if code_ahead_limit
+                        else []
                     ),
                 ],
             ),
@@ -5874,6 +6311,13 @@ def run(argv: list[str] | None = None):
                         active_stage=agent.active_stage,
                         active_hypothesis_id=active_hypothesis_id_for_display(),
                         active_step=global_step,
+                        active_code_ahead_generations=[
+                            {
+                                "parent_node": generation.parent_node,
+                                "active_step": generation.active_step,
+                            }
+                            for generation in active_code_ahead_generations
+                        ],
                         plateau_block_epsilon=(
                             cfg.agent.search.plateau_block_epsilon
                         ),
@@ -5906,6 +6350,7 @@ def run(argv: list[str] | None = None):
             active_hypothesis_id=active_hypothesis_id_for_display(),
             active_step=global_step,
             active_root_generations=active_root_generations,
+            active_code_ahead_generations=active_code_ahead_generations,
             blink_on=blink_on,
             show_invalid_submission_branches=(
                 runtime_options.show_invalid_submission_branches
@@ -6083,6 +6528,7 @@ def run(argv: list[str] | None = None):
                 include_generated_hypothesis_roots=pipeline_skip_execution(),
                 skip_execution=pipeline_skip_execution(),
                 hypothesis_root_generate_workers=hypothesis_root_generate_workers,
+                code_ahead_pending=current_code_ahead_pending_count(),
                 selected_hypothesis_ids=runtime_options.generate_only_hypothesis_ids,
                 content_width=right_copy_width - 2,
             ),
@@ -6396,9 +6842,9 @@ def run(argv: list[str] | None = None):
                     synthesized: SynthesisNode | None = None
                     result_node: Node | None = None
                     node_already_in_journal = False
-                    persisted_node_before_execution = False
                     display_node = None
                     try:
+                        wait_for_code_ahead_if_running(live)
                         root_hypotheses_to_generate = (
                             pipeline_root_hypotheses_to_generate()
                         )
@@ -6973,7 +7419,6 @@ def run(argv: list[str] | None = None):
                             )
                             status_override = None
                             node_already_in_journal = True
-                            persisted_node_before_execution = True
                             debug_log(
                                 "after_persist_generated_node",
                                 phase="journal",
@@ -7049,6 +7494,11 @@ def run(argv: list[str] | None = None):
                                 node=result_node,
                             )
                         else:
+                            if should_execute_node:
+                                maybe_start_code_ahead(
+                                    live,
+                                    active_node_to_exclude=result_node,
+                                )
                             previous_artifact_env = prepare_node_artifact_env(
                                 result_node
                             )
@@ -7065,8 +7515,9 @@ def run(argv: list[str] | None = None):
                                             live,
                                             generate_live,
                                             lambda: exec_callback(*args, **kwargs),
-                                            tick=lambda: drain_left_panel_navigation(
-                                                current_left_panel_view(blink_on=True)
+                                            tick=lambda: execution_tick(
+                                                live,
+                                                result_node,
                                             ),
                                             on_keyboard_interrupt=request_execution_interrupt,
                                         ),
@@ -7283,10 +7734,7 @@ def run(argv: list[str] | None = None):
                         extra={"global_step": global_step, "journal_size": len(journal)},
                     )
                     status_override = None
-                    if node_already_in_journal and not persisted_node_before_execution:
-                        generated_only_evaluations += 1
-                    else:
-                        global_step = len(journal)
+                    global_step = completed_work_units()
                     if stop_after_current_node:
                         interrupted = True
                         interrupt_message = (
@@ -7313,6 +7761,8 @@ def run(argv: list[str] | None = None):
                 live.update(generate_live(), refresh=True)
     finally:
         debug_log("before_cleanup_session", phase="cleanup")
+        if code_ahead_executor is not None:
+            code_ahead_executor.shutdown(wait=False, cancel_futures=True)
         interpreter.cleanup_session()
         if web_server is not None:
             web_server.stop()

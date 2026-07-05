@@ -186,6 +186,7 @@ def build_web_tree_lines(
     active_stage: str | None = None,
     active_hypothesis_id: str | None = None,
     active_step: int | None = None,
+    active_code_ahead_generations: list[dict[str, object]] | None = None,
     plateau_block_epsilon: float = DEFAULT_PLATEAU_BLOCK_EPSILON,
     public_scores_by_node_id: dict[str, float] | None = None,
     public_score_bonus_weight: float = 0.0,
@@ -193,6 +194,7 @@ def build_web_tree_lines(
 ) -> list[WebTreeLine]:
     journal_nodes = set(journal.nodes)
     active_existing_node = active_node if active_node in journal_nodes else None
+    active_code_ahead_generations = active_code_ahead_generations or []
     public_scores_by_node_id = public_scores_by_node_id or {}
     public_node_ids = {
         node.id
@@ -271,6 +273,33 @@ def build_web_tree_lines(
             )
         )
 
+    def code_ahead_for_parent(parent_node: Node | None) -> list[dict[str, object]]:
+        return [
+            generation
+            for generation in active_code_ahead_generations
+            if generation.get("parent_node") is parent_node
+        ]
+
+    def append_code_ahead(
+        generations: list[dict[str, object]],
+        prefix: str,
+        desktop_prefix: str,
+    ) -> None:
+        for index, generation in enumerate(generations):
+            branch = "└" if index == len(generations) - 1 else "├"
+            active_step_value = generation.get("active_step")
+            label = "generating"
+            if isinstance(active_step_value, int):
+                label = f"{label}·{active_step_value}"
+            lines.append(
+                WebTreeLine(
+                    prefix=f"{prefix}{branch}",
+                    label=label,
+                    kind="active",
+                    desktop_prefix=f"{desktop_prefix}{branch}── ",
+                )
+            )
+
     def append_rec(
         node: Node,
         prefix: str,
@@ -303,6 +332,10 @@ def build_web_tree_lines(
             and active_stage is not None
             and active_existing_node is None
         )
+        code_ahead_children = code_ahead_for_parent(node)
+        trailing_placeholder_count = (
+            (1 if has_active_child else 0) + len(code_ahead_children)
+        )
         next_prefix = f"{prefix}{' ' if is_last else '│'}"
         next_desktop_prefix = f"{desktop_prefix}{'    ' if is_last else '│   '}"
         for index, child in enumerate(children):
@@ -310,10 +343,19 @@ def build_web_tree_lines(
                 child,
                 next_prefix,
                 next_desktop_prefix,
-                index == len(children) - 1 and not has_active_child,
+                index == len(children) - 1 and trailing_placeholder_count == 0,
             )
         if has_active_child:
-            append_active(next_prefix, next_desktop_prefix, True)
+            append_active(
+                next_prefix,
+                next_desktop_prefix,
+                not code_ahead_children,
+            )
+        append_code_ahead(
+            code_ahead_children,
+            next_prefix,
+            next_desktop_prefix,
+        )
 
     def append_virtual_root(row: dict[str, object], *, is_last: bool) -> None:
         hypothesis_id = str(row.get("hypothesis_id") or "")
@@ -358,14 +400,28 @@ def build_web_tree_lines(
         if str(row.get("hypothesis_id") or "") not in existing_hypothesis_ids
     ]
     has_root_active = active_parent_node is None and active_stage is not None
+    root_code_ahead = code_ahead_for_parent(None)
     total_roots = len(roots) + len(virtual_roots)
     root_index = 0
     for index, node in enumerate(roots):
         root_index += 1
-        append_rec(node, "", "", root_index == total_roots and not has_root_active)
+        append_rec(
+            node,
+            "",
+            "",
+            root_index == total_roots
+            and not has_root_active
+            and not root_code_ahead,
+        )
     for row in virtual_roots:
         root_index += 1
-        append_virtual_root(row, is_last=root_index == total_roots and not has_root_active)
+        append_virtual_root(
+            row,
+            is_last=root_index == total_roots
+            and not has_root_active
+            and not root_code_ahead,
+        )
     if has_root_active:
-        append_active("", "", True)
+        append_active("", "", not root_code_ahead)
+    append_code_ahead(root_code_ahead, "", "")
     return lines

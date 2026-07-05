@@ -15,6 +15,7 @@ from aide.run import (
     _has_debuggable_hypothesis_root,
     _next_unfinished_library_root_selection,
     _next_generate_only_root_reservation,
+    ActiveCodeAheadGeneration,
     ActiveRootGeneration,
     active_run_log_path,
     build_all_hypotheses_view,
@@ -673,6 +674,41 @@ def test_tree_view_marks_existing_generated_node_active_without_placeholder():
     assert "[*] 000123" not in output
     assert "[*]·000123" not in output
     assert active_tree_item_id(view) == active.id
+
+
+def test_tree_view_renders_code_ahead_generation_while_node_executes():
+    journal = Journal()
+    parent = _good_node(0.941)
+    current = Node(code="print('current')", plan="current", parent=parent)
+    journal.append(parent)
+    journal.append(current)
+    mark_node_generated_only(current)
+
+    view = build_tree_view(
+        journal,
+        active_node=current,
+        active_parent_node=current.parent,
+        active_stage="executing",
+        active_code_ahead_generations=[
+            ActiveCodeAheadGeneration(
+                parent_node=parent,
+                active_step=2,
+                launched_index=1,
+            )
+        ],
+        blink_on=True,
+    )
+    output = _render_text(
+        render_tree_view(
+            view,
+            focused_item_id="header",
+            scroll_top=0,
+            viewport_height=10,
+        )
+    )
+
+    assert "● generated" in output
+    assert "●·2" in output
 
 
 def test_journal_tree_renders_executing_hypothesis_as_blue_dot_with_id():
@@ -3507,6 +3543,29 @@ def test_run_data_shows_generate_only_worker_count(tmp_path):
 
     assert "workers" in output
     assert "4" in output
+
+
+def test_run_data_shows_code_ahead_queue_count(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.agent.mode = "legacy"
+    cfg.agent.search.code_ahead = 3
+
+    output = _render_text(
+        build_run_data(
+            progress="Progress: 1/20",
+            status="Executing code...",
+            research_status=None,
+            synthesis_status=None,
+            journal=Journal(),
+            log_dir=tmp_path / "logs" / "2-example-run",
+            workspace_dir=tmp_path / "workspaces" / "2-example-run",
+            cfg=cfg,
+            code_ahead_pending=1,
+        )
+    )
+
+    assert "ahead" in output
+    assert "1/3" in output
 
 
 def test_model_settings_show_root_hypothesis_model_in_hypothesis_mode(tmp_path):

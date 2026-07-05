@@ -188,6 +188,37 @@ def test_web_tree_lines_do_not_duplicate_existing_active_generated_node():
     ]
 
 
+def test_web_tree_lines_include_code_ahead_generation_with_active_execution():
+    journal = Journal()
+    root = _scored_node(0.91)
+    generated = Node(code="print('pending')", plan="pending", parent=root)
+    generated.status = "generated"
+    generated.is_buggy = False
+    generated.metric = None
+    journal.append(root)
+    journal.append(generated)
+
+    lines = build_web_tree_lines(
+        journal,
+        active_node=generated,
+        active_parent_node=root,
+        active_stage="executing",
+        active_step=generated.step,
+        active_code_ahead_generations=[
+            {
+                "parent_node": root,
+                "active_step": 2,
+            }
+        ],
+    )
+
+    assert [(line.prefix, line.label, line.kind) for line in lines] == [
+        ("└", "0.91000·0", "best"),
+        (" ├", "executing·1", "active"),
+        (" └", "generating·2", "active"),
+    ]
+
+
 def test_web_tree_lines_keep_child_outside_plateau_epsilon_unblocked():
     journal = Journal()
     parent = _scored_node(0.965327)

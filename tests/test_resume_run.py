@@ -10,9 +10,14 @@ from aide.agent import Agent
 from aide.journal import Journal, Node
 from aide.run import (
     allocate_node_artifact_slot,
+    _completed_work_units,
+    CodeAheadJob,
+    code_ahead_has_capacity,
+    code_ahead_pending_count,
     ensure_node_artifact_slot,
     enforce_journal_submission_contract,
     find_latest_run_id,
+    generate_code_ahead_node,
     load_resume_state,
     mark_node_generated_only,
     maybe_seed_scored_hypothesis_roots,
@@ -23,10 +28,13 @@ from aide.run import (
     record_generated_only_node,
     recover_generated_only_root_artifacts,
     save_parallel_generate_only_run,
+    rebind_code_ahead_node,
     should_parallel_generate_only_roots,
     should_seed_scored_hypothesis_roots_for_run,
     should_cleanup_workspace_on_exit,
     should_stop_after_generate_only_roots,
+    should_code_ahead_run,
+    validate_code_ahead,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
@@ -214,6 +222,66 @@ def test_validate_hypothesis_root_generate_workers_rejects_invalid_values(worker
 
     with pytest.raises(ValueError, match="hypothesis_root_generate_workers"):
         validate_hypothesis_root_generate_workers(cfg)
+
+
+def test_validate_code_ahead_accepts_default():
+    cfg = _load_cfg(use_cli_args=False)
+
+    assert validate_code_ahead(cfg) == 0
+
+
+@pytest.mark.parametrize("value", [-1, 9, True, 1.5, "2"])
+def test_validate_code_ahead_rejects_invalid_values(value):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.agent.search.code_ahead = value
+
+    with pytest.raises(ValueError, match="agent.search.code_ahead"):
+        validate_code_ahead(cfg)
+
+
+def test_should_code_ahead_run_only_for_execute_legacy_or_autogluon():
+    assert should_code_ahead_run(
+        code_ahead=1,
+        skip_execution=False,
+        research_mode="llm",
+        synthesis_enabled=False,
+        agent_mode="legacy",
+    )
+    assert should_code_ahead_run(
+        code_ahead=1,
+        skip_execution=False,
+        research_mode="llm",
+        synthesis_enabled=False,
+        agent_mode="autogluon_preprocess",
+    )
+    assert not should_code_ahead_run(
+        code_ahead=0,
+        skip_execution=False,
+        research_mode="llm",
+        synthesis_enabled=False,
+        agent_mode="legacy",
+    )
+    assert not should_code_ahead_run(
+        code_ahead=1,
+        skip_execution=True,
+        research_mode="llm",
+        synthesis_enabled=False,
+        agent_mode="legacy",
+    )
+    assert not should_code_ahead_run(
+        code_ahead=1,
+        skip_execution=False,
+        research_mode="hypothesis",
+        synthesis_enabled=False,
+        agent_mode="legacy",
+    )
+    assert not should_code_ahead_run(
+        code_ahead=1,
+        skip_execution=False,
+        research_mode="llm",
+        synthesis_enabled=True,
+        agent_mode="legacy",
+    )
 
 
 def test_forced_generate_only_hypothesis_ids_disable_parallel_workers():
@@ -932,6 +1000,118 @@ def test_generated_only_nodes_are_not_scored_good_candidates():
     assert journal.good_nodes == [executed]
     assert journal.get_best_node() is executed
     assert journal.get_best_node(only_good=False) is executed
+
+
+def test_completed_work_units_excludes_execute_mode_generated_drafts():
+    journal = Journal()
+    executed = Node(code="print('ok')", plan="ok")
+    executed.metric = MetricValue(0.9, maximize=True)
+    executed.is_buggy = False
+    journal.append(executed)
+    for index in range(2):
+        pending = Node(code=f"print({index})", plan="pending")
+        journal.append(pending)
+        mark_node_generated_only(pending)
+
+    assert _completed_work_units(journal, generated_only_evaluations=0) == 1
+    assert _completed_work_units(journal, generated_only_evaluations=2) == 3
+
+
+def test_code_ahead_pending_count_includes_generated_nodes_and_in_flight(tmp_path):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-code-ahead-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-code-ahead-run"
+    cfg.exp_name = "2-code-ahead-run"
+    cfg = prep_cfg(cfg)
+
+    journal = Journal()
+    executed = Node(code="print('ok')", plan="ok")
+    executed.metric = MetricValue(0.9, maximize=True)
+    executed.is_buggy = False
+    journal.append(executed)
+    pending = Node(code="print('pending')", plan="pending")
+    journal.append(pending)
+    mark_node_generated_only(pending)
+    failed = Node(code="raise RuntimeError()", plan="failed")
+    failed.status = "failed"
+    journal.append(failed)
+
+    assert code_ahead_pending_count(journal, cfg=cfg, in_flight_count=1) == 2
+
+
+def test_code_ahead_capacity_counts_pending_and_in_flight_against_limit():
+    assert code_ahead_has_capacity(
+        code_ahead=3,
+        total_steps=10,
+        completed_work_units=2,
+        pending_count=2,
+    )
+    assert not code_ahead_has_capacity(
+        code_ahead=3,
+        total_steps=10,
+        completed_work_units=2,
+        pending_count=3,
+    )
+    assert not code_ahead_has_capacity(
+        code_ahead=3,
+        total_steps=5,
+        completed_work_units=3,
+        pending_count=2,
+    )
+
+
+def test_generate_code_ahead_node_uses_isolated_parent_then_rebinds(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _load_cfg(use_cli_args=False)
+    cfg.data_dir = str(tmp_path)
+    cfg.goal = "test goal"
+    cfg.log_dir = tmp_path / "logs" / "2-code-ahead-run"
+    cfg.workspace_dir = tmp_path / "workspaces" / "2-code-ahead-run"
+    cfg.exp_name = "2-code-ahead-run"
+    cfg = prep_cfg(cfg)
+
+    journal = Journal()
+    parent = Node(code="print('parent')", plan="parent")
+    parent.metric = MetricValue(0.9, maximize=True)
+    parent.is_buggy = False
+    journal.append(parent)
+    base_agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    base_agent.data_preview = "preview"
+
+    def fake_generate_node(self, parent_node, *, node_ctime=None, llm_log_dir=None):
+        assert parent_node is not parent
+        return Node(
+            code="print('child')",
+            plan="child",
+            parent=parent_node,
+            ctime=node_ctime,
+        )
+
+    monkeypatch.setattr(Agent, "generate_node", fake_generate_node)
+
+    job = CodeAheadJob(
+        parent_node=parent,
+        node_ctime=123.0,
+        artifact_dir_name="draft-artifact",
+        artifact_dir=tmp_path / "draft-artifact",
+        active_step=1,
+        launched_index=1,
+    )
+
+    result = generate_code_ahead_node(
+        base_agent=base_agent,
+        journal=journal,
+        job=job,
+    )
+
+    assert parent.children == set()
+    node = rebind_code_ahead_node(result)
+    assert node.parent is parent
+    assert node in parent.children
 
 
 def test_node_artifact_dir_uses_explicit_name(tmp_path):

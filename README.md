@@ -124,6 +124,7 @@ Common flags
 | `agent.code.model` | LLM used to write code | `gpt-4-turbo` |
 | `agent.steps` | Improvement iterations | `20` |
 | `agent.search.num_drafts` | Drafts per step | `5` |
+| `agent.search.code_ahead` | Generated code drafts to keep queued ahead of execution | `0` |
 
 ---
 
