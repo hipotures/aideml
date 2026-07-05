@@ -5217,6 +5217,62 @@ def test_standard_improve_prompt_includes_prior_child_attempts(tmp_path):
     assert "did_not_improve" in attempts
 
 
+def test_standard_improve_prompt_includes_queued_generated_child_attempt(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.research.enabled = False
+    cfg.agent.data_preview = False
+    parent = _node(
+        0.954674,
+        code="print('strong parent')",
+        plan="two-seed RealMLP plus CatBoost parent",
+    )
+    scored_child = Node(
+        code="print('rank blend')",
+        plan="Add rank blend mode to the existing blend candidates.",
+        parent=parent,
+    )
+    scored_child.metric = MetricValue(0.954700, maximize=True)
+    scored_child.is_buggy = False
+    scored_child.analysis = "rank blend did not clear epsilon"
+    queued_child = Node(
+        code="print('missingness profile')",
+        plan="Queued missingness-profile frequency draft.",
+        parent=parent,
+        status="generated",
+    )
+    journal = Journal()
+    for node in [parent, scored_child, queued_child]:
+        journal.append(node)
+
+    captured = {}
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "plan", "print('ok')"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    agent._improve(parent)
+
+    attempts = captured["prompt"]["Previous attempts from this parent"]
+    assert "Add rank blend mode" in attempts
+    assert "Queued missingness-profile frequency draft" in attempts
+    generated_section = next(
+        section
+        for section in attempts.split("\n-------------------------------\n")
+        if "Queued missingness-profile frequency draft" in section
+    )
+    assert (
+        "Status: queued for execution; generated code is waiting for model run and score."
+        in generated_section
+    )
+    assert "Validation Metric:" not in generated_section
+    assert "Runtime note:" not in generated_section
+    assert "delta=" not in generated_section
+    assert "did_not_improve" not in generated_section
+
+
 def test_standard_improve_prompt_includes_timeout_child_without_working_descendant(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.research.enabled = False
