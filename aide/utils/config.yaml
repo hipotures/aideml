@@ -708,6 +708,54 @@ agent:
           save_space: true
           fit_weighted_ensemble: false
           auto_stack: false
+      s6e7_fast_medium_xgb_seed777_balanced_10m:
+        included_model_types: [XGB]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 600
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 777
+        class_balance: balanced
+        use_gpu: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_fast_medium_xgbgbm_seed123_ensemble_balanced_10m:
+        included_model_types: [XGB, GBM]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 600
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 123
+        class_balance: balanced
+        use_gpu: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 1
+          GBM:
+            - device: cuda
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
       s6e7_fast_medium_xgbcat_seed123_ensemble_balanced_10m:
         included_model_types: [XGB, CAT]
         presets: medium_quality
@@ -744,6 +792,28 @@ agent:
         validation_fraction: 0.2
         validation_strategy: holdout
         seed: 123
+        use_gpu: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args:
+                priority: 999
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_fast_medium_xgb_seed123_holdout15_balanced_10m:
+        included_model_types: [XGB]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 600
+        validation_fraction: 0.15
+        validation_strategy: holdout
+        seed: 123
+        class_balance: balanced
         use_gpu: true
         hyperparameters:
           XGB:
@@ -856,6 +926,31 @@ agent:
         validation_fraction: 0.2
         validation_strategy: holdout
         seed: 123
+        class_balance: balanced
+        use_gpu: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args_fit:
+                num_gpus: 1
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args_fit:
+                num_gpus: 1
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_fast_medium_gbmcat_seed777_noensemble_balanced_10m:
+        included_model_types: [GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 600
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 777
         class_balance: balanced
         use_gpu: true
         hyperparameters:

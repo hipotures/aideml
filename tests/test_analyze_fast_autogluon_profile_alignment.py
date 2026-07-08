@@ -239,6 +239,36 @@ def test_profile_summary_reports_rank_error_runtime_and_topk_metrics():
     assert summary["worst_under_optimistic"][0]["source_sha256"] == "source-b"
 
 
+def test_profile_summary_reports_bias_corrected_mae():
+    rows = [
+        {
+            "profile": "candidate",
+            "source_sha256": "source-a",
+            "local_score": 0.9510,
+            "public_score": 0.9500,
+        },
+        {
+            "profile": "candidate",
+            "source_sha256": "source-b",
+            "local_score": 0.9522,
+            "public_score": 0.9510,
+        },
+        {
+            "profile": "candidate",
+            "source_sha256": "source-c",
+            "local_score": 0.9531,
+            "public_score": 0.9520,
+        },
+    ]
+
+    summary = analyze_fast_alignment.summarize_profiles(rows)[0]
+
+    assert summary["mae"] == pytest.approx(0.0011)
+    assert summary["bias"] == pytest.approx(0.0011)
+    assert summary["bias_corrected_mae"] == pytest.approx(0.00006666666666667024)
+    assert summary["loo_bias_corrected_mae"] == pytest.approx(0.0001)
+
+
 def test_cli_writes_json_and_csv_outputs(tmp_path):
     lab_json = tmp_path / "lab.json"
     index_json = tmp_path / "index.json"

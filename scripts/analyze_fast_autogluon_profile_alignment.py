@@ -267,6 +267,17 @@ def summarize_profiles(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         local_scores = [row["local_score"] for row in usable]
         public_scores = [row["public_score"] for row in usable]
         absolute_errors = [row["absolute_error"] for row in errors]
+        signed_errors = [row["signed_error"] for row in errors]
+        bias = mean(signed_errors) if signed_errors else None
+        bias_corrected_errors = (
+            [abs(error - bias) for error in signed_errors] if bias is not None else []
+        )
+        loo_bias_corrected_errors = []
+        if len(signed_errors) > 1:
+            error_sum = sum(signed_errors)
+            for error in signed_errors:
+                loo_bias = (error_sum - error) / (len(signed_errors) - 1)
+                loo_bias_corrected_errors.append(abs(error - loo_bias))
         summaries.append(
             {
                 "profile": profile,
@@ -278,7 +289,13 @@ def summarize_profiles(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 "top_2_hit_rate": _top_k_hit_rate(usable, 2),
                 "top_3_hit_rate": _top_k_hit_rate(usable, 3),
                 "mae": mean(absolute_errors) if absolute_errors else None,
-                "bias": mean(row["signed_error"] for row in errors) if errors else None,
+                "bias": bias,
+                "bias_corrected_mae": mean(bias_corrected_errors)
+                if bias_corrected_errors
+                else None,
+                "loo_bias_corrected_mae": mean(loo_bias_corrected_errors)
+                if loo_bias_corrected_errors
+                else None,
                 "median_absolute_error": median(absolute_errors)
                 if absolute_errors
                 else None,
@@ -395,6 +412,8 @@ SUMMARY_COLUMNS = [
     "top_3_hit_rate",
     "mae",
     "bias",
+    "bias_corrected_mae",
+    "loo_bias_corrected_mae",
     "median_absolute_error",
     "avg_runtime_seconds",
     "max_runtime_seconds",
