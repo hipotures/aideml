@@ -15334,3 +15334,1089 @@ Budget check:
 - enough time for another safe fast rerun? = yes
 - 12-hour budget reached? no
 - enough time for another fast rerun? yes
+
+### 2026-07-08T12:11:28+02:00 - expand lower-MAE GBM/CAT estimator on high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da`
+- Public score on file: `0.95000`
+- Source original local score: `0.9503646418250152`
+- Purpose: the 54-row XGB incumbent has MAE near `0.000500`, while this GBM/CAT no-ensemble candidate has the best meaningful-sample raw MAE (`0.000274909354` at `n=30`). Expand it on a high-public source already used by the incumbent before trusting the lower MAE.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:11:28+02:00`
+- elapsed since original start = `10:55:30`
+- estimated remaining = `01:04:30`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:12:25+02:00` |
+| source_sha256 | `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da` |
+| public_score | `0.95000` |
+| source_original_local_score | `0.9503646418250152` |
+| local_score | `0.9501230678481737` |
+| local_minus_public | `+0.0001230678481737` |
+| absolute_error | `0.0001230678481737` |
+| runtime | `91.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T121225` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 30 to 31 attempted rows.
+- `mae` improved from `0.000274909354` to `0.000270011241`.
+- `bias` improved from `+0.000233104571` to `+0.000229554999`.
+- `spearman` was essentially unchanged (`0.380635449306`), so the profile remains a better calibrated estimator than a strong rank selector.
+
+### 2026-07-08T12:15:26+02:00 - continue GBM/CAT estimator expansion on high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994`
+- Public score on file: `0.94994`
+- Source original local score: `0.950454454451938`
+- Purpose: add another high-public source already covered by the XGB expansion. This source was an XGB under-prediction case, so it tests whether the lower-MAE GBM/CAT branch stays calibrated across both signs of incumbent error.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:15:26+02:00`
+- elapsed since original start = `10:59:28`
+- estimated remaining = `01:00:32`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:15:53+02:00` |
+| source_sha256 | `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994` |
+| public_score | `0.94994` |
+| source_original_local_score | `0.950454454451938` |
+| local_score | `0.9499490022907091` |
+| local_minus_public | `+0.0000090022907091` |
+| absolute_error | `0.0000090022907091` |
+| runtime | `77.03s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T121553` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 31 to 32 attempted rows.
+- `mae` improved from `0.000270011241` to `0.000261854711`.
+- `bias` improved from `+0.000229554999` to `+0.000222662727`.
+- This supports the lower-MAE branch on another high-public row, but rank signal remains modest (`spearman=0.370220997918`).
+
+### 2026-07-08T12:17:37+02:00 - continue GBM/CAT estimator expansion on incumbent near-hit source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef`
+- Public score on file: `0.94992`
+- Source original local score: `0.9503877788721176`
+- Purpose: test the lower-MAE GBM/CAT profile on a source where the XGB incumbent was already very close (`absolute_error=0.000069139527`). A strong result here would make the MAE advantage less dependent on cherry-picked incumbent misses.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:17:37+02:00`
+- elapsed since original start = `11:01:39`
+- estimated remaining = `00:58:21`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:18:02+02:00` |
+| source_sha256 | `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9503877788721176` |
+| local_score | `0.9502659783770747` |
+| local_minus_public | `+0.0003459783770747` |
+| absolute_error | `0.0003459783770747` |
+| runtime | `111.03s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T121802` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 32 to 33 attempted rows.
+- `mae` worsened from `0.000261854711` to `0.000264403913`.
+- `bias` moved from `+0.000222662727` to `+0.000226399565`.
+- Even after this miss, raw MAE remains well below the 54-row XGB incumbent (`0.000500209638`).
+
+### 2026-07-08T12:20:22+02:00 - continue GBM/CAT estimator expansion on migrated high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7`
+- Public score on file: `0.94992`
+- Source original local score: `0.9505045755861015`
+- Purpose: add another high-public source from a different run lineage already used in the XGB incumbent expansion. This tests whether the GBM/CAT MAE advantage persists outside the earlier 30-row set and across migrated source artifacts.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:20:22+02:00`
+- elapsed since original start = `11:04:24`
+- estimated remaining = `00:55:36`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:20:48+02:00` |
+| source_sha256 | `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9505045755861015` |
+| local_score | `0.9501513493157029` |
+| local_minus_public | `+0.0002313493157029` |
+| absolute_error | `0.0002313493157029` |
+| runtime | `63.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-vociferous-tortoise-of-perspective/artifacts/20260708T122048` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 33 to 34 attempted rows.
+- `mae` improved slightly from `0.000264403913` to `0.000263431719`.
+- `bias` stayed nearly flat (`+0.000226545146`).
+- CAT-only seed42 remains lower MAE at `n=9`, but its top-public underprediction and zero top-3 hit make it a weaker screening/ranking answer than this broader GBM/CAT branch.
+
+### 2026-07-08T12:22:24+02:00 - continue GBM/CAT estimator expansion on high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16`
+- Public score on file: `0.94990`
+- Source original local score: `0.9505362607685872`
+- Purpose: continue expanding the lower-MAE candidate across high-public artifacts that are present in the source table but missing from the GBM/CAT seed123 set.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:22:24+02:00`
+- elapsed since original start = `11:06:26`
+- estimated remaining = `00:53:34`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:23:26+02:00` |
+| source_sha256 | `118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16` |
+| public_score | `0.94990` |
+| source_original_local_score | `0.9505362607685872` |
+| local_score | `0.9493819719629714` |
+| local_minus_public | `-0.0005180280370286` |
+| absolute_error | `0.0005180280370286` |
+| runtime | `29.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-vociferous-tortoise-of-perspective/artifacts/20260708T122326` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 34 to 35 attempted rows.
+- `mae` worsened from `0.000263431719` to `0.000270705899`.
+- `bias` improved in magnitude from `+0.000226545146` to `+0.000205271626`, but the local ordering signal weakened (`spearman=0.343701865869`).
+- This is evidence against treating the branch as solved; continue across other lineages while time remains.
+
+### 2026-07-08T12:24:27+02:00 - continue GBM/CAT estimator expansion on alternate high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `e264d0bfa5f61f49d6948b62c3566b5790ec204a904d8623fa049f1e80b53341`
+- Public score on file: `0.94989`
+- Source original local score: `0.9504570794899573`
+- Purpose: follow the `118e6b...` miss with a same-public-band source from a different run lineage. This tests whether the underprediction is isolated or a broader high-public failure mode.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha e264d0bfa5f61f49d6948b62c3566b5790ec204a904d8623fa049f1e80b53341 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:24:27+02:00`
+- elapsed since original start = `11:08:29`
+- estimated remaining = `00:51:31`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:25:05+02:00` |
+| source_sha256 | `e264d0bfa5f61f49d6948b62c3566b5790ec204a904d8623fa049f1e80b53341` |
+| public_score | `0.94989` |
+| source_original_local_score | `0.9504570794899573` |
+| local_score | `0.9501941772035192` |
+| local_minus_public | `+0.0003041772035192` |
+| absolute_error | `0.0003041772035192` |
+| runtime | `62.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T122505` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 35 to 36 attempted rows.
+- `mae` worsened slightly from `0.000270705899` to `0.000271635658`.
+- `bias` remained lower than the original 30-row value (`+0.000208019003` versus `+0.000233104571`), but rank signal weakened (`spearman=0.328075743093`).
+- Because recent GBM/CAT rows exposed high-public instability, compare the simpler GBM-only branch next instead of blindly expanding the same profile.
+
+### 2026-07-08T12:26:39+02:00 - probe GBM-only branch on high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m`
+- Source SHA: `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da`
+- Public score on file: `0.95000`
+- Source original local score: `0.9503646418250152`
+- Purpose: GBM-only has similar raw MAE at smaller `n=11` and cleaner top-public behavior on several existing rows. Test it on a high-public source where GBM/CAT was strong, to see whether the simpler family can reduce MAE without the recent CAT-driven underprediction.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da --profile s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:26:39+02:00`
+- elapsed since original start = `11:10:41`
+- estimated remaining = `00:49:19`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:27:25+02:00` |
+| source_sha256 | `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da` |
+| public_score | `0.95000` |
+| source_original_local_score | `0.9503646418250152` |
+| local_score | `0.9500432955092831` |
+| local_minus_public | `+0.0000432955092832` |
+| absolute_error | `0.0000432955092832` |
+| runtime | `49.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T122725` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` increased from 11 to 12 attempted rows.
+- `mae` improved from `0.000276872711` to `0.000257407944`.
+- `bias` improved from `+0.000201333117` to `+0.000188163316`.
+- This makes GBM-only the best raw-MAE profile at `n>=12`, though its rank signal is still weak (`spearman=0.140350877193`).
+
+### 2026-07-08T12:28:41+02:00 - expand GBM-only branch on high-public near-calibration source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m`
+- Source SHA: `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994`
+- Public score on file: `0.94994`
+- Source original local score: `0.950454454451938`
+- Purpose: expand the now-best raw-MAE GBM-only branch on another high-public source. GBM/CAT was extremely well calibrated here; this tests whether GBM-only can match that without CAT instability.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994 --profile s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:28:41+02:00`
+- elapsed since original start = `11:12:43`
+- estimated remaining = `00:47:17`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:29:07+02:00` |
+| source_sha256 | `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994` |
+| public_score | `0.94994` |
+| source_original_local_score | `0.950454454451938` |
+| local_score | `0.9500322325071758` |
+| local_minus_public | `+0.0000922325071758` |
+| absolute_error | `0.0000922325071758` |
+| runtime | `62.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T122907` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` increased from 12 to 13 attempted rows.
+- `mae` improved from `0.000257407944` to `0.000244702142`.
+- `bias` improved from `+0.000188163316` to `+0.000180784023`.
+- This branch now has the best raw MAE among profiles with at least 10 observations, but it is still under-sampled and rank signal is weak.
+
+### 2026-07-08T12:30:39+02:00 - expand GBM-only branch on incumbent near-hit source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m`
+- Source SHA: `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef`
+- Public score on file: `0.94992`
+- Source original local score: `0.9503877788721176`
+- Purpose: test whether GBM-only avoids the GBM/CAT moderate overprediction on this source while preserving the improved MAE trend.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef --profile s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:30:39+02:00`
+- elapsed since original start = `11:14:41`
+- estimated remaining = `00:45:19`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:31:04+02:00` |
+| source_sha256 | `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9503877788721176` |
+| local_score | `0.9502495692476519` |
+| local_minus_public | `+0.0003295692476519` |
+| absolute_error | `0.0003295692476519` |
+| runtime | `104.03s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T123104` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` increased from 13 to 14 attempted rows.
+- `mae` worsened from `0.000244702142` to `0.000250764078`.
+- `bias` moved to `+0.000191411539`.
+- The branch remains the best raw-MAE profile with at least 12 observations, but this row confirms it is not uniformly better on every high-public source.
+
+### 2026-07-08T12:33:19+02:00 - continue GBM-only branch on migrated high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m`
+- Source SHA: `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7`
+- Public score on file: `0.94992`
+- Source original local score: `0.9505045755861015`
+- Purpose: test GBM-only on the same migrated high-public source used for the GBM/CAT expansion. This helps compare the two lower-MAE branches on matched added coverage.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7 --profile s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:33:19+02:00`
+- elapsed since original start = `11:17:21`
+- estimated remaining = `00:42:39`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:33:47+02:00` |
+| source_sha256 | `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9505045755861015` |
+| local_score | `0.9501251416775439` |
+| local_minus_public | `+0.0002051416775439` |
+| absolute_error | `0.0002051416775439` |
+| runtime | `47.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-vociferous-tortoise-of-perspective/artifacts/20260708T123347` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` increased from 14 to 15 attempted rows.
+- `mae` improved from `0.000250764078` to `0.000247722584`.
+- `bias` stayed near `+0.000192326882`.
+- GBM-only remains the best raw-MAE branch at moderate sample size, but still needs more hard rows.
+
+### 2026-07-08T12:35:01+02:00 - test GBM-only branch on GBM/CAT high-public failure
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m`
+- Source SHA: `118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16`
+- Public score on file: `0.94990`
+- Source original local score: `0.9505362607685872`
+- Purpose: this source was a large GBM/CAT underprediction (`absolute_error=0.000518028`). Run GBM-only to determine whether CAT was the source of that failure.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16 --profile s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:35:01+02:00`
+- elapsed since original start = `11:19:03`
+- estimated remaining = `00:40:57`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:35:26+02:00` |
+| source_sha256 | `118e6b789d51a24e3363cc5e3567509d8ac0dfe02291b806030b23c0d0d92c16` |
+| public_score | `0.94990` |
+| source_original_local_score | `0.9505362607685872` |
+| local_score | `0.9491582710877776` |
+| local_minus_public | `-0.0007417289122224` |
+| absolute_error | `0.0007417289122224` |
+| runtime | `17.01s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-vociferous-tortoise-of-perspective/artifacts/20260708T123526` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` increased from 15 to 16 attempted rows.
+- `mae` worsened from `0.000247722584` to `0.000278597980`.
+- `bias` dropped to `+0.000133948395`, but this was from a large underprediction rather than better fit.
+- The result argues against replacing the broader GBM/CAT branch with GBM-only based on the smaller sample.
+
+### 2026-07-08T12:36:11+02:00 - return to GBM/CAT branch on mid/high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `af716652b22cc4c159ab31b60145cc4d06f72c736f941d61eb6f569be51fd87d`
+- Public score on file: `0.94985`
+- Source original local score: `0.9502841235052951`
+- Purpose: after the GBM-only miss, return to the broader 36-row GBM/CAT branch and add a mid/high-public source already covered by XGB but missing from GBM/CAT. This expands coverage beyond the high-public tail.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha af716652b22cc4c159ab31b60145cc4d06f72c736f941d61eb6f569be51fd87d --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:36:11+02:00`
+- elapsed since original start = `11:20:13`
+- estimated remaining = `00:39:47`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:36:46+02:00` |
+| source_sha256 | `af716652b22cc4c159ab31b60145cc4d06f72c736f941d61eb6f569be51fd87d` |
+| public_score | `0.94985` |
+| source_original_local_score | `0.9502841235052951` |
+| local_score | `0.9501382196397291` |
+| local_minus_public | `+0.0002882196397291` |
+| absolute_error | `0.0002882196397291` |
+| runtime | `78.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T123646` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 36 to 37 attempted rows.
+- `mae` worsened slightly from `0.000271635658` to `0.000272083874`.
+- `bias` moved to `+0.000210186588`.
+- The profile remains the best `n>=30` raw-MAE candidate and still materially beats the 54-row XGB incumbent's MAE.
+
+### 2026-07-08T12:38:31+02:00 - continue GBM/CAT branch on lower-original-local mid/high-public source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `825e84322fa16827c9395f7ed1c273dcf4bc97f1602248d17c4712fbd90cdc05`
+- Public score on file: `0.94985`
+- Source original local score: `0.9501867619535062`
+- Purpose: add a mid/high-public source whose original local score is lower than the recent overprediction cases. This checks whether GBM/CAT calibration improves on less overfit-looking artifacts.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 825e84322fa16827c9395f7ed1c273dcf4bc97f1602248d17c4712fbd90cdc05 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:38:31+02:00`
+- elapsed since original start = `11:22:33`
+- estimated remaining = `00:37:27`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:39:01+02:00` |
+| source_sha256 | `825e84322fa16827c9395f7ed1c273dcf4bc97f1602248d17c4712fbd90cdc05` |
+| public_score | `0.94985` |
+| source_original_local_score | `0.9501867619535062` |
+| local_score | `0.9495029606731841` |
+| local_minus_public | `-0.0003470393268159` |
+| absolute_error | `0.0003470393268159` |
+| runtime | `35.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T123901` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 37 to 38 attempted rows.
+- `mae` worsened from `0.000272083874` to `0.000274056386`.
+- `bias` improved in magnitude to `+0.000195522748`, but again partly from an underprediction.
+- The profile remains well below the XGB incumbent's MAE but not as low as the earlier 30-row estimate.
+
+### 2026-07-08T12:40:04+02:00 - continue GBM/CAT branch on mid-ranked source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `f477136d74111bf8006f3b8c39f2875db25ccece2462d35c31d8e0c9a903fe2e`
+- Public score on file: `0.94984`
+- Source original local score: `0.9504160789455423`
+- Purpose: add another mid-ranked public source from the XGB-covered set. This continues broadening the GBM/CAT evidence instead of relying on early favorable rows.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha f477136d74111bf8006f3b8c39f2875db25ccece2462d35c31d8e0c9a903fe2e --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:40:04+02:00`
+- elapsed since original start = `11:24:06`
+- estimated remaining = `00:35:54`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:40:36+02:00` |
+| source_sha256 | `f477136d74111bf8006f3b8c39f2875db25ccece2462d35c31d8e0c9a903fe2e` |
+| public_score | `0.94984` |
+| source_original_local_score | `0.9504160789455423` |
+| local_score | `0.9500800077853965` |
+| local_minus_public | `+0.0002400077853965` |
+| absolute_error | `0.0002400077853965` |
+| runtime | `67.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124036` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 38 to 39 attempted rows.
+- `mae` improved from `0.000274056386` to `0.000273183345`.
+- `bias` stayed near `+0.000196663390`.
+- This is a useful stabilizing row; continue to at least 40 rows while enough time remains.
+
+### 2026-07-08T12:42:15+02:00 - continue GBM/CAT branch to 40 rows
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `2c42837709505def9f2a8b93c0ab4d0d4912254e3b9724be3826f67156912319`
+- Public score on file: `0.94982`
+- Source original local score: `0.9503217530308609`
+- Purpose: reach 40 rows for the main lower-MAE profile using another mid-ranked, already public-scored source from the XGB-covered set.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 2c42837709505def9f2a8b93c0ab4d0d4912254e3b9724be3826f67156912319 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:42:15+02:00`
+- elapsed since original start = `11:26:17`
+- estimated remaining = `00:33:43`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:42:43+02:00` |
+| source_sha256 | `2c42837709505def9f2a8b93c0ab4d0d4912254e3b9724be3826f67156912319` |
+| public_score | `0.94982` |
+| source_original_local_score | `0.9503217530308609` |
+| local_score | `0.9492978388080603` |
+| local_minus_public | `-0.0005221611919397` |
+| absolute_error | `0.0005221611919397` |
+| runtime | `41.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124243` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 39 to 40 attempted rows.
+- `mae` worsened from `0.000273183345` to `0.000279407791`.
+- `bias` improved to `+0.000178692776`, but the row exposed another underprediction in the mid-public band.
+- The profile remains materially better calibrated than the XGB incumbent, though the 30-row MAE estimate was optimistic.
+
+### 2026-07-08T12:43:55+02:00 - continue GBM/CAT branch on representative mid-ranked source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `67b2500c70b15f7af4c88193c1facaf75d04da3626b90e3fc72c461241b73d25`
+- Public score on file: `0.94978`
+- Source original local score: `0.9503758713890726`
+- Purpose: add a representative mid-ranked source from the original calibration set that is still missing from the expanded GBM/CAT profile.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 67b2500c70b15f7af4c88193c1facaf75d04da3626b90e3fc72c461241b73d25 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:43:55+02:00`
+- elapsed since original start = `11:27:57`
+- estimated remaining = `00:32:03`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:44:25+02:00` |
+| source_sha256 | `67b2500c70b15f7af4c88193c1facaf75d04da3626b90e3fc72c461241b73d25` |
+| public_score | `0.94978` |
+| source_original_local_score | `0.9503758713890726` |
+| local_score | `0.9492440981320328` |
+| local_minus_public | `-0.0005359018679671` |
+| absolute_error | `0.0005359018679671` |
+| runtime | `34.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124425` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 40 to 41 attempted rows.
+- `mae` worsened from `0.000279407791` to `0.000285663744`.
+- `bias` fell to `+0.000161263638` due to another underprediction.
+- The branch is still much better calibrated than XGB, but the expanded evidence is now weaker than the early 30-row estimate.
+
+### 2026-07-08T12:45:34+02:00 - continue GBM/CAT branch on high-local weak-public disagreement source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `4921e3d2c4e5ed0cb8999a2f02afe5e537e853953a368bfee29cbaeca1ae2f0e`
+- Public score on file: `0.94974`
+- Source original local score: `0.9505126264546592`
+- Purpose: add a high-local/weak-public disagreement source. This tests whether the profile can dampen original CV optimism on one of the specific failure modes the continuation plan called out.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 4921e3d2c4e5ed0cb8999a2f02afe5e537e853953a368bfee29cbaeca1ae2f0e --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:45:34+02:00`
+- elapsed since original start = `11:29:36`
+- estimated remaining = `00:30:24`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:46:06+02:00` |
+| source_sha256 | `4921e3d2c4e5ed0cb8999a2f02afe5e537e853953a368bfee29cbaeca1ae2f0e` |
+| public_score | `0.94974` |
+| source_original_local_score | `0.9505126264546592` |
+| local_score | `0.9501980994310172` |
+| local_minus_public | `+0.0004580994310172` |
+| absolute_error | `0.0004580994310172` |
+| runtime | `63.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124606` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 41 to 42 attempted rows.
+- `mae` worsened from `0.000285663744` to `0.000289769355`.
+- `bias` moved to `+0.000168331157`.
+- This high-local/weak-public case shows the GBM/CAT branch still does not fully suppress original CV optimism.
+
+### 2026-07-08T12:47:41+02:00 - continue disagreement stress test
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `11b30d8ec939b50d1768165296e29938f4c5d282bb98652ddf1562c642c637f8`
+- Public score on file: `0.94973`
+- Source original local score: `0.9505241961071312`
+- Purpose: add another high-local/weak-public disagreement source adjacent to `4921e3...`, to determine whether the recent overprediction is isolated or systematic in this band.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 11b30d8ec939b50d1768165296e29938f4c5d282bb98652ddf1562c642c637f8 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:47:41+02:00`
+- elapsed since original start = `11:31:43`
+- estimated remaining = `00:28:17`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:48:08+02:00` |
+| source_sha256 | `11b30d8ec939b50d1768165296e29938f4c5d282bb98652ddf1562c642c637f8` |
+| public_score | `0.94973` |
+| source_original_local_score | `0.9505241961071312` |
+| local_score | `0.9497741580563074` |
+| local_minus_public | `+0.0000441580563074` |
+| absolute_error | `0.0000441580563074` |
+| runtime | `43.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124808` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 42 to 43 attempted rows.
+- `mae` improved from `0.000289769355` to `0.000284057465`.
+- `bias` stayed controlled at `+0.000165443410`.
+- This source shows the profile can correct some high-local/weak-public artifacts, but not consistently enough to call the conclusion strong.
+
+### 2026-07-08T12:49:23+02:00 - continue GBM/CAT branch on lower-original-local source
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `5fcfa02f8dc86461df87c353c110c399fb96ea010a30221462d2356e80a9a492`
+- Public score on file: `0.94962`
+- Source original local score: `0.9500636197107002`
+- Purpose: add a lower-original-local source that the XGB incumbent fit almost exactly. This tests whether GBM/CAT remains calibrated outside high-local disagreement cases.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 5fcfa02f8dc86461df87c353c110c399fb96ea010a30221462d2356e80a9a492 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:49:23+02:00`
+- elapsed since original start = `11:33:25`
+- estimated remaining = `00:26:35`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:49:51+02:00` |
+| source_sha256 | `5fcfa02f8dc86461df87c353c110c399fb96ea010a30221462d2356e80a9a492` |
+| public_score | `0.94962` |
+| source_original_local_score | `0.9500636197107002` |
+| local_score | `0.9493469464206982` |
+| local_minus_public | `-0.0002730535793019` |
+| absolute_error | `0.0002730535793019` |
+| runtime | `47.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T124951` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 43 to 44 attempted rows.
+- `mae` improved slightly from `0.000284057465` to `0.000283807376`.
+- `bias` moved down to `+0.000155477570`.
+- `spearman` improved to `0.372999670687`, but top-3 hit remains `0.333333333333`.
+
+### 2026-07-08T12:51:14+02:00 - final low-public stress run if time allows
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `a219ad06ee508068e0b35b28ce104248db9cad6bd80971482b7978898098df04`
+- Public score on file: `0.94943`
+- Source original local score: `0.950325196597429`
+- Purpose: add a low-public/high-local stress source near the end of the time budget. This checks whether the profile can identify weak-public artifacts, not only calibrate mid/high-public rows.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha a219ad06ee508068e0b35b28ce104248db9cad6bd80971482b7978898098df04 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:51:14+02:00`
+- elapsed since original start = `11:35:16`
+- estimated remaining = `00:24:44`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:51:47+02:00` |
+| source_sha256 | `a219ad06ee508068e0b35b28ce104248db9cad6bd80971482b7978898098df04` |
+| public_score | `0.94943` |
+| source_original_local_score | `0.950325196597429` |
+| local_score | `0.9501478540353464` |
+| local_minus_public | `+0.0007178540353464` |
+| absolute_error | `0.0007178540353464` |
+| runtime | `62.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T125147` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 44 to 45 attempted rows.
+- `mae` worsened from `0.000283807376` to `0.000293452858`.
+- `bias` stayed near `+0.000167974824`.
+- Low-public/high-local artifacts remain the main failure mode for this branch.
+
+### 2026-07-08T12:53:30+02:00 - final low-public stress run before stop-threshold check
+
+Planned next experiment:
+
+- Profile: `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`
+- Source SHA: `22a7e9d707ba8f7dd43d36780a8ba0bd83bc5c6f90349a89c295652366842f85`
+- Public score on file: `0.94939`
+- Source original local score: `0.9502898050143522`
+- Purpose: one more low-public/high-local stress source while there is still enough time for a safe fast run. After this, reassess against the less-than-20-minutes stop rule.
+
+Validation before rerun:
+
+- Active rerun check: no `scripts/rerun_autogluon_profile.py` process found.
+
+Next command:
+
+```bash
+uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 22a7e9d707ba8f7dd43d36780a8ba0bd83bc5c6f90349a89c295652366842f85 --profile s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m --timeout 1800 --execute
+```
+
+Budget check:
+
+- timestamp = `2026-07-08T12:53:30+02:00`
+- elapsed since original start = `11:37:32`
+- estimated remaining = `00:22:28`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T12:54:05+02:00` |
+| source_sha256 | `22a7e9d707ba8f7dd43d36780a8ba0bd83bc5c6f90349a89c295652366842f85` |
+| public_score | `0.94939` |
+| source_original_local_score | `0.9502898050143522` |
+| local_score | `0.9502033985512172` |
+| local_minus_public | `+0.0008133985512172` |
+| absolute_error | `0.0008133985512172` |
+| runtime | `103.03s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T125405` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` increased from 45 to 46 attempted rows.
+- `mae` worsened from `0.000293452858` to `0.000304756025`.
+- `bias` moved to `+0.000182005775`.
+- The low-public/high-local tail remains the main weakness of the lower-MAE profile.
+
+## 2026-07-08T12:56:23+02:00 - Final budget stop and conclusion
+
+Stopping rule:
+
+- Current time: `2026-07-08T12:56:23+02:00`
+- Original task start: `2026-07-08T01:15:58+02:00`
+- Original 12-hour deadline: `2026-07-08T13:15:58+02:00`
+- Elapsed from original task start: `11:40:25`
+- Estimated remaining: `00:19:35`
+- Stop reason: less than 20 minutes remain, and no further safe fast experiment should be started.
+
+Additional continuation work after the earlier stop:
+
+- Expanded `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` from 30 to 46 rows.
+- Probed `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` from 11 to 16 rows.
+- Recomputed the fast-profile summary after every rerun.
+- No Kaggle submissions were made.
+- No candidate solution code was modified.
+
+Final current-task profile snapshot:
+
+| profile | n | MAE | bias | bias-corrected MAE | Spearman | top-3 hit | interpretation |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `s6e7_fast_medium_xgb_seed123_balanced_10m` | 54 | 0.000500209638 | +0.000491328107 | 0.000219700142 | 0.317393615103 | 0.333333333333 | incumbent rank signal, but MAE is too high and strongly biased |
+| `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m` | 46 | 0.000304756025 | +0.000182005775 | 0.000253780157 | 0.310126795359 | 0.333333333333 | best broad lower-MAE candidate; similar weak rank signal to XGB |
+| `s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m` | 16 | 0.000278597980 | +0.000133948395 | 0.000262014156 | 0.168017731693 | 0.333333333333 | promising calibration but under-sampled and weak rank signal |
+| `s6e7_fast_medium_cat_seed42_noensemble_balanced_10m` | 9 | 0.000237649188 | -0.000123009465 | 0.000233019646 | 0.184102029926 | 0.000000000000 | low small-sample MAE but poor selector evidence |
+
+Conclusion:
+
+- The original XGB incumbent should not be treated as the final answer if raw MAE matters: its `0.000500209638` MAE is materially worse than the expanded GBM/CAT profile.
+- The best broad calibration profile from this run is `s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m`: `n=46`, MAE `0.000304756025`, bias `+0.000182005775`, average runtime about `57.67s`.
+- The conclusion is moderate for calibration and weak for ranking. GBM/CAT substantially reduces MAE versus XGB, but Spearman and top-3 hit are not materially better.
+- The low-public/high-local tail is the remaining failure mode. Rows such as `a219ad06...` and `22a7e9...` still overpredict public score by `0.0007+`.
+- If the next phase continues, prioritize methods that specifically reduce low-public/high-local overprediction rather than more generic source expansion.
