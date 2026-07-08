@@ -704,6 +704,9 @@ def test_autogluon_s6e7_fast_alignment_profiles_are_medium_screening_profiles(tm
     assert "s6e7_fast_medium_xgb_seed123_holdout30_balanced_10m" in candidate_names
     assert "s6e7_fast_medium_gbmcat_noensemble_balanced_10m" in candidate_names
     assert "s6e7_fast_medium_gbmcat_seed123_noensemble_balanced_10m" in candidate_names
+    assert "s6e7_fast_medium_gbmcat_seed123_nobalance_10m" in candidate_names
+    assert "s6e7_fast_medium_gbmcat_seed123_holdout22_balanced_10m" in candidate_names
+    assert "s6e7_fast_medium_gbmcat_seed123_holdout25_balanced_10m" in candidate_names
     assert "s6e7_fast_medium_gbmcat_seed777_noensemble_balanced_10m" in candidate_names
     assert "s6e7_fast_medium_gbm_seed123_noensemble_balanced_10m" in candidate_names
     assert "s6e7_fast_medium_cat_seed123_noensemble_balanced_10m" in candidate_names
@@ -1000,6 +1003,67 @@ def test_autogluon_s6e7_fast_medium_profile_variants(tmp_path):
     assert settings["presets"] == "medium_quality"
     assert settings["time_limit"] == 600
     assert settings["validation_fraction"] == 0.2
+    assert settings["validation_strategy"] == "holdout"
+    assert settings["seed"] == 123
+    assert settings["class_balance"] == "balanced"
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = "s6e7_fast_medium_gbmcat_seed123_nobalance_10m"
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["GBM", "CAT"]
+    assert settings["presets"] == "medium_quality"
+    assert settings["time_limit"] == 600
+    assert settings["validation_fraction"] == 0.2
+    assert settings["validation_strategy"] == "holdout"
+    assert settings["seed"] == 123
+    assert "class_balance" not in settings
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = (
+        "s6e7_fast_medium_gbmcat_seed123_holdout22_balanced_10m"
+    )
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["GBM", "CAT"]
+    assert settings["presets"] == "medium_quality"
+    assert settings["time_limit"] == 600
+    assert settings["validation_fraction"] == 0.22
+    assert settings["validation_strategy"] == "holdout"
+    assert settings["seed"] == 123
+    assert settings["class_balance"] == "balanced"
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = (
+        "s6e7_fast_medium_gbmcat_seed123_holdout25_balanced_10m"
+    )
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["included_model_types"] == ["GBM", "CAT"]
+    assert settings["presets"] == "medium_quality"
+    assert settings["time_limit"] == 600
+    assert settings["validation_fraction"] == 0.25
     assert settings["validation_strategy"] == "holdout"
     assert settings["seed"] == 123
     assert settings["class_balance"] == "balanced"
