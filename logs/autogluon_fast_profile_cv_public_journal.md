@@ -15169,5 +15169,168 @@ Budget check:
 - timestamp = `2026-07-08T11:31:48+02:00`
 - elapsed since original start = 10:15:50
 - estimated remaining = 01:44:10
+
+### 2026-07-08T11:40:14+02:00 - incumbent source expansion (high-public source)
+
+Attempted next experiment:
+
+- Profile: `s6e7_fast_medium_xgb_seed123_balanced_10m`
+- Source SHA: `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da`
+- Command used:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da --profile s6e7_fast_medium_xgb_seed123_balanced_10m --timeout 1800 --fit-args-json '{"num_gpus":0,"hyperparameters":{"XGB":[{"ag_args":{"priority":999},"ag_args_fit":{"num_gpus":0},"device":"cpu","tree_method":"hist"}]}}' --execute
+```
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T11:40:14+02:00` |
+| source_sha256 | `0c752251dbed7d265137b9f3822e77eaacdfe37ef2a4e73c8e5851df914ae1da` |
+| public_score | `0.95` |
+| source_original_local_score | `0.9503646418250152` |
+| local_score | `0.9502793612827362` |
+| local_minus_public | `+0.0002793612827362` |
+| absolute_error | `0.0002793612827362` |
+| runtime | `64.03s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T114014` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_xgb_seed123_balanced_10m` increased from 32 to 33 attempted rows.
+- `mae` improved to `0.0005318997541713657` (from `0.0005397915814037146` before the rerun).
+- The profile remains positively biased and ordering remains weak versus public.
+
+Budget check:
+
+- timestamp = `2026-07-08T11:40:14+02:00`
+- elapsed since original start = `10:24:16`
+- estimated remaining = `01:35`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+
+### 2026-07-08T11:42:03+02:00 - incumbent source expansion (high-public source)
+
+Attempted next experiment:
+
+- Profile: `s6e7_fast_medium_xgb_seed123_balanced_10m`
+- Source SHA: `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994`
+- Command used:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994 --profile s6e7_fast_medium_xgb_seed123_balanced_10m --timeout 1800 --fit-args-json '{"num_gpus":0,"hyperparameters":{"XGB":[{"ag_args":{"priority":999},"ag_args_fit":{"num_gpus":0},"device":"cpu","tree_method":"hist"}]}}' --execute
+```
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T11:42:03+02:00` |
+| source_sha256 | `ba8a954dd27730de2c1b38902768a7e4f0d79ce05e940a94068329d68e71b994` |
+| public_score | `0.94994` |
+| source_original_local_score | `0.950454454451938` |
+| local_score | `0.9497001986434856` |
+| local_minus_public | `-0.0002398013565144` |
+| absolute_error | `0.0002398013565144` |
+| runtime | `22.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T114203` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_xgb_seed123_balanced_10m` increased from 33 to 34 attempted rows.
+- `mae` improved to `0.0005233086248285126` (from `0.0005318997541713657`).
+- Ranking correlation is unstable; this source reduced local score but confirms substantial source-specific variance in behavior.
+
+Budget check:
+
+- timestamp = `2026-07-08T11:42:03+02:00`
+- elapsed since original start = `10:26:05`
+- estimated remaining = `01:33`
+
+### 2026-07-08T11:43:08+02:00 - incumbent source expansion (low-overhead but slower fold)
+
+Attempted next experiment:
+
+- Profile: `s6e7_fast_medium_xgb_seed123_balanced_10m`
+- Source SHA: `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef`
+- Command used:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef --profile s6e7_fast_medium_xgb_seed123_balanced_10m --timeout 1800 --fit-args-json '{"num_gpus":0,"hyperparameters":{"XGB":[{"ag_args":{"priority":999},"ag_args_fit":{"num_gpus":0},"device":"cpu","tree_method":"hist"}]}}' --execute
+```
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T11:43:08+02:00` |
+| source_sha256 | `40dffa8dc84538fd54a1d30a1c448e773d40281895bf78ea083053b0a496fdef` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9503877788721176` |
+| local_score | `0.9499891395274949` |
+| local_minus_public | `+0.0000691395274949` |
+| absolute_error | `0.0000691395274949` |
+| runtime | `120.04s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-smiling-topaz-oarfish/artifacts/20260708T114308` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_xgb_seed123_balanced_10m` increased from 34 to 35 attempted rows.
+- `mae` improved to `0.0005103323649046944`.
+- Top-k rankings unchanged on first-pass summary and this run is now near the source-local median.
+
+Budget check:
+
+- timestamp = `2026-07-08T11:43:08+02:00`
+- elapsed since original start = `10:27:10`
+- estimated remaining = `01:32`
+
+### 2026-07-08T11:45:34+02:00 - incumbent source expansion (run migrated)
+
+Attempted next experiment:
+
+- Profile: `s6e7_fast_medium_xgb_seed123_balanced_10m`
+- Source SHA: `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7`
+- Command used:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --sha 442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7 --profile s6e7_fast_medium_xgb_seed123_balanced_10m --timeout 1800 --fit-args-json '{"num_gpus":0,"hyperparameters":{"XGB":[{"ag_args":{"priority":999},"ag_args_fit":{"num_gpus":0},"device":"cpu","tree_method":"hist"}]}}' --execute
+```
+
+Result:
+
+| field | value |
+|---|---:|
+| timestamp | `2026-07-08T11:45:34+02:00` |
+| source_sha256 | `442fb07ba2688f91593ec497638babe797d98da5ef9053f225618570cb9e57a7` |
+| public_score | `0.94992` |
+| source_original_local_score | `0.9505045755861015` |
+| local_score | `0.950217147497682` |
+| local_minus_public | `+0.000297147497682` |
+| absolute_error | `0.000297147497682` |
+| runtime | `36.02s` |
+| exec_status | `ok` |
+| artifact_dir | `logs/2-vociferous-tortoise-of-perspective/artifacts/20260708T114534` |
+
+Post-run impact:
+
+- `s6e7_fast_medium_xgb_seed123_balanced_10m` increased from 35 to 36 attempted rows.
+- `mae` improved to `0.000504410563037399`.
+
+Budget check:
+
+- timestamp = `2026-07-08T11:45:34+02:00`
+- elapsed since original start = `10:29:36`
+- estimated remaining = `01:30`
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
+- 12-hour budget reached? = no
+- enough time for another safe fast rerun? = yes
 - 12-hour budget reached? no
 - enough time for another fast rerun? yes
