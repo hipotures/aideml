@@ -130,7 +130,6 @@ class ResolvedModelConfig:
     reasoning_effort: str | None
 
 
-VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh"}
 AGENT_MODE_ALIASES = {"autogluon": "autogluon_preprocess"}
 DEPRECATED_CONFIG_KEYS = (
     "agent.search.seeded_base_max_children",
@@ -143,13 +142,10 @@ def _split_model_effort(model: str) -> tuple[str, str | None]:
     if ":" not in model:
         return model, None
     base, suffix = model.rsplit(":", 1)
-    if suffix not in VALID_REASONING_EFFORTS:
-        raise ValueError(
-            f"Invalid reasoning effort suffix in model {model!r}. "
-            f"Expected one of: {', '.join(sorted(VALID_REASONING_EFFORTS))}."
-        )
     if not base:
         raise ValueError(f"Invalid empty model name in {model!r}.")
+    if not suffix:
+        raise ValueError(f"Invalid empty reasoning effort suffix in model {model!r}.")
     return base, suffix
 
 
@@ -171,11 +167,8 @@ def resolve_model_config(
                 f"{model!r} and reasoning_effort={reasoning_effort!r}."
             )
         reasoning_effort = suffix_effort
-    if reasoning_effort is not None and reasoning_effort not in VALID_REASONING_EFFORTS:
-        raise ValueError(
-            f"Invalid reasoning_effort {reasoning_effort!r}. "
-            f"Expected one of: {', '.join(sorted(VALID_REASONING_EFFORTS))}."
-        )
+    if reasoning_effort == "":
+        raise ValueError("Invalid empty reasoning_effort.")
     return ResolvedModelConfig(base_model, reasoning_effort)
 
 

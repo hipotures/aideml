@@ -19,6 +19,36 @@ def test_resolve_model_config_splits_reasoning_effort_suffix():
     assert resolved.reasoning_effort == "low"
 
 
+@pytest.mark.parametrize(
+    ("model", "reasoning_effort"),
+    [
+        ("gpt-5.6-luna:max", None),
+        ("gpt-5.6-luna", "max"),
+        ("gpt-future:ultra", None),
+        ("gpt-future", "ultra"),
+    ],
+)
+def test_resolve_model_config_accepts_backend_reasoning_effort(
+    model, reasoning_effort
+):
+    resolved = resolve_model_config(model, reasoning_effort)
+
+    assert resolved.model == model.split(":", 1)[0]
+    assert resolved.reasoning_effort == (reasoning_effort or model.rsplit(":", 1)[1])
+
+
+@pytest.mark.parametrize(
+    ("model", "reasoning_effort"),
+    [
+        ("gpt-5.6-luna:", None),
+        ("gpt-5.6-luna", ""),
+    ],
+)
+def test_resolve_model_config_rejects_empty_reasoning_effort(model, reasoning_effort):
+    with pytest.raises(ValueError, match="empty reasoning_effort|empty reasoning effort"):
+        resolve_model_config(model, reasoning_effort)
+
+
 def test_load_cfg_rejects_cli_model_suffix_and_explicit_reasoning_effort():
     with pytest.raises(ValueError, match="agent.code"):
         _load_cfg(
@@ -74,6 +104,20 @@ def test_load_cfg_ignores_dotenv_by_default_under_pytest(tmp_path, monkeypatch):
 
     assert cfg.agent.code.model == "gpt-5.4-mini"
     assert cfg.agent.code.reasoning_effort == "low"
+
+
+def test_agent_code_model_env_accepts_backend_reasoning_effort(tmp_path, monkeypatch):
+    monkeypatch.delenv("AIDE_AGENT_CODE_MODEL", raising=False)
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_CODE_MODEL=gpt-5.6-luna:max\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path, load_env=True), load_env=True)
+
+    assert cfg.agent.code.model == "gpt-5.6-luna"
+    assert cfg.agent.code.reasoning_effort == "max"
 
 
 def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypatch):
