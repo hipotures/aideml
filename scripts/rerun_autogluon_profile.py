@@ -48,6 +48,17 @@ from scripts import kaggle_submission_lab as lab
 
 
 DEFAULT_PROFILE = "full_boost"
+CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES = ["XGB", "GBM", "CAT"]
+PROFILE_CALIBRATION_PRESETS = {"medium_quality"}
+PROFILE_CALIBRATION_MAX_TIME_LIMIT = 600
+PROFILE_CALIBRATION_RESERVED_FIT_ARG_KEYS = frozenset(
+    {
+        "hyperparameters",
+        "included_model_types",
+        "presets",
+        "time_limit",
+    }
+)
 
 COMPETITION_AUTOGLUON_DEFAULTS: dict[str, dict[str, Any]] = {
     "playground-series-s6e6": {
@@ -74,6 +85,11 @@ def _record_path(value: Any) -> Path:
     if not text:
         return Path("/__aideml_missing_path__")
     return resolve_portable_path(text)
+
+
+def _source_solution_sha256(source_record: dict[str, Any]) -> str | None:
+    solution_path = _record_path(source_record.get("solution_path"))
+    return lab.sha256_file(solution_path) if solution_path.exists() else None
 
 
 def _file_entry(path: Path, *, base_dir: Path) -> dict[str, Any] | None:
@@ -221,6 +237,154 @@ def build_profile_config(
 
     cfg.agent.autogluon.profiles[profile] = profile_settings
     return cfg
+
+
+def profile_calibration_model_family_invalid_reason(
+    included_model_types: list[str],
+) -> str | None:
+    normalized = [str(model).strip().upper() for model in included_model_types]
+    required = CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES
+    if normalized == required:
+        return None
+    if "CAT" not in normalized:
+        return "catboost_omitted_from_required_model_family"
+    if set(normalized) == set(required):
+        return "required_model_family_incomplete"
+    return "required_model_family_changed"
+
+
+def validate_profile_calibration_settings(
+    *,
+    included_model_types: list[str],
+    presets: str,
+    time_limit: int,
+) -> None:
+    errors: list[str] = []
+    family_reason = profile_calibration_model_family_invalid_reason(
+        included_model_types
+    )
+    if family_reason is not None:
+        errors.append(
+            "included_model_types must be "
+            f"{CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES} ({family_reason})"
+        )
+    if presets.strip().lower() not in PROFILE_CALIBRATION_PRESETS:
+        errors.append("presets must be medium_quality")
+    if not 0 < time_limit <= PROFILE_CALIBRATION_MAX_TIME_LIMIT:
+        errors.append(f"time_limit must be <= {PROFILE_CALIBRATION_MAX_TIME_LIMIT}")
+    if errors:
+        raise ValueError("Profile calibration requires " + "; ".join(errors) + ".")
+
+
+def validate_profile_calibration_fit_args(fit_args: dict[str, Any] | None) -> None:
+    if fit_args is None:
+        return
+    reserved = sorted(
+        str(key)
+        for key in fit_args
+        if str(key) in PROFILE_CALIBRATION_RESERVED_FIT_ARG_KEYS
+    )
+    if reserved:
+        raise ValueError(
+            "Profile calibration fit_args cannot override reserved settings: "
+            + ", ".join(reserved)
+            + "."
+        )
+
+
+def _model_family_from_autogluon_model_name(value: Any) -> str | None:
+    model_name = str(value or "").strip().upper()
+    if "LIGHTGBM" in model_name or model_name.startswith("GBM"):
+        return "GBM"
+    if "CATBOOST" in model_name or model_name.startswith("CAT"):
+        return "CAT"
+    if "XGBOOST" in model_name or model_name.startswith("XGB"):
+        return "XGB"
+    return None
+
+
+def _model_types_from_run_stats(
+    run_stats: Any,
+    *,
+    require_can_infer: bool,
+) -> list[str]:
+    if not isinstance(run_stats, dict):
+        return []
+    models = run_stats.get("models")
+    if not isinstance(models, list):
+        return []
+    trained = {
+        model_family
+        for model in models
+        if isinstance(model, dict)
+        and (not require_can_infer or model.get("can_infer") is True)
+        and (
+            model_family := _model_family_from_autogluon_model_name(model.get("model"))
+        )
+        is not None
+    }
+    return [
+        model_type
+        for model_type in CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES
+        if model_type in trained
+    ]
+
+
+def trained_model_types_from_run_stats(run_stats: Any) -> list[str]:
+    return _model_types_from_run_stats(run_stats, require_can_infer=False)
+
+
+def eligible_model_types_from_run_stats(run_stats: Any) -> list[str]:
+    return _model_types_from_run_stats(run_stats, require_can_infer=True)
+
+
+def missing_required_model_types(trained_model_types: list[str]) -> list[str]:
+    trained = {str(model).strip().upper() for model in trained_model_types}
+    return [
+        model_type
+        for model_type in CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES
+        if model_type not in trained
+    ]
+
+
+def profile_calibration_rerun_invalid_reason(
+    *,
+    is_ok: bool,
+    all_required_model_types_trained: bool,
+    source_code_unchanged: bool,
+) -> str | None:
+    if not source_code_unchanged:
+        return "candidate_source_code_changed"
+    if not all_required_model_types_trained:
+        return "required_model_family_not_fully_trained"
+    if not is_ok:
+        return "rerun_execution_failed"
+    return None
+
+
+def validate_profile_calibration_profile(
+    *,
+    profile: str,
+    competition: str,
+    presets: str | None,
+    time_limit: int | None,
+    fit_args: dict[str, Any] | None,
+) -> None:
+    cfg = build_profile_config(
+        source_record={},
+        profile=profile,
+        competition=competition,
+        presets=presets,
+        time_limit=time_limit,
+        fit_args=fit_args,
+    )
+    settings = resolve_autogluon_settings(cfg)
+    validate_profile_calibration_settings(
+        included_model_types=resolve_autogluon_included_model_types(cfg),
+        presets=str(settings["presets"]),
+        time_limit=int(settings["time_limit"]),
+    )
+    validate_profile_calibration_fit_args(settings.get("fit_args"))
 
 
 def build_profile_code(
@@ -417,60 +581,72 @@ def execute_code(
     env = os.environ.copy()
     env["AIDE_NODE_ARTIFACT_DIR"] = str(artifact_dir.resolve())
     start_time = time.time()
-
-    proc = subprocess.Popen(
-        [sys.executable, str(runfile.name)],
-        cwd=str(workspace_dir),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        start_new_session=True,
-        preexec_fn=limit_child_memory,
-    )
-    try:
-        if console is None or progress_time_limit is None:
-            output_text, _ = proc.communicate(timeout=timeout)
-        else:
-            progress = Progress(
-                TextColumn("{task.description}"),
-                BarColumn(),
-                TextColumn("{task.fields[elapsed_text]} / {task.fields[target_text]}"),
-                console=console,
-            )
-            with progress:
-                task_id = progress.add_task(
-                    f"Running AutoGluon ({artifact_dir.name})",
-                    total=max(1, int(progress_time_limit)),
-                    elapsed_text="00:00",
-                    target_text=_format_seconds(progress_time_limit),
+    process_stdout_path = artifact_dir / "process_stdout.log"
+    timed_out = False
+    with process_stdout_path.open("w") as process_stdout:
+        proc = subprocess.Popen(
+            [sys.executable, str(runfile.name)],
+            cwd=str(workspace_dir),
+            env=env,
+            stdout=process_stdout,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+            preexec_fn=limit_child_memory,
+        )
+        try:
+            if console is None or progress_time_limit is None:
+                proc.wait(timeout=timeout)
+            else:
+                progress = Progress(
+                    TextColumn("{task.description}"),
+                    BarColumn(),
+                    TextColumn("{task.fields[elapsed_text]} / {task.fields[target_text]}"),
+                    console=console,
                 )
-                while proc.poll() is None:
-                    elapsed = time.time() - start_time
+                with progress:
+                    task_id = progress.add_task(
+                        f"Running AutoGluon ({artifact_dir.name})",
+                        total=max(1, int(progress_time_limit)),
+                        elapsed_text="00:00",
+                        target_text=_format_seconds(progress_time_limit),
+                    )
+                    while proc.poll() is None:
+                        elapsed = time.time() - start_time
+                        progress.update(
+                            task_id,
+                            completed=min(elapsed, float(progress_time_limit)),
+                            elapsed_text=_format_seconds(elapsed),
+                        )
+                        if elapsed >= timeout:
+                            raise subprocess.TimeoutExpired(proc.args, timeout)
+                        time.sleep(1.0)
+                    proc.wait(timeout=5)
                     progress.update(
                         task_id,
-                        completed=min(elapsed, float(progress_time_limit)),
-                        elapsed_text=_format_seconds(elapsed),
+                        completed=min(time.time() - start_time, float(progress_time_limit)),
+                        elapsed_text=_format_seconds(time.time() - start_time),
                     )
-                    if elapsed >= timeout:
-                        raise subprocess.TimeoutExpired(proc.args, timeout)
-                    time.sleep(1.0)
-                output_text, _ = proc.communicate(timeout=5)
-                progress.update(
-                    task_id,
-                    completed=min(time.time() - start_time, float(progress_time_limit)),
-                    elapsed_text=_format_seconds(time.time() - start_time),
-                )
-        exec_time = time.time() - start_time
-    except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGINT)
-        try:
-            output_text, _ = proc.communicate(timeout=5)
+            exec_time = time.time() - start_time
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
-            output_text, _ = proc.communicate()
-        exec_time = float(timeout)
-        (artifact_dir / "process_stdout.log").write_text(output_text)
+            try:
+                os.killpg(proc.pid, signal.SIGINT)
+            except ProcessLookupError:
+                pass
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.wait()
+            exec_time = float(timeout)
+            timed_out = True
+        process_stdout.flush()
+
+    output_text = process_stdout_path.read_text()
+    if timed_out:
         return ExecutionResult(
             [output_text, f"TimeoutError: Execution exceeded the time limit of {timeout} seconds"],
             exec_time,
@@ -480,7 +656,6 @@ def execute_code(
         )
 
     output = [output_text]
-    (artifact_dir / "process_stdout.log").write_text(output_text)
     if proc.returncode == 0:
         output.append(
             f"Execution time: {exec_time:.0f} seconds (time limit is {timeout} seconds)."
@@ -529,11 +704,73 @@ def run_profile_eval(
     memory_limit_gb: float | None = 80.0,
     console: Console | None = None,
     whole_solution_path: Path | None = None,
+    profile_calibration: bool = False,
+    profile_calibration_session_id: str | None = None,
 ) -> dict[str, Any]:
     if source_record.get("kind") not in {"source_node", "profile_eval"}:
         raise ValueError("Source record must be a source_node or profile_eval.")
     if not source_record.get("sha256"):
         raise ValueError("Source record has no sha256.")
+    if profile_calibration:
+        if source_record.get("kind") != "source_node":
+            raise ValueError(
+                "Profile calibration requires an original source_node artifact."
+            )
+        if whole_solution_path is not None:
+            raise ValueError(
+                "Profile calibration must rebuild the source preprocess with the selected profile."
+            )
+        if not str(profile_calibration_session_id or "").strip():
+            raise ValueError("Profile calibration requires a session ID.")
+        validate_profile_calibration_profile(
+            profile=profile,
+            competition=competition,
+            presets=presets,
+            time_limit=time_limit,
+            fit_args=fit_args,
+        )
+
+    source_code_sha256_before = _source_solution_sha256(source_record)
+    if profile_calibration and source_code_sha256_before is None:
+        raise ValueError("Profile calibration source solution is missing.")
+
+    if whole_solution_path is None:
+        code, included_model_types, resolved_time_limit, autogluon_presets = build_profile_code(
+            source_record=source_record,
+            profile=profile,
+            competition=competition,
+            presets=presets,
+            time_limit=time_limit,
+            fit_args=fit_args,
+        )
+        output_profile = profile
+        resolved_profile_settings = resolve_autogluon_settings(
+            build_profile_config(
+                source_record=source_record,
+                profile=profile,
+                competition=competition,
+                presets=presets,
+                time_limit=time_limit,
+                fit_args=fit_args,
+            )
+        )
+    else:
+        code, included_model_types, resolved_time_limit, autogluon_presets = (
+            build_whole_solution_code(
+                source_record=source_record,
+                whole_solution_path=whole_solution_path,
+                presets=presets,
+                time_limit=time_limit,
+            )
+        )
+        output_profile = source_record.get("profile") or profile
+        resolved_profile_settings = {}
+    if profile_calibration:
+        validate_profile_calibration_settings(
+            included_model_types=included_model_types,
+            presets=autogluon_presets,
+            time_limit=resolved_time_limit,
+        )
 
     run = str(source_record["run"])
     run_dir = Path(logs_dir) / run
@@ -548,26 +785,6 @@ def run_profile_eval(
         except FileExistsError:
             time.sleep(1.0)
 
-    if whole_solution_path is None:
-        code, included_model_types, resolved_time_limit, autogluon_presets = build_profile_code(
-            source_record=source_record,
-            profile=profile,
-            competition=competition,
-            presets=presets,
-            time_limit=time_limit,
-            fit_args=fit_args,
-        )
-        output_profile = profile
-    else:
-        code, included_model_types, resolved_time_limit, autogluon_presets = (
-            build_whole_solution_code(
-                source_record=source_record,
-                whole_solution_path=whole_solution_path,
-                presets=presets,
-                time_limit=time_limit,
-            )
-        )
-        output_profile = source_record.get("profile") or profile
     effective_timeout = resolve_process_timeout(timeout, resolved_time_limit)
     (artifact_dir / "solution.py").write_text(code)
     if console is not None:
@@ -620,6 +837,14 @@ def run_profile_eval(
     metric = marker.get("metric") if marker else None
     eval_metric = marker.get("eval_metric") if marker else None
     lower_is_better = bool(marker.get("lower_is_better")) if marker else False
+    run_stats = marker.get("run_stats") if marker else None
+    run_stats = dict(run_stats) if isinstance(run_stats, dict) else {}
+    trained_model_types = trained_model_types_from_run_stats(run_stats)
+    eligible_model_types = eligible_model_types_from_run_stats(run_stats)
+    failed_or_skipped_model_types = missing_required_model_types(eligible_model_types)
+    all_required_model_types_trained = not failed_or_skipped_model_types
+    selected_model = run_stats.get("selected_model")
+    ensemble_composition = run_stats.get("ensemble_composition")
     validation_error = None
     sample_path = _find_sample_submission(input_dir)
     submission_path = artifact_dir / "submission.csv"
@@ -642,6 +867,7 @@ def run_profile_eval(
         and validation_error is None
         and submission_path.exists()
         and source_record.get("local_score") is not None
+        and not profile_calibration
     ):
         metric = float(source_record["local_score"])
         eval_metric = eval_metric or source_record.get("eval_metric")
@@ -659,7 +885,39 @@ def run_profile_eval(
 
     source_sha = source_record.get("sha256")
     source_solution_path = source_record.get("solution_path")
-    source_solution_sha256 = source_record.get("source_solution_sha256")
+    source_solution_sha256 = (
+        source_record.get("source_solution_sha256") or source_code_sha256_before
+    )
+    source_code_sha256_after = _source_solution_sha256(source_record)
+    source_code_unchanged = (
+        source_code_sha256_before is not None
+        and source_code_sha256_before == source_code_sha256_after
+    )
+    calibration_invalid_reason = (
+        profile_calibration_rerun_invalid_reason(
+            is_ok=is_ok,
+            all_required_model_types_trained=all_required_model_types_trained,
+            source_code_unchanged=source_code_unchanged,
+        )
+        if profile_calibration
+        else None
+    )
+    calibration_metadata = (
+        {
+            "artifact_role": "profile_calibration_rerun",
+            "hide_from_submission_lab_default": True,
+            "not_a_submission_candidate": True,
+            "historical_only": False,
+            "profile_calibration_session_id": profile_calibration_session_id,
+            "valid_for_final_profile_selection": calibration_invalid_reason is None,
+            "valid_for_current_final_selection": calibration_invalid_reason is None,
+            "invalid_reason": calibration_invalid_reason,
+            "canonical_model_family": CANONICAL_PROFILE_CALIBRATION_MODEL_TYPES,
+            "model_family_changed": False,
+        }
+        if profile_calibration
+        else {}
+    )
     metadata = {
         "kind": "profile_eval",
         "competition": competition,
@@ -667,8 +925,11 @@ def run_profile_eval(
         "profile": output_profile,
         "autogluon_presets": autogluon_presets,
         "included_model_types": included_model_types,
+        "configured_model_types": included_model_types,
+        "resolved_profile_settings": resolved_profile_settings,
         "time_limit": resolved_time_limit,
         "process_timeout": effective_timeout,
+        "execution_exc_type": exec_result.exc_type,
         "local_score": float(metric) if metric is not None else None,
         "eval_metric": eval_metric,
         "metric_maximize": not lower_is_better,
@@ -688,7 +949,18 @@ def run_profile_eval(
             if recovered_submission_source is not None
             else None
         ),
+        "run_stats": run_stats,
+        "trained_model_types": trained_model_types,
+        "eligible_for_selection_model_types": eligible_model_types,
+        "failed_or_skipped_model_types": failed_or_skipped_model_types,
+        "all_required_model_types_trained": all_required_model_types_trained,
+        "selected_model": selected_model,
+        "ensemble_composition": ensemble_composition,
+        "source_code_sha256_before": source_code_sha256_before,
+        "source_code_sha256_after": source_code_sha256_after,
+        "source_code_unchanged": source_code_unchanged,
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        **calibration_metadata,
     }
     _write_json(artifact_dir / "submission_eval.json", metadata)
 
@@ -759,7 +1031,7 @@ def run_profile_eval(
             "process_timeout": effective_timeout,
             "use_gpu": None,
             "eval_metric": eval_metric,
-            "resolved_settings": {},
+            "resolved_settings": resolved_profile_settings,
         },
         "source": {
             "source_run": source_record.get("run"),
@@ -972,6 +1244,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--time-limit", type=int)
     parser.add_argument("--fit-args-json")
     parser.add_argument(
+        "--profile-calibration",
+        action="store_true",
+        help=(
+            "Require the canonical [XGB, GBM, CAT] medium_quality screening profile and mark "
+            "the rerun as an internal calibration artifact."
+        ),
+    )
+    parser.add_argument(
+        "--profile-calibration-session-id",
+        help="Required identifier for a profile-calibration session.",
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=None,
@@ -1080,6 +1364,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.solution_path is not None:
+        if args.profile_calibration:
+            console.print(
+                "[red]Profile calibration cannot use --solution-path.[/red]"
+            )
+            return 2
         try:
             planned = [
                 source_record_from_solution_path(
@@ -1106,6 +1395,23 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as exc:
             console.print(f"[red]{exc}[/red]")
             return 2
+        if args.profile_calibration:
+            if not str(args.profile_calibration_session_id or "").strip():
+                console.print(
+                    "[red]--profile-calibration-session-id is required with --profile-calibration.[/red]"
+                )
+                return 2
+            try:
+                validate_profile_calibration_profile(
+                    profile=args.profile,
+                    competition=args.competition,
+                    presets=args.presets,
+                    time_limit=args.time_limit,
+                    fit_args=fit_args,
+                )
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
+                return 2
 
         if args.refresh_index:
             with _build_progress(console) as progress:
@@ -1131,6 +1437,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not planned:
         console.print("[red]No profile evaluations selected.[/red]")
+        return 2
+    if args.profile_calibration and any(
+        record.get("kind") != "source_node" for record in planned
+    ):
+        console.print(
+            "[red]Profile calibration accepts only original source_node artifacts.[/red]"
+        )
         return 2
 
     if not args.execute:
@@ -1176,6 +1489,8 @@ def main(argv: list[str] | None = None) -> int:
                 memory_limit_gb=args.memory_limit_gb,
                 console=console,
                 whole_solution_path=args.solution_path,
+                profile_calibration=args.profile_calibration,
+                profile_calibration_session_id=args.profile_calibration_session_id,
             )
         )
 

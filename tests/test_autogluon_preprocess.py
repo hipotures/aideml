@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import aide.autogluon_preprocess as autogluon_preprocess
 from aide.interpreter import RedirectQueue
 from aide.agent import Agent
 from aide.autogluon_preprocess import (
@@ -369,7 +370,23 @@ def test_build_autogluon_wrapper_emits_run_stats_collection(tmp_path):
     assert "training_started_at = time.time()" in code
     assert "training_time = time.time() - training_started_at" in code
     assert "leaderboard = predictor.leaderboard(silent=True)" in code
+    assert "def _selected_model_metadata" in code
+    assert '"selected_model": _json_safe_scalar(selected_model)' in code
     assert '"run_stats": run_stats' in code
+
+
+def test_fair_cpu_scheduling_preserves_required_model_order_and_priority():
+    settings = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "use_gpu": False,
+        "fair_model_scheduling": True,
+    }
+
+    autogluon_preprocess._force_cpu_boost_hyperparameters(settings)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["hyperparameters"]["XGB"][0]["device"] == "cpu"
+    assert "priority" not in settings["hyperparameters"]["XGB"][0]["ag_args"]
 
 
 def test_autogluon_wrapper_reads_metric_from_project_env(tmp_path, monkeypatch):
@@ -1356,6 +1373,47 @@ def test_autogluon_gpu_profiles_use_cuda_gbm(tmp_path):
 
         assert settings["hyperparameters"]["GBM"][0]["device"] == "cuda"
         assert settings["hyperparameters"]["GBM"][0]["ag_args_fit"] == {"num_gpus": 1}
+
+
+def test_s6e7_calibration_profiles_keep_equal_model_priorities(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.included_model_types = None
+
+    profiles = [
+        profile
+        for profile in cfg.agent.autogluon.profiles
+        if profile.startswith("s6e7_calibration_")
+    ]
+
+    assert profiles
+    for profile in profiles:
+        cfg.agent.autogluon.profile = profile
+        settings = resolve_autogluon_settings(cfg)
+        priorities = {
+            model_type: settings["hyperparameters"][model_type][0]["ag_args"][
+                "priority"
+            ]
+            for model_type in ("XGB", "GBM", "CAT")
+        }
+        assert priorities == {"XGB": 100, "GBM": 100, "CAT": 100}
+
+
+def test_capped_cpu_calibration_profile_caps_all_required_families_equally(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profile = (
+        "s6e7_calibration_reference_holdout20_unweighted_cpu_"
+        "capped180_fairone_seed1729_10m"
+    )
+    cfg.agent.autogluon.included_model_types = None
+
+    settings = resolve_autogluon_settings(cfg)
+
+    assert settings["use_gpu"] is False
+    for model_type in ("XGB", "GBM", "CAT"):
+        model_settings = settings["hyperparameters"][model_type][0]
+        assert model_settings["ag_args"]["priority"] == 100
+        assert model_settings["ag_args_fit"]["max_time_limit"] == 180
+        assert model_settings["ag_args_fit"]["num_gpus"] == 0
 
 
 def test_autogluon_settings_default_lightgbm_gpu_categorical_fallback(tmp_path):

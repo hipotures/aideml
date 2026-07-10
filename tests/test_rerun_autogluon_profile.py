@@ -126,6 +126,7 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
     assert eval_meta["autogluon_presets"] == "best_quality"
     assert eval_meta["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert eval_meta["eval_metric"] == "balanced_accuracy"
+    assert "artifact_role" not in eval_meta
     manifest = json.loads((eval_artifact / "aide_result.json").read_text())
     assert manifest["kind"] == "profile_eval"
     assert manifest["run"] == "run-a"
@@ -158,6 +159,276 @@ def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkey
     assert "1" in output
     assert record["sha256"][:10] in output
     assert source_record["sha256"][:10] in output
+
+
+def test_profile_calibration_profile_requires_canonical_fast_settings():
+    rerun_autogluon_profile.validate_profile_calibration_profile(
+        profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+        competition="playground-series-s6e7",
+        presets=None,
+        time_limit=None,
+        fit_args=None,
+    )
+
+    with pytest.raises(ValueError, match="included_model_types must be"):
+        rerun_autogluon_profile.validate_profile_calibration_profile(
+            profile="fast_boost",
+            competition="playground-series-s6e7",
+            presets=None,
+            time_limit=None,
+            fit_args=None,
+        )
+    with pytest.raises(ValueError, match="presets must be medium_quality"):
+        rerun_autogluon_profile.validate_profile_calibration_profile(
+            profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+            competition="playground-series-s6e7",
+            presets="best",
+            time_limit=None,
+            fit_args=None,
+        )
+    with pytest.raises(ValueError, match="time_limit must be <= 600"):
+        rerun_autogluon_profile.validate_profile_calibration_profile(
+            profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+            competition="playground-series-s6e7",
+            presets=None,
+            time_limit=601,
+            fit_args=None,
+        )
+    with pytest.raises(ValueError, match="cannot override reserved settings"):
+        rerun_autogluon_profile.validate_profile_calibration_profile(
+            profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+            competition="playground-series-s6e7",
+            presets=None,
+            time_limit=None,
+            fit_args={
+                "hyperparameters": {"XGB": {}},
+                "included_model_types": ["XGB"],
+                "presets": "best_quality",
+                "time_limit": 3600,
+            },
+        )
+
+
+def test_profile_calibration_rejects_invalid_profile_before_execution(tmp_path, monkeypatch):
+    logs_dir = tmp_path / "logs"
+    source_solution = tmp_path / "source.py"
+    source_solution.write_text("def preprocess(df):\n    return df\n")
+    source_record = {
+        "kind": "source_node",
+        "run": "run-a",
+        "sha256": "source-sha",
+        "solution_path": str(source_solution),
+    }
+
+    def fail_execute(*_args, **_kwargs):
+        raise AssertionError("invalid calibration profile must not execute")
+
+    monkeypatch.setattr(rerun_autogluon_profile, "execute_code", fail_execute)
+
+    with pytest.raises(ValueError, match="included_model_types must be"):
+        rerun_autogluon_profile.run_profile_eval(
+            source_record,
+            logs_dir=logs_dir,
+            profile="fast_boost",
+            competition="playground-series-s6e7",
+            profile_calibration=True,
+            profile_calibration_session_id="session-a",
+        )
+
+    with pytest.raises(ValueError, match="cannot override reserved settings"):
+        rerun_autogluon_profile.run_profile_eval(
+            source_record,
+            logs_dir=logs_dir,
+            profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+            competition="playground-series-s6e7",
+            fit_args={"included_model_types": ["XGB"]},
+            profile_calibration=True,
+            profile_calibration_session_id="session-a",
+        )
+
+    assert not (logs_dir / "run-a" / "artifacts").exists()
+
+
+def test_main_rejects_noncanonical_profile_calibration_before_execution(
+    tmp_path, monkeypatch, capsys
+):
+    calls = []
+
+    def fail_run_profile_eval(*_args, **_kwargs):
+        calls.append(True)
+        raise AssertionError("invalid calibration profile must not execute")
+
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "run_profile_eval",
+        fail_run_profile_eval,
+    )
+
+    exit_code = rerun_autogluon_profile.main(
+        [
+            "--execute",
+            "--profile-calibration",
+            "--profile-calibration-session-id",
+            "session-a",
+            "--profile",
+            "fast_boost",
+            "--index",
+            str(tmp_path / "unused-index.json"),
+            "--sha256",
+            "a" * 64,
+        ]
+    )
+
+    assert exit_code == 2
+    assert calls == []
+    assert "included_model_types must be ['XGB', 'GBM', 'CAT']" in capsys.readouterr().out
+
+
+def test_profile_calibration_marks_artifacts_and_record(tmp_path, monkeypatch):
+    logs_dir = tmp_path / "logs"
+    input_dir = tmp_path / "workspaces" / "run-a" / "input"
+    input_dir.mkdir(parents=True)
+    source_solution = tmp_path / "source.py"
+    source_solution.write_text("def preprocess(df):\n    return df\n")
+    source_record = {
+        "kind": "source_node",
+        "run": "run-a",
+        "sha256": "source-sha",
+        "solution_path": str(source_solution),
+    }
+
+    class FakeResult:
+        term_out = [
+            'AIDE_RESULT_JSON: {"is_bug": false, "lower_is_better": false, '
+            '"metric": 0.951, "eval_metric": "balanced_accuracy", "run_stats": '
+            '{"models": [{"model": "XGBoost", "can_infer": true}, '
+            '{"model": "LightGBM", "can_infer": true}, '
+            '{"model": "CatBoost", "can_infer": true}], "selected_model": "CatBoost", '
+            '"ensemble_composition": null}}\n'
+        ]
+        exec_time = 42.0
+        exc_type = None
+        exc_info = None
+        exc_stack = None
+
+    def fake_build_profile_code(**_kwargs):
+        return "print('calibration')\n", ["XGB", "GBM", "CAT"], 600, "medium_quality"
+
+    def fake_execute(code, *, workspace_dir, artifact_dir, timeout, memory_limit_gb):
+        working_dir = workspace_dir / "working"
+        working_dir.mkdir(parents=True, exist_ok=True)
+        (working_dir / "submission.csv").write_text("id,target\n1,0.9\n")
+        return FakeResult()
+
+    monkeypatch.setattr(rerun_autogluon_profile, "build_profile_code", fake_build_profile_code)
+    monkeypatch.setattr(rerun_autogluon_profile, "execute_code", fake_execute)
+    monkeypatch.setattr(
+        rerun_autogluon_profile,
+        "timestamp_now",
+        lambda: "20260504T120000",
+    )
+
+    record = rerun_autogluon_profile.run_profile_eval(
+        source_record,
+        logs_dir=logs_dir,
+        profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+        competition="playground-series-s6e7",
+        profile_calibration=True,
+        profile_calibration_session_id="session-a",
+    )
+
+    artifact_dir = logs_dir / "run-a" / "artifacts" / "20260504T120000"
+    submission_eval = json.loads((artifact_dir / "submission_eval.json").read_text())
+    manifest = json.loads((artifact_dir / "aide_result.json").read_text())
+    for payload in (submission_eval, manifest, record):
+        assert payload["artifact_role"] == "profile_calibration_rerun"
+        assert payload["hide_from_submission_lab_default"] is True
+        assert payload["not_a_submission_candidate"] is True
+        assert payload["historical_only"] is False
+        assert payload["profile_calibration_session_id"] == "session-a"
+        assert payload["valid_for_final_profile_selection"] is True
+        assert payload["invalid_reason"] is None
+        assert payload["canonical_model_family"] == ["XGB", "GBM", "CAT"]
+        assert payload["model_family_changed"] is False
+        assert payload["trained_model_types"] == ["XGB", "GBM", "CAT"]
+        assert payload["source_code_unchanged"] is True
+
+
+def test_profile_calibration_requires_all_three_trained_families():
+    trained = rerun_autogluon_profile.trained_model_types_from_run_stats(
+        {
+            "models": [
+                {"model": "XGBoost"},
+                {"model": "LightGBM"},
+                {"model": "WeightedEnsemble_L2"},
+            ]
+        }
+    )
+
+    assert trained == ["XGB", "GBM"]
+    assert rerun_autogluon_profile.missing_required_model_types(trained) == ["CAT"]
+    assert rerun_autogluon_profile.profile_calibration_rerun_invalid_reason(
+        is_ok=True,
+        all_required_model_types_trained=False,
+        source_code_unchanged=True,
+    ) == "required_model_family_not_fully_trained"
+
+
+def test_profile_calibration_requires_required_models_to_be_eligible():
+    run_stats = {
+        "models": [
+            {"model": "XGBoost", "can_infer": True},
+            {"model": "LightGBM", "can_infer": True},
+            {"model": "CatBoost", "can_infer": False},
+        ]
+    }
+
+    assert rerun_autogluon_profile.trained_model_types_from_run_stats(run_stats) == [
+        "XGB",
+        "GBM",
+        "CAT",
+    ]
+    eligible = rerun_autogluon_profile.eligible_model_types_from_run_stats(run_stats)
+    assert eligible == ["XGB", "GBM"]
+    assert rerun_autogluon_profile.missing_required_model_types(eligible) == ["CAT"]
+
+
+def test_profile_calibration_rejects_non_source_node_before_execution(tmp_path):
+    source_solution = tmp_path / "source.py"
+    source_solution.write_text("def preprocess(df):\n    return df\n")
+
+    with pytest.raises(ValueError, match="original source_node"):
+        rerun_autogluon_profile.run_profile_eval(
+            {
+                "kind": "profile_eval",
+                "run": "run-a",
+                "sha256": "source-sha",
+                "solution_path": str(source_solution),
+            },
+            logs_dir=tmp_path / "logs",
+            profile="s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m",
+            competition="playground-series-s6e7",
+            profile_calibration=True,
+            profile_calibration_session_id="session-a",
+        )
+
+
+def test_all_s6e7_calibration_profiles_have_exact_fast_model_family():
+    profiles = [
+        profile
+        for profile in rerun_autogluon_profile.available_autogluon_profiles()
+        if profile.startswith("s6e7_calibration_")
+    ]
+
+    assert profiles
+    for profile in profiles:
+        rerun_autogluon_profile.validate_profile_calibration_profile(
+            profile=profile,
+            competition="playground-series-s6e7",
+            presets=None,
+            time_limit=None,
+            fit_args=None,
+        )
 
 
 def test_run_profile_eval_can_execute_whole_solution_without_rebuilding_wrapper(
@@ -733,6 +1004,24 @@ def test_execute_code_preserves_process_stdout_and_autogluon_log_file(tmp_path):
     process_stdout = (artifact_dir / "process_stdout.log").read_text()
     assert "v1" in process_stdout
     assert "AIDE_RESULT_JSON:" in process_stdout
+
+
+def test_execute_code_writes_verbose_progress_output_without_pipe_timeout(tmp_path):
+    artifact_dir = tmp_path / "artifacts"
+
+    result = rerun_autogluon_profile.execute_code(
+        "print('x' * 200_000, flush=True)\n",
+        workspace_dir=tmp_path / "workspace",
+        artifact_dir=artifact_dir,
+        timeout=3,
+        memory_limit_gb=None,
+        console=rerun_autogluon_profile.Console(record=True),
+        progress_time_limit=3,
+    )
+
+    assert result.exc_type is None
+    assert result.term_out[0].count("x") == 200_000
+    assert (artifact_dir / "process_stdout.log").read_text().count("x") == 200_000
 
 
 def test_main_leaves_timeout_unset_for_profile_default(tmp_path, monkeypatch):

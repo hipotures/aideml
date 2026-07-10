@@ -853,6 +853,280 @@ def test_parse_args_preserves_explicit_table_limits():
     assert args.registry_limit == 9
 
 
+def test_parse_args_accepts_profile_rerun_visibility_flags():
+    include = kaggle_submission_lab.parse_args(["--include-profile-reruns"])
+    only = kaggle_submission_lab.parse_args(["--profile-reruns-only"])
+
+    assert include.include_profile_reruns is True
+    assert include.profile_reruns_only is False
+    assert only.include_profile_reruns is False
+    assert only.profile_reruns_only is True
+
+
+def test_refresh_index_merges_profile_calibration_sidecar_metadata(tmp_path):
+    logs_dir = tmp_path / "logs"
+    artifact = _write_artifact(
+        logs_dir,
+        "rerun-run",
+        "20260708T010000",
+        code=(
+            "AIDE_AG_CONFIG = {'profile': 'xgb_only', "
+            "'included_model_types': ['XGB'], 'presets': 'medium_quality', "
+            "'time_limit': 600}\n"
+        ),
+    )
+    (artifact / "aide_result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "profile_eval",
+                "competition": "playground-series-s6e7",
+                "run": "rerun-run",
+                "timestamp": "20260708T010000",
+                "status": "ok",
+                "local_score": 0.95,
+                "metric_maximize": True,
+                "node": {"status": "ok", "metric": {"name": "balanced_accuracy"}},
+                "autogluon": {
+                    "profile": "xgb_only",
+                    "presets": "medium_quality",
+                    "included_model_types": ["XGB"],
+                    "time_limit": 600,
+                },
+                "source": {"source_sha256": "source-sha"},
+            }
+        )
+    )
+    index_path = logs_dir / "submission_index.json"
+    first = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=index_path,
+        competition="playground-series-s6e7",
+        reindex=True,
+    )
+    record = first["records"][0]
+    assert record["artifact_role"] == "profile_calibration_rerun"
+    assert record["hide_from_submission_lab_default"] is True
+    assert record["not_a_submission_candidate"] is True
+    assert record["historical_only"] is True
+    assert record["valid_for_final_profile_selection"] is False
+    assert record["invalid_reason"] == "catboost_omitted_from_required_model_family"
+
+    (logs_dir / "artifact_visibility_overrides.json").write_text(
+        json.dumps(
+            {
+                "artifacts": {
+                    record["artifact_dir"]: {"visibility_note": "historic rerun"}
+                }
+            }
+        )
+    )
+    refreshed = kaggle_submission_lab.refresh_index(
+        logs_dir=logs_dir,
+        index_path=index_path,
+        competition="playground-series-s6e7",
+    )
+
+    assert refreshed["records"][0]["visibility_note"] == "historic rerun"
+    historical = kaggle_submission_lab._profile_calibration_metadata(
+        {
+            "kind": "profile_eval",
+            "included_model_types": ["XGB", "GBM", "CAT"],
+            "autogluon_presets": "medium_quality",
+            "time_limit": 600,
+        }
+    )
+    assert historical["historical_only"] is True
+    assert historical["valid_for_final_profile_selection"] is False
+    assert historical["invalid_reason"] == "historical_profile_calibration_rerun"
+
+
+def test_profile_rerun_visibility_flags_and_submission_guard(tmp_path):
+    submission_path = tmp_path / "submission.csv"
+    submission_path.write_text("id,target\n1,0.8\n")
+    candidate = {
+        "competition": "playground-series-s6e7",
+        "kind": "source_node",
+        "run": "candidate-run",
+        "step": 1,
+        "timestamp": "20260708T010000",
+        "status": "ok",
+        "local_score": 0.95,
+        "metric_maximize": True,
+        "sha256": "candidate-sha",
+        "submission_path": str(submission_path),
+    }
+    hidden_rerun = {
+        "competition": "playground-series-s6e7",
+        "kind": "profile_eval",
+        "run": "rerun-run",
+        "timestamp": "20260708T020000",
+        "status": "ok",
+        "local_score": 0.99,
+        "sha256": "hidden-rerun-sha",
+        "artifact_role": "profile_calibration_rerun",
+        "hide_from_submission_lab_default": True,
+        "not_a_submission_candidate": True,
+    }
+    submitted_rerun = {
+        **hidden_rerun,
+        "timestamp": "20260708T030000",
+        "sha256": "submitted-rerun-sha",
+    }
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e7",
+                "sha256": submitted_rerun["sha256"],
+                "remote_status": "COMPLETE",
+                "public_score": "0.94901",
+            }
+        ],
+    )
+    records = [candidate, hidden_rerun, submitted_rerun]
+
+    default = kaggle_submission_lab.filter_submission_lab_visibility(
+        records,
+        registry=registry,
+        competition="playground-series-s6e7",
+    )
+    included = kaggle_submission_lab.filter_submission_lab_visibility(
+        records,
+        registry=registry,
+        competition="playground-series-s6e7",
+        include_profile_reruns=True,
+    )
+    only = kaggle_submission_lab.filter_submission_lab_visibility(
+        records,
+        registry=registry,
+        competition="playground-series-s6e7",
+        profile_reruns_only=True,
+    )
+
+    assert [record["sha256"] for record in default] == [
+        "candidate-sha",
+        "submitted-rerun-sha",
+    ]
+    assert [record["sha256"] for record in included] == [
+        "candidate-sha",
+        "hidden-rerun-sha",
+        "submitted-rerun-sha",
+    ]
+    assert [record["sha256"] for record in only] == [
+        "hidden-rerun-sha",
+        "submitted-rerun-sha",
+    ]
+    registry_rows = kaggle_submission_lab.registry_display_rows(
+        registry,
+        records=[hidden_rerun, submitted_rerun],
+        competition="playground-series-s6e7",
+    )
+    assert [row["sha256"] for row in registry_rows] == ["submitted-rerun-sha"]
+    assert kaggle_submission_lab._record_is_submit_ready(hidden_rerun) is False
+    selected = kaggle_submission_lab.select_top_records(
+        included,
+        registry=registry,
+        competition="playground-series-s6e7",
+        limit=10,
+    )
+    assert [record["sha256"] for record in selected] == ["candidate-sha"]
+    duplicate_rerun = {
+        **hidden_rerun,
+        "sha256": candidate["sha256"],
+        "local_score": 1.0,
+    }
+    explicit = kaggle_submission_lab.filter_records_by_sha256(
+        [candidate, duplicate_rerun],
+        [candidate["sha256"][:10]],
+    )
+    assert explicit == [candidate]
+
+
+def test_current_session_profile_rerun_requires_actual_three_family_training():
+    base = {
+        "kind": "profile_eval",
+        "profile_calibration_session_id": "fresh-session",
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "autogluon_presets": "medium_quality",
+        "time_limit": 600,
+        "valid_for_final_profile_selection": True,
+        "valid_for_current_final_selection": True,
+        "invalid_reason": None,
+    }
+
+    invalid = kaggle_submission_lab._profile_calibration_metadata(
+        {**base, "all_required_model_types_trained": False}
+    )
+    valid = kaggle_submission_lab._profile_calibration_metadata(
+        {**base, "all_required_model_types_trained": True}
+    )
+
+    assert invalid["valid_for_final_profile_selection"] is False
+    assert invalid["invalid_reason"] == "required_model_family_not_fully_trained"
+    assert valid["historical_only"] is False
+    assert valid["valid_for_final_profile_selection"] is True
+
+
+def test_candidate_tree_exposes_profile_reruns_only_with_diagnostic_flags(tmp_path):
+    source_sha = "source-sha"
+    rerun = {
+        "competition": "playground-series-s6e7",
+        "kind": "profile_eval",
+        "run": "rerun-run",
+        "timestamp": "20260708T020000",
+        "status": "ok",
+        "local_score": 0.95,
+        "sha256": "profile-rerun-sha",
+        "source_sha256": source_sha,
+        "artifact_role": "profile_calibration_rerun",
+        "hide_from_submission_lab_default": True,
+        "not_a_submission_candidate": True,
+    }
+    ordinary = {
+        "competition": "playground-series-s6e7",
+        "kind": "source_node",
+        "run": "ordinary-run",
+        "timestamp": "20260708T030000",
+        "status": "ok",
+        "local_score": 0.94,
+        "sha256": "ordinary-source-sha",
+    }
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+
+    _columns, default_rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[],
+        registry=registry,
+        records=[rerun, ordinary],
+        limit=None,
+    )
+    include_columns, include_rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[],
+        registry=registry,
+        records=[rerun, ordinary],
+        limit=None,
+        include_profile_reruns=True,
+    )
+    only_columns, only_rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[],
+        registry=registry,
+        records=[rerun, ordinary],
+        limit=None,
+        profile_reruns_only=True,
+    )
+
+    assert default_rows == []
+    assert "profile-re" in {
+        row[include_columns.index("sha")] for row in include_rows
+    }
+    only_shas = {row[only_columns.index("sha")] for row in only_rows}
+    assert "profile-re" in only_shas
+    assert "ordinary-s" not in only_shas
+
+
 def test_adaptive_table_limit_uses_sixty_five_percent_of_tall_terminal():
     assert kaggle_submission_lab.adaptive_table_limit(terminal_rows=80) == 52
 
@@ -951,6 +1225,74 @@ def test_build_json_output_payload_includes_selected_and_registry_rows(tmp_path)
     assert payload["selected"][0]["sha256"] == "aaaabbbbcccc"
     assert payload["registry"][0]["run"] == "run-a"
     assert payload["registry"][0]["public_score"] == "0.90123"
+
+
+def test_json_output_hides_profile_reruns_without_explicit_view(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json", entries=[]
+    )
+    candidate = {
+        "kind": "source_node",
+        "competition": "playground-series-s6e7",
+        "run": "run-a",
+        "step": 1,
+        "timestamp": "20260708T010000",
+        "status": "ok",
+        "local_score": 0.95,
+        "metric_maximize": True,
+        "is_buggy": False,
+        "submission_path": str(tmp_path / "submission.csv"),
+        "sha256": "candidate-sha",
+    }
+    rerun = {
+        "kind": "profile_eval",
+        "competition": "playground-series-s6e7",
+        "run": "run-a",
+        "timestamp": "20260708T020000",
+        "status": "ok",
+        "local_score": 0.96,
+        "artifact_role": "profile_calibration_rerun",
+        "hide_from_submission_lab_default": True,
+        "not_a_submission_candidate": True,
+        "sha256": "rerun-sha",
+    }
+
+    default = kaggle_submission_lab.build_output_payload(
+        selected=[candidate],
+        registry=registry,
+        remote_submissions=None,
+        records=[candidate, rerun],
+        full_view=False,
+        registry_limit=20,
+        run_filters=None,
+        competition="playground-series-s6e7",
+    )
+    included = kaggle_submission_lab.build_output_payload(
+        selected=[candidate],
+        registry=registry,
+        remote_submissions=None,
+        records=[candidate, rerun],
+        full_view=False,
+        registry_limit=20,
+        run_filters=None,
+        competition="playground-series-s6e7",
+        include_profile_reruns=True,
+    )
+    only = kaggle_submission_lab.build_output_payload(
+        selected=[],
+        registry=registry,
+        remote_submissions=None,
+        records=[candidate, rerun],
+        full_view=False,
+        registry_limit=20,
+        run_filters=None,
+        competition="playground-series-s6e7",
+        profile_reruns_only=True,
+    )
+
+    assert default["profile_reruns"] == []
+    assert [record["sha256"] for record in included["profile_reruns"]] == ["rerun-sha"]
+    assert [record["sha256"] for record in only["profile_reruns"]] == ["rerun-sha"]
 
 
 def test_json_safe_serializes_datetime_values():

@@ -193,6 +193,381 @@ agent:
           save_space: true
           fit_weighted_ensemble: false
           auto_stack: false
+      # Fixed-family S6E7 screening profiles. Each requests exactly one
+      # default configuration per required model family at equal priority so a
+      # large source cannot spend the whole screening budget on GBM variants.
+      s6e7_calibration_reference_holdout20_unweighted_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      # Versioned reference after the runner began enforcing explicit
+      # inferability evidence and per-family CUDA settings. Keeping this
+      # identifier distinct prevents it being aggregated with earlier,
+      # partial reruns made under the pre-hardening configuration.
+      s6e7_calibration_reference_holdout20_unweighted_gpu_cuda_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_reference_holdout20_unweighted_cpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+          CAT:
+            ag_args: {priority: 100}
+          XGB:
+            ag_args: {priority: 100}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      # Versioned CPU comparison with identical per-family caps.  Equal
+      # priority alone lets a slow CPU CatBoost consume the full shared
+      # AutoGluon budget before GBM and XGB can train.
+      s6e7_calibration_reference_holdout20_unweighted_cpu_capped180_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          CAT:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          XGB:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      # Stability-only replicas of the selected CPU reference. They are not
+      # eligible to reopen the frozen finalist selection.
+      s6e7_calibration_reference_holdout20_unweighted_cpu_capped180_fairone_seed2718_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 2718
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          CAT:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          XGB:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_reference_holdout20_unweighted_cpu_capped180_fairone_seed31415_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 31415
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          CAT:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          XGB:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      # Remediation probe for the documented single-holdout seed sensitivity.
+      # This uses internal OOF validation and is not a replacement finalist
+      # unless it completes the predeclared development and confirmation gates.
+      s6e7_calibration_bag3_unweighted_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: autogluon
+        seed: 1729
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+          num_bag_folds: 3
+          num_stack_levels: 0
+      # Pre-registered variance-reduction probe after the 20% single-holdout
+      # profiles proved seed-sensitive. Both seeds must clear the same
+      # development gate before this profile can enter a new confirmation.
+      s6e7_calibration_holdout40_unweighted_cpu_capped180_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.4
+        validation_strategy: holdout
+        seed: 1729
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          CAT:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          XGB:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_holdout40_unweighted_cpu_capped180_fairone_seed2718_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.4
+        validation_strategy: holdout
+        seed: 2718
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          CAT:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+          XGB:
+            ag_args: {priority: 100}
+            ag_args_fit: {max_time_limit: 180}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_holdout20_balanced_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        class_balance: balanced
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_holdout15_balanced_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.15
+        validation_strategy: holdout
+        seed: 1729
+        class_balance: balanced
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_holdout25_balanced_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.25
+        validation_strategy: holdout
+        seed: 1729
+        class_balance: balanced
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: false
+          auto_stack: false
+      s6e7_calibration_holdout20_balanced_ensemble_gpu_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        class_balance: balanced
+        use_gpu: true
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
       full_boost:
         included_model_types: [XGB, GBM, CAT]
         presets: medium_quality

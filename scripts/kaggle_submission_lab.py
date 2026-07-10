@@ -45,8 +45,12 @@ DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
 DEFAULT_TABLE_LIMIT = 20
-INDEX_VERSION = 3
+INDEX_VERSION = 4
 SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
+ARTIFACT_VISIBILITY_OVERRIDES_NAME = "artifact_visibility_overrides.json"
+PROFILE_CALIBRATION_RERUN_ROLE = "profile_calibration_rerun"
+CANONICAL_FAST_MODEL_FAMILY = ["XGB", "GBM", "CAT"]
+FAST_AUTOGLOON_PRESETS = {"medium_quality"}
 
 
 def default_competition() -> str:
@@ -111,6 +115,129 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(
         json.dumps(sanitize_persisted_payload(payload), indent=2, sort_keys=True) + "\n"
     )
+
+
+def _artifact_visibility_overrides_path(logs_dir: Path) -> Path:
+    return Path(logs_dir) / ARTIFACT_VISIBILITY_OVERRIDES_NAME
+
+
+def _load_artifact_visibility_overrides(logs_dir: Path) -> dict[str, dict[str, Any]]:
+    payload = _load_json(_artifact_visibility_overrides_path(logs_dir))
+    if not isinstance(payload, dict):
+        return {}
+    overrides = payload.get("artifacts", {})
+    if not isinstance(overrides, dict):
+        return {}
+    return {
+        str(artifact_dir): dict(metadata)
+        for artifact_dir, metadata in overrides.items()
+        if isinstance(metadata, dict)
+    }
+
+
+def _model_family(record: dict[str, Any]) -> list[str]:
+    models = record.get("included_model_types")
+    if not isinstance(models, list):
+        return []
+    return [
+        str(model).strip().upper() for model in models if str(model).strip()
+    ]
+
+
+def _profile_calibration_family_invalid_reason(record: dict[str, Any]) -> str | None:
+    family = _model_family(record)
+    if family == CANONICAL_FAST_MODEL_FAMILY:
+        return None
+    if "CAT" not in family:
+        return "catboost_omitted_from_required_model_family"
+    if set(family) == set(CANONICAL_FAST_MODEL_FAMILY):
+        return "required_model_family_incomplete"
+    return "required_model_family_changed"
+
+
+def _profile_calibration_metadata(record: dict[str, Any]) -> dict[str, Any]:
+    if record.get("kind") != "profile_eval":
+        return {}
+
+    metadata: dict[str, Any] = {
+        "artifact_role": PROFILE_CALIBRATION_RERUN_ROLE,
+        "hide_from_submission_lab_default": True,
+        "not_a_submission_candidate": True,
+    }
+    if record.get("profile_calibration_session_id"):
+        family_invalid_reason = _profile_calibration_family_invalid_reason(record)
+        preset = str(record.get("autogluon_presets") or "").strip().lower()
+        try:
+            time_limit = int(record.get("time_limit"))
+        except (TypeError, ValueError):
+            time_limit = 0
+        invalid_reason = record.get("invalid_reason")
+        if family_invalid_reason is not None:
+            invalid_reason = family_invalid_reason
+        elif preset not in FAST_AUTOGLOON_PRESETS or not 0 < time_limit <= 600:
+            invalid_reason = "full_best_or_long_profile"
+        elif not record.get("all_required_model_types_trained"):
+            invalid_reason = "required_model_family_not_fully_trained"
+        valid = bool(record.get("valid_for_final_profile_selection")) and not invalid_reason
+        return {
+            **metadata,
+            "historical_only": False,
+            "profile_calibration_session_id": record.get(
+                "profile_calibration_session_id"
+            ),
+            "valid_for_final_profile_selection": valid,
+            "valid_for_current_final_selection": valid,
+            "invalid_reason": invalid_reason,
+        }
+
+    family_invalid_reason = _profile_calibration_family_invalid_reason(record)
+    if family_invalid_reason is not None:
+        return {
+            **metadata,
+            "historical_only": True,
+            "valid_for_final_profile_selection": False,
+            "valid_for_current_final_selection": False,
+            "invalid_reason": family_invalid_reason,
+        }
+
+    preset = str(record.get("autogluon_presets") or "").strip().lower()
+    try:
+        time_limit = int(record.get("time_limit"))
+    except (TypeError, ValueError):
+        time_limit = 0
+    if preset not in FAST_AUTOGLOON_PRESETS or not 0 < time_limit <= 600:
+        return {
+            **metadata,
+            "historical_only": True,
+            "valid_for_final_profile_selection": False,
+            "valid_for_current_final_selection": False,
+            "invalid_reason": "full_best_or_long_profile",
+        }
+    return {
+        **metadata,
+        "historical_only": True,
+        "valid_for_final_profile_selection": False,
+        "valid_for_current_final_selection": False,
+        "invalid_reason": "historical_profile_calibration_rerun",
+    }
+
+
+def _merge_profile_calibration_metadata(
+    records: Iterable[dict[str, Any]],
+    *,
+    overrides: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    for record in records:
+        artifact_dir = str(record.get("artifact_dir") or "")
+        merged_record = {**record, **overrides.get(artifact_dir, {})}
+        merged.append(
+            {
+                **merged_record,
+                **_profile_calibration_metadata(merged_record),
+            }
+        )
+    return merged
 
 
 def _record_path(value: Any) -> Path:
@@ -258,10 +385,20 @@ def deduplicate_records_by_sha256(records: Iterable[dict[str, Any]]) -> list[dic
         if current is not None and _record_is_seed_copy(record) and not _record_is_seed_copy(current):
             continue
         if (
+            current is not None
+            and record.get("not_a_submission_candidate")
+            and not current.get("not_a_submission_candidate")
+        ):
+            continue
+        if (
             current is None
             or (
                 not _record_is_seed_copy(record)
                 and _record_is_seed_copy(current)
+            )
+            or (
+                not record.get("not_a_submission_candidate")
+                and current.get("not_a_submission_candidate")
             )
             or _record_sort_key(record) > _record_sort_key(current)
         ):
@@ -386,6 +523,32 @@ def build_manifest_records(
                 or manifest.get("source_solution_path"),
                 "source_solution_sha256": source.get("source_solution_sha256")
                 or manifest.get("source_solution_sha256"),
+                "artifact_role": manifest.get("artifact_role"),
+                "hide_from_submission_lab_default": manifest.get(
+                    "hide_from_submission_lab_default"
+                ),
+                "not_a_submission_candidate": manifest.get(
+                    "not_a_submission_candidate"
+                ),
+                "historical_only": manifest.get("historical_only"),
+                "profile_calibration_session_id": manifest.get(
+                    "profile_calibration_session_id"
+                ),
+                "valid_for_final_profile_selection": manifest.get(
+                    "valid_for_final_profile_selection"
+                ),
+                "valid_for_current_final_selection": manifest.get(
+                    "valid_for_current_final_selection"
+                ),
+                "invalid_reason": manifest.get("invalid_reason"),
+                "configured_model_types": manifest.get("configured_model_types"),
+                "trained_model_types": manifest.get("trained_model_types"),
+                "failed_or_skipped_model_types": manifest.get(
+                    "failed_or_skipped_model_types"
+                ),
+                "all_required_model_types_trained": manifest.get(
+                    "all_required_model_types_trained"
+                ),
                 "submission_only": bool(run_stats.get("submission_only")),
                 "blend_kind": run_stats.get("blend_kind"),
                 "blend_mode": run_stats.get("blend_mode"),
@@ -505,6 +668,10 @@ def refresh_index(
         for run in sorted(records_by_run)
         for record in records_by_run.get(run, [])
     ]
+    all_records = _merge_profile_calibration_metadata(
+        all_records,
+        overrides=_load_artifact_visibility_overrides(logs_dir),
+    )
     refreshed = {
         "version": INDEX_VERSION,
         "competition": competition,
@@ -524,11 +691,79 @@ def _record_is_submit_ready(record: dict[str, Any]) -> bool:
     return (
         record.get("status") == "ok"
         and not _record_is_seed_copy(record)
+        and not record.get("not_a_submission_candidate")
         and not record.get("is_buggy")
         and score_or_submission_only
         and record.get("sha256") is not None
         and _record_path(record.get("submission_path", "")).exists()
     )
+
+
+def _is_profile_calibration_rerun(record: dict[str, Any]) -> bool:
+    return record.get("artifact_role") == PROFILE_CALIBRATION_RERUN_ROLE
+
+
+def _has_submitted_known_public_score(
+    record: dict[str, Any],
+    *,
+    registry: smart.SubmissionRegistry | None = None,
+    competition: str | None = None,
+) -> bool:
+    if (
+        str(record.get("remote_status") or "").upper() == "COMPLETE"
+        and smart._parse_public_score(record.get("public_score")) is not None
+    ):
+        return True
+    if (
+        str(record.get("submit") or "").lower() == "submitted"
+        and smart._parse_public_score(record.get("public_score")) is not None
+    ):
+        return True
+    sha = record.get("sha256")
+    if registry is None or not sha:
+        return False
+    for entry in registry.entries:
+        if competition is not None and entry.get("competition") != competition:
+            continue
+        if (
+            smart._sha256_matches(entry.get("sha256"), sha)
+            and str(entry.get("remote_status") or "").upper() == "COMPLETE"
+            and smart._parse_public_score(entry.get("public_score")) is not None
+        ):
+            return True
+    return False
+
+
+def filter_submission_lab_visibility(
+    records: Iterable[dict[str, Any]],
+    *,
+    registry: smart.SubmissionRegistry | None = None,
+    competition: str | None = None,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
+) -> list[dict[str, Any]]:
+    visible: list[dict[str, Any]] = []
+    for record in records:
+        is_profile_rerun = _is_profile_calibration_rerun(record)
+        if profile_reruns_only:
+            if is_profile_rerun:
+                visible.append(record)
+            continue
+        if include_profile_reruns:
+            visible.append(record)
+            continue
+        if (
+            is_profile_rerun
+            and record.get("hide_from_submission_lab_default")
+            and not _has_submitted_known_public_score(
+                record,
+                registry=registry,
+                competition=competition,
+            )
+        ):
+            continue
+        visible.append(record)
+    return visible
 
 
 def parse_sha256_filters(values: list[str] | None) -> list[str]:
@@ -919,6 +1154,7 @@ def _remote_display_rows(
             )
             row["artifact_dir"] = _registry_entry_artifact_dir(row, record_lookup)
             row["hypothesis_id"] = _registry_entry_hypothesis_id(row, record_lookup)
+            row.update(_registry_entry_visibility_metadata(row, record_lookup))
         rows.append(row)
     return rows
 
@@ -950,6 +1186,15 @@ def _registry_record_lookup(
             "source_sha256": record.get("source_sha256"),
             "source_solution_path": record.get("source_solution_path"),
             "source_solution_sha256": record.get("source_solution_sha256"),
+            "artifact_role": record.get("artifact_role"),
+            "hide_from_submission_lab_default": record.get(
+                "hide_from_submission_lab_default"
+            ),
+            "not_a_submission_candidate": record.get("not_a_submission_candidate"),
+            "valid_for_final_profile_selection": record.get(
+                "valid_for_final_profile_selection"
+            ),
+            "invalid_reason": record.get("invalid_reason"),
         }
         sha = str(record.get("sha256") or "")
         if sha:
@@ -980,6 +1225,23 @@ def _registry_lookup_record(
     if run and step and timestamp:
         return lookup.get(("node", f"{run}|{step}|{timestamp}"))
     return None
+
+
+def _registry_entry_visibility_metadata(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> dict[str, Any]:
+    record = _registry_lookup_record(entry, lookup) or {}
+    return {
+        key: record.get(key, entry.get(key))
+        for key in (
+            "artifact_role",
+            "hide_from_submission_lab_default",
+            "not_a_submission_candidate",
+            "valid_for_final_profile_selection",
+            "invalid_reason",
+        )
+    }
 
 
 def _registry_entry_algo(
@@ -1119,6 +1381,8 @@ def render_registry_table(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> None:
     sorted_rows = registry_display_rows(
         registry,
@@ -1127,6 +1391,8 @@ def render_registry_table(
         limit=limit,
         run_filters=run_filters,
         competition=competition,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
     )
     table = Table(title="Submission registry", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
@@ -1192,6 +1458,8 @@ def registry_display_rows(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> list[dict[str, Any]]:
     record_lookup = _registry_record_lookup(records)
     rows = [
@@ -1215,6 +1483,7 @@ def registry_display_rows(
                 entry,
                 record_lookup,
             ),
+            **_registry_entry_visibility_metadata(entry, record_lookup),
         }
         for entry in registry.entries
         if competition is None or entry.get("competition") == competition
@@ -1234,6 +1503,13 @@ def registry_display_rows(
             for row in rows
             if str(row.get("run") or "") in selected_runs
         ]
+    rows = filter_submission_lab_visibility(
+        rows,
+        registry=registry,
+        competition=competition,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
+    )
     _mark_rows_with_source_reruns(rows)
 
     sorted_rows = sorted(rows, key=_registry_display_sort_key, reverse=True)
@@ -1250,6 +1526,8 @@ def registry_display_table(
     limit: int | None = 20,
     run_filters: list[str] | None = None,
     competition: str | None = None,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     display_rows = registry_display_rows(
         registry,
@@ -1258,6 +1536,8 @@ def registry_display_table(
         limit=limit,
         run_filters=run_filters,
         competition=competition,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
     )
     columns = [
         "#",
@@ -1517,6 +1797,8 @@ def candidate_tree_display_table(
     run_filters: list[str] | None = None,
     competition: str | None = None,
     show_seeds: bool = False,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> tuple[list[str], list[list[str]]]:
     if sort_by not in {"public", "cv"}:
         raise ValueError("sort_by must be 'public' or 'cv'")
@@ -1525,11 +1807,24 @@ def candidate_tree_display_table(
     visible_root_shas: set[str] = set()
     tree_records = [
         record
-        for record in records or []
+        for record in filter_submission_lab_visibility(
+            records or [],
+            registry=registry,
+            competition=competition,
+            include_profile_reruns=include_profile_reruns,
+            profile_reruns_only=profile_reruns_only,
+        )
         if show_seeds or not _record_is_seed_copy(record)
     ]
     for record in tree_records:
         _merge_tree_artifact(artifacts, _tree_artifact_from_record(record))
+        if (
+            (include_profile_reruns or profile_reruns_only)
+            and _is_profile_calibration_rerun(record)
+        ):
+            root_sha = _tree_parent_sha(record) or str(record.get("sha256") or "")
+            if root_sha:
+                visible_root_shas.add(root_sha)
 
     for record in selected:
         if not show_seeds and _record_is_seed_copy(record):
@@ -1547,6 +1842,8 @@ def candidate_tree_display_table(
         limit=None,
         run_filters=run_filters,
         competition=competition,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
     )
     for row in registry_rows:
         artifact = _tree_artifact_from_registry_row(row)
@@ -1716,6 +2013,8 @@ def render_candidate_tree_table(
     run_filters: list[str] | None = None,
     competition: str | None = None,
     show_seeds: bool = False,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> None:
     columns, rows = candidate_tree_display_table(
         selected=selected,
@@ -1727,6 +2026,8 @@ def render_candidate_tree_table(
         run_filters=run_filters,
         competition=competition,
         show_seeds=show_seeds,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
     )
     table = Table(
         title=f"Submission table (sorted by {sort_by})",
@@ -1813,9 +2114,27 @@ def build_output_payload(
     registry_limit: int | None,
     run_filters: list[str] | None,
     competition: str | None = None,
+    include_profile_reruns: bool = False,
+    profile_reruns_only: bool = False,
 ) -> dict[str, Any]:
+    visible_records = filter_submission_lab_visibility(
+        records,
+        registry=registry,
+        competition=competition,
+        include_profile_reruns=include_profile_reruns,
+        profile_reruns_only=profile_reruns_only,
+    )
     return {
         "selected": _json_safe(selected),
+        "profile_reruns": _json_safe(
+            [
+                record
+                for record in visible_records
+                if _is_profile_calibration_rerun(record)
+            ]
+        )
+        if include_profile_reruns or profile_reruns_only
+        else [],
         "registry": _json_safe(
             registry_display_rows(
                 registry,
@@ -1824,6 +2143,8 @@ def build_output_payload(
                 limit=registry_limit,
                 run_filters=run_filters,
                 competition=competition,
+                include_profile_reruns=include_profile_reruns,
+                profile_reruns_only=profile_reruns_only,
             )
         ),
         "remote_visible": None if remote_submissions is None else len(remote_submissions),
@@ -1977,6 +2298,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Show seeded clone artifacts in the candidate tree.",
     )
+    profile_rerun_view = parser.add_mutually_exclusive_group()
+    profile_rerun_view.add_argument(
+        "--include-profile-reruns",
+        action="store_true",
+        help="Show internal profile-calibration reruns alongside submission rows.",
+    )
+    profile_rerun_view.add_argument(
+        "--profile-reruns-only",
+        action="store_true",
+        help="Show only internal profile-calibration reruns for diagnostic review.",
+    )
     parser.add_argument(
         "--no-remote",
         action="store_true",
@@ -2032,6 +2364,13 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     records = filter_records_by_run(list(index.get("records", [])), run_filters)
+    visible_records = filter_submission_lab_visibility(
+        records,
+        registry=registry,
+        competition=args.competition,
+        include_profile_reruns=args.include_profile_reruns,
+        profile_reruns_only=args.profile_reruns_only,
+    )
     try:
         if sha_filters:
             selected = filter_records_by_sha256(records, sha_filters)
@@ -2052,7 +2391,7 @@ def main(argv: list[str] | None = None) -> int:
                     )
         else:
             selected = select_top_records(
-                records,
+                visible_records,
                 registry=registry,
                 competition=args.competition,
                 limit=candidate_limit,
@@ -2088,6 +2427,8 @@ def main(argv: list[str] | None = None) -> int:
                 run_filters=run_filters,
                 competition=args.competition,
                 show_seeds=args.show_seeds,
+                include_profile_reruns=args.include_profile_reruns,
+                profile_reruns_only=args.profile_reruns_only,
             )
             if remote_submissions is not None:
                 console.print(f"Remote Kaggle submissions visible: {len(remote_submissions)}")
@@ -2097,6 +2438,17 @@ def main(argv: list[str] | None = None) -> int:
                 "Top unsent submit-ready candidates",
                 *candidate_display_table(selected, full_view=args.full_view),
             )
+            if args.include_profile_reruns or args.profile_reruns_only:
+                profile_reruns = [
+                    record
+                    for record in visible_records
+                    if _is_profile_calibration_rerun(record)
+                ]
+                render_text_table(
+                    output_console,
+                    "Profile calibration reruns",
+                    *candidate_display_table(profile_reruns, full_view=args.full_view),
+                )
             render_text_table(
                 output_console,
                 "Submission registry",
@@ -2108,6 +2460,8 @@ def main(argv: list[str] | None = None) -> int:
                     limit=registry_limit,
                     run_filters=run_filters,
                     competition=args.competition,
+                    include_profile_reruns=args.include_profile_reruns,
+                    profile_reruns_only=args.profile_reruns_only,
                 ),
             )
             if remote_submissions is not None:
@@ -2126,6 +2480,8 @@ def main(argv: list[str] | None = None) -> int:
                         registry_limit=registry_limit,
                         run_filters=run_filters,
                         competition=args.competition,
+                        include_profile_reruns=args.include_profile_reruns,
+                        profile_reruns_only=args.profile_reruns_only,
                     ),
                     indent=2,
                     sort_keys=True,

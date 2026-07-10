@@ -1,0 +1,10 @@
+# ten-jeden-projekt/.codex/config.toml
+[mcp_servers.playwright-cdp]
+enabled = false
+
+[codex_apps]
+enabled = false
+
+[agents]
+max_threads = 2
+max_depth = 1

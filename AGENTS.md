@@ -24,3 +24,9 @@
 - If changes in `research_hypotheses/` are detected or created, you must commit those `research_hypotheses/` changes in a separate commit from code, script, or documentation changes outside `research_hypotheses/`.
 - Never commit unrelated user changes.
 - Use concise commit messages.
+
+## Long-running AutoGluon experiments
+- Never interrupt, restart, or modify a running experiment.
+- Reserve the main agent for experimental design, result interpretation, source/profile selection, and reporting; delegate mechanical monitoring to exactly one read-only `gpt-5.6-luna` subagent at low reasoning effort when available.
+- If that delegation is unavailable, use one bounded shell watcher for the known PID or exact command and return only on completion or a terminal/error marker. Do not repeatedly poll from the main agent.
+- A monitor may use targeted process/log checks only, read at most the final 80 log lines after a failure or completion, make no changes, and report compact JSON with process state, trained families, terminal marker, and error status.

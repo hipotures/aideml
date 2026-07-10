@@ -318,6 +318,8 @@ def _container(value: Any) -> Any:
 
 
 def _prioritize_xgboost_hyperparameters(settings: dict[str, Any]) -> None:
+    if settings.get("fair_model_scheduling"):
+        return
     hyperparameters = settings.get("hyperparameters")
     if not isinstance(hyperparameters, dict) or "XGB" not in hyperparameters:
         return
@@ -343,9 +345,11 @@ def _force_cpu_boost_hyperparameters(settings: dict[str, Any]) -> None:
     if "XGB" not in included:
         return
 
-    settings["included_model_types"] = ["XGB"] + [
-        model_type for model_type in included if model_type != "XGB"
-    ]
+    fair_model_scheduling = bool(settings.get("fair_model_scheduling"))
+    if not fair_model_scheduling:
+        settings["included_model_types"] = ["XGB"] + [
+            model_type for model_type in included if model_type != "XGB"
+        ]
     settings["use_gpu"] = False
     hyperparameters = settings.setdefault("hyperparameters", {})
     if not isinstance(hyperparameters, dict):
@@ -362,7 +366,7 @@ def _force_cpu_boost_hyperparameters(settings: dict[str, Any]) -> None:
         model_cfg["device"] = "cpu"
         model_cfg["tree_method"] = "hist"
         ag_args = model_cfg.setdefault("ag_args", {})
-        if isinstance(ag_args, dict):
+        if isinstance(ag_args, dict) and not fair_model_scheduling:
             ag_args["priority"] = 999
         ag_args_fit = model_cfg.setdefault("ag_args_fit", {})
         if isinstance(ag_args_fit, dict):
@@ -559,6 +563,7 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
         "seed",
         "fit_args",
         "class_balance",
+        "fair_model_scheduling",
     ):
         if key not in profile_settings:
             continue
@@ -851,6 +856,45 @@ def _leaderboard_records(predictor: TabularPredictor) -> list[dict]:
             }}
         )
     return records
+
+
+def _selected_model_metadata(predictor: TabularPredictor) -> dict:
+    try:
+        selected_model = predictor.model_best
+    except Exception as exc:
+        return {{"selected_model_error": f"{{type(exc).__name__}}: {{exc}}"}}
+
+    composition = None
+    if str(selected_model).lower().startswith("weightedensemble"):
+        try:
+            ensemble = predictor._trainer.load_model(selected_model)
+            raw_weights = getattr(ensemble, "model_weights", None)
+            if raw_weights is None:
+                raw_weights = getattr(ensemble, "weights_", None)
+            if raw_weights is None:
+                raw_weights = getattr(ensemble, "weights", None)
+            if raw_weights is None:
+                get_model_weights = getattr(ensemble, "_get_model_weights", None)
+                if callable(get_model_weights):
+                    raw_weights = get_model_weights()
+            if isinstance(raw_weights, dict):
+                composition = {{
+                    str(name): _json_safe_scalar(weight)
+                    for name, weight in raw_weights.items()
+                }}
+            else:
+                base_models = list(getattr(ensemble, "base_model_names", []) or [])
+                if base_models and isinstance(raw_weights, (list, tuple)):
+                    composition = {{
+                        str(name): _json_safe_scalar(weight)
+                        for name, weight in zip(base_models, raw_weights)
+                    }}
+        except Exception as exc:
+            composition = {{"error": f"{{type(exc).__name__}}: {{exc}}"}}
+    return {{
+        "selected_model": _json_safe_scalar(selected_model),
+        "ensemble_composition": composition,
+    }}
 
 
 def _artifact_dir(working_dir: Path) -> Path:
@@ -1371,6 +1415,7 @@ def main() -> None:
         "eval_metric": actual_eval_metric,
         "lightgbm_gpu_categorical_fallback": lightgbm_categorical_fallback_stats,
         "models": model_records,
+        **_selected_model_metadata(predictor),
         "prediction_artifacts": prediction_artifacts,
     }}
     print(f"Validation {{eval_metric}}: {{metric_value:.6f}}")
