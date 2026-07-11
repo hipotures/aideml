@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage B alpha `0.75` completed comparably at `0.947768898`. Main
-selected neutral raw-13 inverse-frequency alpha `0.50` next; its profile is
-frozen but uncommitted and unexecuted, so Main cannot launch it yet**.
+State: **Stage B neutral inverse-frequency alpha `0.50` completed comparably at
+`0.943514733`. It is `0.004254165` below alpha `0.75` and `0.006065389` below
+alpha `1.0`; no alpha `0.25` or other method was launched**.
 
 Completed:
 
@@ -103,15 +103,27 @@ Completed:
 - generated-wrapper compilation, profile-calibration validation, the one-source
   dry-run, focused invariants (`10 passed`), ruff, JSON, and diff checks passed
   for alpha `0.50`;
-- the profile and research updates are uncommitted on base revision `50f13f8`.
-  Main cannot authorize launch until commits are possible and the resulting
-  revision is recorded. No training log or artifact was created.
+- at the preparation gate, the profile and research updates were uncommitted on
+  base revision `50f13f8`, so no training log or artifact was created then;
+- the alpha-0.50 profile was committed and separately authorized at revision
+  `835e0cf`; it completed in 213.05 seconds with XGB, GBM, and CAT trained and
+  inferable, no failed/skipped family, and XGBoost selected;
+- the resolved profile matches the Stage A block after removing
+  `class_balance`; data, frozen split, source, and code hashes match;
+- exactly one training-only weight record reports `at-risk=0.7411670637`,
+  `unhealthy=2.3746820367`, and `fit=2.8597466510`, with training mean one;
+- recall is `0.951076684` (at-risk), `0.942399307` (unhealthy), and
+  `0.937068208` (fit). Full confusion, prediction distribution, family
+  scores/times, runtime, warnings, and artifact hashes are in `results.json`;
+- alpha `0.50` is `0.004254165` below alpha `0.75`, `0.006065389` below alpha
+  `1.0`, and `0.063156515` above the unweighted Stage A run. No alpha `0.25` or
+  other balancing method was launched.
 
 Pending Main review:
 
-1. review the prepared alpha-0.50 configuration and verification evidence;
-2. commit the profile and research state when commits are possible;
-3. only then decide whether to authorize the exact prepared command.
+1. interpret the completed alpha-0.50 result against alpha `0.75`, alpha `1.0`,
+   and the unweighted baseline;
+2. separately decide whether any further experiment should be designed.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized from a committed revision. Alpha `0.50` remains unexecuted.
+authorized. No alpha `0.25` or other method is authorized.

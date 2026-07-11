@@ -1,8 +1,7 @@
 # Stage B inverse-frequency execution plan
 
-Status: **alpha `0.75` completed and comparable; alpha `0.50` is the single
-next experiment, frozen but uncommitted and not executed**. No alpha `0.25`
-profile exists, and no additional Stage B experiment was launched.
+Status: **alpha `0.75` and alpha `0.50` completed comparably**. No alpha `0.25`
+profile exists, and no other Stage B method was launched.
 
 The profile is frozen at repository revision
 `5b436165c8677503beb064cb466625b869fdfb2c`. It uses the same source artifact,
@@ -52,26 +51,24 @@ weight record contains `at-risk=0.5632106551439511`,
 `0.0018112237374613427` below Stage A alpha `1.0`. Full diagnostics and hashes
 are recorded in `results.json`.
 
-## Alpha 0.50 preparation
+## Alpha 0.50 execution
 
 Main selected neutral raw-13 fold-safe inverse-frequency alpha `0.50` as the
 only next experiment. Its CPU fair-one profile is identical to the successful
-Stage A capped180 block except `class_balance.alpha`. It was prepared from base
-revision `50f13f8572d86730e3293050154f5d85bae85f42`, but the profile and research
-updates are uncommitted. Training cannot be launched until commits are possible,
-the resulting committed revision is recorded, and Main separately authorizes
-the command.
+Stage A capped180 block except `class_balance.alpha`. It was committed and
+executed after separate Main authorization at revision
+`835e0cff25849e0e5887f49b6f72f56d963c0a71`.
 
 Profile:
 `s6e7_class_balance_stage_b_inverse_frequency_alpha050_cpu_capped180_fairone_seed1729_10m`
 
 Expected unique artifact root:
-`logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`
+`logs/2-smiling-topaz-oarfish/artifacts/20260711T152757/`
 
 Reserved outer log:
 `logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha050/run_cpu_capped180_attempt_1.log`
 
-### Prepared reproduction command
+### Executed reproduction command
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha050
@@ -79,5 +76,9 @@ env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python script
 ```
 
 Required post-run verification is identical to alpha `0.75`, with the exact
-training-only weight record required to state alpha `0.50`. This preparation
-does not authorize execution or any alpha `0.25` profile.
+training-only weight record required to state alpha `0.50`. All checks passed:
+XGB, GBM, and CAT trained and are inferable; XGBoost was selected at balanced
+accuracy `0.943514732929528`; the sole training-only mapping is
+`at-risk=0.7411670636696837`, `unhealthy=2.374682036696347`, and
+`fit=2.859746651022219`. Full diagnostics and hashes are in `results.json`.
+This completed plan does not authorize alpha `0.25` or any other method.
