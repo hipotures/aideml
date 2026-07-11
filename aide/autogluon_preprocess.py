@@ -228,38 +228,57 @@ def _class_balance_config(value):
         )
     if not isinstance(value, dict):
         raise ValueError("class_balance must be a string or mapping")
-    unknown = set(value) - {"method", "alpha", "max_raw_weight", "beta"}
+    unknown = set(value) - {"method", "alpha", "max_raw_weight", "beta", "target_minority_to_majority_ratio"}
     if unknown:
         raise ValueError(f"Unsupported class_balance options: {sorted(unknown)}")
     method = str(value.get("method", "none")).strip().lower().replace("-", "_")
     if method == "balanced":
         method = "inverse_frequency"
     if method == "none":
-        if "alpha" in value or "max_raw_weight" in value or "beta" in value:
+        if "alpha" in value or "max_raw_weight" in value or "beta" in value or "target_minority_to_majority_ratio" in value:
             raise ValueError(
                 "class_balance alpha/max_raw_weight/beta require a balancing method"
             )
         return {"method": "none"}
     if method == "effective_number":
-        if "alpha" in value or "max_raw_weight" in value or "beta" not in value:
+        if (
+            "alpha" in value
+            or "max_raw_weight" in value
+            or "target_minority_to_majority_ratio" in value
+            or "beta" not in value
+        ):
             raise ValueError("effective_number requires beta and rejects alpha/max_raw_weight")
         try:
             beta = float(value["beta"])
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, OverflowError) as exc:
             raise ValueError("class_balance.beta must be a finite number in [0, 1)") from exc
         if not np.isfinite(beta) or beta < 0 or beta >= 1:
             raise ValueError("class_balance.beta must be a finite number in [0, 1)")
         return {"method": method, "beta": beta}
+    if method == "partial_random_oversample":
+        if any(k in value for k in ("alpha", "max_raw_weight", "beta")) or "target_minority_to_majority_ratio" not in value:
+            raise ValueError("partial_random_oversample requires ratio and rejects alpha/max_raw_weight/beta")
+        try:
+            ratio = float(value["target_minority_to_majority_ratio"])
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("target_minority_to_majority_ratio must be a finite number in (0, 1)") from exc
+        if not np.isfinite(ratio) or ratio <= 0 or ratio >= 1:
+            raise ValueError("target_minority_to_majority_ratio must be a finite number in (0, 1)")
+        return {"method": method, "target_minority_to_majority_ratio": ratio}
     if method not in {"inverse_frequency", "clipped_inverse_frequency"}:
         raise ValueError(
             "class_balance.method must be 'none', 'inverse_frequency', "
-            "'clipped_inverse_frequency', or 'effective_number'"
+            "'clipped_inverse_frequency', 'effective_number', or 'partial_random_oversample'"
         )
     if "beta" in value:
         raise ValueError("class_balance.beta is only valid for effective_number")
+    if "target_minority_to_majority_ratio" in value:
+        raise ValueError(
+            "target_minority_to_majority_ratio is only valid for partial_random_oversample"
+        )
     try:
         alpha = float(value.get("alpha", 1.0))
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError("class_balance.alpha must be a finite number >= 0") from exc
     if not np.isfinite(alpha) or alpha < 0:
         raise ValueError("class_balance.alpha must be a finite number >= 0")
@@ -275,7 +294,7 @@ def _class_balance_config(value):
         )
     try:
         max_raw_weight = float(value["max_raw_weight"])
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError(
             "class_balance.max_raw_weight must be a finite number > 0"
         ) from exc
@@ -286,6 +305,45 @@ def _class_balance_config(value):
         "alpha": alpha,
         "max_raw_weight": max_raw_weight,
     }
+
+
+def _partial_random_oversample(train_data, *, target_col, ratio, seed):
+    try:
+        ratio = float(ratio)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("target_minority_to_majority_ratio must be a finite number in (0, 1)") from exc
+    if not np.isfinite(ratio) or ratio <= 0 or ratio >= 1:
+        raise ValueError("target_minority_to_majority_ratio must be a finite number in (0, 1)")
+    if not isinstance(seed, (int, np.integer)) or isinstance(seed, bool):
+        raise ValueError("Oversampling seed must be an integer")
+    if not isinstance(target_col, str) or not target_col:
+        raise ValueError("Oversampling requires a target column name")
+    if target_col not in train_data.columns:
+        raise ValueError("Oversampling requires a present target column")
+    labels = train_data[target_col]
+    if labels.empty:
+        raise ValueError("Oversampling requires nonempty training rows")
+    if labels.isna().any():
+        raise ValueError("Oversampling requires a nonmissing target")
+    counts = labels.value_counts()
+    if counts.empty or (counts <= 0).any():
+        raise ValueError("Oversampling requires positive class counts")
+    class_order = sorted(counts.index.tolist(), key=lambda label: (type(label).__name__, repr(label)))
+    before_counts = {str(label): int(counts[label]) for label in class_order}
+    majority = int(counts.max())
+    rng = np.random.default_rng(int(seed))
+    pieces = [train_data]
+    for label in class_order:
+        need = max(0, int(np.ceil(float(ratio) * majority)) - int(counts[label]))
+        if need:
+            pool = train_data[train_data[target_col] == label]
+            pieces.append(pool.iloc[rng.integers(0, len(pool), size=need)])
+    out = pd.concat(pieces, ignore_index=True)
+    out = out.iloc[rng.permutation(len(out))].reset_index(drop=True)
+    after_raw_counts = out[target_col].value_counts()
+    after_counts = {str(label): int(after_raw_counts[label]) for label in class_order}
+    added = len(out) - len(train_data)
+    return out, before_counts, after_counts, added
 
 
 def _inverse_frequency_sample_weight(labels, *, alpha, max_raw_weight=None, beta=None):
@@ -1464,11 +1522,27 @@ def main() -> None:
         train_data = train_model
         valid_data = None
 
-    if class_balance["method"] in {
+    if class_balance["method"] == "partial_random_oversample":
+        train_data, before_counts, after_counts, added_rows = _partial_random_oversample(
+            train_data,
+            target_col=target_col,
+            ratio=class_balance["target_minority_to_majority_ratio"],
+            seed=AIDE_AG_CONFIG.get("seed", 42),
+        )
+        print(
+            "AIDE_RUNTIME|class_resampling"
+            + f"|method=partial_random_oversample|ratio={{class_balance['target_minority_to_majority_ratio']}}"
+            + f"|seed={{AIDE_AG_CONFIG.get('seed', 42)}}"
+            + f"|before={{json.dumps(before_counts, sort_keys=True)}}"
+            + f"|after={{json.dumps(after_counts, sort_keys=True)}}|added={{added_rows}}",
+            flush=True,
+        )
+
+    if class_balance["method"] in {{
         "inverse_frequency",
         "clipped_inverse_frequency",
         "effective_number",
-    }:
+    }}:
         train_weights, class_weight_mapping = _inverse_frequency_sample_weight(
             train_data[target_col],
             alpha=class_balance.get("alpha", 1.0),
@@ -1520,7 +1594,11 @@ def main() -> None:
             "path": str(model_dir),
             "verbosity": 2,
         }}
-        if class_balance["method"] != "none":
+        if class_balance["method"] in {{
+            "inverse_frequency",
+            "clipped_inverse_frequency",
+            "effective_number",
+        }}:
             predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL
             predictor_kwargs["weight_evaluation"] = False
         predictor = TabularPredictor(**predictor_kwargs)

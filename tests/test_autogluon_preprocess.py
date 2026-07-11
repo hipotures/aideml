@@ -493,6 +493,36 @@ def test_autogluon_wrapper_dispatches_and_logs_effective_number(tmp_path):
     )
 
 
+def test_autogluon_wrapper_dispatches_ros_after_holdout_without_sample_weights(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["ros_test"] = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "validation_strategy": "holdout",
+        "seed": 1729,
+        "class_balance": {
+            "method": "partial_random_oversample",
+            "target_minority_to_majority_ratio": 0.25,
+        },
+    }
+    cfg.agent.autogluon.profile = "ros_test"
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    compile(code, "<generated_ros_autogluon_wrapper>", "exec")
+    split = code.index("train_data, valid_data = train_test_split(")
+    resample = code.index('if class_balance["method"] == "partial_random_oversample":')
+    weighting = code.index('if class_balance["method"] in {', resample)
+    predictor = code.index("predictor_kwargs = {")
+    predictor_weighting = code.index('if class_balance["method"] in {', predictor)
+    assert split < resample < weighting < predictor < predictor_weighting
+    assert "AIDE_RUNTIME|class_resampling" in code
+    assert "|added={added_rows}" in code
+    assert "len(train_data)-len(train_model)" not in code
+    assert 'if class_balance["method"] != "none":' not in code
+    assert 'predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL' in code
+    assert "valid_data" in code[resample:]
+
+
 def _class_balancing_helpers():
     namespace = {"np": np, "pd": pd}
     exec(autogluon_preprocess._CLASS_BALANCING_HELPER_SOURCE, namespace)
@@ -590,6 +620,76 @@ def test_effective_number_uses_training_partition_counts_only():
     assert mapping != pytest.approx(full_mapping)
 
 
+def test_partial_random_oversample_counts_provenance_seed_and_index():
+    helper = _class_balancing_helpers()["_partial_random_oversample"]
+    frame = pd.DataFrame(
+        {
+            "row_id": range(15),
+            "target": ["major"] * 8 + ["middle"] * 5 + ["minor"] * 2,
+        }
+    )
+    out, before, after, added = helper(frame, target_col="target", ratio=0.5, seed=7)
+    assert before == {"major": 8, "middle": 5, "minor": 2}
+    assert after == {"major": 8, "middle": 5, "minor": 4}
+    assert added == 2
+    assert len(out) == len(frame) + added
+    assert out.index.equals(pd.RangeIndex(len(out)))
+    assert set(map(tuple, out.to_numpy())).issubset(set(map(tuple, frame.to_numpy())))
+    assert out["target"].value_counts()["major"] == before["major"]
+    assert out["target"].value_counts()["middle"] == before["middle"]
+    assert out.equals(helper(frame, target_col="target", ratio=0.5, seed=7)[0])
+
+
+def test_partial_random_oversample_different_seeds_produce_different_draws():
+    helper = _class_balancing_helpers()["_partial_random_oversample"]
+    frame = pd.DataFrame(
+        {
+            "row_id": range(18),
+            "target": ["major"] * 8 + ["minor"] * 2 + ["other"] * 8,
+        }
+    )
+    first = helper(frame, target_col="target", ratio=0.875, seed=7)[0]
+    second = helper(frame, target_col="target", ratio=0.875, seed=8)[0]
+    first_minor = first.loc[first["target"] == "minor", "row_id"].value_counts().sort_index()
+    second_minor = second.loc[second["target"] == "minor", "row_id"].value_counts().sort_index()
+
+    assert not first_minor.equals(second_minor)
+
+
+@pytest.mark.parametrize("ratio", [None, "bad", 0, -0.1, 1, float("nan"), float("inf")])
+def test_partial_random_oversample_rejects_invalid_ratio(ratio):
+    helper = _class_balancing_helpers()["_partial_random_oversample"]
+    frame = pd.DataFrame({"target": ["major", "minor"]})
+
+    with pytest.raises(ValueError, match="finite number in \\(0, 1\\)"):
+        helper(frame, target_col="target", ratio=ratio, seed=7)
+
+
+@pytest.mark.parametrize(
+    "frame,target_col,message",
+    [
+        (pd.DataFrame({"other": [1]}), "target", "present target column"),
+        (pd.DataFrame({"target": []}), "target", "nonempty training rows"),
+        (pd.DataFrame({"target": ["major", None]}), "target", "nonmissing target"),
+        (pd.DataFrame({"target": ["major"]}), "", "target column name"),
+    ],
+)
+def test_partial_random_oversample_rejects_invalid_target_data(frame, target_col, message):
+    helper = _class_balancing_helpers()["_partial_random_oversample"]
+
+    with pytest.raises(ValueError, match=message):
+        helper(frame, target_col=target_col, ratio=0.5, seed=7)
+
+
+@pytest.mark.parametrize("seed", ["7", 7.0, True, None])
+def test_partial_random_oversample_rejects_noninteger_seed(seed):
+    helper = _class_balancing_helpers()["_partial_random_oversample"]
+    frame = pd.DataFrame({"target": ["major", "minor"]})
+
+    with pytest.raises(ValueError, match="seed must be an integer"):
+        helper(frame, target_col="target", ratio=0.5, seed=seed)
+
+
 def test_clipped_inverse_frequency_uses_training_partition_counts_only():
     helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
     full_labels = pd.Series(["major"] * 8 + ["minor"] * 4)
@@ -656,6 +756,15 @@ def test_class_balance_config_supports_clipped_inverse_and_legacy_modes():
     assert helper("balanced") == {"method": "inverse_frequency", "alpha": 1.0}
     assert helper(
         {
+            "method": "partial_random_oversample",
+            "target_minority_to_majority_ratio": 0.25,
+        }
+    ) == {
+        "method": "partial_random_oversample",
+        "target_minority_to_majority_ratio": 0.25,
+    }
+    assert helper(
+        {
             "method": "clipped_inverse_frequency",
             "alpha": 1.0,
             "max_raw_weight": 4.0,
@@ -669,6 +778,51 @@ def test_class_balance_config_supports_clipped_inverse_and_legacy_modes():
         helper({"method": "clipped_inverse_frequency", "alpha": 1.0})
     with pytest.raises(ValueError, match="only valid for clipped_inverse_frequency"):
         helper({"method": "inverse_frequency", "max_raw_weight": 4.0})
+
+
+@pytest.mark.parametrize(
+    "config,message",
+    [
+        ({"method": "partial_random_oversample"}, "requires ratio"),
+        (
+            {"method": "partial_random_oversample", "target_minority_to_majority_ratio": "bad"},
+            "finite number in \\(0, 1\\)",
+        ),
+        (
+            {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 1},
+            "finite number in \\(0, 1\\)",
+        ),
+        (
+            {
+                "method": "partial_random_oversample",
+                "target_minority_to_majority_ratio": 0.25,
+                "alpha": 1.0,
+            },
+            "requires ratio and rejects",
+        ),
+        (
+            {"method": "inverse_frequency", "target_minority_to_majority_ratio": 0.25},
+            "only valid for partial_random_oversample",
+        ),
+        (
+            {
+                "method": "effective_number",
+                "beta": 0.9,
+                "target_minority_to_majority_ratio": 0.25,
+            },
+            "requires beta and rejects",
+        ),
+        (
+            {"method": "none", "target_minority_to_majority_ratio": 0.25},
+            "require a balancing method",
+        ),
+    ],
+)
+def test_partial_random_oversample_schema_rejects_inapplicable_parameters(config, message):
+    helper = _class_balancing_helpers()["_class_balance_config"]
+
+    with pytest.raises(ValueError, match=message):
+        helper(config)
 
 
 @pytest.mark.parametrize("beta", [-0.1, 1, float("nan"), float("inf"), "invalid"])
@@ -718,6 +872,10 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
             "max_raw_weight": 4.0,
         },
         {"method": "effective_number", "beta": 0.999995},
+        {
+            "method": "partial_random_oversample",
+            "target_minority_to_majority_ratio": 0.25,
+        },
     )
 
     for config in configs:
@@ -763,6 +921,13 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
             "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
             {"method": "effective_number", "beta": 0.999995},
         ),
+        (
+            "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
+            {
+                "method": "partial_random_oversample",
+                "target_minority_to_majority_ratio": 0.25,
+            },
+        ),
     )
     resolved = []
     for profile_name, expected_class_balance in profiles:
@@ -780,6 +945,15 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
     ]
     assert effective_number_profiles == [
         "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m"
+    ]
+    ros_profiles = [
+        name
+        for name, profile in cfg.agent.autogluon.profiles.items()
+        if getattr(profile.get("class_balance", {}), "get", lambda *_: None)("method")
+        == "partial_random_oversample"
+    ]
+    assert ros_profiles == [
+        "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m"
     ]
 
     assert all(settings == resolved[0] for settings in resolved[1:])

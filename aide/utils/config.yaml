@@ -410,6 +410,22 @@ agent:
           CAT: [{ag_args: {priority: 100}, ag_args_fit: {num_gpus: 0, max_time_limit: 180}}]
           XGB: [{device: cpu, tree_method: hist, ag_args: {priority: 100}, ag_args_fit: {num_gpus: 0, max_time_limit: 180}}]
         fit_args: {save_space: true, fit_weighted_ensemble: false, auto_stack: false}
+      s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        preprocess_timeout: 180
+        validation_fraction: 0.2
+        validation_strategy: holdout
+        seed: 1729
+        class_balance: {method: partial_random_oversample, target_minority_to_majority_ratio: 0.25}
+        use_gpu: false
+        fair_model_scheduling: true
+        hyperparameters:
+          GBM: [{ag_args: {priority: 100}, ag_args_fit: {num_gpus: 0, max_time_limit: 180}}]
+          CAT: [{ag_args: {priority: 100}, ag_args_fit: {num_gpus: 0, max_time_limit: 180}}]
+          XGB: [{device: cpu, tree_method: hist, ag_args: {priority: 100}, ag_args_fit: {num_gpus: 0, max_time_limit: 180}}]
+        fit_args: {save_space: true, fit_weighted_ensemble: false, auto_stack: false}
       # Versioned reference after the runner began enforcing explicit
       # inferability evidence and per-family CUDA settings. Keeping this
       # identifier distinct prevents it being aggregated with earlier,
