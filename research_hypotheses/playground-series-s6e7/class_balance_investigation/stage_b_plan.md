@@ -157,6 +157,11 @@ revision `e99a21b` (artifact `20260711T163831`, balanced accuracy
 `0.9463823272415373`). Beta `0.99999`, cap 3, and other methods remain
 unauthorized.
 
+Held-out probability capture and prior-power sweep completed once at artifact
+`20260711T173849` (revision `047b6bd`), explicitly fixed single holdout, not OOF.
+Results are in `heldout_prior_power_sweep.json`; tau 0 reproduces base metrics.
+No next training is authorized.
+
 Ratio `.25` executed once at committed revision `615471c`, artifact
 `logs/2-smiling-topaz-oarfish/artifacts/20260711T171117`, balanced accuracy
 `0.9413978706130188`; exact counts matched and no class-weight record emitted.
@@ -266,3 +271,14 @@ the frozen post-split training counts only: at-risk `474049`, unhealthy
 the input/source hashes, class order, tau sweep `[0, .25, .5, .75, 1]`,
 balanced accuracy, per-class recall, confusion matrix, and prediction counts.
 Tau `0` is the exact base-probability argmax. No labels enter the transform.
+
+### Read-only boundary extension (completed, no training)
+
+Tau `1.25` and `1.5` completed read-only at revision `12e00f4`; no rerun or
+training was used. Tau `1.5` declines for all families; GBM tau `1.0` remains best.
+
+```sh
+uv run python scripts/heldout_prior_power.py --probabilities logs/2-smiling-topaz-oarfish/artifacts/20260711T173849/model_predictions/xgboost-heldout-probabilities.csv.gz --class-counts-json '{"at-risk":474049,"fit":31842,"unhealthy":46179}' --output research_hypotheses/playground-series-s6e7/class_balance_investigation/prior_power_xgb_tau125_150.json
+uv run python scripts/heldout_prior_power.py --probabilities logs/2-smiling-topaz-oarfish/artifacts/20260711T173849/model_predictions/lightgbm-heldout-probabilities.csv.gz --class-counts-json '{"at-risk":474049,"fit":31842,"unhealthy":46179}' --output research_hypotheses/playground-series-s6e7/class_balance_investigation/prior_power_gbm_tau125_150.json
+uv run python scripts/heldout_prior_power.py --probabilities logs/2-smiling-topaz-oarfish/artifacts/20260711T173849/model_predictions/catboost-heldout-probabilities.csv.gz --class-counts-json '{"at-risk":474049,"fit":31842,"unhealthy":46179}' --output research_hypotheses/playground-series-s6e7/class_balance_investigation/prior_power_cat_tau125_150.json
+```

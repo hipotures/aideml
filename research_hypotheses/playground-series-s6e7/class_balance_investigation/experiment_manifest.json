@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_partial_random_oversample_ratio025_prepared_uncommitted",
+  "status": "stage_b_completed_no_future_training_authorized",
   "training_authorized": false,
   "repository": {
     "revision": "8e6d8d4c11c3cda1add3272cc1e418904c4e30b0",
@@ -15,20 +15,21 @@
     "working_tree_has_uncommitted_effective_number_beta999995_profile": false,
     "effective_number_closed_completed_comparable": true,
     "effective_number_execution_revision": "e99a21b",
-    "working_tree_has_uncommitted_partial_random_oversample_ratio025_profile": true,
+    "working_tree_has_uncommitted_partial_random_oversample_ratio025_profile": false,
     "partial_random_oversample_ratio025_launch_requires_committed_revision": true,
     "partial_random_oversample_ratio025_preparation_base_revision": "5256f07",
-    "working_tree_has_uncommitted_heldout_probability_capture": true,
-    "heldout_probability_capture_preparation_base_revision": "8e6d8d4c11c3cda1add3272cc1e418904c4e30b0",
-    "uncommitted_heldout_probability_capture_sha256": {
+    "working_tree_has_uncommitted_heldout_probability_capture": false,
+    "heldout_probability_export_committed_revision": "9d5decc",
+    "heldout_probability_capture_execution_revision": "047b6bd",
+    "committed_heldout_probability_capture_sha256": {
       "aide/autogluon_preprocess.py": "a6a6827e37dc1874a48b85a4e343355d9539ee36131c8ddea43866902b158fe2",
       "scripts/rerun_autogluon_profile.py": "2557c747f8c2b3bdf8c97bb89cb5b8aab4309474d7d4541883d1900a238812b0",
-      "scripts/heldout_prior_power.py": "b3334208f96dff9acdb684fbb2ef9cc86ddf77924640f235ff12542654ce304a",
+      "scripts/heldout_prior_power.py": "d53952f668fa013e4624f93ab768b652eeeb61b9b9aa85fa90847aa0e4705759",
       "tests/test_autogluon_preprocess.py": "9ea9617fb64b36bd71875cfbe40cc0cf834eecd9b69d683dcc66803cc6d32e42",
       "tests/test_rerun_autogluon_profile.py": "a3003c558eef62bd68536fd60a6891095a2da49fce2536a3671303cdd9b9a48d",
-      "tests/test_heldout_prior_power.py": "b5ed4e22f2596d05e7a90da9310357efe9c76c1b21c081853b894e9f6951c865"
+      "tests/test_heldout_prior_power.py": "6276e3b41752ddab811d9e93abbad335ac4d0976b6990de638eb22137034c34e"
     },
-    "uncommitted_partial_random_oversample_ratio025_preparation_sha256": {
+    "committed_partial_random_oversample_ratio025_sha256": {
       "aide/autogluon_preprocess.py": "f15b43d054a9da542562c67a879c886926314c2ad428ba9b6c2de5d2803e911a",
       "aide/utils/config.yaml": "f6f192e28f99ad692e711e361f999d5673949027fe6c43ace5e3c331136e761a",
       "tests/test_autogluon_preprocess.py": "36d2bc7cfb98cc2306e656154ee7efa1b43cf5c74d79dc92aaa3162fe03a747e"
@@ -36,8 +37,8 @@
     "audited_wrapper_sha256": "f15b43d054a9da542562c67a879c886926314c2ad428ba9b6c2de5d2803e911a",
     "config_sha256": "f6f192e28f99ad692e711e361f999d5673949027fe6c43ace5e3c331136e761a",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
-    "stage_b_configs_sha256": "e4e91d9c57d4444eb7bcbe566c1ff9afa87c7dd54cb6921a68c8d5336babf458",
-    "stage_b_plan_sha256": "5d2e270e83761c35ef1aeef4ac173981dbcbf05df6f4713c04c0a3e384422265"
+    "stage_b_configs_sha256": "8f898c47f63682ed5db117ac5a386008ee0fe6ca728ddc1553c4bbb0f441fe7c",
+    "stage_b_plan_sha256": "7fb7c068d0436743975c30509ad837e417a7dcfbaa4c5e3ef8257e2a8a8a3e4e"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -379,8 +380,10 @@
     }
   },
   "heldout_probability_capture_prepared": {
-    "status": "prepared_not_executed",
+    "status": "completed_with_training_capture",
     "training_authorized": false,
+    "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T173849",
+    "execution_revision": "047b6bd",
     "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
     "scope": "single_fixed_holdout_not_oof",
     "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-heldout-probability-capture-unweighted-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted/run_cpu_capped180_attempt_1.log 2>&1",
@@ -392,6 +395,20 @@
       "labels_used_only_for_scoring": true,
       "machine_readable_output": true
     }
+  },
+  "heldout_prior_power_boundary_extension": {
+    "status": "completed_read_only_no_training",
+    "training_authorized": false,
+    "scope": "read_only_existing_fixed_holdout_files",
+    "class_order": ["at-risk", "fit", "unhealthy"],
+    "class_counts": {"at-risk": 474049, "fit": 31842, "unhealthy": 46179},
+    "existing_taus": [0.0, 0.25, 0.5, 0.75, 1.0],
+    "prepared_taus": [1.25, 1.5],
+    "executed": true,
+    "execution_revision": "12e00f4",
+    "existing_sweep_output": "research_hypotheses/playground-series-s6e7/class_balance_investigation/heldout_prior_power_sweep.json",
+    "existing_sweep_sha256": "7783e8221636e23dc667eda4925c51efdce4925b3d2b3ed223306c2ca31aaff8",
+    "results_sha256": "f251746bff5bbe7fba5da1c98c1e8694a4f4db869f9f8a6aa663478dd33bf671"
   },
   "reuse_candidates": [
     {
@@ -587,5 +604,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Partial random oversampling ratio .25 completed once; ratio .15 and other methods not yet authorized; no next method selected"
+  "remaining_gate": "Fixed-heldout probability capture+sweep completed at artifact 20260711T173849; no next training authorized"
 }

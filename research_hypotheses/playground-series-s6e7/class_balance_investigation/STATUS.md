@@ -40,6 +40,14 @@ used only for separate scoring diagnostics.
 
 Completed:
 
+- Fixed held-out probability capture completed once (artifact `20260711T173849`);
+  per-family prior-power sweep (`tau=0,.25,.5,.75,1`) is recorded in
+  `heldout_prior_power_sweep.json`. This is not full-CV OOF; no next training is authorized.
+
+- Read-only prior-power boundary extension completed at revision `12e00f4` with
+  no training. Tau `1.5` declines for every family versus its best tau; global
+  best remains GBM at tau `1.0` (`0.9487465298656267`). No next training is authorized.
+
 - Partial random oversampling ratio `.25` executed once at artifact
   `20260711T171117`, balanced accuracy `0.9413978706130188`; ratio `.15` and
   other methods remain not yet authorized.

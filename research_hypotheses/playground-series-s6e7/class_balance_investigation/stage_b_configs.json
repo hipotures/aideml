@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "stage": "stage_b",
-  "status": "partial_random_oversample_ratio025_completed_comparable",
+  "status": "heldout_probability_capture_completed_no_training_authorized",
   "preparation_base_revision": "5256f07",
   "launch_blocker": "Partial random oversampling ratio .25 requires a committed revision and separate authorization; ratio .15 and other methods are not yet authorized.",
   "source": {
@@ -12,9 +12,9 @@
   },
   "reference_profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
   "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
-  "profile_status": "prepared_not_executed",
-  "artifact_dir": null,
-  "balanced_accuracy": null,
+  "profile_status": "completed_comparable",
+  "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T171117",
+  "balanced_accuracy": 0.9413978706130188,
   "config": {
     "included_model_types": ["XGB", "GBM", "CAT"],
     "presets": "medium_quality",
@@ -196,7 +196,7 @@
     "balanced_accuracy": 0.9463823272415373
   },
   "partial_random_oversample_ratio025_prepared": {
-    "status": "prepared_not_executed",
+    "status": "completed_fixed_holdout_not_oof",
     "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
     "preparation_base_revision": "5256f07",
     "launch_blocker": "Training requires a committed revision and separate authorization; ratio .15 is not yet authorized.",
@@ -234,8 +234,10 @@
     "unauthorized_ratio": 0.15
   },
   "heldout_probability_capture_prepared": {
-    "status": "prepared_not_executed",
+    "status": "completed_with_training_capture",
     "training_authorized": false,
+    "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T173849",
+    "execution_revision": "047b6bd",
     "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
     "scope": "single_fixed_holdout_not_oof",
     "export_models": ["best_inferable_stack1_XGB", "best_inferable_stack1_GBM", "best_inferable_stack1_CAT", "selected_deduped"],
@@ -248,6 +250,19 @@
       "labels_used_only_for_scoring": true,
       "machine_readable_output": true
     }
+  },
+  "heldout_prior_power_boundary_extension": {
+    "status": "completed_read_only_no_training",
+    "training_authorized": false,
+    "scope": "read_only_existing_fixed_holdout_files",
+    "class_order": ["at-risk", "fit", "unhealthy"],
+    "class_counts": {"at-risk": 474049, "fit": 31842, "unhealthy": 46179},
+    "existing_taus": [0.0, 0.25, 0.5, 0.75, 1.0],
+    "prepared_taus": [1.25, 1.5],
+    "executed": true,
+    "execution_revision": "12e00f4",
+    "existing_sweep_output": "research_hypotheses/playground-series-s6e7/class_balance_investigation/heldout_prior_power_sweep.json",
+    "existing_sweep_sha256": "7783e8221636e23dc667eda4925c51efdce4925b3d2b3ed223306c2ca31aaff8"
   },
   "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
   "logs_dir": "logs",
