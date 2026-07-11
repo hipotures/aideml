@@ -233,6 +233,22 @@
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
     "unauthorized_ratio": 0.15
   },
+  "heldout_probability_capture_prepared": {
+    "status": "prepared_not_executed",
+    "training_authorized": false,
+    "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+    "scope": "single_fixed_holdout_not_oof",
+    "export_models": ["best_inferable_stack1_XGB", "best_inferable_stack1_GBM", "best_inferable_stack1_CAT", "selected_deduped"],
+    "profile_calibration_session_id": "s6e7-heldout-probability-capture-unweighted-cpu-capped180-20260711",
+    "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-heldout-probability-capture-unweighted-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted/run_cpu_capped180_attempt_1.log 2>&1",
+    "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted/run_cpu_capped180_attempt_1.log",
+    "prior_power": {
+      "class_counts": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+      "taus": [0.0, 0.25, 0.5, 0.75, 1.0],
+      "labels_used_only_for_scoring": true,
+      "machine_readable_output": true
+    }
+  },
   "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
   "logs_dir": "logs",
   "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha075/run_cpu_capped180_attempt_1.log",

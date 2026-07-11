@@ -239,3 +239,30 @@ The completed run recorded exactly one training-only
 the expected mapping, frozen source/data/split hashes, and XGB, GBM, and CAT
 all trained and inferable. Beta `0.99999` has no prepared profile and remains
 unauthorized.
+
+## Fixed held-out probability capture (prepared, not authorized)
+
+Exactly one capture rerun is prepared from the frozen unweighted profile
+`s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m`; its
+resolved training configuration is unchanged. The export code revision writes
+one inferable stack-1 base model for each XGB, GBM, and CAT family, plus the
+selected model if it is distinct. These are **single fixed held-out fold**
+probabilities, not full-CV OOF predictions.
+
+Reserved outer log:
+`logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted/run_cpu_capped180_attempt_1.log`
+
+Prepared capture command (do not execute):
+
+```sh
+mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-heldout-probability-capture-unweighted-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/heldout_probability_capture_unweighted/run_cpu_capped180_attempt_1.log 2>&1
+```
+
+After a separately authorized capture, run `scripts/heldout_prior_power.py`
+against each copied `model_predictions/*-heldout-probabilities.csv.gz` file with
+the frozen post-split training counts only: at-risk `474049`, unhealthy
+`46179`, and fit `31842` (never full-label counts). Its machine-readable output records
+the input/source hashes, class order, tau sweep `[0, .25, .5, .75, 1]`,
+balanced accuracy, per-class recall, confusion matrix, and prediction counts.
+Tau `0` is the exact base-probability argmax. No labels enter the transform.

@@ -29,6 +29,15 @@ Effective-number beta `0.999995` is closed: its comparable execution completed
 at balanced accuracy `0.9463823272415373` (artifact `20260711T163831`). Beta
 `.99999`, cap 3, and all other methods remain unauthorized.
 
+Fixed held-out probability capture is prepared only, not authorized or run. It
+uses exactly one rerun of the frozen unweighted profile
+`s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m`, exporting
+the single seed-1729 holdout probabilities rather than CV OOF predictions.
+The label-free prior-power sweep evaluates only tau `0`, `.25`, `.5`, `.75`,
+and `1` after capture. Its priors are frozen from the post-split training
+counts only: at-risk `474049`, unhealthy `46179`, and fit `31842`; labels are
+used only for separate scoring diagnostics.
+
 Completed:
 
 - Partial random oversampling ratio `.25` executed once at artifact
