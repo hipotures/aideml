@@ -246,11 +246,14 @@
       "resolved_config_verified": true
     },
     "clipped_selected": {
-      "status": "frozen_uncommitted_not_executed",
+      "status": "completed_comparable",
       "selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4",
       "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
       "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
-      "launch_blocker": "Implementation, profile, and research changes must be committed before training can be authorized.",
+      "launch_blocker": "No further Stage B method is authorized; cap 3 remains explicitly unauthorized.",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
+      "balanced_accuracy": 0.9491452350142495,
+      "balanced_accuracy_delta_vs_stage_a_alpha1": -0.00043488707982441976,
       "only_resolved_difference_from_reference": "class_balance",
       "balancing": {
         "method": "clipped_inverse_frequency",

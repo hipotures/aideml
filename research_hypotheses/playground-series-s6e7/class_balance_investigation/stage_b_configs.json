@@ -114,8 +114,11 @@
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
   },
   "clipped_selected": {
-    "status": "frozen_uncommitted_not_executed",
+    "status": "completed_comparable",
     "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
+    "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
+    "balanced_accuracy": 0.9491452350142495,
+    "balanced_accuracy_delta_vs_stage_a_alpha1": -0.00043488707982441976,
     "config": {
       "included_model_types": ["XGB", "GBM", "CAT"],
       "presets": "medium_quality",

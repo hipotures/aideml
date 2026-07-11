@@ -1017,6 +1017,30 @@
         "No model family failed or was skipped",
         "No other Stage B method was launched"
       ]
+    },
+    {
+      "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
+      "status": "completed_comparable",
+      "balanced_accuracy": 0.9491452350142495,
+      "per_class_recall": {"at-risk": 0.9359052247873633, "unhealthy": 0.9635339974014725, "fit": 0.9479964828539128},
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[110916, 4958, 2638], [384, 11124, 37], [356, 58, 7547]],
+      "target_counts": {"at-risk": 118512, "unhealthy": 11545, "fit": 7961},
+      "prediction_counts": {"at-risk": 111656, "unhealthy": 16140, "fit": 10222},
+      "prediction_proportions": {"at-risk": 0.8089959280673535, "unhealthy": 0.11694126853019171, "fit": 0.07406280340245475},
+      "model_results": {
+        "XGB": {"balanced_accuracy": 0.9487964071834482, "fit_seconds": 8.309935331344604, "validation_prediction_seconds": 0.14605236053466797, "can_infer": true},
+        "GBM": {"balanced_accuracy": 0.9491452350142495, "fit_seconds": 20.72976779937744, "validation_prediction_seconds": 0.20423364639282227, "can_infer": true},
+        "CAT": {"balanced_accuracy": 0.9485034101762914, "fit_seconds": 179.80391001701355, "validation_prediction_seconds": 0.04327893257141113, "can_infer": true}
+      },
+      "selected_model": "GBM",
+      "training_seconds": 213.66777205467224,
+      "exec_seconds": 221.05194735527039,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
+      "source_sha256": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "comparison": {"balanced_accuracy_delta_vs_stage_a_alpha1": -0.00043488707982441976},
+      "warnings_or_failures": ["Per-model prediction export unavailable because predictor was intentionally not bagged", "No model family failed or was skipped", "Cap 3 and no other Stage B method authorized"]
     }
   ]
 }

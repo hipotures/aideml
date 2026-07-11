@@ -1,9 +1,8 @@
 # Stage B inverse-frequency execution plan
 
-Status: **the inverse-frequency alpha screens completed comparably; clipped
-inverse-frequency alpha `1.0`, pre-normalization cap `4.0`, is the single next
-candidate, frozen but uncommitted and not executed**. No other method was
-prepared or launched.
+Status: **clipped inverse-frequency alpha `1.0`, pre-normalization cap `4.0`,
+completed comparably at balanced accuracy `0.9491452350142495`**. Cap `3` and
+all other methods remain unauthorized; no next method is selected.
 
 The profile is frozen at repository revision
 `5b436165c8677503beb064cb466625b869fdfb2c`. It uses the same source artifact,
@@ -123,10 +122,8 @@ computed from the holdout training partition only as `N / (K * n_c)`, raised to
 alpha `1.0`, clipped at raw weight `4.0`, and then normalized to training-row
 mean one. The CPU fair-one model block is otherwise identical to Stage A.
 
-The implementation, profile, and research changes were prepared from base
-revision `db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc` and are uncommitted.
-Training cannot be launched until commits are possible, the resulting revision
-is recorded, and Main separately authorizes the command.
+The run completed at committed revision `704c71d`. Artifact:
+`logs/2-smiling-topaz-oarfish/artifacts/20260711T161037`.
 
 For the frozen training counts, the expected normalized mapping is
 `at-risk=0.4325884766651549`, `unhealthy=4.440722726231404`, and

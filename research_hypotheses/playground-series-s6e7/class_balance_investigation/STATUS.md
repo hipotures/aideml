@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **the inverse-frequency screen is complete. Main selected one clipped
-candidate: alpha `1.0` with pre-normalization cap `4.0`; its implementation and
-profile are frozen but uncommitted and unexecuted**.
+State: **the clipped inverse-frequency alpha `1.0`, pre-normalization cap `4.0`
+run completed comparably at balanced accuracy `0.9491452350142495`; cap `3`
+and all other Stage B methods remain unauthorized**.
 
 Completed:
 
