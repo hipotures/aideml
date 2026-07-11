@@ -8,10 +8,10 @@
   "feature_count": 16,
   "transductive_test_covariates": true,
   "profiles": [
-    {"profile":"stage_c_none","class_balance":{"method":"none"},"log":"logs/class_balance/stage_c_none.log"},
-    {"profile":"stage_c_inverse_frequency_alpha1","class_balance":{"method":"inverse_frequency","alpha":1.0},"log":"logs/class_balance/stage_c_inverse_frequency_alpha1.log"},
-    {"profile":"stage_c_clipped_inverse_frequency_alpha1_cap4","class_balance":{"method":"clipped_inverse_frequency","alpha":1.0,"max_raw_weight":4.0},"log":"logs/class_balance/stage_c_clipped_inverse_frequency_alpha1_cap4.log"}
+    {"profile":"s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m","class_balance":{"method":"none"},"log":"logs/class_balance/s6e7_class_balance_stage_c_20260711/none/run.log"},
+    {"profile":"s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m","class_balance":{"method":"inverse_frequency","alpha":1.0},"log":"logs/class_balance/s6e7_class_balance_stage_c_20260711/inverse_alpha1/run.log"},
+    {"profile":"s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m","class_balance":{"method":"clipped_inverse_frequency","alpha":1.0,"max_raw_weight":4.0},"log":"logs/class_balance/s6e7_class_balance_stage_c_20260711/clipped_cap4/run.log"}
   ],
-  "prior_alternative": {"source":"stage_c_none heldout probabilities","taus":[0,0.25,0.5,0.75,1],"training":false},
+  "prior_alternative": {"source":"strongest none heldout probabilities","taus":[0,0.25,0.5,0.75,1,1.25,1.5],"training":false},
   "no_fourth_training": true
 }
