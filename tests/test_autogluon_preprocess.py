@@ -515,8 +515,8 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
 def test_stage_a_cpu_profiles_differ_only_in_class_balance():
     cfg = _load_cfg(use_cli_args=False)
     profile_names = (
-        "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
-        "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m",
+        "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+        "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
     )
     resolved = []
     for profile_name in profile_names:
@@ -541,11 +541,20 @@ def test_stage_a_cpu_profiles_differ_only_in_class_balance():
         assert len(model_configs) == 1
         assert model_configs[0]["ag_args"] == {"priority": 100}
         assert model_configs[0]["ag_args_fit"]["num_gpus"] == 0
+        assert model_configs[0]["ag_args_fit"]["max_time_limit"] == 180
         assert "task_type" not in model_configs[0]
         assert "devices" not in model_configs[0]
         assert "gpu_ram_part" not in model_configs[0]
     assert settings["hyperparameters"]["XGB"][0]["device"] == "cpu"
     assert settings["hyperparameters"]["XGB"][0]["tree_method"] == "hist"
+    allocated_model_seconds = sum(
+        settings["hyperparameters"][model_type][0]["ag_args_fit"][
+            "max_time_limit"
+        ]
+        for model_type in ("XGB", "GBM", "CAT")
+    )
+    assert allocated_model_seconds == 540
+    assert settings["time_limit"] - allocated_model_seconds == 60
 
 
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
