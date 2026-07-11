@@ -153,6 +153,49 @@ def _copy_prediction_dir(source_dir: Path, destination_dir: Path) -> None:
         shutil.copy2(source, destination_dir / source.name)
 
 
+def _heldout_probability_manifest_entries(
+    run_stats: dict[str, Any], *, artifact_dir: Path
+) -> dict[str, Any] | None:
+    prediction_artifacts = run_stats.get("prediction_artifacts")
+    if not isinstance(prediction_artifacts, dict):
+        return None
+    if prediction_artifacts.get("heldout_probability_kind") != "fixed_heldout_fold_probabilities":
+        return None
+    files = prediction_artifacts.get("heldout_probability_files")
+    if not isinstance(files, list) or not files:
+        raise ValueError("Held-out probability export metadata is missing files")
+    entries = []
+    for record in files:
+        if not isinstance(record, dict):
+            raise ValueError("Held-out probability export metadata is malformed")
+        relative_path = str(record.get("relative_path") or "")
+        if not relative_path.startswith("model_predictions/"):
+            raise ValueError("Held-out probability export path is outside model_predictions")
+        file_entry = _file_entry(artifact_dir / relative_path, base_dir=artifact_dir)
+        if file_entry is None:
+            raise FileNotFoundError(f"Missing copied held-out probability artifact: {relative_path}")
+        class_order = record.get("class_order")
+        if not isinstance(class_order, list) or not class_order:
+            raise ValueError("Held-out probability export is missing class order")
+        entries.append(
+            {
+                "model": record.get("model"),
+                "model_family": record.get("model_family"),
+                "selected": bool(record.get("selected")),
+                "class_order": [str(label) for label in class_order],
+                "rows": int(record.get("rows")),
+                "validation_row_sha256": record.get("validation_row_sha256"),
+                "validation_target_sha256": record.get("validation_target_sha256"),
+                "file": file_entry,
+            }
+        )
+    return {
+        "kind": "fixed_heldout_fold_probabilities",
+        "note": "single_fixed_holdout_not_oof",
+        "files": entries,
+    }
+
+
 def _recover_submission_from_model_submissions(artifact_dir: Path) -> Path | None:
     submission_path = artifact_dir / "submission.csv"
     if submission_path.exists():
@@ -839,6 +882,10 @@ def run_profile_eval(
     lower_is_better = bool(marker.get("lower_is_better")) if marker else False
     run_stats = marker.get("run_stats") if marker else None
     run_stats = dict(run_stats) if isinstance(run_stats, dict) else {}
+    heldout_probability_artifacts = _heldout_probability_manifest_entries(
+        run_stats,
+        artifact_dir=artifact_dir,
+    )
     trained_model_types = trained_model_types_from_run_stats(run_stats)
     eligible_model_types = eligible_model_types_from_run_stats(run_stats)
     failed_or_skipped_model_types = missing_required_model_types(eligible_model_types)
@@ -950,6 +997,7 @@ def run_profile_eval(
             else None
         ),
         "run_stats": run_stats,
+        "heldout_probability_artifacts": heldout_probability_artifacts,
         "trained_model_types": trained_model_types,
         "eligible_for_selection_model_types": eligible_model_types,
         "failed_or_skipped_model_types": failed_or_skipped_model_types,
@@ -995,6 +1043,7 @@ def run_profile_eval(
             ),
             "error": _file_entry(artifact_dir / "error.txt", base_dir=artifact_dir),
         },
+        "heldout_probability_artifacts": heldout_probability_artifacts,
         "node": {
             "id": None,
             "step": None,

@@ -821,6 +821,7 @@ def build_autogluon_wrapper(
     return (
         f'''from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import warnings
@@ -1159,6 +1160,69 @@ def _safe_prediction_name(name: str) -> str:
     return safe or "model"
 
 
+def _model_family(name: str) -> str | None:
+    normalized = str(name).lower()
+    if "xgboost" in normalized or normalized.startswith("xgb"):
+        return "XGB"
+    if "lightgbm" in normalized or normalized.startswith("gbm"):
+        return "GBM"
+    if "catboost" in normalized or normalized.startswith("cat"):
+        return "CAT"
+    return None
+
+
+def _heldout_export_models(predictor: TabularPredictor) -> list[dict]:
+    leaderboard = predictor.leaderboard(silent=True)
+    selected_model = str(predictor.model_best)
+    selected = []
+    selected_names = set()
+    for family in ("XGB", "GBM", "CAT"):
+        for row in leaderboard.to_dict(orient="records"):
+            name = str(row.get("model"))
+            if (
+                _model_family(name) != family
+                or not bool(row.get("can_infer", False))
+                or int(row.get("stack_level", 1)) != 1
+                or "weightedensemble" in name.lower()
+            ):
+                continue
+            selected.append(
+                {{"model": name, "model_family": family, "selected": name == selected_model}}
+            )
+            selected_names.add(name)
+            break
+        else:
+            raise ValueError(f"No inferable stack-1 {{family}} model for held-out export")
+    if selected_model not in selected_names:
+        selected_row = next(
+            (
+                row
+                for row in leaderboard.to_dict(orient="records")
+                if str(row.get("model")) == selected_model and bool(row.get("can_infer", False))
+            ),
+            None,
+        )
+        if selected_row is None:
+            raise ValueError("Selected model is not inferable for held-out export")
+        selected.append(
+            {{
+                "model": selected_model,
+                "model_family": _model_family(selected_model) or "selected",
+                "selected": True,
+            }}
+        )
+    return selected
+
+
+def _ordered_value_sha256(values) -> str:
+    payload = json.dumps(
+        [_json_safe_scalar(value) for value in values],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _save_autogluon_prediction_artifacts(
     predictor: TabularPredictor,
     *,
@@ -1184,6 +1248,68 @@ def _save_autogluon_prediction_artifacts(
         "test_predictions.csv",
     )
     artifacts["test_predictions"] = str(test_path)
+
+    # Fixed held-out fold: export explicit-validation probabilities only.
+    # This branch must never call any OOF API.
+    if valid_data is not None:
+        valid_features = valid_data.drop(
+            columns=[target_col, CLASS_WEIGHT_COL], errors="ignore"
+        )
+        valid_target = valid_data[target_col].copy()
+        if not valid_features.index.equals(valid_data.index):
+            raise AssertionError("Held-out feature indices do not align with validation rows")
+        if valid_target.isna().any() or not valid_target.index.equals(valid_data.index):
+            raise AssertionError("Held-out targets do not align with validation rows")
+        class_order = list(getattr(predictor, "class_labels", []) or [])
+        if not class_order or not set(valid_target.unique()).issubset(set(class_order)):
+            raise ValueError("Held-out target classes do not match predictor class schema")
+        validation_row_sha256 = _ordered_value_sha256(valid_data.index)
+        validation_target_sha256 = _ordered_value_sha256(valid_target)
+        for model_info in _heldout_export_models(predictor):
+            name = model_info["model"]
+            proba = predictor.predict_proba(valid_features, model=name)
+            if not isinstance(proba, pd.DataFrame):
+                raise TypeError("Held-out probabilities must be a DataFrame")
+            if len(proba) != len(valid_data) or not proba.index.equals(valid_data.index):
+                raise AssertionError("Held-out probability rows do not align with validation rows")
+            if list(proba.columns) != class_order:
+                raise ValueError("Held-out probability classes do not match predictor class order")
+            values = proba.to_numpy(dtype=float)
+            if not np.isfinite(values).all() or (values < 0).any():
+                raise ValueError("Held-out probabilities must be finite and nonnegative")
+            if not np.allclose(values.sum(axis=1), 1.0, atol=1e-6):
+                raise ValueError("Held-out probability rows must sum to one")
+            frame = pd.concat(
+                [
+                    pd.DataFrame(
+                        {{
+                            "row": valid_data.index.to_numpy(),
+                            "target": valid_target.to_numpy(),
+                        }}
+                    ),
+                    proba.reset_index(drop=True),
+                ],
+                axis=1,
+            )
+            if not frame["target"].equals(valid_target.reset_index(drop=True)):
+                raise AssertionError("Held-out target export does not preserve validation targets")
+            safe_name = _safe_prediction_name(name)
+            relative_path = f"model_predictions/{{safe_name}}-heldout-probabilities.csv.gz"
+            path = _save_prediction_artifact(frame, working_dir, relative_path[:-3])
+            artifacts.setdefault("heldout_probability_files", []).append(
+                {{
+                    **model_info,
+                    "path": str(path),
+                    "relative_path": relative_path,
+                    "class_order": [str(label) for label in class_order],
+                    "rows": int(len(frame)),
+                    "validation_row_sha256": validation_row_sha256,
+                    "validation_target_sha256": validation_target_sha256,
+                }}
+            )
+        artifacts["heldout_probability_kind"] = "fixed_heldout_fold_probabilities"
+        artifacts["heldout_probability_note"] = "single_fixed_holdout_not_oof"
+        return artifacts
 
     try:
         per_model = []

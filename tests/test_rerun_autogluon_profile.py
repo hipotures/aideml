@@ -1,4 +1,5 @@
 import datetime as dt
+import gzip
 import importlib.util
 import json
 import sys
@@ -23,6 +24,60 @@ SPEC.loader.exec_module(rerun_autogluon_profile)
 
 def _ctime(timestamp: str) -> float:
     return dt.datetime.strptime(timestamp, "%Y%m%dT%H%M%S").timestamp()
+
+
+def test_heldout_probability_manifest_entries_include_copied_hashes(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    probability_dir = artifact_dir / "model_predictions"
+    probability_dir.mkdir(parents=True)
+    probability_path = probability_dir / "xgboost-heldout-probabilities.csv.gz"
+    with gzip.open(probability_path, "wt") as file:
+        file.write("row,target,a,b\n8,a,0.9,0.1\n")
+    run_stats = {
+        "prediction_artifacts": {
+            "heldout_probability_kind": "fixed_heldout_fold_probabilities",
+            "heldout_probability_files": [
+                {
+                    "model": "XGBoost",
+                    "model_family": "XGB",
+                    "selected": True,
+                    "relative_path": "model_predictions/xgboost-heldout-probabilities.csv.gz",
+                    "class_order": ["a", "b"],
+                    "rows": 1,
+                    "validation_row_sha256": "row-hash",
+                    "validation_target_sha256": "target-hash",
+                }
+            ],
+        }
+    }
+
+    result = rerun_autogluon_profile._heldout_probability_manifest_entries(
+        run_stats, artifact_dir=artifact_dir
+    )
+
+    assert result["kind"] == "fixed_heldout_fold_probabilities"
+    assert result["note"] == "single_fixed_holdout_not_oof"
+    assert result["files"][0]["file"]["path"] == "model_predictions/xgboost-heldout-probabilities.csv.gz"
+    assert len(result["files"][0]["file"]["sha256"]) == 64
+
+
+def test_heldout_probability_manifest_requires_copied_file(tmp_path):
+    with pytest.raises(FileNotFoundError, match="Missing copied held-out"):
+        rerun_autogluon_profile._heldout_probability_manifest_entries(
+            {
+                "prediction_artifacts": {
+                    "heldout_probability_kind": "fixed_heldout_fold_probabilities",
+                    "heldout_probability_files": [
+                        {
+                            "relative_path": "model_predictions/missing.csv.gz",
+                            "class_order": ["a", "b"],
+                            "rows": 1,
+                        }
+                    ],
+                }
+            },
+            artifact_dir=tmp_path,
+        )
 
 
 def test_create_profile_eval_artifact_without_modifying_journal(tmp_path, monkeypatch):

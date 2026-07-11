@@ -493,6 +493,24 @@ def test_autogluon_wrapper_dispatches_and_logs_effective_number(tmp_path):
     )
 
 
+def test_explicit_holdout_probability_exports_are_not_labeled_oof(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.validation_strategy = "holdout"
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+    heldout_branch = code.index("# Fixed held-out fold: export explicit-validation probabilities only.")
+    oof_branch = code.index("model_oof_proba = predictor.predict_proba_oof(")
+
+    assert heldout_branch < oof_branch
+    assert "if valid_data is not None:" in code[heldout_branch:oof_branch]
+    assert "predict_proba_oof" not in code[heldout_branch:oof_branch]
+    assert "fixed_heldout_fold_probabilities" in code
+    assert "single_fixed_holdout_not_oof" in code
+    assert "No inferable stack-1 {family} model for held-out export" in code
+    assert "Held-out probability classes do not match predictor class order" in code
+    assert "validation_row_sha256" in code
+    assert "validation_target_sha256" in code
+
+
 def test_autogluon_wrapper_dispatches_ros_after_holdout_without_sample_weights(tmp_path):
     cfg = _cfg(tmp_path)
     cfg.agent.autogluon.profiles["ros_test"] = {
