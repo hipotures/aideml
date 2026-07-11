@@ -2,10 +2,12 @@ import os
 import json
 import time
 from pathlib import Path
+import warnings
 
 import pandas as pd
 import numpy as np
 import pytest
+from sklearn.model_selection import train_test_split
 
 import aide.autogluon_preprocess as autogluon_preprocess
 from aide.interpreter import RedirectQueue
@@ -25,6 +27,8 @@ from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.utils.config import _load_cfg, prep_cfg
 from aide.utils.metric import MetricValue
+
+CLASS_WEIGHT_COL = "__aide_class_weight__"
 
 
 def _cfg(tmp_path: Path):
@@ -435,7 +439,8 @@ def test_autogluon_wrapper_can_enable_balanced_sample_weights(tmp_path):
     assert "'class_balance': 'balanced'" in code
     assert "CLASS_WEIGHT_COL = \"__aide_class_weight__\"" in code
     assert "def _inverse_frequency_sample_weight" in code
-    assert "_inverse_frequency_sample_weight(\n            train_data[target_col]" in code
+    assert "train_weights, class_weight_mapping = _inverse_frequency_sample_weight(" in code
+    assert "train_model[target_col]" in code
     assert code.index("train_data, valid_data = train_test_split(") < code.index(
         "train_weights, class_weight_mapping = _inverse_frequency_sample_weight("
     )
@@ -890,18 +895,226 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
             "max_raw_weight": 4.0,
         },
         {"method": "effective_number", "beta": 0.999995},
-        {
-            "method": "partial_random_oversample",
-            "target_minority_to_majority_ratio": 0.25,
-        },
     )
 
     for config in configs:
-        with pytest.raises(ValueError, match="not supported with bagging"):
-            helper(config, bagged_mode=True, validation_strategy="holdout")
-        with pytest.raises(ValueError, match="requires validation_strategy='holdout'"):
-            helper(config, bagged_mode=False, validation_strategy="autogluon")
+        helper(config, bagged_mode=True, validation_strategy="holdout")
+        helper(config, bagged_mode=False, validation_strategy="autogluon")
         helper(config, bagged_mode=False, validation_strategy="holdout")
+
+    with pytest.raises(ValueError, match="not supported with bagging/auto_stack"):
+        helper(
+            {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
+            bagged_mode=True,
+            validation_strategy="holdout",
+        )
+    with pytest.raises(ValueError, match="not supported with bagging/auto_stack"):
+        helper(
+            {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
+            bagged_mode=False,
+            auto_stack=True,
+            validation_strategy="autogluon",
+        )
+    with pytest.raises(ValueError, match="requires validation_strategy='holdout'"):
+        helper(
+            {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
+            bagged_mode=False,
+            validation_strategy="autogluon",
+        )
+
+
+def _build_input_for_wrapper(tmp_path: Path, *, labels: list[str]) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    train = pd.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5, 6],
+            "feat": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+            "target": labels,
+        }
+    )
+    train.to_csv(input_dir / "train.csv", index=False)
+    pd.DataFrame({"id": [7, 8], "feat": [0.7, 0.8]}).to_csv(
+        input_dir / "test.csv",
+        index=False,
+    )
+    pd.DataFrame({"id": [7, 8], "target": ["STAR", "QSO"]}).to_csv(
+        input_dir / "sample_submission.csv",
+        index=False,
+    )
+
+
+def _run_wrapper_main(tmp_path: Path, cfg, *, preprocess: str) -> tuple[dict[str, object], list[str]]:
+    code = build_autogluon_wrapper(preprocess, cfg)
+    namespace: dict[str, object] = {}
+    exec(code.replace("\nmain()\n", "\n"), namespace)
+
+    captured: dict[str, object] = {}
+
+    class DummyPredictor:
+        eval_metric = "balanced_accuracy"
+        model_best = "model1"
+
+        def __init__(self, *args, **kwargs):
+            captured["init_kwargs"] = kwargs
+
+        def fit(self, **kwargs):
+            captured["fit_kwargs"] = kwargs
+
+        def leaderboard(self, silent=True):
+            return pd.DataFrame(
+                [
+                    {
+                        "model": "model1",
+                        "score_test": 0.75,
+                        "eval_metric": "balanced_accuracy",
+                    }
+                ]
+            )
+
+        def predict(self, data, model=None):
+            return pd.Series(["STAR"] * len(data))
+
+        def predict_proba(self, data, model=None):
+            return pd.DataFrame({"STAR": [0.8] * len(data), "QSO": [0.2] * len(data)})
+
+        def evaluate(self, valid_data, silent=True):
+            return {"balanced_accuracy": 0.75}
+
+    namespace["TabularPredictor"] = DummyPredictor
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            namespace["main"]()
+        finally:
+            os.chdir(cwd)
+
+    emitted_warnings = [
+        str(item.message)
+        for item in caught
+        if issubclass(item.category, RuntimeWarning)
+    ]
+    fit_kwargs = captured["fit_kwargs"]
+    if not isinstance(fit_kwargs, dict):
+        raise TypeError("Captured fit kwargs are not a dictionary")
+    return fit_kwargs, emitted_warnings
+
+
+def test_class_balancing_weight_methods_do_not_raise_for_bagging_or_auto_stack():
+    helper = _class_balancing_helpers()["_validate_custom_balancing_context"]
+    for config in (
+        {"method": "inverse_frequency", "alpha": 1.0},
+        {"method": "clipped_inverse_frequency", "alpha": 1.0, "max_raw_weight": 4.0},
+        {"method": "effective_number", "beta": 0.999995},
+    ):
+        helper(
+            config,
+            bagged_mode=True,
+            auto_stack=False,
+            validation_strategy="autogluon",
+        )
+        helper(config, bagged_mode=False, auto_stack=True, validation_strategy="autogluon")
+
+
+def test_class_weight_scope_global_training_for_bagging_has_valid_finite_weights_with_unit_mean(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["bagged_balanced_test"] = {
+        "fit_args": {"num_bag_folds": 3},
+        "class_balance": "balanced",
+    }
+    cfg.agent.autogluon.profile = "bagged_balanced_test"
+    _build_input_for_wrapper(tmp_path, labels=["a", "a", "a", "b", "b", "c"])
+
+    fit_kwargs, emitted_warnings = _run_wrapper_main(
+        tmp_path,
+        cfg,
+        preprocess="def preprocess(df): return df",
+    )
+    train_data = fit_kwargs["train_data"]
+    assert isinstance(train_data, pd.DataFrame)
+    assert len(train_data) == 6
+    assert CLASS_WEIGHT_COL in train_data.columns
+    assert np.isfinite(train_data[CLASS_WEIGHT_COL]).all()
+    assert (train_data[CLASS_WEIGHT_COL] > 0).all()
+    assert train_data[CLASS_WEIGHT_COL].mean() == pytest.approx(1.0)
+    assert any("global_training" in message for message in emitted_warnings)
+
+
+def test_class_weight_scope_explicit_training_partition_for_holdout(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.validation_strategy = "holdout"
+    cfg.agent.autogluon.profiles["holdout_balanced_test"] = {
+        "validation_fraction": 0.5,
+        "class_balance": "balanced",
+    }
+    cfg.agent.autogluon.profile = "holdout_balanced_test"
+    labels = ["a", "a", "a", "a", "b", "b"]
+    _build_input_for_wrapper(tmp_path, labels=labels)
+
+    fit_kwargs, emitted_warnings = _run_wrapper_main(
+        tmp_path,
+        cfg,
+        preprocess="def preprocess(df): return df",
+    )
+    train_data = fit_kwargs["train_data"]
+    assert CLASS_WEIGHT_COL in train_data.columns
+    assert len(train_data) < 6
+    assert not emitted_warnings
+
+    full_train = pd.DataFrame({"target": labels, "feat": range(len(labels))})
+    expected_train, _ = train_test_split(
+        full_train,
+        test_size=0.5,
+        random_state=cfg.agent.autogluon.seed,
+        stratify=full_train["target"],
+    )
+    train_subset = expected_train["target"]
+    assert set(train_subset.value_counts().index) == set(["a", "b"])
+    assert len(train_data) == len(train_subset)
+    expected_weights, _ = _class_balancing_helpers()["_inverse_frequency_sample_weight"](
+        train_subset,
+        alpha=1.0,
+    )
+    assert train_data[CLASS_WEIGHT_COL].mean() == pytest.approx(1.0)
+    assert train_data[CLASS_WEIGHT_COL].equals(expected_weights)
+
+
+def test_class_balance_scope_none_is_unconstrained():
+    helper = _class_balancing_helpers()["_validate_custom_balancing_context"]
+    helper({"method": "none"}, bagged_mode=True, auto_stack=True, validation_strategy="autogluon")
+
+
+def test_balanced_num_bag_folds_three_does_not_raise_dry_run_validation(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["balanced_bagged_smoke"] = {
+        "fit_args": {"num_bag_folds": 3},
+        "class_balance": "balanced",
+    }
+    cfg.agent.autogluon.profile = "balanced_bagged_smoke"
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df): return df",
+        cfg,
+    )
+    compile(code, "<generated_autogluon_wrapper>", "exec")
+
+
+def test_balanced_auto_stack_does_not_raise_dry_run_validation(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["balanced_auto_stack_smoke"] = {
+        "fit_args": {"auto_stack": True},
+        "class_balance": "balanced",
+    }
+    cfg.agent.autogluon.profile = "balanced_auto_stack_smoke"
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df): return df",
+        cfg,
+    )
+    compile(code, "<generated_autogluon_wrapper>", "exec")
 
 
 def test_class_balance_cpu_profiles_match_reference_except_class_balance():
@@ -1002,8 +1215,6 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
     )
     assert allocated_model_seconds == 540
     assert settings["time_limit"] - allocated_model_seconds == 60
-
-
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
     cfg = _cfg(tmp_path)
 

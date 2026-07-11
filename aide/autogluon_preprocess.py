@@ -213,6 +213,16 @@ def _lightgbm_config_uses_gpu(config):
 
 
 _CLASS_BALANCING_HELPER_SOURCE = r'''
+_WEIGHT_BASED_CLASS_BALANCING_METHODS = {
+    "inverse_frequency",
+    "clipped_inverse_frequency",
+    "effective_number",
+}
+_RESAMPLING_CLASS_BALANCING_METHODS = {
+    "partial_random_oversample",
+}
+
+
 def _class_balance_config(value):
     if value is None:
         return {"method": "none"}
@@ -398,13 +408,25 @@ def _inverse_frequency_sample_weight(labels, *, alpha, max_raw_weight=None, beta
     return row_weights, {str(label): float(weight) for label, weight in class_weights.items()}
 
 
-def _validate_custom_balancing_context(config, *, bagged_mode, validation_strategy):
+def _validate_custom_balancing_context(
+    config,
+    *,
+    uses_bagging=None,
+    bagged_mode=None,
+    auto_stack=False,
+    validation_strategy=None,
+):
     if config["method"] == "none":
         return
-    if bagged_mode:
+    method = config["method"]
+    if uses_bagging is None:
+        uses_bagging = bool(bagged_mode)
+    if method in _WEIGHT_BASED_CLASS_BALANCING_METHODS:
+        return
+    if method in _RESAMPLING_CLASS_BALANCING_METHODS and (uses_bagging or auto_stack):
         raise ValueError(
-            "Custom class balancing is not supported with bagging/auto_stack because "
-            "weights cannot yet be derived independently inside each AutoGluon fold"
+            f"Class resampling method {method!r} is not supported with "
+            "bagging/auto_stack because duplicated rows could cross folds."
         )
     if validation_strategy != "holdout":
         raise ValueError(
@@ -1622,10 +1644,14 @@ def main() -> None:
     eval_metric = _configured_metric()
     class_balance = _class_balance_config(AIDE_AG_CONFIG.get("class_balance"))
     fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}) or {{}})
-    bagged_mode = int(fit_args.get("num_bag_folds") or 0) > 0 or bool(fit_args.get("auto_stack"))
+    uses_bagging = int(fit_args.get("num_bag_folds") or 0) > 0
+    auto_stack = bool(fit_args.get("auto_stack"))
+    bagged_mode = uses_bagging or auto_stack
     _validate_custom_balancing_context(
         class_balance,
         bagged_mode=bagged_mode,
+        uses_bagging=uses_bagging,
+        auto_stack=auto_stack,
         validation_strategy=AIDE_AG_CONFIG.get("validation_strategy"),
     )
     defer_save_space = bool(bagged_mode and fit_args.pop("save_space", False))
@@ -1647,6 +1673,15 @@ def main() -> None:
     else:
         train_data = train_model
         valid_data = None
+
+    explicit_training_partition = (not bagged_mode) and (
+        AIDE_AG_CONFIG.get("validation_strategy") == "holdout"
+    )
+    class_weight_scope = (
+        "explicit_training_partition"
+        if explicit_training_partition
+        else "global_training"
+    )
 
     if class_balance["method"] == "partial_random_oversample":
         train_data, before_counts, after_counts, added_rows = _partial_random_oversample(
@@ -1670,7 +1705,11 @@ def main() -> None:
         "effective_number",
     }}:
         train_weights, class_weight_mapping = _inverse_frequency_sample_weight(
-            train_data[target_col],
+            (
+                train_data[target_col]
+                if explicit_training_partition
+                else train_model[target_col]
+            ),
             alpha=class_balance.get("alpha", 1.0),
             max_raw_weight=class_balance.get("max_raw_weight"),
             beta=class_balance.get("beta"),
@@ -1690,10 +1729,19 @@ def main() -> None:
             )
         print(
             "AIDE_RUNTIME|class_weights"
+            + f"|scope={{class_weight_scope}}"
             + "".join(class_weight_log_params)
             + f"|mapping={{json.dumps(class_weight_mapping, sort_keys=True)}}",
             flush=True,
         )
+        if class_weight_scope == "global_training":
+            warnings.simplefilter("always", RuntimeWarning)
+            warnings.warn(
+                "Sample-weight scope is global_training (not fold_local); "
+                "weights are derived from full training labels and are not fold-safe.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
 
     model_dir = working_dir / "autogluon_model"
     shutil.rmtree(model_dir, ignore_errors=True)
