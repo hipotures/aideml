@@ -1019,6 +1019,23 @@
       ]
     },
     {
+      "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
+      "status": "completed_comparable",
+      "balanced_accuracy": 0.9463823272415373,
+      "per_class_recall": {"at-risk": 0.94730491, "unhealthy": 0.94560416, "fit": 0.94623791},
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[112267,3703,2542],[579,10917,49],[392,36,7533]],
+      "prediction_counts": {"at-risk":113238,"unhealthy":14656,"fit":10124},
+      "prediction_proportions": {"at-risk":0.8204582011,"unhealthy":0.1061890478,"fit":0.0733527511},
+      "model_results": {"GBM":{"balanced_accuracy":0.9463823272415373,"fit_seconds":7.854686975479126,"validation_prediction_seconds":0.04450535774230957,"can_infer":true},"XGB":{"balanced_accuracy":0.9461474225338788,"fit_seconds":11.917593717575073,"validation_prediction_seconds":0.15337085723876953,"can_infer":true},"CAT":{"balanced_accuracy":0.944780706754615,"fit_seconds":179.85977339744568,"validation_prediction_seconds":0.035542964935302734,"can_infer":true}},
+      "selected_model": "GBM",
+      "training_seconds": 204.31028723716736,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T163831",
+      "source_sha256": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
+      "comparison": {"balanced_accuracy_delta_vs_stage_a_alpha1": -0.0031977948525366,"balanced_accuracy_delta_vs_clipped_cap4": -0.0027629077727122},
+      "warnings_or_failures": ["OOF unavailable because predictor was not bagged","No model family failed or was skipped","Beta .99999 and all other methods unauthorized"]
+    },
+    {
       "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
       "status": "completed_comparable",
       "balanced_accuracy": 0.9491452350142495,

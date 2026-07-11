@@ -21,6 +21,10 @@ it must not be executed without a committed revision and separate authorization.
 
 Completed:
 
+- Effective-number beta `0.999995` completed comparably at balanced accuracy
+  `0.9463823272415373` (artifact `20260711T163831`); beta `.99999` and any next
+  method remain unauthorized.
+
 - all 13 mandatory audit items inspected and recorded;
 - current data/class counts and SHA-256 fingerprints captured;
 - `class_balance: balanced` traced through AutoGluon 1.5.0 to XGB/GBM/CAT;
