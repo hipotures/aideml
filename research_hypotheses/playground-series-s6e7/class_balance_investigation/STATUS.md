@@ -4,6 +4,21 @@ State: **the clipped inverse-frequency alpha `1.0`, pre-normalization cap `4.0`
 run completed comparably at balanced accuracy `0.9491452350142495`; cap `3`
 and all other Stage B methods remain unauthorized**.
 
+Effective-number beta `0.999995` is prepared only (not trained); expected
+normalized mapping is at-risk `0.6322250912914832`, unhealthy `2.779831238102058`,
+fit `3.8940550516314536`. Beta `0.99999`, cap 3, and other methods are not
+authorized.
+
+Prepared profile:
+`s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m`.
+It preserves the frozen CPU capped-180 reference outside `class_balance`, uses
+the training-only counts at-risk `474049`, unhealthy `46179`, and fit `31842`,
+and logs `method=effective_number|beta=0.999995` without an alpha field. The
+prepared outer log is
+`logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log`.
+The prepared command is recorded in `stage_b_plan.md` and `stage_b_configs.json`;
+it must not be executed without a committed revision and separate authorization.
+
 Completed:
 
 - all 13 mandatory audit items inspected and recorded;
@@ -156,15 +171,19 @@ Completed:
 - generated-wrapper compilation, calibration validation, one-source dry-run,
   focused balancing tests (`18 passed`), the complete preprocessing/runner test
   files, ruff, JSON, and diff checks passed;
-- implementation, profile, tests, and research changes are uncommitted on base
-  revision `db08ae2`. Main cannot authorize launch until a committed revision
-  exists and is recorded. No clipped-run log or artifact exists.
+- cap-4 implementation, profile, result, and research records are committed at
+  `f704d31`; its comparable artifact is `20260711T161037` and no further
+  clipped run is pending;
+- effective-number implementation, profile, tests, and research preparation
+  are uncommitted on base revision `f704d31`; its command remains unauthorized
+  and no effective-number log or artifact exists.
 
 Pending Main review:
 
-1. review the clipped cap-4 implementation, profile, and verification evidence;
-2. commit the implementation and research state when commits are possible;
-3. only then decide whether to authorize the exact prepared command.
+1. review the effective-number implementation, profile, and verification evidence;
+2. commit the effective-number preparation when commits are possible;
+3. only then decide whether to authorize its exact prepared command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized from a committed revision. Clipped cap `4.0` remains unexecuted.
+authorized from a committed revision. Effective-number beta `0.999995` remains
+unexecuted; beta `0.99999` remains unauthorized.

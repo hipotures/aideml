@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "stage": "stage_b",
-  "status": "inverse_frequency_complete_clipped_cap4_frozen_uncommitted_not_executed",
-  "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
-  "launch_blocker": "The clipped cap-4 profile, implementation, and research artifacts are uncommitted; training requires a committed revision and separate authorization.",
+  "status": "effective_number_beta999995_prepared_uncommitted_not_executed",
+  "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+  "launch_blocker": "Effective-number preparation is uncommitted; training requires a committed revision and separate authorization.",
   "source": {
     "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260702T003825-504eb95e-0",
     "submission_sha256_selector": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
@@ -115,6 +115,7 @@
   },
   "clipped_selected": {
     "status": "completed_comparable",
+    "execution_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
     "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
     "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
     "balanced_accuracy": 0.9491452350142495,
@@ -153,6 +154,44 @@
     "logs_dir": "logs",
     "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+  },
+  "effective_number_prepared": {
+    "status": "prepared_not_executed",
+    "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
+    "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+    "launch_blocker": "Training requires a committed revision and separate authorization.",
+    "only_resolved_difference_from_reference_profile": "class_balance",
+    "config": {
+      "included_model_types": ["XGB", "GBM", "CAT"],
+      "presets": "medium_quality",
+      "time_limit": 600,
+      "preprocess_timeout": 180,
+      "validation_fraction": 0.2,
+      "validation_strategy": "holdout",
+      "seed": 1729,
+      "class_balance": {"method": "effective_number", "beta": 0.999995},
+      "resource_policy": "cpu_only",
+      "use_gpu": false,
+      "fair_model_scheduling": true,
+      "hyperparameters": {
+        "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
+      },
+      "fit_args": {"save_space": true, "fit_weighted_ensemble": false, "auto_stack": false}
+    },
+    "expected_training_class_counts": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+    "expected_normalized_class_weights": {
+      "at-risk": 0.6322250912914832,
+      "unhealthy": 2.779831238102058,
+      "fit": 3.8940550516314536
+    },
+    "profile_calibration_session_id": "s6e7-class-balance-stage-b-effective-number-beta999995-cpu-capped180-20260711",
+    "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995 && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-effective-number-beta999995-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log 2>&1",
+    "expected_runtime_record": "AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995|mapping=<expected_normalized_class_weights>",
+    "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log",
+    "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
+    "unauthorized_beta": 0.99999
   },
   "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
   "logs_dir": "logs",

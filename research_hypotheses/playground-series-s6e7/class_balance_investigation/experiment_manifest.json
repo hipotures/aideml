@@ -1,21 +1,30 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_clipped_cap4_frozen_uncommitted",
+  "status": "stage_b_effective_number_beta999995_prepared_uncommitted",
   "training_authorized": false,
   "repository": {
-    "revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
+    "revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
     "working_tree_has_uncommitted_alpha050_profile": false,
     "alpha050_profile_committed_revision": "835e0cff25849e0e5887f49b6f72f56d963c0a71",
     "working_tree_has_uncommitted_alpha025_profile": false,
     "alpha025_profile_committed_revision": "8a64c262e962d7a43a44b44dfc545dc03542e09d",
-    "working_tree_has_uncommitted_clipped_cap4_profile": true,
-    "clipped_cap4_launch_requires_committed_revision": true,
-    "audited_wrapper_sha256": "ba3ef910a98e96c700eebec7c160500498e221e1cd3077fbfa13edcd09fd7329",
-    "config_sha256": "d1d3a1aacc55dea8e11d9806d5c98d051a1c04f4119e628c09cbf7496e22c628",
+    "working_tree_has_uncommitted_clipped_cap4_profile": false,
+    "clipped_cap4_committed_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+    "clipped_cap4_completed_comparable": true,
+    "working_tree_has_uncommitted_effective_number_beta999995_profile": true,
+    "effective_number_launch_requires_committed_revision": true,
+    "effective_number_preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+    "uncommitted_effective_preparation_sha256": {
+      "aide/autogluon_preprocess.py": "58934a11648dba029898150e0b2fbb16377bbf6c5c3107005af58ede924fe445",
+      "aide/utils/config.yaml": "64993a23ffddb849e3a65caafbbf40b0aa8ae178f661134f7e130f6712d90188",
+      "tests/test_autogluon_preprocess.py": "7d319d7bbecd8f79d94b35a26dce4ae20ffcc86f5814f50005ee5b4bd79100f0"
+    },
+    "audited_wrapper_sha256": "58934a11648dba029898150e0b2fbb16377bbf6c5c3107005af58ede924fe445",
+    "config_sha256": "64993a23ffddb849e3a65caafbbf40b0aa8ae178f661134f7e130f6712d90188",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
-    "stage_b_configs_sha256": "3b20ae378fbdfd7dfa7ad2e3454eadf335d9a94329f8e54c844f14eee580e793",
-    "stage_b_plan_sha256": "03adbc67dd67cd136aab554f48cca188ed53025526f3bbda8c679215bb5d065d"
+    "stage_b_configs_sha256": "6301c24c07e7f08c8012964c13c79dc61392d7caeba6b8d21e89c1ecb42048cf",
+    "stage_b_plan_sha256": "a4ce776ebe5dfe3ff3fb9c39a1f3d0fc5e7fccc7ecdbd91b1f9b0f0a53ea15df"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -250,7 +259,8 @@
       "selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4",
       "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
       "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
-      "launch_blocker": "No further Stage B method is authorized; cap 3 remains explicitly unauthorized.",
+      "execution_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+      "launch_blocker": "Cap 3 remains explicitly unauthorized; effective-number beta 0.999995 is prepared separately but not authorized to execute.",
       "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
       "balanced_accuracy": 0.9491452350142495,
       "balanced_accuracy_delta_vs_stage_a_alpha1": -0.00043488707982441976,
@@ -267,6 +277,37 @@
       "profile_calibration_session_id": "s6e7-class-balance-stage-b-clipped-alpha1-cap4-cpu-capped180-20260711",
       "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+    },
+    "effective_number_prepared": {
+      "status": "prepared_not_executed",
+      "selected_experiment": "neutral_raw13_effective_number_beta_0_999995",
+      "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
+      "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+      "launch_blocker": "Training requires a committed revision and separate authorization.",
+      "only_resolved_difference_from_reference": "class_balance",
+      "balancing": {
+        "method": "effective_number",
+        "beta": 0.999995,
+        "normalize_training_mean_to_one": true,
+        "derive_from": "training_partition_only",
+        "validation_weight": null
+      },
+      "expected_training_class_counts": {
+        "at-risk": 474049,
+        "unhealthy": 46179,
+        "fit": 31842
+      },
+      "expected_normalized_class_weights": {
+        "at-risk": 0.6322250912914832,
+        "unhealthy": 2.779831238102058,
+        "fit": 3.8940550516314536
+      },
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-effective-number-beta999995-cpu-capped180-20260711",
+      "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995 && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-effective-number-beta999995-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log 2>&1",
+      "expected_runtime_record": "AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995|mapping=<expected_normalized_class_weights>",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
+      "unauthorized_beta": 0.99999
     }
   },
   "reuse_candidates": [
@@ -455,5 +496,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Clipped cap-4 implementation, profile, and research changes must be committed before Main can authorize training"
+  "remaining_gate": "Effective-number preparation must be committed before Main can authorize its training"
 }

@@ -115,14 +115,15 @@ mapping is `at-risk=0.8915070763078106`, `unhealthy=1.595766972983883`, and
 `fit=1.751178912691916`. Full diagnostics and hashes are in `results.json`.
 This completed plan does not authorize any other Stage B method.
 
-## Clipped inverse-frequency alpha 1.0, cap 4.0 preparation
+## Clipped inverse-frequency alpha 1.0, cap 4.0 completed result
 
 Main selected one clipped candidate on neutral raw-13. The base weights are
 computed from the holdout training partition only as `N / (K * n_c)`, raised to
 alpha `1.0`, clipped at raw weight `4.0`, and then normalized to training-row
 mean one. The CPU fair-one model block is otherwise identical to Stage A.
 
-The run completed at committed revision `704c71d`. Artifact:
+The run completed comparably and its result is committed at revision `f704d31`.
+Artifact:
 `logs/2-smiling-topaz-oarfish/artifacts/20260711T161037`.
 
 For the frozen training counts, the expected normalized mapping is
@@ -138,7 +139,7 @@ Expected unique artifact root:
 Reserved outer log:
 `logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log`
 
-### Prepared reproduction command
+### Executed reproduction command
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4
@@ -148,5 +149,39 @@ env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python script
 Required post-run verification includes one exact training-only runtime record
 with method `clipped_inverse_frequency`, alpha `1.0`, cap `4.0`, and the
 normalized mapping; frozen data/split/source hashes; all three required model
-families; and the standard structured diagnostics. This preparation does not
-authorize execution, cap `3`, or any other method.
+families; and the standard structured diagnostics. This completed result does not
+authorize another execution, cap `3`, or any other method.
+
+Effective-number beta `0.999995` is prepared only, not executed. Expected
+normalized mapping: at-risk `0.6322250912914832`, unhealthy `2.779831238102058`,
+fit `3.8940550516314536`. Beta `0.99999`, cap 3, and other methods remain
+unauthorized.
+
+### Prepared effective-number profile (not authorized to execute)
+
+Profile:
+`s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m`
+
+The method computes raw class weights as `(1 - beta) / (1 - beta ** n)` from
+the post-split training labels only, then normalizes their row-weighted mean to
+one. With beta `0.999995` and frozen training counts at-risk `474049`, unhealthy
+`46179`, and fit `31842`, the expected mapping is at-risk
+`0.6322250912914832`, unhealthy `2.779831238102058`, and fit
+`3.8940550516314536`.
+
+Prepared reproduction command (do not execute until separately authorized from
+a committed revision):
+
+```sh
+mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-effective-number-beta999995-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log 2>&1
+```
+
+Reserved outer log:
+`logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log`
+
+Required post-run evidence is exactly one training-only
+`AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995` record with
+the expected mapping, frozen source/data/split hashes, and XGB, GBM, and CAT
+all trained and inferable. Beta `0.99999` has no prepared profile and remains
+unauthorized.
