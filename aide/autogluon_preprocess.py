@@ -228,23 +228,35 @@ def _class_balance_config(value):
         )
     if not isinstance(value, dict):
         raise ValueError("class_balance must be a string or mapping")
-    unknown = set(value) - {"method", "alpha", "max_raw_weight"}
+    unknown = set(value) - {"method", "alpha", "max_raw_weight", "beta"}
     if unknown:
         raise ValueError(f"Unsupported class_balance options: {sorted(unknown)}")
     method = str(value.get("method", "none")).strip().lower().replace("-", "_")
     if method == "balanced":
         method = "inverse_frequency"
     if method == "none":
-        if "alpha" in value or "max_raw_weight" in value:
+        if "alpha" in value or "max_raw_weight" in value or "beta" in value:
             raise ValueError(
-                "class_balance alpha/max_raw_weight require an inverse-frequency method"
+                "class_balance alpha/max_raw_weight/beta require a balancing method"
             )
         return {"method": "none"}
+    if method == "effective_number":
+        if "alpha" in value or "max_raw_weight" in value or "beta" not in value:
+            raise ValueError("effective_number requires beta and rejects alpha/max_raw_weight")
+        try:
+            beta = float(value["beta"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError("class_balance.beta must be a finite number in [0, 1)") from exc
+        if not np.isfinite(beta) or beta < 0 or beta >= 1:
+            raise ValueError("class_balance.beta must be a finite number in [0, 1)")
+        return {"method": method, "beta": beta}
     if method not in {"inverse_frequency", "clipped_inverse_frequency"}:
         raise ValueError(
             "class_balance.method must be 'none', 'inverse_frequency', "
-            "or 'clipped_inverse_frequency'"
+            "'clipped_inverse_frequency', or 'effective_number'"
         )
+    if "beta" in value:
+        raise ValueError("class_balance.beta is only valid for effective_number")
     try:
         alpha = float(value.get("alpha", 1.0))
     except (TypeError, ValueError) as exc:
@@ -276,7 +288,7 @@ def _class_balance_config(value):
     }
 
 
-def _inverse_frequency_sample_weight(labels, *, alpha, max_raw_weight=None):
+def _inverse_frequency_sample_weight(labels, *, alpha, max_raw_weight=None, beta=None):
     labels = pd.Series(labels).copy()
     if labels.empty:
         raise ValueError("Cannot compute class weights for empty labels")
@@ -297,8 +309,22 @@ def _inverse_frequency_sample_weight(labels, *, alpha, max_raw_weight=None):
             raise ValueError("max_raw_weight must be a finite number > 0")
 
     counts = labels.value_counts(dropna=False)
-    base_weights = len(labels) / (len(counts) * counts.astype(float))
-    class_weights = base_weights.pow(alpha)
+    if beta is not None:
+        try:
+            beta = float(beta)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("class_balance.beta must be a finite number in [0, 1)") from exc
+        if not np.isfinite(beta) or beta < 0 or beta >= 1:
+            raise ValueError("class_balance.beta must be a finite number in [0, 1)")
+        n = counts.astype(float)
+        class_weights = (
+            (1 - beta) / (-np.expm1(n * np.log(beta)))
+            if beta > 0
+            else pd.Series(1.0, index=counts.index)
+        )
+    else:
+        base_weights = len(labels) / (len(counts) * counts.astype(float))
+        class_weights = base_weights.pow(alpha)
     if max_raw_weight is not None:
         class_weights = class_weights.clip(upper=max_raw_weight)
     row_weights = labels.map(class_weights).astype(float)
@@ -1441,24 +1467,30 @@ def main() -> None:
     if class_balance["method"] in {
         "inverse_frequency",
         "clipped_inverse_frequency",
+        "effective_number",
     }:
         train_weights, class_weight_mapping = _inverse_frequency_sample_weight(
             train_data[target_col],
-            alpha=class_balance["alpha"],
+            alpha=class_balance.get("alpha", 1.0),
             max_raw_weight=class_balance.get("max_raw_weight"),
+            beta=class_balance.get("beta"),
         )
         train_data = train_data.copy()
         train_data[CLASS_WEIGHT_COL] = train_weights
         if not train_data[CLASS_WEIGHT_COL].index.equals(train_data[target_col].index):
             raise AssertionError("Sample weights are not aligned with training rows")
+        class_weight_log_params = [f"|method={{class_balance['method']}}"]
+        if class_balance["method"] == "effective_number":
+            class_weight_log_params.append(f"|beta={{class_balance['beta']}}")
+        else:
+            class_weight_log_params.append(f"|alpha={{class_balance['alpha']}}")
+        if class_balance["method"] == "clipped_inverse_frequency":
+            class_weight_log_params.append(
+                f"|max_raw_weight={{class_balance['max_raw_weight']}}"
+            )
         print(
             "AIDE_RUNTIME|class_weights"
-            f"|method={{class_balance['method']}}|alpha={{class_balance['alpha']}}"
-            + (
-                f"|max_raw_weight={{class_balance['max_raw_weight']}}"
-                if class_balance["method"] == "clipped_inverse_frequency"
-                else ""
-            )
+            + "".join(class_weight_log_params)
             + f"|mapping={{json.dumps(class_weight_mapping, sort_keys=True)}}",
             flush=True,
         )

@@ -463,8 +463,31 @@ def test_autogluon_wrapper_dispatches_and_logs_clipped_inverse_frequency(tmp_pat
     assert "'method': 'clipped_inverse_frequency'" in code
     assert "'max_raw_weight': 4.0" in code
     assert 'max_raw_weight=class_balance.get("max_raw_weight")' in code
-    assert "|method={class_balance['method']}|alpha={class_balance['alpha']}" in code
+    assert 'class_weight_log_params = [f"|method={class_balance[\'method\']}"]' in code
+    assert 'class_weight_log_params.append(f"|alpha={class_balance[\'alpha\']}")' in code
     assert "|max_raw_weight={class_balance['max_raw_weight']}" in code
+    assert code.index("train_data, valid_data = train_test_split(") < code.index(
+        "train_weights, class_weight_mapping = _inverse_frequency_sample_weight("
+    )
+
+
+def test_autogluon_wrapper_dispatches_and_logs_effective_number(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["effective_number_test"] = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "validation_strategy": "holdout",
+        "class_balance": {"method": "effective_number", "beta": 0.999995},
+    }
+    cfg.agent.autogluon.profile = "effective_number_test"
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    compile(code, "<generated_effective_number_autogluon_wrapper>", "exec")
+    assert "'method': 'effective_number'" in code
+    assert 'beta=class_balance.get("beta")' in code
+    assert 'if class_balance["method"] == "effective_number":' in code
+    assert 'class_weight_log_params.append(f"|beta={class_balance[\'beta\']}")' in code
+    assert "class_balance.get('alpha')" not in code
     assert code.index("train_data, valid_data = train_test_split(") < code.index(
         "train_weights, class_weight_mapping = _inverse_frequency_sample_weight("
     )
@@ -512,6 +535,59 @@ def test_clipped_inverse_frequency_exact_normalization_and_index_alignment():
     assert mapping == pytest.approx({"major": 50 / 81, "minor": 40 / 9})
     assert weights.loc[labels == "major"].eq(mapping["major"]).all()
     assert weights.loc[labels == "minor"].eq(mapping["minor"]).all()
+
+
+def test_effective_number_exact_toy_math_mean_one_and_index_alignment():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    labels = pd.Series(["major"] * 3 + ["minor"], index=[8, 3, 5, 1])
+    weights, mapping = helper(labels, alpha=1.0, beta=0.9)
+
+    raw_major = (1 - 0.9) / (1 - 0.9**3)
+    raw_minor = (1 - 0.9) / (1 - 0.9**1)
+    raw_mean = (3 * raw_major + raw_minor) / 4
+    assert weights.index.equals(labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert mapping == pytest.approx(
+        {"major": raw_major / raw_mean, "minor": raw_minor / raw_mean}
+    )
+    assert all(np.isfinite(list(mapping.values())))
+
+
+def test_effective_number_beta_zero_produces_unit_weights():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    labels = pd.Series(["major"] * 9 + ["minor"], index=range(10, 20))
+
+    weights, mapping = helper(labels, alpha=1.0, beta=0)
+
+    assert weights.index.equals(labels.index)
+    assert weights.eq(1.0).all()
+    assert mapping == {"major": 1.0, "minor": 1.0}
+
+
+def test_effective_number_near_one_is_stable_for_large_class_counts():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    labels = pd.Series(np.repeat(["major", "minor"], [250_000, 1]))
+
+    weights, mapping = helper(labels, alpha=1.0, beta=0.999995)
+
+    assert weights.index.equals(labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert np.isfinite(weights).all()
+    assert (weights > 0).all()
+    assert mapping["minor"] > mapping["major"]
+
+
+def test_effective_number_uses_training_partition_counts_only():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    full_labels = pd.Series(["major"] * 8 + ["minor"] * 4)
+    training_labels = full_labels.iloc[[0, 1, 2, 3, 4, 8, 9]]
+
+    weights, mapping = helper(training_labels, alpha=1.0, beta=0.999995)
+    _, full_mapping = helper(full_labels, alpha=1.0, beta=0.999995)
+
+    assert weights.index.equals(training_labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert mapping != pytest.approx(full_mapping)
 
 
 def test_clipped_inverse_frequency_uses_training_partition_counts_only():
@@ -595,6 +671,43 @@ def test_class_balance_config_supports_clipped_inverse_and_legacy_modes():
         helper({"method": "inverse_frequency", "max_raw_weight": 4.0})
 
 
+@pytest.mark.parametrize("beta", [-0.1, 1, float("nan"), float("inf"), "invalid"])
+def test_effective_number_rejects_invalid_beta(beta):
+    helpers = _class_balancing_helpers()
+    with pytest.raises(ValueError, match="beta must be a finite number in \\[0, 1\\)"):
+        helpers["_class_balance_config"]({"method": "effective_number", "beta": beta})
+    with pytest.raises(ValueError, match="beta must be a finite number in \\[0, 1\\)"):
+        helpers["_inverse_frequency_sample_weight"](
+            pd.Series(["major", "minor"]), alpha=1.0, beta=beta
+        )
+
+
+@pytest.mark.parametrize(
+    "config, message",
+    [
+        ({"method": "effective_number"}, "requires beta"),
+        (
+            {"method": "effective_number", "beta": 0.9, "alpha": 1.0},
+            "rejects alpha/max_raw_weight",
+        ),
+        (
+            {"method": "effective_number", "beta": 0.9, "max_raw_weight": 2.0},
+            "rejects alpha/max_raw_weight",
+        ),
+        ({"method": "inverse_frequency", "beta": 0.9}, "only valid for effective_number"),
+        (
+            {"method": "clipped_inverse_frequency", "beta": 0.9, "max_raw_weight": 2.0},
+            "only valid for effective_number",
+        ),
+        ({"method": "none", "beta": 0.9}, "require a balancing method"),
+    ],
+)
+def test_effective_number_schema_rejects_inapplicable_parameters(config, message):
+    helper = _class_balancing_helpers()["_class_balance_config"]
+    with pytest.raises(ValueError, match=message):
+        helper(config)
+
+
 def test_custom_balancing_rejects_bagged_and_internal_validation():
     helper = _class_balancing_helpers()["_validate_custom_balancing_context"]
     configs = (
@@ -604,6 +717,7 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
             "alpha": 1.0,
             "max_raw_weight": 4.0,
         },
+        {"method": "effective_number", "beta": 0.999995},
     )
 
     for config in configs:
@@ -645,6 +759,10 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
                 "max_raw_weight": 4.0,
             },
         ),
+        (
+            "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
+            {"method": "effective_number", "beta": 0.999995},
+        ),
     )
     resolved = []
     for profile_name, expected_class_balance in profiles:
@@ -653,6 +771,16 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
         class_balance = settings.pop("class_balance")
         resolved.append(settings)
         assert class_balance == expected_class_balance
+
+    effective_number_profiles = [
+        name
+        for name, profile in cfg.agent.autogluon.profiles.items()
+        if getattr(profile.get("class_balance", {}), "get", lambda *_: None)("method")
+        == "effective_number"
+    ]
+    assert effective_number_profiles == [
+        "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m"
+    ]
 
     assert all(settings == resolved[0] for settings in resolved[1:])
     settings = resolved[0]
