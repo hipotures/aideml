@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "stage": "stage_b",
-  "status": "effective_number_beta999995_completed_comparable",
-  "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
-  "launch_blocker": "Beta .99999 and other methods not yet authorized; no next method selected.",
+  "status": "partial_random_oversample_ratio025_prepared_unexecuted",
+  "preparation_base_revision": "5256f07",
+  "launch_blocker": "Partial random oversampling ratio .25 requires a committed revision and separate authorization; ratio .15 and other methods are not yet authorized.",
   "source": {
     "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260702T003825-504eb95e-0",
     "submission_sha256_selector": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
@@ -11,10 +11,10 @@
     "preprocess": "neutral_raw13_identity"
   },
   "reference_profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
-  "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha075_cpu_capped180_fairone_seed1729_10m",
-  "profile_status": "completed_comparable",
-  "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T135608",
-  "balanced_accuracy": 0.9477688983566126,
+  "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
+  "profile_status": "prepared_not_executed",
+  "artifact_dir": null,
+  "balanced_accuracy": null,
   "config": {
     "included_model_types": ["XGB", "GBM", "CAT"],
     "presets": "medium_quality",
@@ -23,7 +23,7 @@
     "validation_fraction": 0.2,
     "validation_strategy": "holdout",
     "seed": 1729,
-    "class_balance": {"method": "inverse_frequency", "alpha": 0.75},
+    "class_balance": {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
     "resource_policy": "cpu_only",
     "use_gpu": false,
     "fair_model_scheduling": true,
@@ -155,11 +155,11 @@
     "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
   },
-  "effective_number_prepared": {
-    "status": "prepared_not_executed",
+  "effective_number_completed": {
+    "status": "completed_comparable_closed",
     "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
     "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
-    "launch_blocker": "Training requires a committed revision and separate authorization.",
+    "launch_blocker": "Closed after comparable execution; beta .99999 remains unauthorized.",
     "only_resolved_difference_from_reference_profile": "class_balance",
     "config": {
       "included_model_types": ["XGB", "GBM", "CAT"],
@@ -191,7 +191,47 @@
     "expected_runtime_record": "AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995|mapping=<expected_normalized_class_weights>",
     "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log",
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
-    "unauthorized_beta": 0.99999
+    "unauthorized_beta": 0.99999,
+    "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T163831",
+    "balanced_accuracy": 0.9463823272415373
+  },
+  "partial_random_oversample_ratio025_prepared": {
+    "status": "prepared_not_executed",
+    "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
+    "preparation_base_revision": "5256f07",
+    "launch_blocker": "Training requires a committed revision and separate authorization; ratio .15 is not yet authorized.",
+    "only_resolved_difference_from_reference_profile": "class_balance",
+    "config": {
+      "included_model_types": ["XGB", "GBM", "CAT"],
+      "presets": "medium_quality",
+      "time_limit": 600,
+      "preprocess_timeout": 180,
+      "validation_fraction": 0.2,
+      "validation_strategy": "holdout",
+      "seed": 1729,
+      "class_balance": {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
+      "resource_policy": "cpu_only",
+      "use_gpu": false,
+      "fair_model_scheduling": true,
+      "hyperparameters": {
+        "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
+      },
+      "fit_args": {"save_space": true, "fit_weighted_ensemble": false, "auto_stack": false}
+    },
+    "expected_training_class_counts_before_resampling": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+    "expected_training_class_counts_after_resampling": {"at-risk": 474049, "unhealthy": 118513, "fit": 118513},
+    "expected_training_total_after_resampling": 711075,
+    "expected_added_rows": 159005,
+    "validation_resampled": false,
+    "predictor_sample_weight_enabled": false,
+    "profile_calibration_session_id": "s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711",
+    "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025 && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log 2>&1",
+    "expected_runtime_record": "AIDE_RUNTIME|class_resampling|method=partial_random_oversample|ratio=0.25|seed=1729|before=<expected_training_class_counts_before_resampling>|after=<expected_training_class_counts_after_resampling>|added=159005",
+    "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log",
+    "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
+    "unauthorized_ratio": 0.15
   },
   "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
   "logs_dir": "logs",

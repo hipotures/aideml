@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_effective_number_beta999995_prepared_uncommitted",
+  "status": "stage_b_partial_random_oversample_ratio025_prepared_uncommitted",
   "training_authorized": false,
   "repository": {
-    "revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
+    "revision": "5256f07",
     "working_tree_has_uncommitted_alpha050_profile": false,
     "alpha050_profile_committed_revision": "835e0cff25849e0e5887f49b6f72f56d963c0a71",
     "working_tree_has_uncommitted_alpha025_profile": false,
@@ -12,16 +12,19 @@
     "working_tree_has_uncommitted_clipped_cap4_profile": false,
     "clipped_cap4_committed_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
     "clipped_cap4_completed_comparable": true,
-    "working_tree_has_uncommitted_effective_number_beta999995_profile": true,
-    "effective_number_launch_requires_committed_revision": true,
-    "effective_number_preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
-    "uncommitted_effective_preparation_sha256": {
-      "aide/autogluon_preprocess.py": "58934a11648dba029898150e0b2fbb16377bbf6c5c3107005af58ede924fe445",
-      "aide/utils/config.yaml": "64993a23ffddb849e3a65caafbbf40b0aa8ae178f661134f7e130f6712d90188",
-      "tests/test_autogluon_preprocess.py": "7d319d7bbecd8f79d94b35a26dce4ae20ffcc86f5814f50005ee5b4bd79100f0"
+    "working_tree_has_uncommitted_effective_number_beta999995_profile": false,
+    "effective_number_closed_completed_comparable": true,
+    "effective_number_execution_revision": "e99a21b",
+    "working_tree_has_uncommitted_partial_random_oversample_ratio025_profile": true,
+    "partial_random_oversample_ratio025_launch_requires_committed_revision": true,
+    "partial_random_oversample_ratio025_preparation_base_revision": "5256f07",
+    "uncommitted_partial_random_oversample_ratio025_preparation_sha256": {
+      "aide/autogluon_preprocess.py": "f15b43d054a9da542562c67a879c886926314c2ad428ba9b6c2de5d2803e911a",
+      "aide/utils/config.yaml": "f6f192e28f99ad692e711e361f999d5673949027fe6c43ace5e3c331136e761a",
+      "tests/test_autogluon_preprocess.py": "36d2bc7cfb98cc2306e656154ee7efa1b43cf5c74d79dc92aaa3162fe03a747e"
     },
-    "audited_wrapper_sha256": "58934a11648dba029898150e0b2fbb16377bbf6c5c3107005af58ede924fe445",
-    "config_sha256": "64993a23ffddb849e3a65caafbbf40b0aa8ae178f661134f7e130f6712d90188",
+    "audited_wrapper_sha256": "f15b43d054a9da542562c67a879c886926314c2ad428ba9b6c2de5d2803e911a",
+    "config_sha256": "f6f192e28f99ad692e711e361f999d5673949027fe6c43ace5e3c331136e761a",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
     "stage_b_configs_sha256": "6301c24c07e7f08c8012964c13c79dc61392d7caeba6b8d21e89c1ecb42048cf",
     "stage_b_plan_sha256": "a4ce776ebe5dfe3ff3fb9c39a1f3d0fc5e7fccc7ecdbd91b1f9b0f0a53ea15df"
@@ -260,7 +263,7 @@
       "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
       "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
       "execution_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
-      "launch_blocker": "Cap 3 remains explicitly unauthorized; effective-number beta 0.999995 is prepared separately but not authorized to execute.",
+      "launch_blocker": "Cap 3 remains explicitly unauthorized; effective-number beta 0.999995 is closed after comparable execution.",
       "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T161037",
       "balanced_accuracy": 0.9491452350142495,
       "balanced_accuracy_delta_vs_stage_a_alpha1": -0.00043488707982441976,
@@ -278,12 +281,12 @@
       "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     },
-    "effective_number_prepared": {
-      "status": "prepared_not_executed",
+    "effective_number_completed": {
+      "status": "completed_comparable_closed",
       "selected_experiment": "neutral_raw13_effective_number_beta_0_999995",
       "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
       "preparation_base_revision": "f704d31f8dcbab6a6f26a0c491048f8d4b4bd1b1",
-      "launch_blocker": "Training requires a committed revision and separate authorization.",
+      "launch_blocker": "Closed after comparable execution; beta .99999 remains unauthorized.",
       "only_resolved_difference_from_reference": "class_balance",
       "balancing": {
         "method": "effective_number",
@@ -307,7 +310,62 @@
       "expected_runtime_record": "AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995|mapping=<expected_normalized_class_weights>",
       "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
-      "unauthorized_beta": 0.99999
+      "unauthorized_beta": 0.99999,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T163831",
+      "balanced_accuracy": 0.9463823272415373
+    },
+    "partial_random_oversample_ratio025_prepared": {
+      "status": "prepared_not_executed",
+      "selected_experiment": "neutral_raw13_partial_random_oversample_ratio_0_25",
+      "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
+      "preparation_base_revision": "5256f07",
+      "launch_blocker": "Training requires a committed revision and separate authorization; ratio .15 is not yet authorized.",
+      "only_resolved_difference_from_reference": "class_balance",
+      "balancing": {
+        "method": "partial_random_oversample",
+        "target_minority_to_majority_ratio": 0.25,
+        "derive_from": "post_holdout_training_partition_only",
+        "sampling": "with_replacement",
+        "validation_resampled": false,
+        "predictor_sample_weight_enabled": false
+      },
+      "expected_training_class_counts_before_resampling": {
+        "at-risk": 474049,
+        "unhealthy": 46179,
+        "fit": 31842
+      },
+      "expected_training_class_counts_after_resampling": {
+        "at-risk": 474049,
+        "unhealthy": 118513,
+        "fit": 118513
+      },
+      "expected_training_total_after_resampling": 711075,
+      "expected_added_rows": 159005,
+      "config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit": 600,
+        "preprocess_timeout": 180,
+        "validation_fraction": 0.2,
+        "validation_strategy": "holdout",
+        "seed": 1729,
+        "class_balance": {"method": "partial_random_oversample", "target_minority_to_majority_ratio": 0.25},
+        "resource_policy": "cpu_only",
+        "use_gpu": false,
+        "fair_model_scheduling": true,
+        "hyperparameters": {
+          "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+          "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+          "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
+        },
+        "fit_args": {"save_space": true, "fit_weighted_ensemble": false, "auto_stack": false}
+      },
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711",
+      "prepared_command": "mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025 && env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log 2>&1",
+      "expected_runtime_record": "AIDE_RUNTIME|class_resampling|method=partial_random_oversample|ratio=0.25|seed=1729|before=<expected_training_class_counts_before_resampling>|after=<expected_training_class_counts_after_resampling>|added=159005",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
+      "unauthorized_ratio": 0.15
     }
   },
   "reuse_candidates": [
@@ -339,7 +397,11 @@
     "stage_b_alpha050_completed": true,
     "stage_b_final_inverse_frequency_screen": "neutral_raw13_inverse_frequency_alpha_0_25",
     "stage_b_inverse_frequency_screen_completed": true,
-    "stage_b_clipped_selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4"
+    "stage_b_clipped_selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4",
+    "stage_b_effective_number_beta999995_completed": true,
+    "stage_b_partial_random_oversample_selected_experiment": "neutral_raw13_partial_random_oversample_ratio_0_25",
+    "stage_b_partial_random_oversample_ratio025_training_authorized": false,
+    "stage_b_partial_random_oversample_ratio015_authorized": false
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -350,7 +412,11 @@
     "exact_mapping_logged": true,
     "legacy_balanced_alias": "inverse_frequency_alpha_1",
     "bagged_custom_weighting_supported": false,
-    "internal_validation_custom_weighting_supported": false
+    "internal_validation_custom_weighting_supported": false,
+    "partial_random_oversample_after_holdout_only": true,
+    "partial_random_oversample_validation_unchanged": true,
+    "partial_random_oversample_uses_predictor_sample_weight": false,
+    "partial_random_oversample_runtime_record": "AIDE_RUNTIME|class_resampling"
   },
   "stage_a_execution": {
     "run1": {
@@ -496,5 +562,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Effective-number beta .999995 completed comparably; beta .99999 and other methods not yet authorized; no next method selected"
+  "remaining_gate": "Partial random oversampling ratio .25 prepared but not executed; ratio .15 and other methods not yet authorized; no next method selected"
 }

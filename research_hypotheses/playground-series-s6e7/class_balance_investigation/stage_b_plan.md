@@ -152,9 +152,50 @@ normalized mapping; frozen data/split/source hashes; all three required model
 families; and the standard structured diagnostics. This completed result does not
 authorize another execution, cap `3`, or any other method.
 
-Effective-number beta `0.999995` is prepared only, not executed. Expected
-normalized mapping: at-risk `0.6322250912914832`, unhealthy `2.779831238102058`,
-fit `3.8940550516314536`. Beta `0.99999`, cap 3, and other methods remain
+Effective-number beta `0.999995` is closed after its comparable execution at
+revision `e99a21b` (artifact `20260711T163831`, balanced accuracy
+`0.9463823272415373`). Beta `0.99999`, cap 3, and other methods remain
+unauthorized.
+
+## Partial random oversampling ratio 0.25 (prepared, not authorized)
+
+This is the sole prepared next method at base revision `5256f07`. It is not
+trained, has no artifact, and may not be launched without a committed revision
+and separate authorization. Ratio `.15` is not yet authorized.
+
+Profile:
+`s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m`
+
+Its complete resolved configuration is the CPU fair-one XGB/GBM/CAT reference:
+`medium_quality`, predictor time limit `600`, preprocess timeout `180`, seed
+`1729`, stratified holdout fraction `0.2`, `use_gpu: false`, one 180-second
+CPU configuration per family, and `fit_args` `save_space=true`,
+`fit_weighted_ensemble=false`, `auto_stack=false`. The only resolved difference
+from the Stage A reference is
+`class_balance: {method: partial_random_oversample, target_minority_to_majority_ratio: 0.25}`.
+
+After the holdout split, only the training partition is resampled with
+replacement: at-risk stays `474049`, unhealthy increases `46179 -> 118513`,
+and fit increases `31842 -> 118513`. Thus the expected post-ROS total is
+`711075` and the exact added-row count is `159005`. No class is downsampled,
+the validation partition remains untouched, and this method never enables
+predictor sample weights.
+
+Reserved outer log:
+`logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log`
+
+Prepared reproduction command (do not execute):
+
+```sh
+mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log 2>&1
+```
+
+Required evidence after a separately authorized run is exactly one
+`AIDE_RUNTIME|class_resampling|method=partial_random_oversample|ratio=0.25|seed=1729`
+record containing the expected before/after counts and `added=159005`, frozen
+source/data/split hashes, and all three required model families trained and
+inferable. Effective-number beta `0.999995` is closed; beta `.99999` remains
 unauthorized.
 
 Execution completed once at committed revision `e99a21b`; artifact
@@ -164,7 +205,7 @@ at-risk `0.6322250912914829`, unhealthy `2.7798312381020565`, fit
 `3.8940550516314514`; XGB/GBM/CAT all trained and inferable with no failures.
 Beta `0.99999` is not yet authorized and no next method is selected.
 
-### Prepared effective-number profile (not authorized to execute)
+### Closed effective-number beta 0.999995 execution
 
 Profile:
 `s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m`
@@ -176,8 +217,8 @@ one. With beta `0.999995` and frozen training counts at-risk `474049`, unhealthy
 `0.6322250912914832`, unhealthy `2.779831238102058`, and fit
 `3.8940550516314536`.
 
-Prepared reproduction command (do not execute until separately authorized from
-a committed revision):
+The command below is retained as executed historical evidence, not an
+authorization for another run:
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995
@@ -187,7 +228,7 @@ env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python script
 Reserved outer log:
 `logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log`
 
-Required post-run evidence is exactly one training-only
+The completed run recorded exactly one training-only
 `AIDE_RUNTIME|class_weights|method=effective_number|beta=0.999995` record with
 the expected mapping, frozen source/data/split hashes, and XGB, GBM, and CAT
 all trained and inferable. Beta `0.99999` has no prepared profile and remains

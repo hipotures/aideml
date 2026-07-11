@@ -1,23 +1,33 @@
 # Class-balance investigation status
 
-State: **the clipped inverse-frequency alpha `1.0`, pre-normalization cap `4.0`
-run completed comparably at balanced accuracy `0.9491452350142495`; cap `3`
-and all other Stage B methods remain unauthorized**.
+State: **partial random oversampling ratio `0.25` is prepared only at base
+revision `5256f07`; no ratio-0.25 training has been authorized or launched**.
 
-Effective-number beta `0.999995` is prepared only (not trained); expected
-normalized mapping is at-risk `0.6322250912914832`, unhealthy `2.779831238102058`,
-fit `3.8940550516314536`. Beta `0.99999`, cap 3, and other methods are not
-authorized.
+The profile
+`s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m`
+preserves the frozen CPU capped-180 reference outside `class_balance`. After
+the seed-1729 stratified holdout, it resamples only training rows from at-risk
+`474049`, unhealthy `46179`, and fit `31842` to at-risk `474049`, unhealthy
+`118513`, and fit `118513` (total `711075`, added `159005`). Validation is not
+resampled and no sample weights are configured for this method.
 
-Prepared profile:
-`s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m`.
-It preserves the frozen CPU capped-180 reference outside `class_balance`, uses
-the training-only counts at-risk `474049`, unhealthy `46179`, and fit `31842`,
-and logs `method=effective_number|beta=0.999995` without an alpha field. The
-prepared outer log is
-`logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_effective_number_beta999995/run_cpu_capped180_attempt_1.log`.
-The prepared command is recorded in `stage_b_plan.md` and `stage_b_configs.json`;
-it must not be executed without a committed revision and separate authorization.
+Prepared command (do not execute until separately authorized from a committed
+revision):
+
+```sh
+mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-b-partial-random-oversample-ratio025-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log 2>&1
+```
+
+Reserved outer log:
+`logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_partial_random_oversample_ratio025/run_cpu_capped180_attempt_1.log`.
+Expected single runtime record: `AIDE_RUNTIME|class_resampling` with method
+`partial_random_oversample`, ratio `0.25`, seed `1729`, the exact before/after
+counts above, and `added=159005`. Ratio `.15` is not yet authorized.
+
+Effective-number beta `0.999995` is closed: its comparable execution completed
+at balanced accuracy `0.9463823272415373` (artifact `20260711T163831`). Beta
+`.99999`, cap 3, and all other methods remain unauthorized.
 
 Completed:
 
@@ -178,16 +188,17 @@ Completed:
 - cap-4 implementation, profile, result, and research records are committed at
   `f704d31`; its comparable artifact is `20260711T161037` and no further
   clipped run is pending;
-- effective-number implementation, profile, tests, and research preparation
-  are uncommitted on base revision `f704d31`; its command remains unauthorized
-  and no effective-number log or artifact exists.
+- effective-number beta `0.999995` completed comparably and is closed; its
+  artifact is `20260711T163831`. Beta `.99999` remains unauthorized.
 
 Pending Main review:
 
-1. review the effective-number implementation, profile, and verification evidence;
-2. commit the effective-number preparation when commits are possible;
+1. review the partial-random-oversample ratio-0.25 implementation, profile,
+   and verification evidence;
+2. commit the ratio-0.25 preparation when commits are possible;
 3. only then decide whether to authorize its exact prepared command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized from a committed revision. Effective-number beta `0.999995` remains
-unexecuted; beta `0.99999` remains unauthorized.
+authorized from a committed revision. Partial random oversampling ratio `.25`
+remains unexecuted; ratio `.15` and effective-number beta `.99999` remain
+unauthorized.
