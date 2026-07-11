@@ -614,6 +614,7 @@ def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
     assert settings["presets"] == "medium_quality"
     assert settings["time_limit"] == 600
     assert settings["validation_strategy"] == "holdout"
+    assert settings["save_prediction_artifacts"] is True
     _assert_cpu_boost_hyperparameters(settings)
     assert settings["fit_args"] == {
         "save_space": True,
@@ -627,6 +628,20 @@ def test_autogluon_default_full_boost_keeps_legacy_fit_settings(tmp_path):
     assert "fit_kwargs.update(fit_args)" in code
     assert "'device': 'cpu'" in code
     assert "'ag_args': {'priority': 999}" in code
+
+
+def test_autogluon_can_disable_prediction_artifact_export(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.save_prediction_artifacts = False
+
+    settings = resolve_autogluon_settings(cfg)
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    assert settings["save_prediction_artifacts"] is False
+    assert "'save_prediction_artifacts': False" in code
+    assert 'if AIDE_AG_CONFIG.get("save_prediction_artifacts", True):' in code
+    assert "prediction artifact export disabled" in code
+    assert "_clear_prediction_artifacts(working_dir)" in code
 
 
 def test_autogluon_best_profile_forces_cpu_xgb_settings(tmp_path):

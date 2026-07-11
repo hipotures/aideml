@@ -279,6 +279,22 @@ def test_cli_agent_gpu_override_is_loaded(tmp_path):
     assert cfg.agent.gpu is True
 
 
+def test_cli_can_disable_autogluon_prediction_artifacts(tmp_path):
+    cfg = _load_cfg(
+        cli_args=[
+            f"data_dir={tmp_path}",
+            "goal=test",
+            f"log_dir={tmp_path / 'logs'}",
+            f"workspace_dir={tmp_path / 'workspaces'}",
+            "agent.autogluon.save_prediction_artifacts=false",
+        ]
+    )
+
+    cfg = prep_cfg(cfg)
+
+    assert cfg.agent.autogluon.save_prediction_artifacts is False
+
+
 def test_load_cfg_preserves_unquoted_forced_root_cli_id(tmp_path):
     cfg = _load_cfg(
         cli_args=[

@@ -463,6 +463,9 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
         "presets": ag.presets,
         "time_limit": int(ag.time_limit),
         "preprocess_timeout": int(getattr(ag, "preprocess_timeout", 600)),
+        "save_prediction_artifacts": bool(
+            getattr(ag, "save_prediction_artifacts", True)
+        ),
         "validation_fraction": float(ag.validation_fraction),
         "seed": int(ag.seed),
         "included_model_types": None,
@@ -592,6 +595,9 @@ def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dic
     if aux_name is not None:
         visible["aux_file"] = aux_name
     visible["preprocess_timeout"] = int(settings.get("preprocess_timeout", 600))
+    visible["save_prediction_artifacts"] = bool(
+        settings.get("save_prediction_artifacts", True)
+    )
     fallback = settings.get("lightgbm_gpu_categorical_fallback")
     if isinstance(fallback, dict):
         visible["lightgbm_gpu_categorical_fallback"] = dict(fallback)
@@ -899,6 +905,20 @@ def _selected_model_metadata(predictor: TabularPredictor) -> dict:
 
 def _artifact_dir(working_dir: Path) -> Path:
     return Path(os.environ.get("AIDE_NODE_ARTIFACT_DIR", str(working_dir)))
+
+
+def _clear_prediction_artifacts(working_dir: Path) -> None:
+    for base_dir in {{working_dir, _artifact_dir(working_dir)}}:
+        for filename in (
+            "oof_predictions.csv",
+            "oof_predictions.csv.gz",
+            "test_predictions.csv",
+            "test_predictions.csv.gz",
+            "validation_predictions.csv",
+            "validation_predictions.csv.gz",
+        ):
+            (base_dir / filename).unlink(missing_ok=True)
+        shutil.rmtree(base_dir / "model_predictions", ignore_errors=True)
 
 
 def _save_submission(submission: pd.DataFrame, working_dir: Path) -> Path:
@@ -1219,6 +1239,8 @@ def main() -> None:
     input_dir = Path("./input")
     working_dir = Path("./working")
     working_dir.mkdir(parents=True, exist_ok=True)
+    if not AIDE_AG_CONFIG.get("save_prediction_artifacts", True):
+        _clear_prediction_artifacts(working_dir)
 
     train_df = _read_csv(input_dir, "train")
     test_df = _read_csv(input_dir, "test")
@@ -1367,19 +1389,23 @@ def main() -> None:
             test_model,
             eval_metric=eval_metric,
         )
-        prediction_artifacts = _save_autogluon_prediction_artifacts(
-            predictor,
-            train_target=y_train,
-            test_model=test_model,
-            test_ids=test_df[id_col],
-            test_pred=test_pred,
-            eval_metric=eval_metric,
-            working_dir=working_dir,
-            id_col=id_col,
-            target_col=target_col,
-            valid_data=valid_data,
-            valid_pred=valid_pred,
-        )
+        if AIDE_AG_CONFIG.get("save_prediction_artifacts", True):
+            prediction_artifacts = _save_autogluon_prediction_artifacts(
+                predictor,
+                train_target=y_train,
+                test_model=test_model,
+                test_ids=test_df[id_col],
+                test_pred=test_pred,
+                eval_metric=eval_metric,
+                working_dir=working_dir,
+                id_col=id_col,
+                target_col=target_col,
+                valid_data=valid_data,
+                valid_pred=valid_pred,
+            )
+        else:
+            prediction_artifacts = {{"disabled": True}}
+            print("AIDE AutoGluon: prediction artifact export disabled", flush=True)
         if defer_save_space:
             try:
                 predictor.save_space(remove_data=True, remove_fit_stack=True)
@@ -1405,7 +1431,8 @@ def main() -> None:
         print(f"AIDE AutoGluon: OOF predictions unavailable: {{prediction_artifacts['oof_error']}}", flush=True)
     if prediction_artifacts.get("validation_predictions"):
         print(f"AIDE AutoGluon: validation predictions saved to {{prediction_artifacts['validation_predictions']}}", flush=True)
-    print(f"AIDE AutoGluon: test predictions saved to {{prediction_artifacts['test_predictions']}}", flush=True)
+    if prediction_artifacts.get("test_predictions"):
+        print(f"AIDE AutoGluon: test predictions saved to {{prediction_artifacts['test_predictions']}}", flush=True)
 
     summary = "AutoGluon preprocess wrapper completed."
     run_stats = {{
