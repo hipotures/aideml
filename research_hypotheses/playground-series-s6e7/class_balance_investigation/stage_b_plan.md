@@ -157,6 +157,12 @@ revision `e99a21b` (artifact `20260711T163831`, balanced accuracy
 `0.9463823272415373`). Beta `0.99999`, cap 3, and other methods remain
 unauthorized.
 
+Ratio `.25` executed once at committed revision `615471c`, artifact
+`logs/2-smiling-topaz-oarfish/artifacts/20260711T171117`, balanced accuracy
+`0.9413978706130188`; exact counts matched and no class-weight record emitted.
+XGB/GBM/CAT all trained and inferred. Ratio `.15` and other methods remain not
+yet authorized; no next method selected.
+
 ## Partial random oversampling ratio 0.25 (prepared, not authorized)
 
 This is the sole prepared next method at base revision `5256f07`. It is not

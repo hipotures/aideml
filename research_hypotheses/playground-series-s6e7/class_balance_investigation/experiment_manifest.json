@@ -562,5 +562,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Partial random oversampling ratio .25 prepared but not executed; ratio .15 and other methods not yet authorized; no next method selected"
+  "remaining_gate": "Partial random oversampling ratio .25 completed once; ratio .15 and other methods not yet authorized; no next method selected"
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "stage": "stage_b",
-  "status": "partial_random_oversample_ratio025_prepared_unexecuted",
+  "status": "partial_random_oversample_ratio025_completed_comparable",
   "preparation_base_revision": "5256f07",
   "launch_blocker": "Partial random oversampling ratio .25 requires a committed revision and separate authorization; ratio .15 and other methods are not yet authorized.",
   "source": {

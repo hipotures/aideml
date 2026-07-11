@@ -31,6 +31,10 @@ at balanced accuracy `0.9463823272415373` (artifact `20260711T163831`). Beta
 
 Completed:
 
+- Partial random oversampling ratio `.25` executed once at artifact
+  `20260711T171117`, balanced accuracy `0.9413978706130188`; ratio `.15` and
+  other methods remain not yet authorized.
+
 - Effective-number beta `0.999995` completed comparably at balanced accuracy
   `0.9463823272415373` (artifact `20260711T163831`); beta `.99999` and any next
   method remain unauthorized.

@@ -1019,6 +1019,25 @@
       ]
     },
     {
+      "profile": "s6e7_class_balance_stage_b_partial_random_oversample_ratio025_cpu_capped180_fairone_seed1729_10m",
+      "status": "completed_comparable",
+      "balanced_accuracy": 0.9413978706130188,
+      "per_class_recall": {"at-risk":0.95424092,"unhealthy":0.9320052,"fit":0.93794749},
+      "confusion_matrix_labels": ["at-risk","unhealthy","fit"],
+      "confusion_matrix": [[113089,3139,2284],[746,10760,39],[461,33,7467]],
+      "target_counts": {"at-risk":118512,"unhealthy":11545,"fit":7961},
+      "prediction_counts": {"at-risk":114296,"unhealthy":13932,"fit":9790},
+      "prediction_proportions": {"at-risk":0.8281238679012882,"unhealthy":0.10094335521453723,"fit":0.07093277688417453},
+      "model_results": {"XGB":{"balanced_accuracy":0.9413978706130188,"fit_seconds":10.100870132446289,"validation_prediction_seconds":0.12338852882385254,"can_infer":true},"GBM":{"balanced_accuracy":0.9388874152243778,"fit_seconds":8.563450336456299,"validation_prediction_seconds":0.05456686019897461,"can_infer":true},"CAT":{"balanced_accuracy":0.9363667717826395,"fit_seconds":179.6654884815216,"validation_prediction_seconds":0.026578426361083984,"can_infer":true}},
+      "selected_model": "XGB",
+      "training_seconds": 203.93355703353882,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T171117",
+      "source_sha256": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
+      "resampling": {"ratio":0.25,"seed":1729,"before":{"at-risk":474049,"unhealthy":46179,"fit":31842},"after":{"at-risk":474049,"unhealthy":118513,"fit":118513},"added":159005,"sample_weight_record":false},
+      "comparison": {"balanced_accuracy_delta_vs_stage_a_alpha1": -0.0081822514810551,"balanced_accuracy_delta_vs_effective_beta999995": -0.0049844566285185,"balanced_accuracy_delta_vs_clipped_cap4": -0.0077473644012307},
+      "warnings_or_failures": ["OOF unavailable because predictor was not bagged","No model family failed or was skipped","Ratio .15 and other methods not yet authorized"]
+    },
+    {
       "profile": "s6e7_class_balance_stage_b_effective_number_beta999995_cpu_capped180_fairone_seed1729_10m",
       "status": "completed_comparable",
       "balanced_accuracy": 0.9463823272415373,
