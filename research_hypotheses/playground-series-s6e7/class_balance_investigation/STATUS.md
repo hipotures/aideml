@@ -1,7 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage A implementation and exact run plan complete; awaiting Main code
-review; no training launched**.
+State: **Stage A resource policy revised to a frozen CPU-only block; both CPU
+commands are dry-run pending; no CPU training launched; weighted run remains
+unlaunched**.
 
 Completed:
 
@@ -17,13 +18,27 @@ Completed:
 - unsafe bagged/internal-validation custom weighting rejected explicitly;
 - exact Stage A profiles and dry-run-validated reproduction commands generated;
 - focused AutoGluon preprocessing tests passed.
+- run 1 was authorized and launched at revision `53916cd`, but the runner
+  failed before training because the custom `--logs-dir` changed where it
+  searched for the existing source workspace input;
+- the failed attempt produced only a unique generated `solution.py` and logs,
+  with no model/result/submission artifacts.
+- corrected attempt 2 resolved the source workspace and preserved the exact
+  approved configuration, but AutoGluon detected zero GPUs and rejected all
+  three required one-GPU model configurations before fitting;
+- attempt 2 produced structured error artifacts but no metrics, predictions,
+  trained models, or submission.
+- both failed attempts are retained as non-comparable infrastructure evidence;
+- Main revised Stage A to CPU-only: one CPU-compatible configuration each for
+  XGB, GBM, and CAT, identical resources/settings across both variants;
+- GPU-only model parameters were removed and profile names now state `cpu` and
+  `fairone` explicitly.
 
 Pending Main review:
 
 1. review `aide/autogluon_preprocess.py:215-298,1377-1449`;
-2. review the frozen profiles at `aide/utils/config.yaml:233-294`;
-3. authorize sequential execution of the two commands in `stage_a_plan.md`.
+2. review the renamed CPU profiles at `aide/utils/config.yaml:233-286`;
+3. authorize only the CPU run-1 command after dry-run verification.
 
-Next Luna action after approval: run Stage A sequentially with redirected
-per-run logs, verify required-family completion and artifact hashes, then append
-the structured diagnostics to `results.json`.
+Next Luna action after Main review: launch no command unless explicitly
+authorized. Weighted run remains unlaunched.

@@ -14,12 +14,13 @@
     "validation_fraction": 0.2,
     "validation_strategy": "holdout",
     "seed": 1729,
-    "use_gpu": true,
+    "resource_policy": "cpu_only",
+    "use_gpu": false,
     "fair_model_scheduling": true,
     "hyperparameters": {
-      "GBM": [{"device": "cuda", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 1}}],
-      "CAT": [{"task_type": "GPU", "devices": "0", "gpu_ram_part": 0.8, "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 1}}],
-      "XGB": [{"device": "cuda", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 1}}]
+      "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}],
+      "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}],
+      "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}]
     },
     "fit_args": {
       "save_space": true,
@@ -29,14 +30,18 @@
   },
   "variants": [
     {
-      "profile": "s6e7_class_balance_stage_a_none_seed1729_10m",
+      "profile": "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
       "class_balance": {"method": "none"},
-      "logs_dir": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none"
+      "logs_dir": "logs",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_attempt_3.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     },
     {
-      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_seed1729_10m",
+      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m",
       "class_balance": {"method": "inverse_frequency", "alpha": 1.0},
-      "logs_dir": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1"
+      "logs_dir": "logs",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     }
   ],
   "only_resolved_difference_between_variants": "class_balance"

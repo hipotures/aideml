@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_a_implementation_awaiting_main_code_review",
+  "status": "stage_a_cpu_protocol_revised_not_executed",
   "training_authorized": false,
   "repository": {
-    "revision": "29c3c1654da95e9066e8ba258840f19292612a51",
+    "revision": "53916cdd57b598d4a4fadaf386d3ad7a081a891d",
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "e48eadf6281b987c1ddbca7a3fc36f5823d97dec758fcc5e2f8ddeeb5fa3f7f0"
+    "config_sha256": "5e4507401d0f2b52282ebef8596203f471392db99dc1ff4b119c5cc4d1052ab3",
+    "stage_a_configs_sha256": "3f5f097ac660e9a54ebbf867bb382df5f85d48d5f20ce11149f7bd277be6ba68"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -45,7 +46,7 @@
     }
   },
   "frozen_stage_a_candidate": {
-    "protocol_status": "main_approved_not_executed",
+    "protocol_status": "main_approved_run1_attempt_failed_pretraining",
     "pipeline": "neutral_raw13",
     "split": {
       "strategy": "stratified_holdout",
@@ -65,7 +66,8 @@
       ],
       "presets": "medium_quality",
       "time_limit_seconds": 600,
-      "use_gpu": true,
+      "resource_policy": "cpu_only",
+      "use_gpu": false,
       "one_default_config_per_family": true,
       "fit_weighted_ensemble": false,
       "auto_stack": false,
@@ -128,7 +130,9 @@
     "stage_a_constants_approved": true,
     "stage_c_preserve_exact_transductive_pipeline": true,
     "stage_c_transduction_must_be_explicitly_labeled": true,
-    "legacy_global_weight_result_comparable": false
+    "legacy_global_weight_result_comparable": false,
+    "gpu_attempts_comparable": false,
+    "stage_a_resource_policy_revised_to_cpu": true
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -141,5 +145,67 @@
     "bagged_custom_weighting_supported": false,
     "internal_validation_custom_weighting_supported": false
   },
-  "remaining_gate": "Main review of implementation and exact execution plan"
+  "stage_a_execution": {
+    "run1": {
+      "profile": "s6e7_class_balance_stage_a_none_seed1729_10m",
+      "status": "failed_before_data_load_or_training",
+      "attempted_at_utc": "2026-07-11T10:56:09Z",
+      "exit_status": 1,
+      "failure_class": "runner_source_workspace_path_resolution",
+      "failure": "custom --logs-dir caused source_input_dir to look for the source workspace under the new logs root",
+      "partial_artifact_dir": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/2-smiling-topaz-oarfish/artifacts/20260711T125609",
+      "solution_sha256": "329905ad5f4531628edb2588a3058995e981e4a606fb3aa474438ac3757b94fd",
+      "log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run.log",
+      "log_sha256": "0a4c95e360b00729fdb1c562b143dcf2ccedc474e710415277eed220d5dcdcb1",
+      "training_started": false,
+      "models_trained": []
+    },
+    "run1_attempt2": {
+      "profile": "s6e7_class_balance_stage_a_none_seed1729_10m",
+      "status": "failed_no_gpu_before_any_model_fit",
+      "attempted_at_utc": "2026-07-11T10:59:59Z",
+      "exit_status": 1,
+      "failure_class": "resource_gpu_unavailable",
+      "failure": "AutoGluon detected system_num_gpus=0 while each configured XGB, GBM, and CAT model required num_gpus=1",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T125959",
+      "aide_result_sha256": "1ceabfc9bc15675a5a4ed52cf8e8ff3a0c540ef97797b37aa3cfdd35ea1a51f2",
+      "solution_sha256": "329905ad5f4531628edb2588a3058995e981e4a606fb3aa474438ac3757b94fd",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_attempt_2.log",
+      "outer_log_sha256": "206de8a319147b2b8fb27e93d4cb0298d75735fc70b99fe06f4e3ca33976cde3",
+      "source_code_unchanged": true,
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": [],
+      "training_started": true,
+      "successful_model_fits": 0,
+      "metrics_available": false,
+      "data_hashes_recorded_by_run": false,
+      "split_hashes_recorded_by_run": false
+    },
+    "run2": {
+      "status": "not_launched"
+    }
+  },
+  "corrected_run1_invocation": {
+    "status": "executed_failed_no_gpu",
+    "logs_dir": "logs",
+    "resolved_source_input": "workspaces/2-smiling-topaz-oarfish/input",
+    "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>",
+    "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_attempt_2.log",
+    "scientific_config_changed": false,
+    "selected_source_records": 1
+  },
+  "cpu_protocol_revision": {
+    "status": "configured_not_executed",
+    "reason": "approved GPU block was unavailable; CPU block is identical between variants",
+    "profiles": [
+      "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
+      "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m"
+    ],
+    "use_gpu": false,
+    "one_configuration_per_family": true,
+    "gpu_only_parameters_removed": true,
+    "variants_differ_only_in_class_balance": true,
+    "prior_failed_attempts_comparable": false
+  },
+  "remaining_gate": "Main must review and authorize the dry-run-validated CPU run-1 command"
 }

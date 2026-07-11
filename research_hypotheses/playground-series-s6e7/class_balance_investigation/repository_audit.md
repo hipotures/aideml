@@ -112,9 +112,11 @@ feature fitting will not be redesigned during this investigation.
     prioritized configuration per family; GPU; no bagging, stacking, or
     weighted ensemble. See `aide/utils/config.yaml:201-264` and 449-479.
     Current `full_boost` is CPU, 600 seconds, holdout, no ensemble/stacking
-    (`aide/utils/config.yaml:818-845`). Stage A should freeze the fair-one GPU
-    settings and `fit_weighted_ensemble=false` so family scores, not an ensemble
-    policy, determine verification.
+    (`aide/utils/config.yaml:818-845`). The initial Stage A GPU block failed
+    because the execution environment exposed zero GPUs. Main subsequently
+    froze an otherwise identical CPU-only fair-one block with
+    `fit_weighted_ensemble=false`, so family scores, not an ensemble policy,
+    determine verification.
 
 11. **Exact `class_balance: balanced` execution.** See the detailed trace
     below. It is a custom sample-weight column, not AutoGluon's built-in
@@ -243,6 +245,22 @@ historical verification targets, not as fully equivalent reusable final runs.
 - Legacy `class_balance: balanced` resolves to corrected
   `inverse_frequency, alpha=1.0`; explicit `none` and mapping-based
   `inverse_frequency` are supported.
-- Frozen profiles are at `aide/utils/config.yaml:233-294`. A structured
+- Frozen CPU profiles are at `aide/utils/config.yaml:233-286`. A structured
   comparison confirms that their only resolved difference is `class_balance`.
-- Focused tests are at `tests/test_autogluon_preprocess.py:423-518`.
+- Focused weighting and CPU-profile tests are at
+  `tests/test_autogluon_preprocess.py:423-548`.
+
+## Stage A resource-policy revision
+
+The first run-1 attempt failed before data loading because a custom logs root
+changed source-workspace lookup. The corrected attempt reached AutoGluon but
+all XGB/GBM/CAT configurations failed before fitting because zero GPUs were
+detected. Both attempts are non-comparable infrastructure evidence and provide
+no score.
+
+Main revised the frozen resource control to CPU-only for both variants. Each
+profile requests exactly one configuration per required family at priority 100;
+XGB explicitly uses `device=cpu, tree_method=hist`; all families declare zero
+GPU resources; CAT GPU task/device/RAM options and GBM/XGB CUDA options are
+absent. Seed, split, features, preset, time limit, scheduling, validation,
+ensemble, bagging, and stacking controls remain unchanged.

@@ -1,6 +1,16 @@
 {
   "schema_version": 1,
   "metric": "balanced_accuracy",
+  "current_protocol": {
+    "resource_policy": "cpu_only",
+    "status": "configured_not_executed",
+    "variants_differ_only_in_class_balance": true,
+    "prior_stage_a_attempts_comparable": false,
+    "prior_stage_a_failures": [
+      "runner_source_workspace_path_resolution",
+      "resource_gpu_unavailable"
+    ]
+  },
   "records": [
     {
       "run_id": "legacy_neutral_unweighted_seed1729",
@@ -117,6 +127,106 @@
       "warnings_or_failures": [
         "validation-label counts influenced training weights",
         "per-model validation predictions were not exported because predictor was not bagged"
+      ]
+    },
+    {
+      "run_id": "stage_a_neutral_none_attempt_20260711T105609Z",
+      "stage": "stage_a",
+      "status": "failed_before_training",
+      "comparable_new_run": false,
+      "repository_revision": "53916cdd57b598d4a4fadaf386d3ad7a081a891d",
+      "profile": "s6e7_class_balance_stage_a_none_seed1729_10m",
+      "balancing": {"method": "none"},
+      "command_source": "stage_a_plan.md run 1",
+      "exit_status": 1,
+      "failure_class": "runner_source_workspace_path_resolution",
+      "error": "FileNotFoundError: Missing source input directory: /home/xai/DEV/aideml/logs/class_balance/s6e7_class_balance_stage_a_20260711/workspaces/2-smiling-topaz-oarfish/input",
+      "training_started": false,
+      "data_hashes_verified_by_run": false,
+      "split_hashes_verified_by_run": false,
+      "model_results": {"XGB": null, "GBM": null, "CAT": null},
+      "all_required_model_types_trained": false,
+      "balanced_accuracy": null,
+      "per_class_recall": null,
+      "confusion_matrix": null,
+      "prediction_counts": null,
+      "fit_seconds": null,
+      "prediction_seconds": null,
+      "partial_artifact_dir": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/2-smiling-topaz-oarfish/artifacts/20260711T125609",
+      "partial_artifacts": {
+        "solution.py": {
+          "sha256": "329905ad5f4531628edb2588a3058995e981e4a606fb3aa474438ac3757b94fd"
+        }
+      },
+      "log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run.log",
+        "sha256": "0a4c95e360b00729fdb1c562b143dcf2ccedc474e710415277eed220d5dcdcb1",
+        "lines": 22
+      },
+      "warnings_or_failures": [
+        "No data was loaded and no AutoGluon model fit began",
+        "Run 2 was not launched"
+      ]
+    },
+    {
+      "run_id": "stage_a_neutral_none_attempt_20260711T105959Z",
+      "stage": "stage_a",
+      "status": "failed_no_gpu_before_any_model_fit",
+      "comparable_new_run": false,
+      "repository_revision": "53916cdd57b598d4a4fadaf386d3ad7a081a891d",
+      "profile": "s6e7_class_balance_stage_a_none_seed1729_10m",
+      "balancing": {"method": "none"},
+      "exit_status": 1,
+      "failure_class": "resource_gpu_unavailable",
+      "error": "Specified num_gpus per XGB/GBM/CAT model is more than AutoGluon's detected total of 0",
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": [],
+      "eligible_for_selection_model_types": [],
+      "failed_or_skipped_model_types": ["XGB", "GBM", "CAT"],
+      "all_required_model_types_trained": false,
+      "source_code_unchanged": true,
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "resolved_config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "validation_strategy": "holdout",
+        "validation_fraction": 0.2,
+        "seed": 1729,
+        "use_gpu": true,
+        "fair_model_scheduling": true,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false,
+        "class_balance": {"method": "none"}
+      },
+      "data_hashes_verified_by_run": false,
+      "split_hashes_verified_by_run": false,
+      "balanced_accuracy": null,
+      "per_class_recall": null,
+      "confusion_matrix": null,
+      "prediction_counts": null,
+      "model_results": {"XGB": null, "GBM": null, "CAT": null},
+      "selected_model": null,
+      "fit_seconds": null,
+      "prediction_seconds": null,
+      "exec_seconds": 10.013603448867798,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T125959",
+      "artifact_hashes": {
+        "aide_result.json": "1ceabfc9bc15675a5a4ed52cf8e8ff3a0c540ef97797b37aa3cfdd35ea1a51f2",
+        "submission_eval.json": "006db18118a7efaff099ae52bb12e55a02b1a68873fb0f4ae431c69dbb7b2a12",
+        "solution.py": "329905ad5f4531628edb2588a3058995e981e4a606fb3aa474438ac3757b94fd",
+        "error.txt": "f7d1c1f43df858f45114fac1780eefa24fa2ea6736a2a37087da32cc46d5707a",
+        "process_stdout.log": "bac1d98d2f0068e178de3e666665d17eab27377913bfb4927ca6e4c877dd63cb",
+        "autogluon_stdout.log": "1c739c81ec617d63f2c4e3cd07894a3cf342c396b15e25b704b5d47299199fda"
+      },
+      "outer_log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_attempt_2.log",
+        "sha256": "206de8a319147b2b8fb27e93d4cb0298d75735fc70b99fe06f4e3ca33976cde3"
+      },
+      "warnings_or_failures": [
+        "All three required families failed the same zero-GPU resource assertion",
+        "No model, validation prediction, metric, or submission was produced",
+        "Run 2 was not launched"
       ]
     }
   ]
