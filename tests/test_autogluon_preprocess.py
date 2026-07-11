@@ -644,9 +644,9 @@ def test_autogluon_can_disable_prediction_artifact_export(tmp_path):
     assert "_clear_prediction_artifacts(working_dir)" in code
 
 
-def test_s6e6_high_cv3_profile_disables_prediction_artifact_export(tmp_path):
+def test_high_cv3_profile_disables_prediction_artifact_export(tmp_path):
     cfg = _cfg(tmp_path)
-    cfg.agent.autogluon.profile = "s6e6_boost_gpu_ens_high_cv3"
+    cfg.agent.autogluon.profile = "boost_gpu_ens_high_cv3"
 
     settings = resolve_autogluon_settings(cfg)
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)

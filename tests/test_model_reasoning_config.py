@@ -219,10 +219,10 @@ def test_full_boost_gpu_ensemble_profile_is_available():
     assert gpu_profile.fit_args.fit_weighted_ensemble is False
 
 
-def test_s6e6_high_cv3_profile_combines_high_preset_with_three_fold_bagging():
+def test_high_cv3_profile_combines_high_preset_with_three_fold_bagging():
     cfg = _load_cfg(use_cli_args=False)
 
-    profile = cfg.agent.autogluon.profiles.s6e6_boost_gpu_ens_high_cv3
+    profile = cfg.agent.autogluon.profiles.boost_gpu_ens_high_cv3
 
     assert profile.presets == "high"
     assert profile.time_limit == 900
