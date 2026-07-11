@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage B alpha `0.50` completed comparably at `0.943514733`. Main
-selected alpha `0.25` as the final inverse-frequency screen; its profile is
-frozen but uncommitted and unexecuted, so Main cannot launch it yet**.
+State: **the neutral inverse-frequency screen is complete. Alpha `0.25`
+completed comparably at `0.916551547`, below alpha `0.50` by `0.026963186` and
+alpha `1.0` by `0.033028576`; no other Stage B method was launched**.
 
 Completed:
 
@@ -128,15 +128,27 @@ Completed:
 - generated-wrapper compilation, profile-calibration validation, the one-source
   dry-run, focused invariants (`10 passed`), ruff, JSON, and diff checks passed
   for alpha `0.25`;
-- the profile and research changes are uncommitted on base revision `8b58b1f`.
-  Main cannot authorize launch until commits are possible and the resulting
-  revision is recorded. No alpha-0.25 training log or artifact exists.
+- at the preparation gate, the profile and research changes were uncommitted on
+  base revision `8b58b1f`, so no alpha-0.25 log or artifact existed then;
+- the alpha-0.25 profile was committed and separately authorized at revision
+  `8a64c26`; it completed in 215.05 seconds with XGB, GBM, and CAT trained and
+  inferable, no failed/skipped family, and XGBoost selected;
+- the resolved profile matches the Stage A block after removing
+  `class_balance`; data, frozen split, source, and code hashes match;
+- exactly one training-only weight record reports `at-risk=0.8915070763`,
+  `unhealthy=1.5957669730`, and `fit=1.7511789127`, with training mean one;
+- recall is `0.973639800` (at-risk), `0.878388913` (unhealthy), and
+  `0.897625926` (fit). Full confusion, prediction distribution, family
+  scores/times, runtime, warnings, and artifact hashes are in `results.json`;
+- alpha `0.25` is `0.026963186` below alpha `0.50`, `0.031217352` below alpha
+  `0.75`, `0.033028576` below alpha `1.0`, and `0.036193329` above unweighted.
+  No other Stage B method was launched.
 
 Pending Main review:
 
-1. review the frozen alpha-0.25 configuration and verification evidence;
-2. commit the profile and research state when commits are possible;
-3. only then decide whether to authorize the exact prepared command.
+1. interpret the completed inverse-frequency alpha screen against the
+   unweighted baseline;
+2. separately decide whether another balancing family should be designed.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized from a committed revision. Alpha `0.25` remains unexecuted.
+authorized. No other Stage B method is authorized.

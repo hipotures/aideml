@@ -1,8 +1,7 @@
 # Stage B inverse-frequency execution plan
 
-Status: **alpha `0.75` and alpha `0.50` completed comparably; alpha `0.25` is
-the final inverse-frequency screen, frozen but uncommitted and not executed**.
-No other Stage B method was prepared or launched.
+Status: **the alpha `0.75`, `0.50`, and `0.25` inverse-frequency screens all
+completed comparably**. No other Stage B method was prepared or launched.
 
 The profile is frozen at repository revision
 `5b436165c8677503beb064cb466625b869fdfb2c`. It uses the same source artifact,
@@ -84,26 +83,24 @@ accuracy `0.943514732929528`; the sole training-only mapping is
 `fit=2.859746651022219`. Full diagnostics and hashes are in `results.json`.
 The completed alpha-0.50 command does not itself authorize any further run.
 
-## Alpha 0.25 preparation
+## Alpha 0.25 execution
 
 Main selected neutral raw-13 fold-safe inverse-frequency alpha `0.25` as the
 final required inverse-frequency screen. Its CPU fair-one profile is identical
 to the successful Stage A capped180 block except `class_balance.alpha`. It was
-prepared from base revision `8b58b1f6450464e2caee2f3a01eef42eab9b1a41`, but
-the profile and research changes are uncommitted. Training cannot be launched
-until commits are possible, the resulting revision is recorded, and Main
-separately authorizes the command.
+committed and executed after separate Main authorization at revision
+`8a64c262e962d7a43a44b44dfc545dc03542e09d`.
 
 Profile:
 `s6e7_class_balance_stage_b_inverse_frequency_alpha025_cpu_capped180_fairone_seed1729_10m`
 
 Expected unique artifact root:
-`logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`
+`logs/2-smiling-topaz-oarfish/artifacts/20260711T154503/`
 
 Reserved outer log:
 `logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha025/run_cpu_capped180_attempt_1.log`
 
-### Prepared reproduction command
+### Executed reproduction command
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha025
@@ -111,5 +108,8 @@ env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python script
 ```
 
 Required post-run verification is identical to the earlier inverse-frequency
-screens, with the sole training-only weight record required to state alpha
-`0.25`. This preparation does not authorize execution or any other method.
+screens. All checks passed: XGB, GBM, and CAT trained and are inferable; XGBoost
+was selected at balanced accuracy `0.9165515465098321`; the sole training-only
+mapping is `at-risk=0.8915070763078106`, `unhealthy=1.595766972983883`, and
+`fit=1.751178912691916`. Full diagnostics and hashes are in `results.json`.
+This completed plan does not authorize any other Stage B method.

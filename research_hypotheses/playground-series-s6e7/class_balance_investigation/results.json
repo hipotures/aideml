@@ -3,7 +3,7 @@
   "metric": "balanced_accuracy",
   "current_protocol": {
     "resource_policy": "cpu_only",
-    "status": "capped180_stage_b_alpha050_complete",
+    "status": "capped180_inverse_frequency_screen_complete",
     "profiles": [
       "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
       "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m"
@@ -20,6 +20,8 @@
     "stage_b_delta_vs_stage_a_alpha1": -0.0018112237374613427,
     "stage_b_alpha050_balanced_accuracy": 0.943514732929528,
     "stage_b_alpha050_delta_vs_stage_a_alpha1": -0.006065389164545909,
+    "stage_b_alpha025_balanced_accuracy": 0.9165515465098321,
+    "stage_b_alpha025_delta_vs_stage_a_alpha1": -0.03302857558424188,
     "prior_stage_a_failures": [
       "runner_source_workspace_path_resolution",
       "resource_gpu_unavailable"
@@ -871,6 +873,149 @@
         "Per-model prediction export was unavailable because the predictor was intentionally not bagged",
         "No model family failed or was skipped",
         "No alpha-0.25 or other Stage B method was launched"
+      ]
+    },
+    {
+      "run_id": "stage_b_neutral_inverse_frequency_alpha025_cpu_capped180_20260711T134503Z",
+      "stage": "stage_b",
+      "status": "completed_comparable",
+      "comparable_new_run": true,
+      "repository_revision": "8a64c262e962d7a43a44b44dfc545dc03542e09d",
+      "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha025_cpu_capped180_fairone_seed1729_10m",
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha025-cpu-capped180-20260711",
+      "balancing": {
+        "method": "inverse_frequency",
+        "parameters": {"alpha": 0.25, "normalization": "training_mean_one"},
+        "derive_from": "training_partition_only",
+        "training_class_counts": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+        "class_weights": {
+          "at-risk": 0.8915070763078106,
+          "unhealthy": 1.595766972983883,
+          "fit": 1.751178912691916
+        },
+        "training_weight_mean": 1.0,
+        "exact_mapping_log_records": 1,
+        "exact_mapping_log": {
+          "path": "logs/2-smiling-topaz-oarfish/artifacts/20260711T154503/process_stdout.log",
+          "line": "AIDE_RUNTIME|class_weights|method=inverse_frequency|alpha=0.25|mapping={\"at-risk\": 0.8915070763078106, \"fit\": 1.751178912691916, \"unhealthy\": 1.595766972983883}",
+          "file_sha256": "74836b6c8b1a5c87ea8aac1a47b2d3f906556d130082b7077cd483fac50ee417"
+        }
+      },
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "valid_for_current_final_selection": true,
+      "valid_for_final_profile_selection": true,
+      "source_code_unchanged": true,
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "config_equal_to_stage_a_alpha1_except_class_balance": true,
+      "data_sha256": {
+        "train.csv.gz": "8d74774c5ed7b8aba981116d59d3d8cd753731c8a1eb8920b965016b20443cad",
+        "test.csv.gz": "0066684a879ca44b7f5e554d2507d4118d20e5f751056a57c82e603b75c0c30a",
+        "sample_submission.csv.gz": "6e8fed8306350028ac6cd894452801c6363995cf1ea3b52014654475dd88d95b",
+        "student_health_dataset_50k.csv.gz": "697b806faa2f55d6e0bb1e6283b522b3de58db8e8aaaf0fd2314d63abbc0a659"
+      },
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "train_rows": 552070,
+        "validation_rows": 138018,
+        "train_id_sha256": "5d82c6531913afea458a6e821be7dafeafb8679971010edc97ad2b0f8bed1a80",
+        "validation_id_sha256": "15c4f89f3870a4a8ff1b4b3aed386a321d0439374277fef7b48e8491d481d27e",
+        "validation_target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "resolved_config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "preprocess_timeout_seconds": 180,
+        "validation_strategy": "holdout",
+        "validation_fraction": 0.2,
+        "seed": 1729,
+        "use_gpu": false,
+        "fair_model_scheduling": true,
+        "one_default_config_per_family": true,
+        "per_family_max_time_limit_seconds": 180,
+        "total_model_cap_seconds": 540,
+        "reserved_overhead_seconds": 60,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false,
+        "num_bag_folds": 0,
+        "num_stack_levels": 0,
+        "class_balance": {"method": "inverse_frequency", "alpha": 0.25}
+      },
+      "balanced_accuracy": 0.9165515465098321,
+      "per_class_recall": {
+        "at-risk": 0.9736398001890104,
+        "unhealthy": 0.8783889129493287,
+        "fit": 0.8976259263911569
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[115388, 1727, 1397], [1386, 10141, 18], [788, 27, 7146]],
+      "target_counts": {"at-risk": 118512, "unhealthy": 11545, "fit": 7961},
+      "prediction_counts": {"at-risk": 117562, "unhealthy": 11895, "fit": 8561},
+      "prediction_proportions": {
+        "at-risk": 0.8517874480140272,
+        "unhealthy": 0.08618441072903535,
+        "fit": 0.0620281412569375
+      },
+      "model_results": {
+        "XGB": {
+          "balanced_accuracy": 0.9165515465098321,
+          "fit_seconds": 10.298494815826416,
+          "validation_prediction_seconds": 0.12311601638793945,
+          "can_infer": true
+        },
+        "GBM": {
+          "balanced_accuracy": 0.9159243880289741,
+          "fit_seconds": 13.718901634216309,
+          "validation_prediction_seconds": 0.11936521530151367,
+          "can_infer": true
+        },
+        "CAT": {
+          "balanced_accuracy": 0.9156392967651305,
+          "fit_seconds": 179.7412543296814,
+          "validation_prediction_seconds": 0.03474307060241699,
+          "can_infer": true
+        }
+      },
+      "selected_model": "XGB",
+      "training_seconds": 208.54511260986328,
+      "exec_seconds": 215.05052781105042,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T154503",
+      "artifact_hashes": {
+        "aide_result.json": "0f52beedf69e92ca6cee35aeb5adb6a230dbb09e90f06fe092dba0d5ce58702a",
+        "submission_eval.json": "d999d8cebf8517b8cfa144af678cc90be865fcf2162c95779e1178fb84533aaa",
+        "solution.py": "051c1c0a60deaf5446f0b4e8ac2d7f20b149cd8e34cbef6784cb87dd3a10509e",
+        "submission.csv": "55f8558095cae893b7c0d790aef1f59ebf5898750124ccbbe58b6b04bbb2f159",
+        "test_predictions.csv.gz": "093fd9d43d9add5e781024a3046dbf15ab2309310820e758f9d44f40c14d427c",
+        "validation_predictions.csv.gz": "5634bddc666715abcf8051dc3aac98efb21f8997d999251cf224d51112794065",
+        "process_stdout.log": "74836b6c8b1a5c87ea8aac1a47b2d3f906556d130082b7077cd483fac50ee417",
+        "autogluon_stdout.log": "e8b3e61c5b9070bd68523e37efb7c6b4c732ed31ff7dc87da299e9cc60807259"
+      },
+      "outer_log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha025/run_cpu_capped180_attempt_1.log",
+        "sha256": "71abb6a7305a90f668d9877efe6c8bcbdf9f19268f583937d7ad06b8759a7acc"
+      },
+      "comparison": {
+        "balanced_accuracy_delta_vs_stage_a_alpha1": -0.03302857558424188,
+        "balanced_accuracy_delta_vs_stage_b_alpha075": -0.03121735184678054,
+        "balanced_accuracy_delta_vs_stage_b_alpha050": -0.026963186419695973,
+        "balanced_accuracy_delta_vs_stage_a_unweighted": 0.03619332852891055,
+        "per_class_recall_delta_vs_stage_b_alpha050": {
+          "at-risk": 0.0225631159713785,
+          "unhealthy": -0.06401039411000431,
+          "fit": -0.03944228112046222
+        }
+      },
+      "warnings_or_failures": [
+        "Per-model prediction export was unavailable because the predictor was intentionally not bagged",
+        "No model family failed or was skipped",
+        "No other Stage B method was launched"
       ]
     }
   ]
