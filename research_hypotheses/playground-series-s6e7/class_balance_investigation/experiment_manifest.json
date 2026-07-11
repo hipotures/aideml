@@ -1,17 +1,19 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_alpha050_complete_comparable",
+  "status": "stage_b_alpha050_complete_alpha025_frozen_uncommitted",
   "training_authorized": false,
   "repository": {
-    "revision": "835e0cff25849e0e5887f49b6f72f56d963c0a71",
+    "revision": "8b58b1f6450464e2caee2f3a01eef42eab9b1a41",
     "working_tree_has_uncommitted_alpha050_profile": false,
     "alpha050_profile_committed_revision": "835e0cff25849e0e5887f49b6f72f56d963c0a71",
+    "working_tree_has_uncommitted_alpha025_profile": true,
+    "alpha025_launch_requires_committed_revision": true,
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "a71f0feac5c11997cf42718afc5284b9b2fb60f85894570d6963c65f4db453ea",
+    "config_sha256": "f42592e25d88f47f72803e6d77aa037ec43265a36460b01b76f7e658ad1103bc",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
-    "stage_b_configs_sha256": "cdaddd8db1d4031a0405987889ea370783760c6e02dde62c8a80fd0398d9ff22",
-    "stage_b_plan_sha256": "5cdd6b62e2d52f5cc4d055d1d23d4243e4364e419482ab27d02464dbbf9ee0df"
+    "stage_b_configs_sha256": "9399005c48ec18463e298615a3efbf1c0800605f8c83dc3abe4438b52c52e89e",
+    "stage_b_plan_sha256": "08b853ee8cf61b295e013184db4e785f1d062bd618ef87989d49b6b5e4ad201b"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -205,9 +207,24 @@
       "split_hashes_verified": true,
       "resolved_config_verified": true
     },
-    "not_created_or_selected": [
-      "inverse_frequency_alpha_0_25"
-    ]
+    "final_selected": {
+      "status": "frozen_uncommitted_not_executed",
+      "selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_25",
+      "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha025_cpu_capped180_fairone_seed1729_10m",
+      "preparation_base_revision": "8b58b1f6450464e2caee2f3a01eef42eab9b1a41",
+      "launch_blocker": "Profile and research changes must be committed before training can be authorized.",
+      "only_resolved_difference_from_reference": "class_balance.alpha",
+      "balancing": {
+        "method": "inverse_frequency",
+        "alpha": 0.25,
+        "normalize_training_mean_to_one": true,
+        "derive_from": "training_partition_only",
+        "validation_weight": null
+      },
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha025-cpu-capped180-20260711",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha025/run_cpu_capped180_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+    }
   },
   "reuse_candidates": [
     {
@@ -235,7 +252,8 @@
     "stage_b_single_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75",
     "stage_b_selected_experiment_completed": true,
     "stage_b_next_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_50",
-    "stage_b_alpha050_completed": true
+    "stage_b_alpha050_completed": true,
+    "stage_b_final_inverse_frequency_screen": "neutral_raw13_inverse_frequency_alpha_0_25"
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -392,5 +410,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must interpret the completed alpha-0.50 result; no alpha-0.25 or other method is authorized"
+  "remaining_gate": "Alpha-0.25 profile and research changes must be committed before Main can authorize training"
 }

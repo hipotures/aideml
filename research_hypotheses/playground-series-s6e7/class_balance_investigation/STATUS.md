@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage B neutral inverse-frequency alpha `0.50` completed comparably at
-`0.943514733`. It is `0.004254165` below alpha `0.75` and `0.006065389` below
-alpha `1.0`; no alpha `0.25` or other method was launched**.
+State: **Stage B alpha `0.50` completed comparably at `0.943514733`. Main
+selected alpha `0.25` as the final inverse-frequency screen; its profile is
+frozen but uncommitted and unexecuted, so Main cannot launch it yet**.
 
 Completed:
 
@@ -118,12 +118,25 @@ Completed:
 - alpha `0.50` is `0.004254165` below alpha `0.75`, `0.006065389` below alpha
   `1.0`, and `0.063156515` above the unweighted Stage A run. No alpha `0.25` or
   other balancing method was launched.
+- Main selected only neutral raw-13 inverse-frequency alpha `0.25` as the final
+  required inverse-frequency screen; no other balancing method was prepared;
+- the alpha-0.25 profile resolves identically to the Stage A reference after
+  removing `class_balance`, with XGB/GBM/CAT present, 180-second family caps,
+  and the 600-second predictor limit;
+- the exact profile, session, log path, artifact root, and reproduction command
+  are frozen in the Stage B config and plan;
+- generated-wrapper compilation, profile-calibration validation, the one-source
+  dry-run, focused invariants (`10 passed`), ruff, JSON, and diff checks passed
+  for alpha `0.25`;
+- the profile and research changes are uncommitted on base revision `8b58b1f`.
+  Main cannot authorize launch until commits are possible and the resulting
+  revision is recorded. No alpha-0.25 training log or artifact exists.
 
 Pending Main review:
 
-1. interpret the completed alpha-0.50 result against alpha `0.75`, alpha `1.0`,
-   and the unweighted baseline;
-2. separately decide whether any further experiment should be designed.
+1. review the frozen alpha-0.25 configuration and verification evidence;
+2. commit the profile and research state when commits are possible;
+3. only then decide whether to authorize the exact prepared command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized. No alpha `0.25` or other method is authorized.
+authorized from a committed revision. Alpha `0.25` remains unexecuted.
