@@ -1728,7 +1728,8 @@ class Agent:
         contract = [
             "You are writing only the feature preprocessing function for a fixed AutoGluon training wrapper.",
             f"Return a single markdown code block containing exactly one top-level function: {signature}.",
-            "The df argument contains concatenated train features followed by Kaggle prediction/test features, with only model feature columns present.",
+            "The df argument contains concatenated train features followed by Kaggle prediction/test features, including the identifier column named in the task description.",
+            "The identifier is available for deterministic feature engineering, but the fixed wrapper configures AutoGluon to ignore the raw identifier during model fitting.",
         ]
         if aux_name is not None:
             contract.extend(
@@ -1748,7 +1749,7 @@ class Agent:
                 "Do not read files, write files, train models, create validation splits, save submissions, or call AutoGluon. The fixed wrapper does all of that.",
                 "Do not change row count or reorder rows.",
                 "If your intended algorithm would remove rows, such as outlier filtering, do not drop them. Preserve all rows and instead add features such as an outlier flag, clipped/winsorized value, imputed clean value, anomaly score, or distance-from-normal feature.",
-                "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only model feature columns.",
+                "Create deterministic, leakage-safe feature engineering only. Shared train+test operations like dtype cleanup, frequency encoding, and category normalization are allowed if they use only feature columns and the identifier.",
                 "Same-lap covariate aggregates may use all rows available at prediction time, but must never use the target, labels, OOF predictions, model predictions, or future target-derived information.",
                 "Mechanical simplifications are allowed only if they do not change model behavior, validation behavior, feature semantics, artifact names, or metadata. Do not optimize by changing algorithms, parameters, encoders, folds, model families, or training control flow.",
                 f"preprocess(df) has a dedicated timeout of {int(getattr(self.cfg.agent.autogluon, 'preprocess_timeout', 600))} seconds before AutoGluon training starts.",
@@ -2114,7 +2115,8 @@ class Agent:
         aux_name = aux_file_name(self.cfg)
         if aux_name is None:
             prompt["Fixed AutoGluon wrapper context"] = (
-                "The fixed wrapper passes only model feature columns to preprocess(df). "
+                "The fixed wrapper passes feature columns including the identifier to preprocess(df), "
+                "then configures AutoGluon to ignore the raw identifier during fit. "
                 "Use only columns visible in the feature overview or in "
                 "previous preprocess functions. Do not add defensive cleanup for "
                 "columns that are not present in preprocess(df)."
@@ -2122,7 +2124,8 @@ class Agent:
             return
 
         prompt["Fixed AutoGluon wrapper context"] = (
-            "The fixed wrapper passes only model feature columns to preprocess(df, aux). "
+            "The fixed wrapper passes feature columns including the identifier to preprocess(df, aux), "
+            "then configures AutoGluon to ignore the raw identifier during fit. "
             f"It also loads `./input/{aux_name}` once and passes that raw auxiliary "
             "dataset as the `aux` DataFrame. Use only columns visible in the "
             "feature overview, the auxiliary data overview, or previous preprocess "

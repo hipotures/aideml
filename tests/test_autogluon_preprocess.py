@@ -284,8 +284,10 @@ def test_build_autogluon_wrapper_compiles_and_preserves_preprocess(tmp_path):
     assert "AIDE_RESULT_JSON:" in code
     assert "'time_limit': 600" in code
     assert "'preprocess_timeout': 600" in code
-    assert "train_features = train_df.drop(columns=[target_col, id_col]" in code
+    assert "train_features = train_df.drop(columns=[target_col]" in code
+    assert "test_features = test_df.copy()" in code
     assert "_make_combined_frame(train_features, test_features)" in code
+    assert '"learner_kwargs": {"ignored_columns": [id_col]}' in code
     assert "df[HELPER_ROW_ID]" not in code
     assert "FORBIDDEN_ROW_ID in after.columns" in code
     assert '"verbosity": 2' in code
@@ -1001,6 +1003,23 @@ def _run_wrapper_main(tmp_path: Path, cfg, *, preprocess: str) -> tuple[dict[str
     if not isinstance(fit_kwargs, dict):
         raise TypeError("Captured fit kwargs are not a dictionary")
     return fit_kwargs, emitted_warnings
+
+
+def test_wrapper_keeps_identifier_for_preprocess_and_configures_autogluon_to_ignore_it(tmp_path):
+    cfg = _cfg(tmp_path)
+    _build_input_for_wrapper(tmp_path, labels=["a", "a", "a", "b", "b", "c"])
+
+    code = build_autogluon_wrapper(
+        "def preprocess(df):\n"
+        "    out = df.copy()\n"
+        "    out['id_mod_3'] = out['id'] % 3\n"
+        "    return out\n",
+        cfg,
+    )
+
+    assert "train_features = train_df.drop(columns=[target_col]" in code
+    assert "test_features = test_df.copy()" in code
+    assert '"learner_kwargs": {"ignored_columns": [id_col]}' in code
 
 
 def test_class_balancing_weight_methods_do_not_raise_for_bagging_or_auto_stack():

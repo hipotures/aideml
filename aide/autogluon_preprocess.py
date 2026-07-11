@@ -1596,8 +1596,8 @@ def main() -> None:
         raise ValueError(f"Target column {{target_col!r}} not found in train data")
 
     y_train = train_df[target_col].reset_index(drop=True)
-    train_features = train_df.drop(columns=[target_col, id_col], errors="ignore")
-    test_features = test_df.drop(columns=[id_col], errors="ignore")
+    train_features = train_df.drop(columns=[target_col], errors="ignore")
+    test_features = test_df.copy()
     combined = _make_combined_frame(train_features, test_features)
     if aux_df is not None:
         print(
@@ -1767,6 +1767,7 @@ def main() -> None:
             "eval_metric": eval_metric,
             "path": str(model_dir),
             "verbosity": 2,
+            "learner_kwargs": {{"ignored_columns": [id_col]}},
         }}
         if class_balance["method"] in {{
             "inverse_frequency",
