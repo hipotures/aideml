@@ -226,6 +226,7 @@ def test_s6e6_high_cv3_profile_combines_high_preset_with_three_fold_bagging():
 
     assert profile.presets == "high"
     assert profile.time_limit == 900
+    assert profile.save_prediction_artifacts is False
     assert profile.use_gpu is True
     assert profile.validation_strategy == "autogluon"
     assert profile.class_balance == "balanced"

@@ -722,6 +722,7 @@ agent:
         included_model_types: [XGB, GBM, CAT]
         presets: high
         time_limit: 900
+        save_prediction_artifacts: false
         use_gpu: true
         validation_strategy: autogluon
         class_balance: balanced
