@@ -212,6 +212,88 @@ def _lightgbm_config_uses_gpu(config):
 '''
 
 
+_CLASS_BALANCING_HELPER_SOURCE = r'''
+def _class_balance_config(value):
+    if value is None:
+        return {"method": "none"}
+    if isinstance(value, str):
+        method = value.strip().lower().replace("-", "_")
+        if method in {"none", "off", "unweighted"}:
+            return {"method": "none"}
+        if method in {"balanced", "inverse_frequency"}:
+            return {"method": "inverse_frequency", "alpha": 1.0}
+        raise ValueError(
+            "class_balance must be 'none', 'balanced', 'inverse_frequency', "
+            "or a mapping"
+        )
+    if not isinstance(value, dict):
+        raise ValueError("class_balance must be a string or mapping")
+    unknown = set(value) - {"method", "alpha"}
+    if unknown:
+        raise ValueError(f"Unsupported class_balance options: {sorted(unknown)}")
+    method = str(value.get("method", "none")).strip().lower().replace("-", "_")
+    if method == "balanced":
+        method = "inverse_frequency"
+    if method == "none":
+        if "alpha" in value:
+            raise ValueError("class_balance alpha is only valid for inverse_frequency")
+        return {"method": "none"}
+    if method != "inverse_frequency":
+        raise ValueError("class_balance.method must be 'none' or 'inverse_frequency'")
+    try:
+        alpha = float(value.get("alpha", 1.0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("class_balance.alpha must be a finite number >= 0") from exc
+    if not np.isfinite(alpha) or alpha < 0:
+        raise ValueError("class_balance.alpha must be a finite number >= 0")
+    return {"method": "inverse_frequency", "alpha": alpha}
+
+
+def _inverse_frequency_sample_weight(labels, *, alpha):
+    labels = pd.Series(labels).copy()
+    if labels.empty:
+        raise ValueError("Cannot compute class weights for empty labels")
+    if labels.isna().any():
+        raise ValueError("Cannot compute class weights for missing labels")
+    try:
+        alpha = float(alpha)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("class_balance.alpha must be a finite number >= 0") from exc
+    if not np.isfinite(alpha) or alpha < 0:
+        raise ValueError("class_balance.alpha must be a finite number >= 0")
+
+    counts = labels.value_counts(dropna=False)
+    base_weights = len(labels) / (len(counts) * counts.astype(float))
+    class_weights = base_weights.pow(alpha)
+    row_weights = labels.map(class_weights).astype(float)
+    mean_weight = float(row_weights.mean())
+    if not np.isfinite(mean_weight) or mean_weight <= 0:
+        raise ValueError("Calculated class weights must have a finite positive mean")
+    row_weights = row_weights / mean_weight
+    class_weights = class_weights / mean_weight
+    if not np.isfinite(row_weights.to_numpy()).all() or not (row_weights > 0).all():
+        raise ValueError("Calculated sample weights must be finite and positive")
+    if not row_weights.index.equals(labels.index):
+        raise AssertionError("Sample-weight indices do not align with training labels")
+    return row_weights, {str(label): float(weight) for label, weight in class_weights.items()}
+
+
+def _validate_custom_balancing_context(config, *, bagged_mode, validation_strategy):
+    if config["method"] == "none":
+        return
+    if bagged_mode:
+        raise ValueError(
+            "Custom class balancing is not supported with bagging/auto_stack because "
+            "weights cannot yet be derived independently inside each AutoGluon fold"
+        )
+    if validation_strategy != "holdout":
+        raise ValueError(
+            "Custom class balancing requires validation_strategy='holdout' so weights "
+            "are derived from training labels only"
+        )
+'''
+
+
 def baseline_preprocess_source() -> str:
     return "def preprocess(df: pd.DataFrame) -> pd.DataFrame:\n    return df.copy()\n"
 
@@ -650,6 +732,9 @@ CLASS_WEIGHT_COL = "__aide_class_weight__"
 {_LIGHTGBM_GPU_CATEGORICAL_FALLBACK_HELPER_SOURCE.strip()}
 
 
+{_CLASS_BALANCING_HELPER_SOURCE.strip()}
+
+
 {preprocess_source.strip()}
 
 
@@ -693,15 +778,6 @@ def _run_preprocess(combined: pd.DataFrame, aux_df: pd.DataFrame | None) -> pd.D
             aux_df = pd.DataFrame()
         return preprocess(combined.copy(), aux_df.copy())
     return preprocess(combined.copy())
-
-
-def _balanced_sample_weight(labels: pd.Series) -> np.ndarray:
-    labels = pd.Series(labels).reset_index(drop=True)
-    counts = labels.value_counts(dropna=False)
-    if counts.empty:
-        raise ValueError("Cannot compute class weights for empty labels")
-    weights_by_class = len(labels) / (len(counts) * counts.astype(float))
-    return labels.map(weights_by_class).astype(float).to_numpy()
 
 
 def _positive_probability(
@@ -1295,13 +1371,17 @@ def main() -> None:
     feature_count = int(len(train_fe.columns))
     train_model = train_fe.copy()
     train_model[target_col] = y_train.to_numpy()
-    if AIDE_AG_CONFIG.get("class_balance") == "balanced":
-        train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)
     test_model = test_fe.copy()
 
     eval_metric = _configured_metric()
+    class_balance = _class_balance_config(AIDE_AG_CONFIG.get("class_balance"))
     fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}) or {{}})
     bagged_mode = int(fit_args.get("num_bag_folds") or 0) > 0 or bool(fit_args.get("auto_stack"))
+    _validate_custom_balancing_context(
+        class_balance,
+        bagged_mode=bagged_mode,
+        validation_strategy=AIDE_AG_CONFIG.get("validation_strategy"),
+    )
     defer_save_space = bool(bagged_mode and fit_args.pop("save_space", False))
     if bagged_mode:
         train_data = train_model
@@ -1321,6 +1401,22 @@ def main() -> None:
     else:
         train_data = train_model
         valid_data = None
+
+    if class_balance["method"] == "inverse_frequency":
+        train_weights, class_weight_mapping = _inverse_frequency_sample_weight(
+            train_data[target_col],
+            alpha=class_balance["alpha"],
+        )
+        train_data = train_data.copy()
+        train_data[CLASS_WEIGHT_COL] = train_weights
+        if not train_data[CLASS_WEIGHT_COL].index.equals(train_data[target_col].index):
+            raise AssertionError("Sample weights are not aligned with training rows")
+        print(
+            "AIDE_RUNTIME|class_weights"
+            f"|method=inverse_frequency|alpha={{class_balance['alpha']}}"
+            f"|mapping={{json.dumps(class_weight_mapping, sort_keys=True)}}",
+            flush=True,
+        )
 
     model_dir = working_dir / "autogluon_model"
     shutil.rmtree(model_dir, ignore_errors=True)
@@ -1347,7 +1443,7 @@ def main() -> None:
             "path": str(model_dir),
             "verbosity": 2,
         }}
-        if AIDE_AG_CONFIG.get("class_balance") == "balanced":
+        if class_balance["method"] != "none":
             predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL
             predictor_kwargs["weight_evaluation"] = False
         predictor = TabularPredictor(**predictor_kwargs)

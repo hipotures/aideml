@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import pytest
 
 import aide.autogluon_preprocess as autogluon_preprocess
@@ -433,11 +434,82 @@ def test_autogluon_wrapper_can_enable_balanced_sample_weights(tmp_path):
     compile(code, "<generated_autogluon_wrapper>", "exec")
     assert "'class_balance': 'balanced'" in code
     assert "CLASS_WEIGHT_COL = \"__aide_class_weight__\"" in code
-    assert "def _balanced_sample_weight" in code
-    assert "train_model[CLASS_WEIGHT_COL] = _balanced_sample_weight(y_train)" in code
+    assert "def _inverse_frequency_sample_weight" in code
+    assert "_inverse_frequency_sample_weight(\n            train_data[target_col]" in code
+    assert code.index("train_data, valid_data = train_test_split(") < code.index(
+        "train_weights, class_weight_mapping = _inverse_frequency_sample_weight("
+    )
     assert 'predictor_kwargs["sample_weight"] = CLASS_WEIGHT_COL' in code
     assert 'predictor_kwargs["weight_evaluation"] = False' in code
     assert 'valid_data.drop(columns=[target_col, CLASS_WEIGHT_COL], errors="ignore")' in code
+
+
+def _class_balancing_helpers():
+    namespace = {"np": np, "pd": pd}
+    exec(autogluon_preprocess._CLASS_BALANCING_HELPER_SOURCE, namespace)
+    return namespace
+
+
+def test_inverse_frequency_weights_support_alpha_normalization_and_index_alignment():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    labels = pd.Series(["major", "major", "major", "minor"], index=[8, 3, 5, 1])
+
+    weights, mapping = helper(labels, alpha=0.5)
+
+    assert weights.index.equals(labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert mapping["minor"] / mapping["major"] == pytest.approx(3**0.5)
+    assert np.isfinite(weights).all()
+    assert (weights > 0).all()
+
+
+def test_inverse_frequency_alpha_one_matches_training_partition_only_formula():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    full_labels = pd.Series(["major"] * 8 + ["minor"] * 4)
+    training_labels = full_labels.iloc[[0, 1, 2, 3, 4, 8, 9]]
+
+    weights, mapping = helper(training_labels, alpha=1.0)
+
+    assert mapping == pytest.approx({"major": 0.7, "minor": 1.75})
+    assert weights.mean() == pytest.approx(1.0)
+    assert len(weights) == len(training_labels)
+
+
+@pytest.mark.parametrize("alpha", [-0.1, float("nan"), float("inf"), "invalid"])
+def test_inverse_frequency_rejects_invalid_alpha(alpha):
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    with pytest.raises(ValueError, match="finite number >= 0"):
+        helper(pd.Series(["a", "b"]), alpha=alpha)
+
+
+def test_inverse_frequency_rejects_empty_and_missing_labels():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    with pytest.raises(ValueError, match="empty labels"):
+        helper(pd.Series(dtype="object"), alpha=1.0)
+    with pytest.raises(ValueError, match="missing labels"):
+        helper(pd.Series(["a", None]), alpha=1.0)
+
+
+def test_class_balance_config_supports_none_inverse_frequency_and_legacy_balanced():
+    helper = _class_balancing_helpers()["_class_balance_config"]
+
+    assert helper({"method": "none"}) == {"method": "none"}
+    assert helper({"method": "inverse_frequency", "alpha": 0.5}) == {
+        "method": "inverse_frequency",
+        "alpha": 0.5,
+    }
+    assert helper("balanced") == {"method": "inverse_frequency", "alpha": 1.0}
+
+
+def test_custom_balancing_rejects_bagged_and_internal_validation():
+    helper = _class_balancing_helpers()["_validate_custom_balancing_context"]
+    config = {"method": "inverse_frequency", "alpha": 1.0}
+
+    with pytest.raises(ValueError, match="not supported with bagging"):
+        helper(config, bagged_mode=True, validation_strategy="holdout")
+    with pytest.raises(ValueError, match="requires validation_strategy='holdout'"):
+        helper(config, bagged_mode=False, validation_strategy="autogluon")
+    helper(config, bagged_mode=False, validation_strategy="holdout")
 
 
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
