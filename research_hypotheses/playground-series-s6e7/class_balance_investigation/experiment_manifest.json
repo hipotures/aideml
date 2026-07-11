@@ -1,13 +1,15 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_a_cpu_capped180_pair_complete",
+  "status": "stage_b_alpha075_frozen_not_executed",
   "training_authorized": false,
   "repository": {
-    "revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
+    "revision": "5b436165c8677503beb064cb466625b869fdfb2c",
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "4a6741ab79f7d9e393e9fc6e5075d77c06faf3ec84fb60b4e06d223a27ea9e31",
-    "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b"
+    "config_sha256": "02bda2e9b0d5c0638511789735587c9193290ec8670c11a7a5c0555f564a00a8",
+    "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
+    "stage_b_configs_sha256": "aef0e230c6ee080b7bb65b819f7f2efaac7ccb316be1e308dae0dc553f1f0126",
+    "stage_b_plan_sha256": "4a79e5ba49b6b1687ddbe1f2ff859c16bc967c6923ee644eb12dd7c0622f9d7a"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -110,6 +112,47 @@
       "code_and_data_hashes"
     ]
   },
+  "frozen_stage_b_candidate": {
+    "status": "frozen_verified_not_executed",
+    "selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75",
+    "pipeline": "neutral_raw13",
+    "reference_profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+    "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha075_cpu_capped180_fairone_seed1729_10m",
+    "only_resolved_difference_from_reference": "class_balance.alpha",
+    "balancing": {
+      "method": "inverse_frequency",
+      "alpha": 0.75,
+      "normalize_training_mean_to_one": true,
+      "derive_from": "training_partition_only",
+      "validation_weight": null
+    },
+    "autogluon": {
+      "included_model_types": ["XGB", "GBM", "CAT"],
+      "presets": "medium_quality",
+      "time_limit_seconds": 600,
+      "resource_policy": "cpu_only",
+      "use_gpu": false,
+      "one_default_config_per_family": true,
+      "per_family_max_time_limit_seconds": 180,
+      "total_model_cap_seconds": 540,
+      "reserved_overhead_seconds": 60,
+      "fit_weighted_ensemble": false,
+      "auto_stack": false,
+      "num_bag_folds": 0,
+      "num_stack_levels": 0,
+      "metric": "balanced_accuracy"
+    },
+    "execution": {
+      "status": "not_launched",
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha075/run_cpu_capped180_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+    },
+    "not_created_or_selected": [
+      "inverse_frequency_alpha_0_25",
+      "inverse_frequency_alpha_0_5"
+    ]
+  },
   "reuse_candidates": [
     {
       "id": "legacy_neutral_unweighted_seed1729",
@@ -132,7 +175,8 @@
     "stage_c_transduction_must_be_explicitly_labeled": true,
     "legacy_global_weight_result_comparable": false,
     "gpu_attempts_comparable": false,
-    "stage_a_resource_policy_revised_to_cpu": true
+    "stage_a_resource_policy_revised_to_cpu": true,
+    "stage_b_single_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75"
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -289,5 +333,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must interpret the completed Stage A pair; no Stage B run is authorized"
+  "remaining_gate": "Main must review the frozen alpha-0.75 Stage B configuration and separately authorize training"
 }

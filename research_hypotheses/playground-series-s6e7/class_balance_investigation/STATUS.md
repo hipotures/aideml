@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **capped180 CPU Stage A pair completed comparably. Fold-safe inverse
-frequency alpha 1 improves balanced accuracy from `0.880358218` to
-`0.949580122` (`+0.069221904`); no Stage B run is authorized or launched**.
+State: **Stage A pair completed comparably. Main selected one Stage B follow-up,
+neutral raw-13 inverse-frequency alpha `0.75`; its frozen CPU capped180 profile
+and reproduction plan are verified but training is not authorized or launched**.
 
 Completed:
 
@@ -69,12 +69,22 @@ Completed:
 - all weighted aggregate, family, per-class, confusion, prediction-distribution,
   runtime, warning, configuration, and artifact-hash diagnostics are recorded
   in `results.json`.
+- Main selected only neutral raw-13 inverse-frequency alpha `0.75` for Stage B;
+  alpha `0.25` and `0.5` profiles were not created;
+- the Stage B profile is frozen at revision `5b43616` and resolves identically
+  to the successful Stage A alpha-1 CPU fair-one block after removing
+  `class_balance`, with one XGB/GBM/CAT configuration each, 180-second family
+  caps, a 600-second predictor limit, and 60 seconds reserved overhead;
+- `stage_b_configs.json` and `stage_b_plan.md` record the exact configuration,
+  unique session/log/artifact identifiers, and reproduction command;
+- generated-wrapper compilation and dry-run source selection passed; focused
+  invariants passed (`10 passed`), ruff passed, and JSON/diff checks passed. No
+  training was launched.
 
 Pending Main review:
 
-1. interpret the completed capped180 Stage A pair in `results.json`;
-2. decide whether any later-stage investigation should be designed and
-   separately authorized.
+1. review the frozen alpha-0.75 profile and invariant evidence;
+2. separately decide whether to authorize its reproduction command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized. No Stage B run was launched.
+authorized. Stage B remains unexecuted.

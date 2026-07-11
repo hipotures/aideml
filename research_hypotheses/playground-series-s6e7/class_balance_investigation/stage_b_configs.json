@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "stage": "stage_b",
+  "status": "frozen_not_executed",
+  "repository_revision": "5b436165c8677503beb064cb466625b869fdfb2c",
+  "source": {
+    "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260702T003825-504eb95e-0",
+    "submission_sha256_selector": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
+    "solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+    "preprocess": "neutral_raw13_identity"
+  },
+  "reference_profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+  "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha075_cpu_capped180_fairone_seed1729_10m",
+  "config": {
+    "included_model_types": ["XGB", "GBM", "CAT"],
+    "presets": "medium_quality",
+    "time_limit": 600,
+    "preprocess_timeout": 180,
+    "validation_fraction": 0.2,
+    "validation_strategy": "holdout",
+    "seed": 1729,
+    "class_balance": {"method": "inverse_frequency", "alpha": 0.75},
+    "resource_policy": "cpu_only",
+    "use_gpu": false,
+    "fair_model_scheduling": true,
+    "hyperparameters": {
+      "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+      "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+      "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
+    },
+    "fit_args": {
+      "save_space": true,
+      "fit_weighted_ensemble": false,
+      "auto_stack": false
+    }
+  },
+  "per_family_max_time_limit_seconds": 180,
+  "total_model_cap_seconds": 540,
+  "predictor_time_limit_seconds": 600,
+  "reserved_overhead_seconds": 60,
+  "only_resolved_difference_from_reference_profile": "class_balance.alpha",
+  "excluded_alphas": [0.25, 0.5],
+  "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
+  "logs_dir": "logs",
+  "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha075/run_cpu_capped180_attempt_1.log",
+  "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+}
