@@ -1,0 +1,17 @@
+{
+  "stage": "stage_c",
+  "status": "prepared_unexecuted",
+  "training_authorized": false,
+  "source_sha256": "feff2f3363b23b0b2a6bde1516db26e44427f197461b7d69265f9f4a92cd2edb",
+  "source_artifact": "logs/2-romantic-guan-of-eternity/artifacts/20260707T214845-49a4adb6-50",
+  "source_solution_sha256": "80c78c9254d99e628a951fea623130e5b1bb1dc94ded447a7673e292506499f8",
+  "feature_count": 16,
+  "transductive_test_covariates": true,
+  "profiles": [
+    {"profile":"stage_c_none","class_balance":{"method":"none"},"log":"logs/class_balance/stage_c_none.log"},
+    {"profile":"stage_c_inverse_frequency_alpha1","class_balance":{"method":"inverse_frequency","alpha":1.0},"log":"logs/class_balance/stage_c_inverse_frequency_alpha1.log"},
+    {"profile":"stage_c_clipped_inverse_frequency_alpha1_cap4","class_balance":{"method":"clipped_inverse_frequency","alpha":1.0,"max_raw_weight":4.0},"log":"logs/class_balance/stage_c_clipped_inverse_frequency_alpha1_cap4.log"}
+  ],
+  "prior_alternative": {"source":"stage_c_none heldout probabilities","taus":[0,0.25,0.5,0.75,1],"training":false},
+  "no_fourth_training": true
+}

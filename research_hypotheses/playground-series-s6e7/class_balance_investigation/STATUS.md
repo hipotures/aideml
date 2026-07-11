@@ -40,6 +40,10 @@ used only for separate scoring diagnostics.
 
 Completed:
 
+- Stage C prepared only from the strongest 16-feature transductive source
+  (selector `feff2f3363b23b0b2a6bde1516db26e44427f197461b7d69265f9f4a92cd2edb`);
+  three profiles are unexecuted and training remains unauthorized.
+
 - Fixed held-out probability capture completed once (artifact `20260711T173849`);
   per-family prior-power sweep (`tau=0,.25,.5,.75,1`) is recorded in
   `heldout_prior_power_sweep.json`. This is not full-CV OOF; no next training is authorized.
