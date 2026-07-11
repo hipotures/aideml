@@ -9,8 +9,9 @@ CPU plan. The unweighted CPU run completed, but only CatBoost trained because it
 consumed 596.7 seconds of the shared 600-second budget. The run is
 non-comparable and the weighted CPU run was not launched. Main approved a
 180-second maximum per family, giving at most 540 model-fit seconds and a
-60-second overhead reserve. The capped commands below are verified but have not
-been executed.
+60-second overhead reserve. Main authorized the capped commands sequentially;
+both completed successfully with XGB, GBM, and CAT trained and inferable. No
+Stage B command is authorized or launched.
 
 Source: the neutral identity source artifact selected by full SHA-256 prefix
 `f26e4d0a1755c73b`. Both variants use the same current data fingerprints,
@@ -25,6 +26,11 @@ streamed into model context.
 
 ## 1. No balancing, CPU fair-one
 
+Completed at revision `fab529a0317b34d8e634fe8504d14a3ae4ed9fab`.
+Artifact: `logs/2-smiling-topaz-oarfish/artifacts/20260711T132901`.
+Result: comparable Stage A run 1; selected XGB balanced accuracy
+`0.8803582179809215`; all mandatory families trained and inferable.
+
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none
 env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-a-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_capped180_attempt_4.log 2>&1
@@ -34,12 +40,17 @@ Expected artifact root:
 `logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`. The runner loops until
 `mkdir(..., exist_ok=False)` succeeds, so it cannot overwrite an existing
 timestamped artifact. The new `run_cpu_capped180_attempt_4.log` is distinct from
-the uncapped CAT-only run and both earlier failed attempts.
+the uncapped CAT-only run and both earlier failed attempts. The realized unique
+artifact directory was `20260711T132901`.
 
 ## 2. Fold-safe inverse frequency alpha 1.0, CPU fair-one
 
-Run only after the CPU first command terminates, its artifacts are verified,
-and Main separately authorizes run 2.
+Completed after separate Main authorization at revision
+`fab529a0317b34d8e634fe8504d14a3ae4ed9fab`.
+Artifact: `logs/2-smiling-topaz-oarfish/artifacts/20260711T134130`.
+Result: comparable Stage A run 2; selected LightGBM balanced accuracy
+`0.9495801220940739`; all mandatory families trained and inferable. The exact
+training-only weight record was emitted once.
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1
@@ -47,7 +58,8 @@ env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python script
 ```
 
 Expected artifact root:
-`logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`.
+`logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`. The realized unique
+artifact directory was `20260711T134130`.
 
 ## Post-run verification before interpretation
 
@@ -60,3 +72,7 @@ Expected artifact root:
   confusion matrix, and prediction counts/proportions;
 - record family scores, fit/prediction times, warnings/failures, artifact hashes,
   and current Git revision in `results.json`.
+
+All post-run checks passed for the Stage A pair. The resolved profiles differ
+only in `class_balance`; weighted balanced accuracy increased by
+`0.06922190411315243`. This plan contains no authorization for Stage B.

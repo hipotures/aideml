@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_a_cpu_capped180_ready_not_executed",
+  "status": "stage_a_cpu_capped180_pair_complete",
   "training_authorized": false,
   "repository": {
-    "revision": "b7bed48fed24e75664a9e9f7e67800619e0ebb86",
+    "revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
     "config_sha256": "4a6741ab79f7d9e393e9fc6e5075d77c06faf3ec84fb60b4e06d223a27ea9e31",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b"
@@ -46,7 +46,7 @@
     }
   },
   "frozen_stage_a_candidate": {
-    "protocol_status": "main_approved_run1_attempt_failed_pretraining",
+    "protocol_status": "capped180_pair_complete_comparable",
     "pipeline": "neutral_raw13",
     "split": {
       "strategy": "stratified_holdout",
@@ -202,8 +202,65 @@
       "exec_seconds": 608.1480746269226,
       "anomaly": "CatBoost consumed 596.7427 seconds of the shared 600-second budget before XGB or GBM trained"
     },
+    "cpu_capped180_run1": {
+      "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+      "status": "completed_comparable_run1",
+      "attempted_at_utc": "2026-07-11T11:29:01Z",
+      "completed_at_utc": "2026-07-11T11:37:10Z",
+      "repository_revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T132901",
+      "aide_result_sha256": "7ddc60b12eff91b5ec6a49ed89df1ab2ff6522a2c62c91c8e087a8172cee02b2",
+      "solution_sha256": "897516a4245ffbfc0037b92297f433e87efe65c56785bd8236ea5ef1608ff473",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_capped180_attempt_4.log",
+      "outer_log_sha256": "e3c35285cdc26b9ae04c5cd0c628cc012915c8186741e5346dcd3f87ac3f55c6",
+      "source_code_unchanged": true,
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "balanced_accuracy": 0.8803582179809215,
+      "selected_model": "XGB",
+      "training_seconds": 477.5995764732361,
+      "exec_seconds": 488.0970242023468,
+      "data_hashes_verified": true,
+      "split_hashes_verified": true,
+      "resolved_config_verified": true
+    },
     "run2": {
-      "status": "not_launched"
+      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+      "status": "completed_comparable_run2",
+      "attempted_at_utc": "2026-07-11T11:41:30Z",
+      "completed_at_utc": "2026-07-11T11:45:18Z",
+      "repository_revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T134130",
+      "aide_result_sha256": "bae64650b2cc61efbf2ab8da0b687c5f6a3a993e799eb96d3c2243688c3993d7",
+      "solution_sha256": "f9b70fa674a33db677923757b89b6b4a05c6f991faf7f5d29b804d4efbb07881",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_capped180_attempt_1.log",
+      "outer_log_sha256": "473d67e750f029992a1b0d1fd90d9852416e0ea3b743edd3a52ebf03de661352",
+      "source_code_unchanged": true,
+      "config_equal_to_run1_except_class_balance": true,
+      "class_weights_derived_from_training_partition_only": true,
+      "class_weights": {
+        "at-risk": 0.38819475061298175,
+        "unhealthy": 3.9850003970058547,
+        "fit": 5.779264284069259
+      },
+      "exact_class_weight_mapping_log_records": 1,
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "balanced_accuracy": 0.9495801220940739,
+      "selected_model": "GBM",
+      "training_seconds": 218.60165643692017,
+      "exec_seconds": 227.0647475719452,
+      "data_hashes_verified": true,
+      "split_hashes_verified": true,
+      "resolved_config_verified": true
     }
   },
   "corrected_run1_invocation": {
@@ -216,7 +273,7 @@
     "selected_source_records": 1
   },
   "cpu_protocol_revision": {
-    "status": "capped180_remediation_configured_not_executed",
+    "status": "stage_a_pair_complete_comparable",
     "reason": "approved GPU block was unavailable; CPU block is identical between variants",
     "profiles": [
       "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
@@ -232,5 +289,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must review and separately authorize the capped180 CPU unweighted rerun"
+  "remaining_gate": "Main must interpret the completed Stage A pair; no Stage B run is authorized"
 }

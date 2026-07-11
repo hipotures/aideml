@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **CAT-only CPU run remains non-comparable; Main approved and configured
-an equal 180-second per-family cap with 60 seconds reserved overhead; capped
-profiles are verified but unexecuted; weighted run remains unlaunched**.
+State: **capped180 CPU Stage A pair completed comparably. Fold-safe inverse
+frequency alpha 1 improves balanced accuracy from `0.880358218` to
+`0.949580122` (`+0.069221904`); no Stage B run is authorized or launched**.
 
 Completed:
 
@@ -42,12 +42,39 @@ Completed:
   predictor total and reserves 60 seconds for overhead;
 - capped profile identifiers are versioned separately from the invalid
   uncapped CAT-only run.
+- Main authorized only the capped180 CPU unweighted run at revision `fab529a`;
+  it completed in 488.10 seconds with all three mandatory families trained and
+  inferable, no failed/skipped family, and XGB selected;
+- structured validation predictions reproduce balanced accuracy
+  `0.880358218`, with recall `0.989148778` (at-risk), `0.823386748`
+  (unhealthy), and `0.828539128` (fit);
+- current input SHA-256 values, frozen train/validation ID hashes, validation
+  target-sequence hash, resolved profile, source immutability, and all artifact
+  hashes were verified and recorded in `results.json`;
+- the run is valid as Stage A run 1. The expected non-bagged per-model
+  prediction-export warning does not affect the selected-model validation
+  predictions or family training/inference checks.
+- Main separately authorized the capped180 fold-safe inverse-frequency alpha-1
+  run at the same `fab529a` training revision; it completed in 227.06 seconds
+  with XGB, GBM, and CAT trained and inferable, no failed/skipped family, and
+  LightGBM selected;
+- the weighted run's resolved configuration is byte-for-structure equal to run
+  1 after removing `class_balance`; data, split, source, and code hashes match;
+- the sole exact class-weight log record reports training-only weights
+  `at-risk=0.3881947506`, `unhealthy=3.9850003970`, and `fit=5.7792642841`,
+  whose training-partition mean is exactly one;
+- weighted recall is `0.934572026` (at-risk), `0.963533997` (unhealthy), and
+  `0.950634342` (fit), changing recall by `-0.054576752`, `+0.140147250`, and
+  `+0.122095214`, respectively, versus the capped unweighted run;
+- all weighted aggregate, family, per-class, confusion, prediction-distribution,
+  runtime, warning, configuration, and artifact-hash diagnostics are recorded
+  in `results.json`.
 
 Pending Main review:
 
-1. review `aide/autogluon_preprocess.py:215-298,1377-1449`;
-2. review the renamed CPU profiles at `aide/utils/config.yaml:233-286`;
-3. review and separately authorize the capped180 CPU unweighted rerun.
+1. interpret the completed capped180 Stage A pair in `results.json`;
+2. decide whether any later-stage investigation should be designed and
+   separately authorized.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized. Weighted run remains unlaunched.
+authorized. No Stage B run was launched.

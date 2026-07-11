@@ -3,7 +3,7 @@
   "metric": "balanced_accuracy",
   "current_protocol": {
     "resource_policy": "cpu_only",
-    "status": "capped180_remediation_configured_not_executed",
+    "status": "capped180_stage_a_pair_complete",
     "profiles": [
       "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
       "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m"
@@ -14,6 +14,7 @@
     "reserved_overhead_seconds": 60,
     "variants_differ_only_in_class_balance": true,
     "prior_stage_a_attempts_comparable": false,
+    "stage_a_pair_balanced_accuracy_delta_weighted_minus_unweighted": 0.06922190411315243,
     "prior_stage_a_failures": [
       "runner_source_workspace_path_resolution",
       "resource_gpu_unavailable"
@@ -330,6 +331,258 @@
         "XGB and GBM did not train",
         "Per-model prediction export was unavailable because the predictor was not bagged",
         "Run 2 was not launched"
+      ]
+    },
+    {
+      "run_id": "stage_a_neutral_none_cpu_capped180_20260711T112901Z",
+      "stage": "stage_a",
+      "status": "completed_comparable_run1",
+      "comparable_new_run": true,
+      "repository_revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
+      "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+      "profile_calibration_session_id": "s6e7-class-balance-stage-a-cpu-capped180-20260711",
+      "balancing": {"method": "none"},
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "valid_for_current_final_selection": true,
+      "valid_for_final_profile_selection": true,
+      "source_code_unchanged": true,
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "data_sha256": {
+        "train.csv.gz": "8d74774c5ed7b8aba981116d59d3d8cd753731c8a1eb8920b965016b20443cad",
+        "test.csv.gz": "0066684a879ca44b7f5e554d2507d4118d20e5f751056a57c82e603b75c0c30a",
+        "sample_submission.csv.gz": "6e8fed8306350028ac6cd894452801c6363995cf1ea3b52014654475dd88d95b",
+        "student_health_dataset_50k.csv.gz": "697b806faa2f55d6e0bb1e6283b522b3de58db8e8aaaf0fd2314d63abbc0a659"
+      },
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "train_rows": 552070,
+        "validation_rows": 138018,
+        "train_id_sha256": "5d82c6531913afea458a6e821be7dafeafb8679971010edc97ad2b0f8bed1a80",
+        "validation_id_sha256": "15c4f89f3870a4a8ff1b4b3aed386a321d0439374277fef7b48e8491d481d27e",
+        "validation_target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "resolved_config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "preprocess_timeout_seconds": 180,
+        "validation_strategy": "holdout",
+        "validation_fraction": 0.2,
+        "seed": 1729,
+        "use_gpu": false,
+        "fair_model_scheduling": true,
+        "one_default_config_per_family": true,
+        "per_family_max_time_limit_seconds": 180,
+        "total_model_cap_seconds": 540,
+        "reserved_overhead_seconds": 60,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false,
+        "num_bag_folds": 0,
+        "num_stack_levels": 0,
+        "class_balance": {"method": "none"}
+      },
+      "balanced_accuracy": 0.8803582179809215,
+      "per_class_recall": {
+        "at-risk": 0.9891487781828,
+        "unhealthy": 0.8233867475097445,
+        "fit": 0.8285391282502198
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[117226, 730, 556], [2025, 9506, 14], [1339, 26, 6596]],
+      "prediction_counts": {"at-risk": 120590, "unhealthy": 10262, "fit": 7166},
+      "prediction_proportions": {
+        "at-risk": 0.8737266153690099,
+        "unhealthy": 0.07435262067266589,
+        "fit": 0.051920763958324276
+      },
+      "model_results": {
+        "XGB": {
+          "balanced_accuracy": 0.8803582179809215,
+          "fit_seconds": 135.03459358215332,
+          "validation_prediction_seconds": 0.7796471118927002,
+          "can_infer": true
+        },
+        "GBM": {
+          "balanced_accuracy": 0.8780556550324539,
+          "fit_seconds": 155.24835896492004,
+          "validation_prediction_seconds": 1.365767240524292,
+          "can_infer": true
+        },
+        "CAT": {
+          "balanced_accuracy": 0.8701599552565367,
+          "fit_seconds": 179.79061770439148,
+          "validation_prediction_seconds": 0.040337562561035156,
+          "can_infer": true
+        }
+      },
+      "selected_model": "XGB",
+      "training_seconds": 477.5995764732361,
+      "exec_seconds": 488.0970242023468,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T132901",
+      "artifact_hashes": {
+        "aide_result.json": "7ddc60b12eff91b5ec6a49ed89df1ab2ff6522a2c62c91c8e087a8172cee02b2",
+        "submission_eval.json": "e0919b2fa898c8303521c16e766967eb781e6f66ba6583a5f81abe7b543f1b36",
+        "solution.py": "897516a4245ffbfc0037b92297f433e87efe65c56785bd8236ea5ef1608ff473",
+        "submission.csv": "409244f4b7913f003794ced923eddf86ac869a1c5cbd58269b7da1cc6f206ff0",
+        "test_predictions.csv.gz": "3371d4062e82ffeb67cfcd4abbbc13bd69c1b89a3c2c6b01982abca6cede2fbf",
+        "validation_predictions.csv.gz": "8c94fb31e589de3311548e3e0f4bcb78c0f3e6c06d8f0ac6e12568b8a1537a1b",
+        "process_stdout.log": "131d82db1e597bd26c0410c18b038ac2cd66eda1c48a0aa5717d6533911b427e",
+        "autogluon_stdout.log": "57577baab501cf1bd63b10fbbf93c57f765ee5367124e6297a07bb6b8a40ee22"
+      },
+      "outer_log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_capped180_attempt_4.log",
+        "sha256": "e3c35285cdc26b9ae04c5cd0c628cc012915c8186741e5346dcd3f87ac3f55c6"
+      },
+      "warnings_or_failures": [
+        "Per-model prediction export was unavailable because the predictor was intentionally not bagged",
+        "Run 2 remains unlaunched pending separate Main authorization"
+      ]
+    },
+    {
+      "run_id": "stage_a_neutral_inverse_frequency_alpha1_cpu_capped180_20260711T114130Z",
+      "stage": "stage_a",
+      "status": "completed_comparable_run2",
+      "comparable_new_run": true,
+      "repository_revision": "fab529a0317b34d8e634fe8504d14a3ae4ed9fab",
+      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+      "profile_calibration_session_id": "s6e7-class-balance-stage-a-cpu-capped180-20260711",
+      "balancing": {
+        "method": "inverse_frequency",
+        "parameters": {"alpha": 1.0, "normalization": "training_mean_one"},
+        "derive_from": "training_partition_only",
+        "training_class_counts": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+        "class_weights": {
+          "at-risk": 0.38819475061298175,
+          "unhealthy": 3.9850003970058547,
+          "fit": 5.779264284069259
+        },
+        "training_weight_mean": 1.0,
+        "exact_mapping_log_records": 1,
+        "exact_mapping_log": {
+          "path": "logs/2-smiling-topaz-oarfish/artifacts/20260711T134130/process_stdout.log",
+          "line": "AIDE_RUNTIME|class_weights|method=inverse_frequency|alpha=1.0|mapping={\"at-risk\": 0.38819475061298175, \"fit\": 5.779264284069259, \"unhealthy\": 3.9850003970058547}",
+          "file_sha256": "777d2211a65ff4aa88d0fa27d540bd688d1a00b086cab4f404f1f30c84e22c33"
+        }
+      },
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "valid_for_current_final_selection": true,
+      "valid_for_final_profile_selection": true,
+      "source_code_unchanged": true,
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "config_equal_to_unweighted_except_class_balance": true,
+      "data_sha256": {
+        "train.csv.gz": "8d74774c5ed7b8aba981116d59d3d8cd753731c8a1eb8920b965016b20443cad",
+        "test.csv.gz": "0066684a879ca44b7f5e554d2507d4118d20e5f751056a57c82e603b75c0c30a",
+        "sample_submission.csv.gz": "6e8fed8306350028ac6cd894452801c6363995cf1ea3b52014654475dd88d95b",
+        "student_health_dataset_50k.csv.gz": "697b806faa2f55d6e0bb1e6283b522b3de58db8e8aaaf0fd2314d63abbc0a659"
+      },
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "train_rows": 552070,
+        "validation_rows": 138018,
+        "train_id_sha256": "5d82c6531913afea458a6e821be7dafeafb8679971010edc97ad2b0f8bed1a80",
+        "validation_id_sha256": "15c4f89f3870a4a8ff1b4b3aed386a321d0439374277fef7b48e8491d481d27e",
+        "validation_target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "resolved_config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "preprocess_timeout_seconds": 180,
+        "validation_strategy": "holdout",
+        "validation_fraction": 0.2,
+        "seed": 1729,
+        "use_gpu": false,
+        "fair_model_scheduling": true,
+        "one_default_config_per_family": true,
+        "per_family_max_time_limit_seconds": 180,
+        "total_model_cap_seconds": 540,
+        "reserved_overhead_seconds": 60,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false,
+        "num_bag_folds": 0,
+        "num_stack_levels": 0,
+        "class_balance": {"method": "inverse_frequency", "alpha": 1.0}
+      },
+      "balanced_accuracy": 0.9495801220940739,
+      "per_class_recall": {
+        "at-risk": 0.9345720264614554,
+        "unhealthy": 0.9635339974014725,
+        "fit": 0.950634342419294
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[110758, 4961, 2793], [375, 11124, 46], [350, 43, 7568]],
+      "prediction_counts": {"at-risk": 111483, "unhealthy": 16128, "fit": 10407},
+      "prediction_proportions": {
+        "at-risk": 0.8077424683736903,
+        "unhealthy": 0.11685432334912838,
+        "fit": 0.07540320827718124
+      },
+      "model_results": {
+        "XGB": {
+          "balanced_accuracy": 0.9492628457709053,
+          "fit_seconds": 11.332135200500488,
+          "validation_prediction_seconds": 0.15379977226257324,
+          "can_infer": true
+        },
+        "GBM": {
+          "balanced_accuracy": 0.9495801220940739,
+          "fit_seconds": 22.266700506210327,
+          "validation_prediction_seconds": 0.22369909286499023,
+          "can_infer": true
+        },
+        "CAT": {
+          "balanced_accuracy": 0.9486787635396956,
+          "fit_seconds": 179.66631412506104,
+          "validation_prediction_seconds": 0.03324079513549805,
+          "can_infer": true
+        }
+      },
+      "selected_model": "GBM",
+      "training_seconds": 218.60165643692017,
+      "exec_seconds": 227.0647475719452,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T134130",
+      "artifact_hashes": {
+        "aide_result.json": "bae64650b2cc61efbf2ab8da0b687c5f6a3a993e799eb96d3c2243688c3993d7",
+        "submission_eval.json": "779024e60fec0b712e3213b97889677510d39342c3c7c928120d231320be0352",
+        "solution.py": "f9b70fa674a33db677923757b89b6b4a05c6f991faf7f5d29b804d4efbb07881",
+        "submission.csv": "246426267c2e851020ea000baa29d2ab4f437c1b17a35c076b3cad53154a7afc",
+        "test_predictions.csv.gz": "2f07b4840aa5d6be7c0ecf027b490fa8dcb7273c6eebeaca20f0894bac29cbf0",
+        "validation_predictions.csv.gz": "af66771c80f574535084327119df9cc6f665322749b21265a0c2370e3b9be53f",
+        "process_stdout.log": "777d2211a65ff4aa88d0fa27d540bd688d1a00b086cab4f404f1f30c84e22c33",
+        "autogluon_stdout.log": "ddd69a42b0dda5794b891d951381cae0ee444dd301406e77bb75c6e14f2886c0"
+      },
+      "outer_log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_capped180_attempt_1.log",
+        "sha256": "473d67e750f029992a1b0d1fd90d9852416e0ea3b743edd3a52ebf03de661352"
+      },
+      "comparison_to_capped180_unweighted": {
+        "balanced_accuracy_delta": 0.06922190411315243,
+        "per_class_recall_delta": {
+          "at-risk": -0.054576751721344574,
+          "unhealthy": 0.140147249891728,
+          "fit": 0.1220952141690742
+        },
+        "exec_seconds_delta": -261.0322766304016
+      },
+      "warnings_or_failures": [
+        "Per-model prediction export was unavailable because the predictor was intentionally not bagged",
+        "No model family failed or was skipped",
+        "No Stage B run was launched"
       ]
     }
   ]
