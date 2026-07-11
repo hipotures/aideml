@@ -30,6 +30,20 @@ from .path_portability import sanitize_persisted_payload, to_portable_path
 
 SHA_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{6,64}$")
 SEEDABLE_MANIFEST_KINDS = {"source_node", "profile_eval"}
+AUTOGLUON_PROFILE_SETTING_KEYS = {
+    "class_balance",
+    "fair_model_scheduling",
+    "fit_args",
+    "hyperparameters",
+    "included_model_types",
+    "lightgbm_gpu_categorical_fallback",
+    "presets",
+    "seed",
+    "time_limit",
+    "use_gpu",
+    "validation_fraction",
+    "validation_strategy",
+}
 
 
 @dataclass(frozen=True)
@@ -191,6 +205,33 @@ def source_is_autogluon(source: SeedArtifactSource) -> bool:
         return parse_autogluon_config(solution_path.read_text(encoding="utf-8")) is not None
     except OSError:
         return False
+
+
+def autogluon_seed_settings_changed(
+    source: SeedArtifactSource,
+    current_code: str,
+) -> bool:
+    current = autogluon_payload(current_code)
+    source_autogluon = source.manifest.get("autogluon")
+    source_autogluon = source_autogluon if isinstance(source_autogluon, dict) else {}
+
+    source_profile = source.manifest.get("profile") or source_autogluon.get("profile")
+    current_profile = current.get("profile")
+    if (
+        source_profile is not None
+        and current_profile is not None
+        and str(source_profile) != str(current_profile)
+    ):
+        return True
+
+    source_settings = source_autogluon.get("resolved_settings")
+    current_settings = current.get("resolved_settings")
+    if not isinstance(source_settings, dict) or not isinstance(current_settings, dict):
+        return False
+    return any(
+        source_settings.get(key) != current_settings.get(key)
+        for key in AUTOGLUON_PROFILE_SETTING_KEYS
+    )
 
 
 def _target_artifact_dir(log_dir: Path, ctime: float) -> tuple[Path, float]:
@@ -379,7 +420,10 @@ def seed_journal_from_artifact(
     *,
     ctime: float | None = None,
     code_only: bool = False,
+    code_override: str | None = None,
 ) -> tuple[Journal, Node, Path]:
+    if code_override is not None and not code_only:
+        raise ValueError("code_override requires code_only=True.")
     journal, seeded = seed_journal_from_artifacts(
         cfg,
         [source],
@@ -387,6 +431,19 @@ def seed_journal_from_artifact(
         code_only=code_only,
     )
     first = seeded[0]
+    if code_override is not None:
+        first.node.code = code_override
+        (first.artifact_dir / "solution.py").write_text(
+            code_override,
+            encoding="utf-8",
+        )
+        _rewrite_manifest(
+            cfg=cfg,
+            node=first.node,
+            source=source,
+            artifact_dir=first.artifact_dir,
+            code_only=True,
+        )
     return journal, first.node, first.artifact_dir
 
 

@@ -59,10 +59,16 @@ from .telegram_notifications import (
     notify_existing_node_with_best_score_notification,
     send_telegram_test_message,
 )
-from .autogluon_preprocess import AGENT_MODE, BASELINE_PLAN_PREFIX
+from .autogluon_preprocess import (
+    AGENT_MODE,
+    BASELINE_PLAN_PREFIX,
+    build_autogluon_wrapper,
+    extract_preprocess_source,
+)
 from .utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
 from .utils.seed_artifact import (
     SeedArtifactSource,
+    autogluon_seed_settings_changed,
     find_seed_artifact,
     seed_journal_from_artifact,
     source_is_autogluon,
@@ -5560,9 +5566,27 @@ def run(argv: list[str] | None = None):
             prep_agent_workspace(cfg)
         if seed_source is not None:
             with Status("Seeding run from existing artifact ..."):
+                code_only = False
+                code_override = None
+                if source_is_autogluon(seed_source) and cfg.agent.mode == AGENT_MODE:
+                    source_code = (seed_source.artifact_dir / "solution.py").read_text(
+                        encoding="utf-8"
+                    )
+                    code_override = build_autogluon_wrapper(
+                        extract_preprocess_source(source_code),
+                        cfg,
+                    )
+                    code_only = autogluon_seed_settings_changed(
+                        seed_source,
+                        code_override,
+                    )
+                    if not code_only:
+                        code_override = None
                 journal, _seed_node, _seed_artifact_dir = seed_journal_from_artifact(
                     cfg,
                     seed_source,
+                    code_only=code_only,
+                    code_override=code_override,
                 )
                 save_run(cfg, journal)
         elif should_seed_scored_hypothesis_roots_for_run(runtime_options):

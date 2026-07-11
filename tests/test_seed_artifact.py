@@ -11,6 +11,7 @@ from aide.utils.artifact_manifest import (
 )
 from aide.utils.metric import MetricValue
 from aide.utils.seed_artifact import (
+    autogluon_seed_settings_changed,
     find_seed_artifact,
     seed_journal_from_artifact,
     source_is_autogluon,
@@ -209,6 +210,79 @@ def test_seed_journal_from_artifact_code_only_copies_solution_without_score(tmp_
     assert manifest["node"]["metric"]["value"] is None
     assert manifest["execution"]["exec_time"] is None
     assert manifest["source"]["code_only"] is True
+
+
+def test_seed_journal_from_artifact_code_override_replaces_pending_solution(tmp_path):
+    top_log_dir = tmp_path / "logs"
+    source_artifact = _write_source_artifact(
+        top_log_dir,
+        "1-source-run",
+        "20260506T120000",
+        code="print('old profile')\n",
+        score=0.95,
+        step=11,
+    )
+    source = find_seed_artifact(
+        top_log_dir,
+        sha256_file(source_artifact / "submission.csv")[:12],
+    )
+    cfg = DummyConfig(
+        log_dir=top_log_dir / "2-new-run",
+        workspace_dir=tmp_path / "workspaces" / "2-new-run",
+    )
+
+    journal, node, artifact_dir = seed_journal_from_artifact(
+        cfg,
+        source,
+        code_only=True,
+        code_override="print('new profile')\n",
+    )
+
+    assert journal.nodes == [node]
+    assert node.status == "generated"
+    assert node.code == "print('new profile')\n"
+    assert (artifact_dir / "solution.py").read_text(encoding="utf-8") == node.code
+
+
+def test_autogluon_seed_settings_changed_compares_effective_profile_settings(tmp_path):
+    top_log_dir = tmp_path / "logs"
+    source_artifact = _write_source_artifact(
+        top_log_dir,
+        "1-source-run",
+        "20260506T120000",
+        code=(
+            "AIDE_AG_CONFIG = {'presets': 'medium_quality', "
+            "'validation_strategy': 'holdout', "
+            "'fit_args': {'auto_stack': False}}\n"
+        ),
+        score=0.95,
+        step=11,
+    )
+    source = find_seed_artifact(
+        top_log_dir,
+        sha256_file(source_artifact / "submission.csv")[:12],
+    )
+
+    same_code = (
+        "AIDE_AG_CONFIG = {'presets': 'medium_quality', "
+        "'validation_strategy': 'holdout', "
+        "'fit_args': {'auto_stack': False}}\n"
+    )
+    cv3_code = (
+        "AIDE_AG_CONFIG = {'presets': 'high', "
+        "'validation_strategy': 'autogluon', "
+        "'fit_args': {'auto_stack': False, 'num_bag_folds': 3}}\n"
+    )
+    same_profile_changed_code = (
+        "AIDE_AG_CONFIG = {'profile': 'shared', 'presets': 'high', "
+        "'validation_strategy': 'autogluon', "
+        "'fit_args': {'auto_stack': False, 'num_bag_folds': 3}}\n"
+    )
+
+    assert autogluon_seed_settings_changed(source, same_code) is False
+    assert autogluon_seed_settings_changed(source, cv3_code) is True
+    source.manifest["profile"] = "shared"
+    assert autogluon_seed_settings_changed(source, same_profile_changed_code) is True
 
 
 def test_seeded_single_node_can_be_exported_to_tree_struct(tmp_path):

@@ -550,7 +550,7 @@ def _profile_settings_for_cfg(cfg: Config) -> dict[str, Any]:
 
 
 def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dict[str, Any]:
-    visible: dict[str, Any] = {}
+    visible: dict[str, Any] = {"profile": str(cfg.agent.autogluon.profile)}
     profile_settings = _profile_settings_for_cfg(cfg)
     for key in (
         "included_model_types",

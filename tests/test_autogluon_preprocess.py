@@ -591,6 +591,7 @@ def test_autogluon_full_boost_profile_includes_catboost(tmp_path):
     assert resolve_autogluon_included_model_types(cfg) == ["XGB", "GBM", "CAT"]
     code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
 
+    assert "'profile': 'full_boost'" in code
     assert "'included_model_types': ['XGB', 'GBM', 'CAT']" in code
 
 
