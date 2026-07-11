@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix, recall_score
 
 
-TAUS = (0.0, 0.25, 0.5, 0.75, 1.0)
+TAUS = (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5)
 
 
 def transform_prior_power(probabilities, priors, tau: float):

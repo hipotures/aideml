@@ -52,7 +52,7 @@ def test_fixed_holdout_sweep_records_diagnostics_and_source_hashes(tmp_path):
     assert result["kind"] == "fixed_heldout_fold_prior_power_sweep"
     assert result["reproduction"]["labels_used_only_for_scoring"] is True
     assert result["reproduction"]["fold_scope"] == "single_fixed_holdout_not_oof"
-    assert result["taus"] == [0.0, 0.25, 0.5, 0.75, 1.0]
+    assert result["taus"] == [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
     assert set(result["results"]["0.0"]) == {
         "balanced_accuracy",
         "per_class_recall",
