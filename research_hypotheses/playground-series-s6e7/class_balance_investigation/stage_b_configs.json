@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "stage": "stage_b",
-  "status": "alpha075_alpha050_complete_alpha025_frozen_uncommitted_not_executed",
-  "preparation_base_revision": "8b58b1f6450464e2caee2f3a01eef42eab9b1a41",
-  "launch_blocker": "The alpha-0.25 profile and research artifacts are uncommitted; training requires a committed revision and separate authorization.",
+  "status": "inverse_frequency_complete_clipped_cap4_frozen_uncommitted_not_executed",
+  "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
+  "launch_blocker": "The clipped cap-4 profile, implementation, and research artifacts are uncommitted; training requires a committed revision and separate authorization.",
   "source": {
     "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260702T003825-504eb95e-0",
     "submission_sha256_selector": "f26e4d0a1755c73beed989d273437cf2e945b12da53bc4b9c5b8b0b1888a4014",
@@ -79,8 +79,11 @@
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
   },
   "final_selected": {
-    "status": "frozen_uncommitted_not_executed",
+    "status": "completed_comparable",
     "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha025_cpu_capped180_fairone_seed1729_10m",
+    "execution_revision": "8a64c262e962d7a43a44b44dfc545dc03542e09d",
+    "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T154503",
+    "balanced_accuracy": 0.9165515465098321,
     "config": {
       "included_model_types": ["XGB", "GBM", "CAT"],
       "presets": "medium_quality",
@@ -108,6 +111,44 @@
     "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha025-cpu-capped180-20260711",
     "logs_dir": "logs",
     "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha025/run_cpu_capped180_attempt_1.log",
+    "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
+  },
+  "clipped_selected": {
+    "status": "frozen_uncommitted_not_executed",
+    "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
+    "config": {
+      "included_model_types": ["XGB", "GBM", "CAT"],
+      "presets": "medium_quality",
+      "time_limit": 600,
+      "preprocess_timeout": 180,
+      "validation_fraction": 0.2,
+      "validation_strategy": "holdout",
+      "seed": 1729,
+      "class_balance": {"method": "clipped_inverse_frequency", "alpha": 1.0, "max_raw_weight": 4.0},
+      "resource_policy": "cpu_only",
+      "use_gpu": false,
+      "fair_model_scheduling": true,
+      "hyperparameters": {
+        "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+        "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
+      },
+      "fit_args": {
+        "save_space": true,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false
+      }
+    },
+    "only_resolved_difference_from_reference_profile": "class_balance",
+    "expected_training_class_counts": {"at-risk": 474049, "unhealthy": 46179, "fit": 31842},
+    "expected_normalized_class_weights": {
+      "at-risk": 0.4325884766651549,
+      "unhealthy": 4.440722726231404,
+      "fit": 4.4574376751058375
+    },
+    "profile_calibration_session_id": "s6e7-class-balance-stage-b-clipped-alpha1-cap4-cpu-capped180-20260711",
+    "logs_dir": "logs",
+    "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
     "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
   },
   "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",

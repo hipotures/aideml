@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **the neutral inverse-frequency screen is complete. Alpha `0.25`
-completed comparably at `0.916551547`, below alpha `0.50` by `0.026963186` and
-alpha `1.0` by `0.033028576`; no other Stage B method was launched**.
+State: **the inverse-frequency screen is complete. Main selected one clipped
+candidate: alpha `1.0` with pre-normalization cap `4.0`; its implementation and
+profile are frozen but uncommitted and unexecuted**.
 
 Completed:
 
@@ -143,12 +143,28 @@ Completed:
 - alpha `0.25` is `0.026963186` below alpha `0.50`, `0.031217352` below alpha
   `0.75`, `0.033028576` below alpha `1.0`, and `0.036193329` above unweighted.
   No other Stage B method was launched.
+- Main selected only clipped inverse-frequency alpha `1.0`, raw cap `4.0` next;
+  cap `3` and all other balancing methods were not prepared;
+- the centralized parser and weight helper now implement base inverse-frequency
+  weights, exponentiation, pre-normalization clipping, and training-mean-one
+  normalization while preserving legacy none/inverse behavior and indices;
+- finite positive cap validation, training-only derivation, exact method/alpha/
+  cap/mapping logging, and the existing bagging/internal-validation rejection
+  are covered by focused tests;
+- the cap-4 profile preserves the Stage A CPU capped180 block exactly outside
+  `class_balance`, with unique session, log, artifact, and reproduction IDs;
+- generated-wrapper compilation, calibration validation, one-source dry-run,
+  focused balancing tests (`18 passed`), the complete preprocessing/runner test
+  files, ruff, JSON, and diff checks passed;
+- implementation, profile, tests, and research changes are uncommitted on base
+  revision `db08ae2`. Main cannot authorize launch until a committed revision
+  exists and is recorded. No clipped-run log or artifact exists.
 
 Pending Main review:
 
-1. interpret the completed inverse-frequency alpha screen against the
-   unweighted baseline;
-2. separately decide whether another balancing family should be designed.
+1. review the clipped cap-4 implementation, profile, and verification evidence;
+2. commit the implementation and research state when commits are possible;
+3. only then decide whether to authorize the exact prepared command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized. No other Stage B method is authorized.
+authorized from a committed revision. Clipped cap `4.0` remains unexecuted.

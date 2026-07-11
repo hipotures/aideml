@@ -1,19 +1,21 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_inverse_frequency_screen_complete",
+  "status": "stage_b_clipped_cap4_frozen_uncommitted",
   "training_authorized": false,
   "repository": {
-    "revision": "8a64c262e962d7a43a44b44dfc545dc03542e09d",
+    "revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
     "working_tree_has_uncommitted_alpha050_profile": false,
     "alpha050_profile_committed_revision": "835e0cff25849e0e5887f49b6f72f56d963c0a71",
     "working_tree_has_uncommitted_alpha025_profile": false,
     "alpha025_profile_committed_revision": "8a64c262e962d7a43a44b44dfc545dc03542e09d",
-    "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "f42592e25d88f47f72803e6d77aa037ec43265a36460b01b76f7e658ad1103bc",
+    "working_tree_has_uncommitted_clipped_cap4_profile": true,
+    "clipped_cap4_launch_requires_committed_revision": true,
+    "audited_wrapper_sha256": "ba3ef910a98e96c700eebec7c160500498e221e1cd3077fbfa13edcd09fd7329",
+    "config_sha256": "d1d3a1aacc55dea8e11d9806d5c98d051a1c04f4119e628c09cbf7496e22c628",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
-    "stage_b_configs_sha256": "9399005c48ec18463e298615a3efbf1c0800605f8c83dc3abe4438b52c52e89e",
-    "stage_b_plan_sha256": "565534e71258a868b1b292e29da597e65a9f7563625151b31bfc1b10f1aad25a"
+    "stage_b_configs_sha256": "3b20ae378fbdfd7dfa7ad2e3454eadf335d9a94329f8e54c844f14eee580e793",
+    "stage_b_plan_sha256": "03adbc67dd67cd136aab554f48cca188ed53025526f3bbda8c679215bb5d065d"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -242,6 +244,26 @@
       "data_hashes_verified": true,
       "split_hashes_verified": true,
       "resolved_config_verified": true
+    },
+    "clipped_selected": {
+      "status": "frozen_uncommitted_not_executed",
+      "selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4",
+      "profile": "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
+      "preparation_base_revision": "db08ae23b7a8b92a7878f1fd813bc9c0186c5ecc",
+      "launch_blocker": "Implementation, profile, and research changes must be committed before training can be authorized.",
+      "only_resolved_difference_from_reference": "class_balance",
+      "balancing": {
+        "method": "clipped_inverse_frequency",
+        "alpha": 1.0,
+        "max_raw_weight": 4.0,
+        "clip_before_normalization": true,
+        "normalize_training_mean_to_one": true,
+        "derive_from": "training_partition_only",
+        "validation_weight": null
+      },
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-clipped-alpha1-cap4-cpu-capped180-20260711",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_clipped_inverse_frequency_alpha1_cap4/run_cpu_capped180_attempt_1.log",
+      "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     }
   },
   "reuse_candidates": [
@@ -272,7 +294,8 @@
     "stage_b_next_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_50",
     "stage_b_alpha050_completed": true,
     "stage_b_final_inverse_frequency_screen": "neutral_raw13_inverse_frequency_alpha_0_25",
-    "stage_b_inverse_frequency_screen_completed": true
+    "stage_b_inverse_frequency_screen_completed": true,
+    "stage_b_clipped_selected_experiment": "neutral_raw13_clipped_inverse_frequency_alpha_1_cap_4"
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -429,5 +452,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must interpret the completed inverse-frequency screen; no other Stage B method is authorized"
+  "remaining_gate": "Clipped cap-4 implementation, profile, and research changes must be committed before Main can authorize training"
 }
