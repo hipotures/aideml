@@ -49,6 +49,7 @@ from aide.run import (
     journal_to_rich_tree,
     last_error_lines,
     mark_node_generated_only,
+    _make_node_generation_failure,
     _mark_node_generation_failure,
     move_tree_focus,
     _mark_node_execution_crash,
@@ -3993,6 +3994,25 @@ def test_mark_node_generation_failure_records_failed_result():
     assert node.exc_info == {"args": ["Codex CLI timed out after 7 seconds"]}
     assert "Codex CLI timed out after 7 seconds" in node.term_out
     assert "Generation failed before execution" in node.analysis
+
+
+def test_make_node_generation_failure_preserves_generation_context():
+    parent = Node(code="print('parent')", plan="parent")
+
+    node = _make_node_generation_failure(
+        RuntimeError("Codex CLI timed out after 600 seconds"),
+        parent=parent,
+        ctime=123.0,
+        artifact_dir_name="timeout-artifact",
+    )
+
+    assert node.parent is parent
+    assert node in parent.children
+    assert node.ctime == 123.0
+    assert node.artifact_dir_name == "timeout-artifact"
+    assert node.status == "failed"
+    assert node.exc_type == "RuntimeError"
+    assert "Codex CLI timed out after 600 seconds" in node.analysis
 
 
 def test_mark_node_execution_crash_reports_autogluon_gpu_oom(tmp_path):

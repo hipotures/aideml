@@ -680,6 +680,25 @@ def _mark_node_generation_failure(node: Node, exc: Exception) -> None:
     node.status = "failed"
 
 
+def _make_node_generation_failure(
+    exc: Exception,
+    *,
+    parent: Node | None,
+    ctime: float,
+    artifact_dir_name: str,
+) -> Node:
+    message = f"{exc.__class__.__name__}: {str(exc) or exc.__class__.__name__}"
+    node = Node(
+        code=f"raise RuntimeError({message!r})\n",
+        plan=f"Failed to generate candidate: {message}",
+        parent=parent,
+        ctime=ctime,
+        artifact_dir_name=artifact_dir_name,
+    )
+    _mark_node_generation_failure(node, exc)
+    return node
+
+
 def _is_seeded_scored_root_node(node: Node) -> bool:
     if node.parent is not None:
         return False
@@ -7447,7 +7466,7 @@ def run(argv: list[str] | None = None):
                                         node_ctime=node_ctime,
                                         llm_log_dir=pending_artifact_dir,
                                     )
-                                except BaseException as exc:
+                                except Exception as exc:
                                     debug_log(
                                         "generate_node_exception",
                                         phase="generate",
@@ -7457,7 +7476,12 @@ def run(argv: list[str] | None = None):
                                             "exception": str(exc),
                                         },
                                     )
-                                    raise
+                                    return _make_node_generation_failure(
+                                        exc,
+                                        parent=parent_node,
+                                        ctime=node_ctime,
+                                        artifact_dir_name=artifact_dir_name,
+                                    )
                                 debug_log(
                                     "after_generate_node",
                                     phase="generate",
