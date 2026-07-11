@@ -219,6 +219,23 @@ def test_full_boost_gpu_ensemble_profile_is_available():
     assert gpu_profile.fit_args.fit_weighted_ensemble is False
 
 
+def test_s6e6_high_cv3_profile_combines_high_preset_with_three_fold_bagging():
+    cfg = _load_cfg(use_cli_args=False)
+
+    profile = cfg.agent.autogluon.profiles.s6e6_boost_gpu_ens_high_cv3
+
+    assert profile.presets == "high"
+    assert profile.time_limit == 900
+    assert profile.use_gpu is True
+    assert profile.validation_strategy == "autogluon"
+    assert profile.class_balance == "balanced"
+    assert profile.fit_args.fit_weighted_ensemble is True
+    assert profile.fit_args.auto_stack is False
+    assert profile.fit_args.num_bag_folds == 3
+    assert profile.fit_args.num_bag_sets == 1
+    assert profile.fit_args.num_stack_levels == 0
+
+
 def test_prep_cfg_resolves_cli_model_suffix(tmp_path):
     cfg = _base_cfg(tmp_path)
     cfg.agent.code.model = "gpt-5.5:high"
