@@ -444,6 +444,32 @@ def test_autogluon_wrapper_can_enable_balanced_sample_weights(tmp_path):
     assert 'valid_data.drop(columns=[target_col, CLASS_WEIGHT_COL], errors="ignore")' in code
 
 
+def test_autogluon_wrapper_dispatches_and_logs_clipped_inverse_frequency(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.autogluon.profiles["clipped_test"] = {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "validation_strategy": "holdout",
+        "class_balance": {
+            "method": "clipped_inverse_frequency",
+            "alpha": 1.0,
+            "max_raw_weight": 4.0,
+        },
+    }
+    cfg.agent.autogluon.profile = "clipped_test"
+
+    code = build_autogluon_wrapper("def preprocess(df):\n    return df\n", cfg)
+
+    compile(code, "<generated_clipped_autogluon_wrapper>", "exec")
+    assert "'method': 'clipped_inverse_frequency'" in code
+    assert "'max_raw_weight': 4.0" in code
+    assert 'max_raw_weight=class_balance.get("max_raw_weight")' in code
+    assert "|method={class_balance['method']}|alpha={class_balance['alpha']}" in code
+    assert "|max_raw_weight={class_balance['max_raw_weight']}" in code
+    assert code.index("train_data, valid_data = train_test_split(") < code.index(
+        "train_weights, class_weight_mapping = _inverse_frequency_sample_weight("
+    )
+
+
 def _class_balancing_helpers():
     namespace = {"np": np, "pd": pd}
     exec(autogluon_preprocess._CLASS_BALANCING_HELPER_SOURCE, namespace)
@@ -475,6 +501,36 @@ def test_inverse_frequency_alpha_one_matches_training_partition_only_formula():
     assert len(weights) == len(training_labels)
 
 
+def test_clipped_inverse_frequency_exact_normalization_and_index_alignment():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    labels = pd.Series(["major"] * 9 + ["minor"], index=[8, 3, 5, 1, 9, 2, 7, 4, 6, 0])
+
+    weights, mapping = helper(labels, alpha=1.0, max_raw_weight=4.0)
+
+    assert weights.index.equals(labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert mapping == pytest.approx({"major": 50 / 81, "minor": 40 / 9})
+    assert weights.loc[labels == "major"].eq(mapping["major"]).all()
+    assert weights.loc[labels == "minor"].eq(mapping["minor"]).all()
+
+
+def test_clipped_inverse_frequency_uses_training_partition_counts_only():
+    helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
+    full_labels = pd.Series(["major"] * 8 + ["minor"] * 4)
+    training_labels = full_labels.iloc[[0, 1, 2, 3, 4, 8, 9]]
+
+    weights, mapping = helper(
+        training_labels,
+        alpha=1.0,
+        max_raw_weight=1.5,
+    )
+    _, full_mapping = helper(full_labels, alpha=1.0, max_raw_weight=1.5)
+
+    assert weights.index.equals(training_labels.index)
+    assert weights.mean() == pytest.approx(1.0)
+    assert mapping != pytest.approx(full_mapping)
+
+
 @pytest.mark.parametrize("alpha", [-0.1, float("nan"), float("inf"), "invalid"])
 def test_inverse_frequency_rejects_invalid_alpha(alpha):
     helper = _class_balancing_helpers()["_inverse_frequency_sample_weight"]
@@ -490,7 +546,30 @@ def test_inverse_frequency_rejects_empty_and_missing_labels():
         helper(pd.Series(["a", None]), alpha=1.0)
 
 
-def test_class_balance_config_supports_none_inverse_frequency_and_legacy_balanced():
+@pytest.mark.parametrize(
+    "max_raw_weight",
+    [0, -1, float("nan"), float("inf"), "invalid"],
+)
+def test_clipped_inverse_frequency_rejects_invalid_cap(max_raw_weight):
+    helpers = _class_balancing_helpers()
+    helper = helpers["_inverse_frequency_sample_weight"]
+    with pytest.raises(ValueError, match="finite number > 0"):
+        helper(
+            pd.Series(["major", "minor"]),
+            alpha=1.0,
+            max_raw_weight=max_raw_weight,
+        )
+    with pytest.raises(ValueError, match="finite number > 0"):
+        helpers["_class_balance_config"](
+            {
+                "method": "clipped_inverse_frequency",
+                "alpha": 1.0,
+                "max_raw_weight": max_raw_weight,
+            }
+        )
+
+
+def test_class_balance_config_supports_clipped_inverse_and_legacy_modes():
     helper = _class_balancing_helpers()["_class_balance_config"]
 
     assert helper({"method": "none"}) == {"method": "none"}
@@ -499,17 +578,40 @@ def test_class_balance_config_supports_none_inverse_frequency_and_legacy_balance
         "alpha": 0.5,
     }
     assert helper("balanced") == {"method": "inverse_frequency", "alpha": 1.0}
+    assert helper(
+        {
+            "method": "clipped_inverse_frequency",
+            "alpha": 1.0,
+            "max_raw_weight": 4.0,
+        }
+    ) == {
+        "method": "clipped_inverse_frequency",
+        "alpha": 1.0,
+        "max_raw_weight": 4.0,
+    }
+    with pytest.raises(ValueError, match="max_raw_weight is required"):
+        helper({"method": "clipped_inverse_frequency", "alpha": 1.0})
+    with pytest.raises(ValueError, match="only valid for clipped_inverse_frequency"):
+        helper({"method": "inverse_frequency", "max_raw_weight": 4.0})
 
 
 def test_custom_balancing_rejects_bagged_and_internal_validation():
     helper = _class_balancing_helpers()["_validate_custom_balancing_context"]
-    config = {"method": "inverse_frequency", "alpha": 1.0}
+    configs = (
+        {"method": "inverse_frequency", "alpha": 1.0},
+        {
+            "method": "clipped_inverse_frequency",
+            "alpha": 1.0,
+            "max_raw_weight": 4.0,
+        },
+    )
 
-    with pytest.raises(ValueError, match="not supported with bagging"):
-        helper(config, bagged_mode=True, validation_strategy="holdout")
-    with pytest.raises(ValueError, match="requires validation_strategy='holdout'"):
-        helper(config, bagged_mode=False, validation_strategy="autogluon")
-    helper(config, bagged_mode=False, validation_strategy="holdout")
+    for config in configs:
+        with pytest.raises(ValueError, match="not supported with bagging"):
+            helper(config, bagged_mode=True, validation_strategy="holdout")
+        with pytest.raises(ValueError, match="requires validation_strategy='holdout'"):
+            helper(config, bagged_mode=False, validation_strategy="autogluon")
+        helper(config, bagged_mode=False, validation_strategy="holdout")
 
 
 def test_class_balance_cpu_profiles_match_reference_except_class_balance():
@@ -534,6 +636,14 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
         (
             "s6e7_class_balance_stage_b_inverse_frequency_alpha025_cpu_capped180_fairone_seed1729_10m",
             {"method": "inverse_frequency", "alpha": 0.25},
+        ),
+        (
+            "s6e7_class_balance_stage_b_clipped_inverse_frequency_alpha1_cap4_cpu_capped180_fairone_seed1729_10m",
+            {
+                "method": "clipped_inverse_frequency",
+                "alpha": 1.0,
+                "max_raw_weight": 4.0,
+            },
         ),
     )
     resolved = []
