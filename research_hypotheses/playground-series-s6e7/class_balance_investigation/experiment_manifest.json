@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_a_cpu_protocol_revised_not_executed",
+  "status": "stage_a_cpu_capped180_ready_not_executed",
   "training_authorized": false,
   "repository": {
-    "revision": "53916cdd57b598d4a4fadaf386d3ad7a081a891d",
+    "revision": "b7bed48fed24e75664a9e9f7e67800619e0ebb86",
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "5e4507401d0f2b52282ebef8596203f471392db99dc1ff4b119c5cc4d1052ab3",
-    "stage_a_configs_sha256": "3f5f097ac660e9a54ebbf867bb382df5f85d48d5f20ce11149f7bd277be6ba68"
+    "config_sha256": "4a6741ab79f7d9e393e9fc6e5075d77c06faf3ec84fb60b4e06d223a27ea9e31",
+    "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -181,6 +181,27 @@
       "data_hashes_recorded_by_run": false,
       "split_hashes_recorded_by_run": false
     },
+    "cpu_run1": {
+      "profile": "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
+      "status": "completed_incomplete_required_family",
+      "attempted_at_utc": "2026-07-11T11:07:50Z",
+      "completed_at_utc": "2026-07-11T11:17:59Z",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T130750",
+      "aide_result_sha256": "585e3e7b33b15411f410fb69591075726928e873ed672209b8e780b6715ac971",
+      "solution_sha256": "2133c665a67afe79f78f81d241b70cd8e9c4851304b33051db40eabf9f6299c9",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_attempt_3.log",
+      "outer_log_sha256": "39c8f3d848cb107339808cfd7de307dc28822d76f312f2491edb736616d2c3d1",
+      "source_code_unchanged": true,
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["CAT"],
+      "failed_or_skipped_model_types": ["XGB", "GBM"],
+      "all_required_model_types_trained": false,
+      "invalid_reason": "required_model_family_not_fully_trained",
+      "balanced_accuracy": 0.8733042385564014,
+      "training_seconds": 601.3823971748352,
+      "exec_seconds": 608.1480746269226,
+      "anomaly": "CatBoost consumed 596.7427 seconds of the shared 600-second budget before XGB or GBM trained"
+    },
     "run2": {
       "status": "not_launched"
     }
@@ -195,17 +216,21 @@
     "selected_source_records": 1
   },
   "cpu_protocol_revision": {
-    "status": "configured_not_executed",
+    "status": "capped180_remediation_configured_not_executed",
     "reason": "approved GPU block was unavailable; CPU block is identical between variants",
     "profiles": [
-      "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
-      "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m"
+      "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+      "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m"
     ],
     "use_gpu": false,
     "one_configuration_per_family": true,
     "gpu_only_parameters_removed": true,
+    "per_family_max_time_limit_seconds": 180,
+    "total_model_cap_seconds": 540,
+    "reserved_overhead_seconds": 60,
+    "predictor_time_limit_seconds": 600,
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must review and authorize the dry-run-validated CPU run-1 command"
+  "remaining_gate": "Main must review and separately authorize the capped180 CPU unweighted rerun"
 }

@@ -3,7 +3,15 @@
   "metric": "balanced_accuracy",
   "current_protocol": {
     "resource_policy": "cpu_only",
-    "status": "configured_not_executed",
+    "status": "capped180_remediation_configured_not_executed",
+    "profiles": [
+      "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+      "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m"
+    ],
+    "per_family_max_time_limit_seconds": 180,
+    "total_model_cap_seconds": 540,
+    "predictor_time_limit_seconds": 600,
+    "reserved_overhead_seconds": 60,
     "variants_differ_only_in_class_balance": true,
     "prior_stage_a_attempts_comparable": false,
     "prior_stage_a_failures": [
@@ -226,6 +234,101 @@
       "warnings_or_failures": [
         "All three required families failed the same zero-GPU resource assertion",
         "No model, validation prediction, metric, or submission was produced",
+        "Run 2 was not launched"
+      ]
+    },
+    {
+      "run_id": "stage_a_neutral_none_cpu_attempt_20260711T110750Z",
+      "stage": "stage_a",
+      "status": "completed_incomplete_required_family",
+      "comparable_new_run": false,
+      "repository_revision": "b7bed48fed24e75664a9e9f7e67800619e0ebb86",
+      "profile": "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
+      "balancing": {"method": "none"},
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["CAT"],
+      "eligible_for_selection_model_types": ["CAT"],
+      "failed_or_skipped_model_types": ["XGB", "GBM"],
+      "all_required_model_types_trained": false,
+      "invalid_reason": "required_model_family_not_fully_trained",
+      "source_code_unchanged": true,
+      "source_solution_sha256": "409b4649e6ed4f36c52afc83567cd2680311f96cf6dd2f63eddb9f1e40edec2f",
+      "data_sha256": {
+        "train.csv.gz": "8d74774c5ed7b8aba981116d59d3d8cd753731c8a1eb8920b965016b20443cad",
+        "test.csv.gz": "0066684a879ca44b7f5e554d2507d4118d20e5f751056a57c82e603b75c0c30a",
+        "sample_submission.csv.gz": "6e8fed8306350028ac6cd894452801c6363995cf1ea3b52014654475dd88d95b",
+        "student_health_dataset_50k.csv.gz": "697b806faa2f55d6e0bb1e6283b522b3de58db8e8aaaf0fd2314d63abbc0a659"
+      },
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "train_rows": 552070,
+        "validation_rows": 138018,
+        "train_id_sha256": "5d82c6531913afea458a6e821be7dafeafb8679971010edc97ad2b0f8bed1a80",
+        "validation_id_sha256": "15c4f89f3870a4a8ff1b4b3aed386a321d0439374277fef7b48e8491d481d27e",
+        "validation_target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "resolved_config": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "validation_strategy": "holdout",
+        "validation_fraction": 0.2,
+        "seed": 1729,
+        "use_gpu": false,
+        "fair_model_scheduling": true,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false,
+        "class_balance": {"method": "none"}
+      },
+      "balanced_accuracy": 0.8733042385564014,
+      "per_class_recall": {
+        "at-risk": 0.9917645470500878,
+        "unhealthy": 0.8084019055868341,
+        "fit": 0.8197462630322824
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[117536, 509, 467], [2198, 9333, 14], [1407, 28, 6526]],
+      "prediction_counts": {"at-risk": 121141, "unhealthy": 9870, "fit": 7007},
+      "prediction_proportions": {
+        "at-risk": 0.8777188482661682,
+        "unhealthy": 0.07151241142459679,
+        "fit": 0.050768740309235026
+      },
+      "model_results": {
+        "XGB": null,
+        "GBM": null,
+        "CAT": {
+          "balanced_accuracy": 0.8733042385564014,
+          "fit_seconds": 596.7426526546478,
+          "validation_prediction_seconds": 0.06653118133544922,
+          "can_infer": true
+        }
+      },
+      "selected_model": "CAT",
+      "training_seconds": 601.3823971748352,
+      "exec_seconds": 608.1480746269226,
+      "test_prediction_seconds": null,
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T130750",
+      "artifact_hashes": {
+        "aide_result.json": "585e3e7b33b15411f410fb69591075726928e873ed672209b8e780b6715ac971",
+        "submission_eval.json": "4b46761cefc0481e1925d25fe7e2786e6e52c82dc5f21ebc0940b64cca1845a4",
+        "solution.py": "2133c665a67afe79f78f81d241b70cd8e9c4851304b33051db40eabf9f6299c9",
+        "submission.csv": "0943ecde46c70623133f0e3a7a0f4ae60c3402d45c86f7406b2bac71414fae80",
+        "test_predictions.csv.gz": "0ba214c61992f8f886a1753b51bda1e1ce45c830bf30330b2cc40d43de4ee802",
+        "validation_predictions.csv.gz": "4131027d89661ac5c743d2b4827a8e001e83e69ddb6064ab6e6feae73e02c71c",
+        "process_stdout.log": "30fcbc2a9c939c052c4ae1bd0a032d3cd791b52bf79d6f0526556469228194ec",
+        "autogluon_stdout.log": "230e1e0fa97358d8989a1f1a7fa17059da0f6719bf6fa3f608caa2bb7fdab08c"
+      },
+      "outer_log": {
+        "path": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_attempt_3.log",
+        "sha256": "39c8f3d848cb107339808cfd7de307dc28822d76f312f2491edb736616d2c3d1"
+      },
+      "warnings_or_failures": [
+        "CatBoost consumed nearly the entire shared time limit",
+        "XGB and GBM did not train",
+        "Per-model prediction export was unavailable because the predictor was not bagged",
         "Run 2 was not launched"
       ]
     }

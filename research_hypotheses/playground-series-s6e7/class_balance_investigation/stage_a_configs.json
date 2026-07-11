@@ -18,9 +18,9 @@
     "use_gpu": false,
     "fair_model_scheduling": true,
     "hyperparameters": {
-      "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}],
-      "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}],
-      "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0}}]
+      "GBM": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+      "CAT": [{"ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}],
+      "XGB": [{"device": "cpu", "tree_method": "hist", "ag_args": {"priority": 100}, "ag_args_fit": {"num_gpus": 0, "max_time_limit": 180}}]
     },
     "fit_args": {
       "save_space": true,
@@ -30,19 +30,23 @@
   },
   "variants": [
     {
-      "profile": "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
+      "profile": "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
       "class_balance": {"method": "none"},
       "logs_dir": "logs",
-      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_attempt_3.log",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_capped180_attempt_4.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     },
     {
-      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m",
+      "profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
       "class_balance": {"method": "inverse_frequency", "alpha": 1.0},
       "logs_dir": "logs",
-      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_attempt_1.log",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_capped180_attempt_1.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     }
   ],
+  "per_family_max_time_limit_seconds": 180,
+  "total_model_cap_seconds": 540,
+  "predictor_time_limit_seconds": 600,
+  "reserved_overhead_seconds": 60,
   "only_resolved_difference_between_variants": "class_balance"
 }

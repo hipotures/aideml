@@ -264,3 +264,10 @@ XGB explicitly uses `device=cpu, tree_method=hist`; all families declare zero
 GPU resources; CAT GPU task/device/RAM options and GBM/XGB CUDA options are
 absent. Seed, split, features, preset, time limit, scheduling, validation,
 ensemble, bagging, and stacking controls remain unchanged.
+
+After the uncapped CPU run trained only CatBoost, Main approved a generic
+AutoGluon `ag_args_fit.max_time_limit=180` cap on each XGB/GBM/CAT config in
+both variants. The caps sum to 540 seconds under the unchanged 600-second
+predictor limit, reserving 60 seconds for overhead. Profile identifiers include
+`capped180` so the invalid uncapped run cannot be aggregated with remediation
+runs.

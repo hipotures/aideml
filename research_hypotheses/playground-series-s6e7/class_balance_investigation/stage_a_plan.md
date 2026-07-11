@@ -5,7 +5,12 @@ custom logs root. Corrected attempt 2 reached AutoGluon, but the environment
 exposed zero GPUs and no family fit succeeded. Both attempts are
 non-comparable infrastructure failures. Main revised the frozen resource block
 to CPU-only, identically for both variants. The commands below are the revised
-CPU plan; both were dry-run validated, but neither CPU run has been launched.
+CPU plan. The unweighted CPU run completed, but only CatBoost trained because it
+consumed 596.7 seconds of the shared 600-second budget. The run is
+non-comparable and the weighted CPU run was not launched. Main approved a
+180-second maximum per family, giving at most 540 model-fit seconds and a
+60-second overhead reserve. The capped commands below are verified but have not
+been executed.
 
 Source: the neutral identity source artifact selected by full SHA-256 prefix
 `f26e4d0a1755c73b`. Both variants use the same current data fingerprints,
@@ -22,14 +27,14 @@ streamed into model context.
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none
-env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-a-cpu-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_attempt_3.log 2>&1
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-a-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_none/run_cpu_capped180_attempt_4.log 2>&1
 ```
 
 Expected artifact root:
 `logs/2-smiling-topaz-oarfish/artifacts/<timestamp>/`. The runner loops until
 `mkdir(..., exist_ok=False)` succeeds, so it cannot overwrite an existing
-timestamped artifact. The new `run_cpu_attempt_3.log` is distinct from both
-failed GPU-era attempt logs.
+timestamped artifact. The new `run_cpu_capped180_attempt_4.log` is distinct from
+the uncapped CAT-only run and both earlier failed attempts.
 
 ## 2. Fold-safe inverse frequency alpha 1.0, CPU fair-one
 
@@ -38,7 +43,7 @@ and Main separately authorizes run 2.
 
 ```sh
 mkdir -p logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1
-env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-a-cpu-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_attempt_1.log 2>&1
+env UV_CACHE_DIR=/tmp/uv-cache MPLCONFIGDIR=/tmp/matplotlib uv run python scripts/rerun_autogluon_profile.py --competition playground-series-s6e7 --logs-dir logs --index logs/submission_index.json --sha256 f26e4d0a1755c73b --profile s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m --profile-calibration --profile-calibration-session-id s6e7-class-balance-stage-a-cpu-capped180-20260711 --timeout 4200 --memory-limit-gb 80 --execute --force > logs/class_balance/s6e7_class_balance_stage_a_20260711/stage_a_inverse_frequency_alpha1/run_cpu_capped180_attempt_1.log 2>&1
 ```
 
 Expected artifact root:

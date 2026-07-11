@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage A resource policy revised to a frozen CPU-only block; both CPU
-commands are dry-run pending; no CPU training launched; weighted run remains
-unlaunched**.
+State: **CAT-only CPU run remains non-comparable; Main approved and configured
+an equal 180-second per-family cap with 60 seconds reserved overhead; capped
+profiles are verified but unexecuted; weighted run remains unlaunched**.
 
 Completed:
 
@@ -33,12 +33,21 @@ Completed:
   XGB, GBM, and CAT, identical resources/settings across both variants;
 - GPU-only model parameters were removed and profile names now state `cpu` and
   `fairone` explicitly.
+- CPU unweighted run produced valid CAT predictions and a balanced accuracy of
+  `0.873304239`, but CatBoost used 596.7 of 600 seconds and no XGB/GBM model was
+  trained;
+- the run is marked invalid/non-comparable under the mandatory-family rule.
+- Main approved `ag_args_fit.max_time_limit=180` identically for XGB, GBM, and
+  CAT in both profiles; the 540-second model allocation preserves the 600-second
+  predictor total and reserves 60 seconds for overhead;
+- capped profile identifiers are versioned separately from the invalid
+  uncapped CAT-only run.
 
 Pending Main review:
 
 1. review `aide/autogluon_preprocess.py:215-298,1377-1449`;
 2. review the renamed CPU profiles at `aide/utils/config.yaml:233-286`;
-3. authorize only the CPU run-1 command after dry-run verification.
+3. review and separately authorize the capped180 CPU unweighted rerun.
 
 Next Luna action after Main review: launch no command unless explicitly
 authorized. Weighted run remains unlaunched.
