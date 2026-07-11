@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "investigation_id": "s6e7_class_balance_20260711",
+  "status": "stage_a_implementation_awaiting_main_code_review",
+  "training_authorized": false,
+  "repository": {
+    "revision": "29c3c1654da95e9066e8ba258840f19292612a51",
+    "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
+    "config_sha256": "e48eadf6281b987c1ddbca7a3fc36f5823d97dec758fcc5e2f8ddeeb5fa3f7f0"
+  },
+  "data": {
+    "directory": "aide/example_tasks/playground-series-s6e7",
+    "target": "health_condition",
+    "id_column": "id",
+    "train_rows": 690088,
+    "test_rows": 295753,
+    "class_counts": {
+      "at-risk": 592561,
+      "unhealthy": 57724,
+      "fit": 39803
+    },
+    "sha256": {
+      "train.csv.gz": "8d74774c5ed7b8aba981116d59d3d8cd753731c8a1eb8920b965016b20443cad",
+      "test.csv.gz": "0066684a879ca44b7f5e554d2507d4118d20e5f751056a57c82e603b75c0c30a",
+      "sample_submission.csv.gz": "6e8fed8306350028ac6cd894452801c6363995cf1ea3b52014654475dd88d95b",
+      "student_health_dataset_50k.csv.gz": "697b806faa2f55d6e0bb1e6283b522b3de58db8e8aaaf0fd2314d63abbc0a659"
+    }
+  },
+  "pipelines": {
+    "neutral_raw13": {
+      "preprocess": "return df.copy()",
+      "feature_count": 13,
+      "uses_auxiliary": false,
+      "learned_user_preprocessing": false
+    },
+    "strongest_recorded_public": {
+      "id": "s6e7_step50_three_transductive_statistics",
+      "artifact": "logs/2-romantic-guan-of-eternity/artifacts/20260707T214845-49a4adb6-50",
+      "solution_sha256": "80c78c9254d99e628a951fea623130e5b1bb1dc94ded447a7673e292506499f8",
+      "feature_count": 16,
+      "public_score": 0.95019,
+      "local_score": 0.9505531366967633,
+      "transductive_test_covariates": true,
+      "main_review_required": true
+    }
+  },
+  "frozen_stage_a_candidate": {
+    "protocol_status": "main_approved_not_executed",
+    "pipeline": "neutral_raw13",
+    "split": {
+      "strategy": "stratified_holdout",
+      "fraction": 0.2,
+      "seed": 1729,
+      "train_rows": 552070,
+      "validation_rows": 138018,
+      "train_id_sha256": "5d82c6531913afea458a6e821be7dafeafb8679971010edc97ad2b0f8bed1a80",
+      "validation_id_sha256": "15c4f89f3870a4a8ff1b4b3aed386a321d0439374277fef7b48e8491d481d27e"
+    },
+    "autogluon": {
+      "version": "1.5.0",
+      "included_model_types": [
+        "XGB",
+        "GBM",
+        "CAT"
+      ],
+      "presets": "medium_quality",
+      "time_limit_seconds": 600,
+      "use_gpu": true,
+      "one_default_config_per_family": true,
+      "fit_weighted_ensemble": false,
+      "auto_stack": false,
+      "num_bag_folds": 0,
+      "num_stack_levels": 0,
+      "metric": "balanced_accuracy"
+    },
+    "variants": [
+      {
+        "id": "stage_a_neutral_none",
+        "balancing": {
+          "method": "none"
+        }
+      },
+      {
+        "id": "stage_a_neutral_balanced_fold_safe",
+        "balancing": {
+          "method": "inverse_frequency",
+          "alpha": 1.0,
+          "normalize_training_mean_to_one": true,
+          "derive_from": "training_partition_only",
+          "validation_weight": null
+        }
+      }
+    ],
+    "required_outputs": [
+      "balanced_accuracy",
+      "per_class_recall",
+      "confusion_matrix",
+      "prediction_counts_and_proportions",
+      "exact_class_weights",
+      "XGB_result",
+      "GBM_result",
+      "CAT_result",
+      "selected_model_result",
+      "fit_time",
+      "prediction_time",
+      "warnings_and_failures",
+      "configuration_and_artifact_paths",
+      "code_and_data_hashes"
+    ]
+  },
+  "reuse_candidates": [
+    {
+      "id": "legacy_neutral_unweighted_seed1729",
+      "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260710T002338",
+      "solution_sha256": "16c83cf21db05ffb44c8f3e4c2e236383f2b372e69a8b31369add8e8e40a44af",
+      "reuse_status": "historical_target_only",
+      "reason_not_equivalent": "artifact lacks input hashes and code revision"
+    },
+    {
+      "id": "legacy_neutral_current_balanced_seed1729",
+      "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260710T010321",
+      "solution_sha256": "9359e4be6278308c6dcbebba2258ad9667a5832c86d88092f91607ff9c4fac3f",
+      "reuse_status": "historical_target_only",
+      "reason_not_equivalent": "weights use validation labels; artifact lacks input hashes and code revision"
+    }
+  ],
+  "main_decisions": {
+    "stage_a_constants_approved": true,
+    "stage_c_preserve_exact_transductive_pipeline": true,
+    "stage_c_transduction_must_be_explicitly_labeled": true,
+    "legacy_global_weight_result_comparable": false
+  },
+  "implementation": {
+    "weights_derived_after_holdout_split": true,
+    "weights_derived_from_training_labels_only": true,
+    "weights_normalized_to_training_mean_one": true,
+    "index_alignment_asserted": true,
+    "finite_positive_asserted": true,
+    "exact_mapping_logged": true,
+    "legacy_balanced_alias": "inverse_frequency_alpha_1",
+    "bagged_custom_weighting_supported": false,
+    "internal_validation_custom_weighting_supported": false
+  },
+  "remaining_gate": "Main review of implementation and exact execution plan"
+}

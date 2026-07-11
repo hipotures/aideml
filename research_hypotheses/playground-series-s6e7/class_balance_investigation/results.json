@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "metric": "balanced_accuracy",
+  "records": [
+    {
+      "run_id": "legacy_neutral_unweighted_seed1729",
+      "stage": "historical_audit_evidence",
+      "comparable_new_run": false,
+      "pipeline": "neutral_raw13",
+      "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260710T002338",
+      "solution_sha256": "16c83cf21db05ffb44c8f3e4c2e236383f2b372e69a8b31369add8e8e40a44af",
+      "data_sha256_recorded_by_run": false,
+      "code_revision_recorded_by_run": false,
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "validation_rows": 138018,
+        "target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "balancing": {
+        "method": "none",
+        "parameters": {},
+        "class_weights": null,
+        "resampled_counts": null
+      },
+      "autogluon": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "use_gpu": true,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false
+      },
+      "balanced_accuracy": 0.8801620591451563,
+      "per_class_recall": {
+        "at-risk": 0.9896297421358174,
+        "unhealthy": 0.8201818969250758,
+        "fit": 0.830674538374576
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[117283, 689, 540], [2062, 9469, 14], [1321, 27, 6613]],
+      "prediction_counts": {"at-risk": 120666, "unhealthy": 10185, "fit": 7167},
+      "prediction_proportions": {
+        "at-risk": 0.874277268182411,
+        "unhealthy": 0.07379472242750945,
+        "fit": 0.051928009390079556
+      },
+      "model_results": {
+        "XGB": {"balanced_accuracy": 0.8801620591451563, "fit_seconds": 67.03847479820251, "prediction_seconds": 0.12161421775817871},
+        "GBM": {"balanced_accuracy": 0.8782150192490622, "fit_seconds": 212.6177613735199, "prediction_seconds": 1.3791296482086182},
+        "CAT": {"balanced_accuracy": 0.870097548957144, "fit_seconds": 9.746340990066528, "prediction_seconds": 0.03409290313720703}
+      },
+      "selected_model": "XGB",
+      "training_seconds": 296.26149797439575,
+      "warnings_or_failures": [
+        "per-model validation predictions were not exported because predictor was not bagged"
+      ]
+    },
+    {
+      "run_id": "legacy_neutral_current_balanced_seed1729",
+      "stage": "historical_audit_evidence",
+      "comparable_new_run": false,
+      "pipeline": "neutral_raw13",
+      "artifact": "logs/2-smiling-topaz-oarfish/artifacts/20260710T010321",
+      "solution_sha256": "9359e4be6278308c6dcbebba2258ad9667a5832c86d88092f91607ff9c4fac3f",
+      "data_sha256_recorded_by_run": false,
+      "code_revision_recorded_by_run": false,
+      "split": {
+        "strategy": "stratified_holdout",
+        "fraction": 0.2,
+        "seed": 1729,
+        "validation_rows": 138018,
+        "target_sequence_sha256": "150650daaa6967630a06605052d9c65c53bebd5d46a56346a2f78908891952a6"
+      },
+      "balancing": {
+        "method": "inverse_frequency_global_legacy",
+        "parameters": {"alpha": 1.0, "normalization": "mean_one"},
+        "class_weights": {
+          "at-risk": 0.38819519565636845,
+          "unhealthy": 3.9849860254544613,
+          "fit": 5.779195873007898
+        },
+        "derived_from": "all_labels_before_holdout_split",
+        "fold_safe": false,
+        "resampled_counts": null
+      },
+      "autogluon": {
+        "included_model_types": ["XGB", "GBM", "CAT"],
+        "presets": "medium_quality",
+        "time_limit_seconds": 600,
+        "use_gpu": true,
+        "fit_weighted_ensemble": false,
+        "auto_stack": false
+      },
+      "balanced_accuracy": 0.9492850913299544,
+      "per_class_recall": {
+        "at-risk": 0.9333232077764277,
+        "unhealthy": 0.9644001732351667,
+        "fit": 0.950131892978269
+      },
+      "confusion_matrix_labels": ["at-risk", "unhealthy", "fit"],
+      "confusion_matrix": [[110610, 5162, 2740], [361, 11134, 50], [356, 41, 7564]],
+      "prediction_counts": {"at-risk": 111327, "unhealthy": 16337, "fit": 10354},
+      "prediction_proportions": {
+        "at-risk": 0.806612181019867,
+        "unhealthy": 0.11836861858598154,
+        "fit": 0.07501920039415148
+      },
+      "model_results": {
+        "XGB": {"balanced_accuracy": 0.9492850913299544, "fit_seconds": 7.5409324169158936, "prediction_seconds": 0.10807442665100098},
+        "GBM": {"balanced_accuracy": 0.9488881011254023, "fit_seconds": 2.654675006866455, "prediction_seconds": 0.0056078433990478516},
+        "CAT": {"balanced_accuracy": 0.9483234235883153, "fit_seconds": 11.218611240386963, "prediction_seconds": 0.04676389694213867}
+      },
+      "selected_model": "XGB",
+      "training_seconds": 26.254538536071777,
+      "warnings_or_failures": [
+        "validation-label counts influenced training weights",
+        "per-model validation predictions were not exported because predictor was not bagged"
+      ]
+    }
+  ]
+}
