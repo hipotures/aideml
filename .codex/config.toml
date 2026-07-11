@@ -8,3 +8,4 @@ enabled = false
 [agents]
 max_threads = 2
 max_depth = 1
+interrupt_message = false
