@@ -35,11 +35,13 @@ from aide.run import (
     should_cleanup_workspace_on_exit,
     should_stop_after_generate_only_roots,
     should_code_ahead_run,
+    should_defer_code_ahead_for_seed,
     should_wait_for_code_ahead,
     validate_code_ahead,
     validate_hypothesis_root_generate_workers,
 )
 from aide.utils.config import _load_cfg, prep_cfg, save_run
+from aide.utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
 from aide.utils.node_artifacts import node_artifact_dir, node_artifact_submission_path
 from aide.utils.metric import MetricValue
 from aide.utils import serialize
@@ -1144,6 +1146,35 @@ def test_code_ahead_wait_decision_blocks_when_generation_is_only_next_work():
         has_pending_generated_node=False,
         has_in_flight_generation=True,
     )
+
+
+def test_code_ahead_is_deferred_while_generated_seed_is_executing():
+    seed = Node(
+        code="def preprocess(df):\n    return df.copy()\n",
+        plan=f"{SEEDED_BASE_PLAN_PREFIX}: source_run=1-source",
+    )
+    mark_node_generated_only(seed)
+
+    assert should_defer_code_ahead_for_seed(seed) is True
+
+
+def test_code_ahead_resumes_after_seed_is_scored():
+    seed = Node(
+        code="def preprocess(df):\n    return df.copy()\n",
+        plan=f"{SEEDED_BASE_PLAN_PREFIX}: source_run=1-source",
+    )
+    seed.status = "ok"
+    seed.metric = MetricValue(0.9, maximize=True)
+    seed.is_buggy = False
+
+    assert should_defer_code_ahead_for_seed(seed) is False
+
+
+def test_code_ahead_is_not_deferred_for_generated_branch_node():
+    node = Node(code="print('branch')", plan="branch improvement")
+    mark_node_generated_only(node)
+
+    assert should_defer_code_ahead_for_seed(node) is False
 
 
 def test_generate_code_ahead_node_uses_isolated_parent_then_rebinds(

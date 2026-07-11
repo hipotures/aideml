@@ -577,6 +577,12 @@ def _is_base_root(node: Node) -> bool:
     )
 
 
+def should_defer_code_ahead_for_seed(active_node: Node | None) -> bool:
+    if active_node is None or active_node.status != "generated":
+        return False
+    return str(active_node.plan or "").startswith(SEEDED_BASE_PLAN_PREFIX)
+
+
 def _node_public_score_bonus_active(
     node: Node,
     *,
@@ -6212,6 +6218,8 @@ def run(argv: list[str] | None = None):
         if code_ahead_executor is None or code_ahead_future is not None:
             return
         if code_ahead_error is not None:
+            return
+        if should_defer_code_ahead_for_seed(active_node_to_exclude):
             return
         pending_count = current_code_ahead_pending_count(
             extra_exclude=active_node_to_exclude,
