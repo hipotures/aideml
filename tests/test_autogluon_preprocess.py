@@ -512,23 +512,32 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
     helper(config, bagged_mode=False, validation_strategy="holdout")
 
 
-def test_stage_a_cpu_profiles_differ_only_in_class_balance():
+def test_class_balance_cpu_profiles_match_reference_except_class_balance():
     cfg = _load_cfg(use_cli_args=False)
-    profile_names = (
-        "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
-        "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+    profiles = (
+        (
+            "s6e7_class_balance_stage_a_none_cpu_capped180_fairone_seed1729_10m",
+            {"method": "none"},
+        ),
+        (
+            "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
+            {"method": "inverse_frequency", "alpha": 1.0},
+        ),
+        (
+            "s6e7_class_balance_stage_b_inverse_frequency_alpha075_cpu_capped180_fairone_seed1729_10m",
+            {"method": "inverse_frequency", "alpha": 0.75},
+        ),
     )
     resolved = []
-    for profile_name in profile_names:
+    for profile_name, expected_class_balance in profiles:
         cfg.agent.autogluon.profile = profile_name
         settings = resolve_autogluon_settings(cfg)
         class_balance = settings.pop("class_balance")
-        resolved.append((settings, class_balance))
+        resolved.append(settings)
+        assert class_balance == expected_class_balance
 
-    assert resolved[0][0] == resolved[1][0]
-    assert resolved[0][1] == {"method": "none"}
-    assert resolved[1][1] == {"method": "inverse_frequency", "alpha": 1.0}
-    settings = resolved[0][0]
+    assert all(settings == resolved[0] for settings in resolved[1:])
+    settings = resolved[0]
     assert settings["use_gpu"] is False
     assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert settings["fit_args"] == {
