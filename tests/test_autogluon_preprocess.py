@@ -527,6 +527,10 @@ def test_class_balance_cpu_profiles_match_reference_except_class_balance():
             "s6e7_class_balance_stage_b_inverse_frequency_alpha075_cpu_capped180_fairone_seed1729_10m",
             {"method": "inverse_frequency", "alpha": 0.75},
         ),
+        (
+            "s6e7_class_balance_stage_b_inverse_frequency_alpha050_cpu_capped180_fairone_seed1729_10m",
+            {"method": "inverse_frequency", "alpha": 0.5},
+        ),
     )
     resolved = []
     for profile_name, expected_class_balance in profiles:
