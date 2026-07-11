@@ -1,8 +1,8 @@
 # Class-balance investigation status
 
-State: **Stage A pair completed comparably. Main selected one Stage B follow-up,
-neutral raw-13 inverse-frequency alpha `0.75`; its frozen CPU capped180 profile
-and reproduction plan are verified but training is not authorized or launched**.
+State: **Stage B alpha `0.75` completed comparably at `0.947768898`. Main
+selected neutral raw-13 inverse-frequency alpha `0.50` next; its profile is
+frozen but uncommitted and unexecuted, so Main cannot launch it yet**.
 
 Completed:
 
@@ -79,12 +79,39 @@ Completed:
   unique session/log/artifact identifiers, and reproduction command;
 - generated-wrapper compilation and dry-run source selection passed; focused
   invariants passed (`10 passed`), ruff passed, and JSON/diff checks passed. No
-  training was launched.
+  training had been launched at the freeze gate.
+- Main authorized only the frozen alpha-0.75 command at revision `50f13f8`; it
+  completed in 225.07 seconds with XGB, GBM, and CAT trained and inferable, no
+  failed/skipped family, and LightGBM selected;
+- the resolved profile is identical to the successful Stage A CPU block after
+  removing `class_balance`; data, split, source, and code hashes match;
+- exactly one training-only weight record reports `at-risk=0.5632106551`,
+  `unhealthy=3.2300176498`, and `fit=4.2686253090`, with training mean one;
+- recall is `0.944781963` (at-risk), `0.951407536` (unhealthy), and
+  `0.947117196` (fit); the exact confusion matrix, prediction distribution,
+  family scores/times, runtime, warnings, and artifact hashes are in
+  `results.json`;
+- alpha `0.75` is `0.001811224` below alpha `1.0` balanced accuracy and
+  `0.067410680` above the unweighted Stage A run. No other Stage B experiment
+  was launched.
+- Main selected only neutral raw-13 inverse-frequency alpha `0.50` next; a
+  single CPU capped180 fair-one profile and unique reproduction identifiers are
+  prepared, while alpha `0.25` was not created;
+- the alpha-0.50 profile resolves identically to the Stage A reference after
+  removing `class_balance`, with XGB/GBM/CAT present, 180-second family caps,
+  and the 600-second predictor limit;
+- generated-wrapper compilation, profile-calibration validation, the one-source
+  dry-run, focused invariants (`10 passed`), ruff, JSON, and diff checks passed
+  for alpha `0.50`;
+- the profile and research updates are uncommitted on base revision `50f13f8`.
+  Main cannot authorize launch until commits are possible and the resulting
+  revision is recorded. No training log or artifact was created.
 
 Pending Main review:
 
-1. review the frozen alpha-0.75 profile and invariant evidence;
-2. separately decide whether to authorize its reproduction command.
+1. review the prepared alpha-0.50 configuration and verification evidence;
+2. commit the profile and research state when commits are possible;
+3. only then decide whether to authorize the exact prepared command.
 
 Next Luna action after Main review: launch no command unless explicitly
-authorized. Stage B remains unexecuted.
+authorized from a committed revision. Alpha `0.50` remains unexecuted.

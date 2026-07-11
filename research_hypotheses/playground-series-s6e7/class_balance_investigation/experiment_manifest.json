@@ -1,15 +1,17 @@
 {
   "schema_version": 1,
   "investigation_id": "s6e7_class_balance_20260711",
-  "status": "stage_b_alpha075_frozen_not_executed",
+  "status": "stage_b_alpha075_complete_alpha050_frozen_uncommitted",
   "training_authorized": false,
   "repository": {
-    "revision": "5b436165c8677503beb064cb466625b869fdfb2c",
+    "revision": "50f13f8572d86730e3293050154f5d85bae85f42",
+    "working_tree_has_uncommitted_alpha050_profile": true,
+    "alpha050_launch_requires_committed_revision": true,
     "audited_wrapper_sha256": "f2e6229048d9d1cdd2b1d103780cd78c6fb6a8aa945a99f33360b9d868d6c7a0",
-    "config_sha256": "02bda2e9b0d5c0638511789735587c9193290ec8670c11a7a5c0555f564a00a8",
+    "config_sha256": "a71f0feac5c11997cf42718afc5284b9b2fb60f85894570d6963c65f4db453ea",
     "stage_a_configs_sha256": "318d8421880bcd64221b08467f948314792b79967a577a18f87f9c5238a27e5b",
-    "stage_b_configs_sha256": "aef0e230c6ee080b7bb65b819f7f2efaac7ccb316be1e308dae0dc553f1f0126",
-    "stage_b_plan_sha256": "4a79e5ba49b6b1687ddbe1f2ff859c16bc967c6923ee644eb12dd7c0622f9d7a"
+    "stage_b_configs_sha256": "cdaddd8db1d4031a0405987889ea370783760c6e02dde62c8a80fd0398d9ff22",
+    "stage_b_plan_sha256": "51117ea49538b73d15dccb4218f157326dbb07f91af6d5650218a15a3c7866d6"
   },
   "data": {
     "directory": "aide/example_tasks/playground-series-s6e7",
@@ -113,7 +115,7 @@
     ]
   },
   "frozen_stage_b_candidate": {
-    "status": "frozen_verified_not_executed",
+    "status": "completed_comparable",
     "selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75",
     "pipeline": "neutral_raw13",
     "reference_profile": "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_capped180_fairone_seed1729_10m",
@@ -143,14 +145,50 @@
       "metric": "balanced_accuracy"
     },
     "execution": {
-      "status": "not_launched",
+      "status": "completed_comparable",
+      "repository_revision": "50f13f8572d86730e3293050154f5d85bae85f42",
       "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha075-cpu-capped180-20260711",
       "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha075/run_cpu_capped180_attempt_1.log",
+      "outer_log_sha256": "4c63980c76af8a42062a3c97704a37d168161961d5ffdc882bdd534894a77227",
+      "artifact_dir": "logs/2-smiling-topaz-oarfish/artifacts/20260711T135608",
+      "aide_result_sha256": "446aec22905ea750de0c86c898d31d7041247e33163294876416414298431295",
+      "source_code_unchanged": true,
+      "config_equal_to_stage_a_alpha1_except_class_balance": true,
+      "exact_class_weight_mapping_log_records": 1,
+      "configured_model_types": ["XGB", "GBM", "CAT"],
+      "trained_model_types": ["XGB", "GBM", "CAT"],
+      "eligible_for_selection_model_types": ["XGB", "GBM", "CAT"],
+      "failed_or_skipped_model_types": [],
+      "all_required_model_types_trained": true,
+      "all_required_model_types_inferable": true,
+      "balanced_accuracy": 0.9477688983566126,
+      "selected_model": "GBM",
+      "training_seconds": 217.54555320739746,
+      "exec_seconds": 225.06896424293518,
+      "data_hashes_verified": true,
+      "split_hashes_verified": true,
+      "resolved_config_verified": true
+    },
+    "next_selected": {
+      "status": "frozen_uncommitted_not_executed",
+      "selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_50",
+      "profile": "s6e7_class_balance_stage_b_inverse_frequency_alpha050_cpu_capped180_fairone_seed1729_10m",
+      "preparation_base_revision": "50f13f8572d86730e3293050154f5d85bae85f42",
+      "launch_blocker": "Profile and research changes must be committed before training can be authorized.",
+      "only_resolved_difference_from_reference": "class_balance.alpha",
+      "balancing": {
+        "method": "inverse_frequency",
+        "alpha": 0.5,
+        "normalize_training_mean_to_one": true,
+        "derive_from": "training_partition_only",
+        "validation_weight": null
+      },
+      "profile_calibration_session_id": "s6e7-class-balance-stage-b-alpha050-cpu-capped180-20260711",
+      "outer_log": "logs/class_balance/s6e7_class_balance_stage_b_20260711/stage_b_neutral_inverse_frequency_alpha050/run_cpu_capped180_attempt_1.log",
       "artifact_root": "logs/2-smiling-topaz-oarfish/artifacts/<timestamp>"
     },
     "not_created_or_selected": [
-      "inverse_frequency_alpha_0_25",
-      "inverse_frequency_alpha_0_5"
+      "inverse_frequency_alpha_0_25"
     ]
   },
   "reuse_candidates": [
@@ -176,7 +214,9 @@
     "legacy_global_weight_result_comparable": false,
     "gpu_attempts_comparable": false,
     "stage_a_resource_policy_revised_to_cpu": true,
-    "stage_b_single_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75"
+    "stage_b_single_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_75",
+    "stage_b_selected_experiment_completed": true,
+    "stage_b_next_selected_experiment": "neutral_raw13_inverse_frequency_alpha_0_50"
   },
   "implementation": {
     "weights_derived_after_holdout_split": true,
@@ -333,5 +373,5 @@
     "variants_differ_only_in_class_balance": true,
     "prior_failed_attempts_comparable": false
   },
-  "remaining_gate": "Main must review the frozen alpha-0.75 Stage B configuration and separately authorize training"
+  "remaining_gate": "Alpha-0.50 profile and research changes must be committed before Main can authorize training"
 }
