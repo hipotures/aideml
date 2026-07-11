@@ -230,7 +230,7 @@ agent:
           auto_stack: false
       # Frozen Stage A class-balancing protocol. These profiles differ only in
       # class_balance and must be run sequentially on the same source artifact.
-      s6e7_class_balance_stage_a_none_seed1729_10m:
+      s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m:
         included_model_types: [XGB, GBM, CAT]
         presets: medium_quality
         time_limit: 600
@@ -239,29 +239,25 @@ agent:
         validation_strategy: holdout
         seed: 1729
         class_balance: {method: none}
-        use_gpu: true
+        use_gpu: false
         fair_model_scheduling: true
         hyperparameters:
           GBM:
-            - device: cuda
-              ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
           CAT:
-            - task_type: GPU
-              devices: "0"
-              gpu_ram_part: 0.8
-              ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
           XGB:
-            - device: cuda
+            - device: cpu
               tree_method: hist
               ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+              ag_args_fit: {num_gpus: 0}
         fit_args:
           save_space: true
           fit_weighted_ensemble: false
           auto_stack: false
-      s6e7_class_balance_stage_a_inverse_frequency_alpha1_seed1729_10m:
+      s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m:
         included_model_types: [XGB, GBM, CAT]
         presets: medium_quality
         time_limit: 600
@@ -270,24 +266,20 @@ agent:
         validation_strategy: holdout
         seed: 1729
         class_balance: {method: inverse_frequency, alpha: 1.0}
-        use_gpu: true
+        use_gpu: false
         fair_model_scheduling: true
         hyperparameters:
           GBM:
-            - device: cuda
-              ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
           CAT:
-            - task_type: GPU
-              devices: "0"
-              gpu_ram_part: 0.8
-              ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
           XGB:
-            - device: cuda
+            - device: cpu
               tree_method: hist
               ag_args: {priority: 100}
-              ag_args_fit: {num_gpus: 1}
+              ag_args_fit: {num_gpus: 0}
         fit_args:
           save_space: true
           fit_weighted_ensemble: false

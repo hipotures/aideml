@@ -512,6 +512,42 @@ def test_custom_balancing_rejects_bagged_and_internal_validation():
     helper(config, bagged_mode=False, validation_strategy="holdout")
 
 
+def test_stage_a_cpu_profiles_differ_only_in_class_balance():
+    cfg = _load_cfg(use_cli_args=False)
+    profile_names = (
+        "s6e7_class_balance_stage_a_none_cpu_fairone_seed1729_10m",
+        "s6e7_class_balance_stage_a_inverse_frequency_alpha1_cpu_fairone_seed1729_10m",
+    )
+    resolved = []
+    for profile_name in profile_names:
+        cfg.agent.autogluon.profile = profile_name
+        settings = resolve_autogluon_settings(cfg)
+        class_balance = settings.pop("class_balance")
+        resolved.append((settings, class_balance))
+
+    assert resolved[0][0] == resolved[1][0]
+    assert resolved[0][1] == {"method": "none"}
+    assert resolved[1][1] == {"method": "inverse_frequency", "alpha": 1.0}
+    settings = resolved[0][0]
+    assert settings["use_gpu"] is False
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["fit_args"] == {
+        "save_space": True,
+        "fit_weighted_ensemble": False,
+        "auto_stack": False,
+    }
+    for model_type, model_configs in settings["hyperparameters"].items():
+        assert model_type in {"XGB", "GBM", "CAT"}
+        assert len(model_configs) == 1
+        assert model_configs[0]["ag_args"] == {"priority": 100}
+        assert model_configs[0]["ag_args_fit"]["num_gpus"] == 0
+        assert "task_type" not in model_configs[0]
+        assert "devices" not in model_configs[0]
+        assert "gpu_ram_part" not in model_configs[0]
+    assert settings["hyperparameters"]["XGB"][0]["device"] == "cpu"
+    assert settings["hyperparameters"]["XGB"][0]["tree_method"] == "hist"
+
+
 def test_autogluon_wrapper_row_count_error_explains_row_preserving_fix(tmp_path):
     cfg = _cfg(tmp_path)
 
