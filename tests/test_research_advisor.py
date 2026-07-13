@@ -4902,6 +4902,9 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
 
     default_guidelines = captured["prompt"]["Instructions"]["Implementation guideline"]
     assert not any("CUDA-capable NVIDIA GPU" in line for line in default_guidelines)
+    assert not any(
+        "Before every LightGBM CUDA fit" in line for line in default_guidelines
+    )
 
     cfg.agent.gpu = True
     captured.clear()
@@ -4937,6 +4940,14 @@ def test_legacy_agent_gpu_prompt_is_opt_in(tmp_path):
     assert any(
         'device_type="cuda"' in line
         and 'device="cuda"' in line
+        for line in gpu_guidelines
+    )
+    assert any(
+        "Before every LightGBM CUDA fit" in line
+        and "integer-encoded categories" in line
+        and "`nunique(dropna=False)` exceeds 512" in line
+        and "`categorical_feature` list" in line
+        and "LightGBM-specific frame copies" in line
         for line in gpu_guidelines
     )
     assert any(

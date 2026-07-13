@@ -1728,6 +1728,7 @@ class Agent:
                     'For CatBoost, use `task_type="GPU"`, `devices="0"`, and `gpu_ram_part=0.8` when training on GPU.',
                     'For XGBoost, use `tree_method="hist"` with `device="cuda"` when training on GPU.',
                     'For LightGBM, try GPU training first with `device_type="cuda"` or `device="cuda"` when `agent.gpu=true`. CPU LightGBM fallback is allowed only after an actual LightGBM GPU failure is observed in this implementation, or when a previous failed implementation for this same hypothesis explicitly says to keep LightGBM on CPU.',
+                    "Before every LightGBM CUDA fit, inspect all explicitly declared categorical features, including integer-encoded categories. Drop features whose training-fold cardinality from `nunique(dropna=False)` exceeds 512 from the LightGBM training, validation, and test frames, and remove them from the `categorical_feature` list. Print the dropped feature names and cardinalities. Apply this only to LightGBM-specific frame copies so other models retain the original features.",
                     "If any model falls back from GPU to CPU, print a short explicit reason before continuing so the execution log shows why GPU was not used.",
                 ]
             )
