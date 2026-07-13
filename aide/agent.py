@@ -2260,6 +2260,12 @@ class Agent:
                 return True
             return any(
                 event.get("method") == "turn/completed"
+                or (
+                    event.get("method") == "thread/status/changed"
+                    and isinstance(event.get("params"), dict)
+                    and isinstance(event["params"].get("status"), dict)
+                    and event["params"]["status"].get("type") == "idle"
+                )
                 for line in events_path.read_text(encoding="utf-8").splitlines()
                 for event in [json.loads(line)]
                 if line.strip()

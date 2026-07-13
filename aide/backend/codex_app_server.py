@@ -562,10 +562,19 @@ def invoke_codex_app_server(
                         break
                 elif method == "thread/status/changed":
                     status = params.get("status")
-                    if isinstance(status, dict) and status.get("type") == "systemError":
-                        raise RuntimeError(
-                            "Codex app-server thread entered systemError state."
-                        )
+                    if isinstance(status, dict):
+                        if status.get("type") == "systemError":
+                            raise RuntimeError(
+                                "Codex app-server thread entered systemError state."
+                            )
+                        if status.get("type") == "idle" and (
+                            final_text is not None or final_chunks
+                        ):
+                            turn_completed = {
+                                "turn": {"id": turn_id, "status": "completed"}
+                            }
+                            if usage is not None:
+                                break
                 elif method == "error":
                     raise RuntimeError(
                         f"Codex app-server error notification: {params!r}"

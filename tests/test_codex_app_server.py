@@ -139,6 +139,48 @@ def test_app_server_protocol_returns_ids_usage_and_live_logs(tmp_path, monkeypat
     assert "ephemeral = false" in profile
 
 
+def test_app_server_accepts_idle_as_persisted_turn_completion(tmp_path, monkeypatch):
+    _install_protocol(
+        monkeypatch,
+        [
+            {"id": 0, "result": {"userAgent": "test"}},
+            {"id": 1, "result": {"thread": {"id": "thread-1"}}},
+            {"id": 2, "result": {"turn": {"id": "turn-1"}}},
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "answer",
+                    }
+                },
+            },
+            {
+                "method": "thread/tokenUsage/updated",
+                "params": {"tokenUsage": {"last": {}}},
+            },
+            {
+                "method": "thread/status/changed",
+                "params": {"status": {"type": "idle"}},
+            },
+        ],
+    )
+
+    result = codex_app_server.invoke_codex_app_server(
+        prompt="hello",
+        model="gpt-5.5",
+        reasoning_effort="low",
+        web_search=False,
+        work_dir=tmp_path,
+        timeout=5,
+        log_dir=tmp_path,
+    )
+
+    assert result.status == "completed"
+    assert result.text == "answer"
+
+
 @pytest.mark.parametrize(
     ("invoke_kwargs", "expected_method", "expected_params"),
     [
