@@ -1,12 +1,12 @@
 import datetime as dt
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from aide.journal import Journal, Node
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
+from aide.backend.codex_app_server import CodexAppServerResult
 from aide.synthesis import (
     SYNTHESIS_PROMPT_INTRO,
     SYNTHESIS_PREPROCESS_PROMPT_INTRO,
@@ -580,20 +580,19 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     }
     seen = {}
 
-    def fake_runner(cmd, **kwargs):
-        seen["cmd"] = cmd
-        seen["stdin"] = kwargs["input"]
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text(
-            "I will synthesize a compact ensemble-style script from the best "
+    def fake_runner(**kwargs):
+        seen.update(kwargs)
+        return CodexAppServerResult(
+            text="I will synthesize a compact ensemble-style script from the best "
             "working ideas.\n\n"
             "```python\n"
             "value = 1\n"
             "print(value)\n"
-            "```\n"
-        )
-        return subprocess.CompletedProcess(
-            cmd, 0, stdout='{"event":"done"}\n', stderr=""
+            "```\n",
+            status="completed",
+            thread_id="thread-synthesis",
+            turn_id="turn-synthesis",
+            duration_seconds=0.1,
         )
 
     result = run_synthesis_checkpoint(
@@ -603,21 +602,15 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     )
 
     checkpoint_dir = Path(result["checkpoint_dir"])
-    command = seen["cmd"]
+    command = json.loads((checkpoint_dir / "request.json").read_text())["command"]
 
-    assert command[:6] == [
-        "codex",
-        "--search",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ignore-user-config",
-    ]
-    assert "--output-schema" not in command
-    assert command[command.index("--sandbox") + 1] == "read-only"
-    assert command[command.index("--model") + 1] == "gpt-5.4-mini"
-    assert 'model_reasoning_effort="low"' in command
-    assert seen["stdin"].startswith(SYNTHESIS_PROMPT_INTRO)
+    assert command[:2] == ["codex", "app-server"]
+    assert "exec" not in command
+    assert seen["model"] == "gpt-5.4-mini"
+    assert seen["reasoning_effort"] == "low"
+    assert seen["web_search"] is True
+    assert seen.get("output_schema") is None
+    assert seen["prompt"].startswith(SYNTHESIS_PROMPT_INTRO)
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
     assert (checkpoint_dir / "response.py").read_text() == "value = 1\nprint(value)\n"
@@ -628,6 +621,7 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
         "build_prompt",
         "write_inputs",
         "codex_subprocess",
+        "codex_app_server",
         "read_response",
         "parse_response",
         "total",
@@ -636,6 +630,11 @@ def test_run_synthesis_checkpoint_logs_request_and_python_response(tmp_path):
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "ready"
     assert status["timings_seconds"] == response["timings_seconds"]
+    assert status["transport"] == "codex_app_server"
+    assert status["thread_id"] == "thread-synthesis"
+    assert status["turn_id"] == "turn-synthesis"
+    assert response["thread_id"] == "thread-synthesis"
+    assert response["turn_id"] == "turn-synthesis"
 
 
 def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
@@ -654,18 +653,20 @@ def test_run_synthesis_checkpoint_wraps_preprocess_in_autogluon_mode(tmp_path):
         ],
     }
 
-    def fake_runner(cmd, **kwargs):
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text(
-            "I will add a compact feature while preserving the wrapper contract.\n\n"
+    def fake_runner(**kwargs):
+        return CodexAppServerResult(
+            text="I will add a compact feature while preserving the wrapper contract.\n\n"
             "```python\n"
             "def preprocess(df):\n"
             "    df = df.copy()\n"
             "    df['feature'] = 1\n"
             "    return df\n"
-            "```\n"
+            "```\n",
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=0.1,
         )
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     result = run_synthesis_checkpoint(
         cfg=cfg,
@@ -694,17 +695,19 @@ def test_synthesis_advisor_generates_root_node_once_per_checkpoint(tmp_path):
 
     calls = []
 
-    def fake_runner(cmd, **kwargs):
-        calls.append(cmd)
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text(
-            "I will synthesize a fresh root from the strongest prior scripts.\n\n"
+    def fake_runner(**kwargs):
+        calls.append(kwargs)
+        return CodexAppServerResult(
+            text="I will synthesize a fresh root from the strongest prior scripts.\n\n"
             "```python\n"
             "value = 2\n"
             "print(value)\n"
-            "```\n"
+            "```\n",
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=0.1,
         )
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=fake_runner)
 
@@ -760,10 +763,14 @@ def test_synthesis_advisor_returns_failed_checkpoint_as_bug_node(tmp_path):
     journal.append(_node(0.9, code="print('ok')"))
     journal.append(_node(0.8, code="print('ok2')"))
 
-    def fake_runner(cmd, **kwargs):
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text("not python at all\n")
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+    def fake_runner(**kwargs):
+        return CodexAppServerResult(
+            text="not python at all\n",
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=0.1,
+        )
 
     advisor = SynthesisAdvisor(cfg=cfg, task_desc="task", runner=fake_runner)
 

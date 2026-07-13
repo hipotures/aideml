@@ -72,12 +72,29 @@ def test_backend_query_uses_prefixed_review_files(tmp_path, monkeypatch):
 
 
 def test_codex_backend_writes_codex_artifact_files(tmp_path, monkeypatch):
-    def fake_run(command, **kwargs):
-        output_path = tmp_path / "response_raw.txt"
-        output_path.write_text("answer", encoding="utf-8")
-        return SimpleNamespace(returncode=0, stdout='{"event":"done"}\n', stderr="")
+    from aide.backend.codex_app_server import CodexAppServerResult
 
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+    def fake_invoke(**kwargs):
+        (tmp_path / "codex_events.jsonl").write_text(
+            '{"method":"turn/completed"}\n', encoding="utf-8"
+        )
+        (tmp_path / "codex_rpc.jsonl").write_text(
+            '{"id":2,"result":{}}\n', encoding="utf-8"
+        )
+        (tmp_path / "stderr.log").write_text("", encoding="utf-8")
+        (tmp_path / "codex_profile.toml").write_text(
+            'transport = "codex_app_server"\nmodel = "gpt-5.5"\n',
+            encoding="utf-8",
+        )
+        return CodexAppServerResult(
+            text="answer",
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=1.0,
+        )
+
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
 
     output, *_ = backend_codex.query(
         system_message="system",
@@ -88,7 +105,10 @@ def test_codex_backend_writes_codex_artifact_files(tmp_path, monkeypatch):
     )
 
     assert output == "answer"
-    assert (tmp_path / "codex_events.jsonl").read_text() == '{"event":"done"}\n'
+    assert (tmp_path / "codex_events.jsonl").read_text() == (
+        '{"method":"turn/completed"}\n'
+    )
+    assert (tmp_path / "codex_rpc.jsonl").exists()
     assert (tmp_path / "stderr.log").read_text() == ""
     assert 'model = "gpt-5.5"' in (tmp_path / "codex_profile.toml").read_text()
 

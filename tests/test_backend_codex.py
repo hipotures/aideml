@@ -1,104 +1,83 @@
 import json
-import subprocess
 
 import pytest
 
 from aide.backend import backend_codex
+from aide.backend.codex_app_server import CodexAppServerResult
 from aide.backend.utils import FunctionSpec
 
 
-def test_codex_backend_uses_cli_with_reasoning_effort(tmp_path, monkeypatch):
+def _result(text="answer"):
+    return CodexAppServerResult(
+        text=text,
+        status="completed",
+        thread_id="thread-1",
+        turn_id="turn-1",
+        duration_seconds=1.25,
+        input_tokens=12,
+        output_tokens=4,
+        usage={"tokenUsage": {"last": {"inputTokens": 12, "outputTokens": 4}}},
+    )
+
+
+def test_codex_backend_uses_app_server_with_reasoning_effort(tmp_path, monkeypatch):
     seen = {}
 
-    class FakeTmp:
-        def __enter__(self):
-            return str(tmp_path)
+    def fake_invoke(**kwargs):
+        seen.update(kwargs)
+        return _result()
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
 
-    def fake_run(cmd, **kwargs):
-        seen["cmd"] = cmd
-        seen["stdin"] = kwargs["input"]
-        response_path = cmd[cmd.index("--output-last-message") + 1]
-        assert response_path == str(tmp_path / "response_raw.txt")
-        (tmp_path / "response_raw.txt").write_text("answer")
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
-
-    output, *_ = backend_codex.query(
+    output, req_time, input_tokens, output_tokens, info = backend_codex.query(
         system_message="system",
         user_message="user",
         model="gpt-5.5",
         reasoning_effort="low",
+        llm_log_dir=tmp_path,
     )
 
     assert output == "answer"
-    assert seen["cmd"][:6] == [
-        "codex",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ignore-user-config",
-        "--sandbox",
-    ]
-    assert seen["cmd"][seen["cmd"].index("--model") + 1] == "gpt-5.5"
-    assert 'model_reasoning_effort="low"' in seen["cmd"]
-    assert "system" in seen["stdin"]
-    assert "user" in seen["stdin"]
+    assert seen["model"] == "gpt-5.5"
+    assert seen["reasoning_effort"] == "low"
+    assert seen["work_dir"] == tmp_path
+    assert "system" in seen["prompt"]
+    assert "user" in seen["prompt"]
+    assert req_time == 1.25
+    assert (input_tokens, output_tokens) == (12, 4)
+    assert info["provider_kind"] == "codex_app_server"
+    assert info["thread_id"] == "thread-1"
+    assert info["turn_id"] == "turn-1"
 
 
-def test_codex_backend_enables_search_flag(tmp_path, monkeypatch):
+def test_codex_backend_enables_search(tmp_path, monkeypatch):
     seen = {}
 
-    class FakeTmp:
-        def __enter__(self):
-            return str(tmp_path)
+    def fake_invoke(**kwargs):
+        seen.update(kwargs)
+        return _result()
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
 
-    def fake_run(cmd, **kwargs):
-        seen["cmd"] = cmd
-        (tmp_path / "response_raw.txt").write_text("answer")
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
-
-    output, *_ = backend_codex.query(
+    backend_codex.query(
         system_message="system",
         user_message=None,
         model="gpt-5.5",
         web_search=True,
+        llm_log_dir=tmp_path,
     )
 
-    assert output == "answer"
-    assert seen["cmd"][:2] == ["codex", "--search"]
-    assert seen["cmd"].index("--search") < seen["cmd"].index("exec")
+    assert seen["web_search"] is True
 
 
-def test_codex_backend_parses_schema_response(tmp_path, monkeypatch):
-    class FakeTmp:
-        def __enter__(self):
-            return str(tmp_path)
+def test_codex_backend_passes_schema_and_parses_response(tmp_path, monkeypatch):
+    seen = {}
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
+    def fake_invoke(**kwargs):
+        seen.update(kwargs)
+        return _result('{"is_bug": false, "metric": 0.9}')
 
-    def fake_run(cmd, **kwargs):
-        assert "--output-schema" in cmd
-        assert cmd[cmd.index("--output-schema") + 1] == str(tmp_path / "schema.json")
-        assert cmd[cmd.index("--output-last-message") + 1] == str(
-            tmp_path / "response_raw.txt"
-        )
-        (tmp_path / "response_raw.txt").write_text('{"is_bug": false, "metric": 0.9}')
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
     spec = FunctionSpec(
         name="submit_review",
         description="review",
@@ -117,74 +96,38 @@ def test_codex_backend_parses_schema_response(tmp_path, monkeypatch):
         user_message=None,
         func_spec=spec,
         model="gpt-5.5",
+        llm_log_dir=tmp_path,
     )
 
     assert output == {"is_bug": False, "metric": 0.9}
+    assert seen["output_schema"] == spec.json_schema
     assert json.loads((tmp_path / "schema.json").read_text()) == spec.json_schema
 
 
-def test_codex_backend_reports_json_event_error_when_stderr_is_empty(
-    tmp_path, monkeypatch
-):
-    class FakeTmp:
-        def __enter__(self):
-            return str(tmp_path)
+def test_codex_backend_propagates_app_server_error(tmp_path, monkeypatch):
+    def fake_invoke(**kwargs):
+        raise RuntimeError("Codex app-server turn failed: usage limit")
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
 
-    def fake_run(cmd, **kwargs):
-        stdout = "\n".join(
-            [
-                json.dumps({"type": "thread.started", "thread_id": "abc"}),
-                json.dumps(
-                    {
-                        "type": "error",
-                        "message": "You've hit your usage limit for GPT-5.3-Codex-Spark.",
-                    }
-                ),
-                json.dumps(
-                    {
-                        "type": "turn.failed",
-                        "error": {
-                            "message": "Switch to another model now, or try again later."
-                        },
-                    }
-                ),
-            ]
-        )
-        return subprocess.CompletedProcess(cmd, 1, stdout=stdout, stderr="")
-
-    monkeypatch.setattr(backend_codex.tempfile, "TemporaryDirectory", lambda prefix: FakeTmp())
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
-
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match="usage limit"):
         backend_codex.query(
             system_message="system",
             user_message=None,
-            model="gpt-5.3-codex-spark",
+            model="gpt-5.5",
+            llm_log_dir=tmp_path,
         )
 
-    message = str(exc_info.value)
-    assert "Codex CLI failed with exit code 1" in message
-    assert "Switch to another model now" in message
-    assert "codex_events.jsonl" not in message
 
+def test_codex_backend_propagates_timeout(tmp_path, monkeypatch):
+    def fake_invoke(**kwargs):
+        (tmp_path / "codex_events.jsonl").write_text('{"method":"turn/started"}\n')
+        (tmp_path / "stderr.log").write_text("still running\n")
+        raise TimeoutError("Codex app-server timed out after 7 seconds.")
 
-def test_codex_backend_reports_timeout_and_preserves_partial_logs(
-    tmp_path, monkeypatch
-):
-    def fake_run(cmd, **kwargs):
-        raise subprocess.TimeoutExpired(
-            cmd=cmd,
-            timeout=7,
-            output='{"event":"started"}\n',
-            stderr="still running\n",
-        )
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
 
-    monkeypatch.setattr(backend_codex.subprocess, "run", fake_run)
-
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(TimeoutError, match="timed out after 7 seconds"):
         backend_codex.query(
             system_message="system",
             user_message=None,
@@ -193,7 +136,7 @@ def test_codex_backend_reports_timeout_and_preserves_partial_logs(
             llm_log_dir=tmp_path,
         )
 
-    message = str(exc_info.value)
-    assert "Codex CLI timed out after 7 seconds" in message
-    assert (tmp_path / "codex_events.jsonl").read_text() == '{"event":"started"}\n'
+    assert (tmp_path / "codex_events.jsonl").read_text() == (
+        '{"method":"turn/started"}\n'
+    )
     assert (tmp_path / "stderr.log").read_text() == "still running\n"

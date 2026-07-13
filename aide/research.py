@@ -9,7 +9,6 @@ import math
 import os
 import random
 import re
-import subprocess
 import threading
 import time
 from dataclasses import dataclass
@@ -21,6 +20,11 @@ from .autogluon_preprocess import (
     extract_preprocess_source,
     is_autogluon_preprocess_mode,
     resolve_autogluon_settings,
+)
+from .backend.codex_app_server import (
+    CodexAppServerResult,
+    app_server_command,
+    invoke_codex_app_server,
 )
 from .journal import Journal, Node
 from .utils import data_preview
@@ -94,7 +98,7 @@ RESEARCH_RESPONSE_SCHEMA: dict[str, Any] = {
 }
 
 
-Runner = Callable[..., subprocess.CompletedProcess[str]]
+Runner = Callable[..., CodexAppServerResult]
 PROMPT_SCORE_DECIMALS = 5
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_ROOT_PROMPT_PATH = (
@@ -1474,7 +1478,7 @@ def generate_research_hypotheses_for_pipeline(
     journal: Journal,
     completed_steps: int,
     count: int,
-    runner: Runner = subprocess.run,
+    runner: Runner = invoke_codex_app_server,
     repo_root: Path = REPO_ROOT,
 ) -> ManualHypothesisSelection:
     requested_count = max(0, int(count))
@@ -3351,50 +3355,6 @@ def _format_research_context_for_prompt(context: dict[str, Any]) -> str:
     return "\n".join(lines).lstrip()
 
 
-def _codex_profile_text(model: str, reasoning_effort: str | None) -> str:
-    lines = [f'model = "{model}"']
-    if reasoning_effort is not None:
-        lines.append(f'model_reasoning_effort = "{reasoning_effort}"')
-    lines.extend(
-        [
-            'approval_policy = "never"',
-            'sandbox_mode = "read-only"',
-            "# This profile is archival. The actual invocation uses --ignore-user-config",
-            "# plus explicit CLI overrides so no global MCP servers are loaded.",
-        ]
-    )
-    return "\n".join(lines) + "\n"
-
-
-def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
-    command = [
-        "codex",
-        "--search",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ignore-user-config",
-        "--sandbox",
-        "read-only",
-        "--cd",
-        str(checkpoint_dir),
-        "--model",
-        cfg.research.root_hypothesis_model,
-        "--output-schema",
-        "schema.json",
-        "--output-last-message",
-        "response_raw.txt",
-        "--json",
-        "-",
-    ]
-    if cfg.research.reasoning_effort is not None:
-        command[command.index("--output-schema") : command.index("--output-schema")] = [
-            "-c",
-            f'model_reasoning_effort="{cfg.research.reasoning_effort}"',
-        ]
-    return command
-
-
 def _parse_response(raw_response: str) -> dict[str, Any] | None:
     try:
         parsed = json.loads(raw_response)
@@ -3407,7 +3367,7 @@ def run_research_checkpoint(
     *,
     cfg: Config,
     context: dict[str, Any],
-    runner: Runner = subprocess.run,
+    runner: Runner = invoke_codex_app_server,
     checkpoint_dir: Path | None = None,
 ) -> dict[str, Any]:
     completed_steps = int(context["checkpoint_step"])
@@ -3419,7 +3379,7 @@ def run_research_checkpoint(
 
     phase_started = time.monotonic()
     prompt = build_research_prompt(context)
-    command = _codex_command(cfg, checkpoint_dir)
+    command = app_server_command(web_search=True)
     timings_seconds["build_prompt"] = time.monotonic() - phase_started
 
     phase_started = time.monotonic()
@@ -3448,49 +3408,47 @@ def run_research_checkpoint(
         },
     )
     _write_json(checkpoint_dir / "schema.json", RESEARCH_RESPONSE_SCHEMA)
-    (checkpoint_dir / "codex_profile.toml").write_text(
-        _codex_profile_text(
-            cfg.research.root_hypothesis_model,
-            cfg.research.reasoning_effort,
-        ),
-        encoding="utf-8",
-    )
     timings_seconds["write_inputs"] = time.monotonic() - phase_started
 
     exit_code: int | None = None
     stderr = ""
-    stdout = ""
     error: str | None = None
+    app_server_status: str | None = None
+    thread_id: str | None = None
+    turn_id: str | None = None
+    usage: dict[str, Any] | None = None
     phase_started = time.monotonic()
     try:
         completed = runner(
-            command,
-            input=prompt,
-            text=True,
-            capture_output=True,
+            prompt=prompt,
+            model=cfg.research.root_hypothesis_model,
+            reasoning_effort=cfg.research.reasoning_effort,
+            web_search=True,
+            work_dir=checkpoint_dir,
             timeout=cfg.research.timeout,
-            cwd=checkpoint_dir,
+            output_schema=RESEARCH_RESPONSE_SCHEMA,
+            log_dir=checkpoint_dir,
         )
-        exit_code = completed.returncode
-        stdout = completed.stdout or ""
-        stderr = completed.stderr or ""
-    except subprocess.TimeoutExpired as exc:
+        exit_code = 0
+        raw_response = completed.text
+        stderr = completed.stderr
+        app_server_status = completed.status
+        thread_id = completed.thread_id
+        turn_id = completed.turn_id
+        usage = completed.usage
+    except TimeoutError:
         error = f"Codex research timed out after {cfg.research.timeout} seconds."
-        stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
-        stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
     except Exception as exc:  # noqa: BLE001 - external tool failure must not stop AIDE
         error = f"{exc.__class__.__name__}: {exc}"
     timings_seconds["codex_subprocess"] = time.monotonic() - phase_started
+    timings_seconds["codex_app_server"] = timings_seconds["codex_subprocess"]
 
     phase_started = time.monotonic()
-    (checkpoint_dir / "codex_events.jsonl").write_text(stdout, encoding="utf-8")
-    (checkpoint_dir / "stderr.log").write_text(stderr, encoding="utf-8")
     raw_response_path = checkpoint_dir / "response_raw.txt"
-    raw_response = (
-        raw_response_path.read_text(encoding="utf-8")
-        if raw_response_path.exists()
-        else ""
-    )
+    if error is None:
+        raw_response_path.write_text(raw_response, encoding="utf-8")
+    else:
+        raw_response = ""
     timings_seconds["read_response"] = time.monotonic() - phase_started
 
     phase_started = time.monotonic()
@@ -3522,6 +3480,11 @@ def run_research_checkpoint(
         "parsed_response": parsed_response,
         "stderr": stderr,
         "error": error,
+        "transport": "codex_app_server",
+        "app_server_status": app_server_status,
+        "thread_id": thread_id,
+        "turn_id": turn_id,
+        "usage": usage,
     }
     _write_json(checkpoint_dir / "response.json", response_payload)
     _write_json(
@@ -3535,6 +3498,11 @@ def run_research_checkpoint(
             "timings_seconds": timings_seconds,
             "exit_code": exit_code,
             "error": error,
+            "transport": "codex_app_server",
+            "app_server_status": app_server_status,
+            "thread_id": thread_id,
+            "turn_id": turn_id,
+            "usage": usage,
         },
     )
     return {
@@ -3682,7 +3650,7 @@ class ResearchAdvisor:
         *,
         cfg: Config,
         task_desc: Any,
-        runner: Runner = subprocess.run,
+        runner: Runner = invoke_codex_app_server,
         repo_root: Path = REPO_ROOT,
     ):
         self.cfg = cfg

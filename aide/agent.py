@@ -939,7 +939,13 @@ def _web_search_event_summary(events_path: Path) -> str | None:
         except json.JSONDecodeError:
             continue
         item = event.get("item") if isinstance(event, dict) else None
-        if not isinstance(item, dict) or item.get("type") != "web_search":
+        if not isinstance(item, dict) and isinstance(event, dict):
+            params = event.get("params")
+            item = params.get("item") if isinstance(params, dict) else None
+        item_type = str(item.get("type") if isinstance(item, dict) else "")
+        if not isinstance(item, dict) or "websearch" not in item_type.replace(
+            "_", ""
+        ).lower():
             continue
         action = item.get("action")
         if not isinstance(action, dict):

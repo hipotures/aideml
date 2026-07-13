@@ -5,7 +5,6 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,12 +19,16 @@ from .autogluon_preprocess import (
     preprocess_task_prompt_text,
     validate_preprocess_source,
 )
+from .backend.codex_app_server import (
+    CodexAppServerResult,
+    app_server_command,
+    invoke_codex_app_server,
+)
 from .journal import Journal, Node
 from .research import (
     _checkpoint_label,
     _checkpoint_name,
     _checkpoint_status,
-    _codex_profile_text,
     _json_default,
     _metric_value,
     _prompt_score,
@@ -54,7 +57,7 @@ SYNTHESIS_PREPROCESS_PROMPT_INTRO = (
 SYNTHESIS_PLAN_PREFIX = "External Codex synthesis checkpoint"
 
 
-Runner = Callable[..., subprocess.CompletedProcess[str]]
+Runner = Callable[..., CodexAppServerResult]
 
 
 @dataclass(frozen=True)
@@ -743,35 +746,6 @@ def build_synthesis_prompt(context: dict[str, Any]) -> str:
     )
 
 
-def _codex_command(cfg: Config, checkpoint_dir: Path) -> list[str]:
-    command = [
-        "codex",
-        "--search",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ignore-user-config",
-        "--sandbox",
-        "read-only",
-        "--cd",
-        str(checkpoint_dir),
-        "--model",
-        cfg.synthesis.model,
-        "--output-last-message",
-        "response_raw.txt",
-        "--json",
-        "-",
-    ]
-    if cfg.synthesis.reasoning_effort is not None:
-        command[command.index("--output-last-message") : command.index(
-            "--output-last-message"
-        )] = [
-            "-c",
-            f'model_reasoning_effort="{cfg.synthesis.reasoning_effort}"',
-        ]
-    return command
-
-
 def parse_synthesis_code(raw_response: str) -> str:
     code = extract_code(raw_response)
     if code and is_valid_python_script(code):
@@ -795,7 +769,7 @@ def run_synthesis_checkpoint(
     *,
     cfg: Config,
     context: dict[str, Any],
-    runner: Runner = subprocess.run,
+    runner: Runner = invoke_codex_app_server,
 ) -> dict[str, Any]:
     completed_steps = int(context["checkpoint_step"])
     checkpoint_dir = checkpoint_dir_for(cfg, completed_steps)
@@ -805,7 +779,7 @@ def run_synthesis_checkpoint(
 
     phase_started = time.monotonic()
     prompt = build_synthesis_prompt(context)
-    command = _codex_command(cfg, checkpoint_dir)
+    command = app_server_command(web_search=True)
     timings_seconds["build_prompt"] = time.monotonic() - phase_started
 
     phase_started = time.monotonic()
@@ -832,48 +806,48 @@ def run_synthesis_checkpoint(
             "prompt": prompt,
         },
     )
-    (checkpoint_dir / "codex_profile.toml").write_text(
-        _codex_profile_text(cfg.synthesis.model, cfg.synthesis.reasoning_effort),
-        encoding="utf-8",
-    )
     timings_seconds["write_inputs"] = time.monotonic() - phase_started
 
     exit_code: int | None = None
     stderr = ""
-    stdout = ""
     error: str | None = None
     code: str | None = None
     plan: str | None = None
+    app_server_status: str | None = None
+    thread_id: str | None = None
+    turn_id: str | None = None
+    usage: dict[str, Any] | None = None
     phase_started = time.monotonic()
     try:
         completed = runner(
-            command,
-            input=prompt,
-            text=True,
-            capture_output=True,
+            prompt=prompt,
+            model=cfg.synthesis.model,
+            reasoning_effort=cfg.synthesis.reasoning_effort,
+            web_search=True,
+            work_dir=checkpoint_dir,
             timeout=cfg.synthesis.timeout,
-            cwd=checkpoint_dir,
+            log_dir=checkpoint_dir,
         )
-        exit_code = completed.returncode
-        stdout = completed.stdout or ""
-        stderr = completed.stderr or ""
-    except subprocess.TimeoutExpired as exc:
+        exit_code = 0
+        raw_response = completed.text
+        stderr = completed.stderr
+        app_server_status = completed.status
+        thread_id = completed.thread_id
+        turn_id = completed.turn_id
+        usage = completed.usage
+    except TimeoutError:
         error = f"Codex synthesis timed out after {cfg.synthesis.timeout} seconds."
-        stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
-        stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
     except Exception as exc:  # noqa: BLE001 - external tool failure must not stop AIDE
         error = f"{exc.__class__.__name__}: {exc}"
     timings_seconds["codex_subprocess"] = time.monotonic() - phase_started
+    timings_seconds["codex_app_server"] = timings_seconds["codex_subprocess"]
 
     phase_started = time.monotonic()
-    (checkpoint_dir / "codex_events.jsonl").write_text(stdout, encoding="utf-8")
-    (checkpoint_dir / "stderr.log").write_text(stderr, encoding="utf-8")
     raw_response_path = checkpoint_dir / "response_raw.txt"
-    raw_response = (
-        raw_response_path.read_text(encoding="utf-8")
-        if raw_response_path.exists()
-        else ""
-    )
+    if error is None:
+        raw_response_path.write_text(raw_response, encoding="utf-8")
+    else:
+        raw_response = ""
     timings_seconds["read_response"] = time.monotonic() - phase_started
 
     phase_started = time.monotonic()
@@ -916,6 +890,11 @@ def run_synthesis_checkpoint(
         "code": code,
         "stderr": stderr,
         "error": error,
+        "transport": "codex_app_server",
+        "app_server_status": app_server_status,
+        "thread_id": thread_id,
+        "turn_id": turn_id,
+        "usage": usage,
     }
     _write_json(checkpoint_dir / "response.json", response_payload)
     _write_json(
@@ -929,6 +908,11 @@ def run_synthesis_checkpoint(
             "timings_seconds": timings_seconds,
             "exit_code": exit_code,
             "error": error,
+            "transport": "codex_app_server",
+            "app_server_status": app_server_status,
+            "thread_id": thread_id,
+            "turn_id": turn_id,
+            "usage": usage,
         },
     )
     return {
@@ -1060,7 +1044,7 @@ class SynthesisAdvisor:
         *,
         cfg: Config,
         task_desc: Any,
-        runner: Runner = subprocess.run,
+        runner: Runner = invoke_codex_app_server,
     ):
         self.cfg = cfg
         self.task_desc = task_desc

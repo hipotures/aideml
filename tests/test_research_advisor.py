@@ -1,7 +1,6 @@
 import datetime as dt
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,6 +9,7 @@ import aide.agent as agent_module
 import aide.research as research
 from aide.agent import Agent
 from aide.autogluon_preprocess import AGENT_MODE, build_autogluon_wrapper
+from aide.backend.codex_app_server import CodexAppServerResult
 from aide.interpreter import ExecutionResult
 from aide.journal import Journal, Node
 from aide.run import (
@@ -792,10 +792,9 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
     )
     seen: list[tuple[str, str]] = []
 
-    def fake_runner(cmd, *, input, text, capture_output, timeout, cwd):
-        del text, capture_output, timeout
-        hypothesis_id = Path(cwd).name
-        seen.append((hypothesis_id, input))
+    def fake_runner(**kwargs):
+        hypothesis_id = Path(kwargs["work_dir"]).name
+        seen.append((hypothesis_id, kwargs["prompt"]))
         response = {
             "summary": f"generated {hypothesis_id}",
             "hypotheses": [
@@ -805,11 +804,13 @@ def test_generate_research_hypotheses_writes_per_hypothesis_prompt_and_response(
                 )
             ],
         }
-        (Path(cwd) / "response_raw.txt").write_text(
-            json.dumps(response),
-            encoding="utf-8",
+        return CodexAppServerResult(
+            text=json.dumps(response),
+            status="completed",
+            thread_id=f"thread-{hypothesis_id}",
+            turn_id=f"turn-{hypothesis_id}",
+            duration_seconds=0.1,
         )
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     selection = research.generate_research_hypotheses_for_pipeline(
         cfg=cfg,
@@ -901,18 +902,19 @@ def test_generate_research_hypotheses_omits_solution_code_context(tmp_path):
     )
     seen: list[str] = []
 
-    def fake_runner(cmd, *, input, text, capture_output, timeout, cwd):
-        del text, capture_output, timeout
-        seen.append(input)
+    def fake_runner(**kwargs):
+        seen.append(kwargs["prompt"])
         response = {
             "summary": "generated",
             "hypotheses": [_generated_hypothesis_payload()],
         }
-        (Path(cwd) / "response_raw.txt").write_text(
-            json.dumps(response),
-            encoding="utf-8",
+        return CodexAppServerResult(
+            text=json.dumps(response),
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=0.1,
         )
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     research.generate_research_hypotheses_for_pipeline(
         cfg=cfg,
@@ -2222,12 +2224,13 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     }
     seen = {}
 
-    def fake_runner(cmd, **kwargs):
-        seen["cmd"] = cmd
-        seen["stdin"] = kwargs["input"]
-        checkpoint_dir = Path(cmd[cmd.index("--cd") + 1])
-        (checkpoint_dir / "response_raw.txt").write_text(
-            json.dumps(
+    def fake_runner(**kwargs):
+        seen.update(kwargs)
+        Path(kwargs["work_dir"]).joinpath("codex_profile.toml").write_text(
+            'transport = "codex_app_server"\nmodel = "gpt-root-hypothesis"\n'
+        )
+        return CodexAppServerResult(
+            text=json.dumps(
                 {
                     "summary": "researched",
                     "hypotheses": [
@@ -2253,10 +2256,12 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
                         }
                     ],
                 }
-            )
-        )
-        return subprocess.CompletedProcess(
-            cmd, 0, stdout='{"event":"done"}\n', stderr=""
+            ),
+            status="completed",
+            thread_id="thread-research",
+            turn_id="turn-research",
+            duration_seconds=0.1,
+            usage={"tokenUsage": {"last": {"inputTokens": 10, "outputTokens": 5}}},
         )
 
     result = run_research_checkpoint(
@@ -2266,49 +2271,42 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     )
 
     checkpoint_dir = Path(result["checkpoint_dir"])
-    command = seen["cmd"]
+    request = json.loads((checkpoint_dir / "request.json").read_text())
+    command = request["command"]
 
     assert checkpoint_dir == (
         Path(cfg.log_dir) / "artifacts" / "research-checkpoint-000010"
     )
-    assert command[:6] == [
-        "codex",
-        "--search",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ignore-user-config",
-    ]
-    assert "--ignore-user-config" in command
-    assert "--search" in command
-    assert command[command.index("--sandbox") + 1] == "read-only"
-    assert command[command.index("--model") + 1] == "gpt-root-hypothesis"
-    assert 'model_reasoning_effort="low"' in command
-    assert seen["stdin"].startswith(
+    assert command[:2] == ["codex", "app-server"]
+    assert "exec" not in command
+    assert seen["model"] == "gpt-root-hypothesis"
+    assert seen["reasoning_effort"] == "low"
+    assert seen["web_search"] is True
+    assert seen["output_schema"] == research.RESEARCH_RESPONSE_SCHEMA
+    assert seen["prompt"].startswith(
         "You are a research scientist and Kaggle competition strategist."
     )
-    assert "root hypothesis model" not in seen["stdin"]
-    assert "research reasoning effort" not in seen["stdin"]
-    assert "materialize after hypothesis" not in seen["stdin"]
-    assert "execute after materialization" not in seen["stdin"]
-    assert "Runtime options" not in seen["stdin"]
-    assert "agent mode" not in seen["stdin"]
-    assert "gpu:" not in seen["stdin"]
-    assert "aux:" not in seen["stdin"]
+    assert "root hypothesis model" not in seen["prompt"]
+    assert "research reasoning effort" not in seen["prompt"]
+    assert "materialize after hypothesis" not in seen["prompt"]
+    assert "execute after materialization" not in seen["prompt"]
+    assert "Runtime options" not in seen["prompt"]
+    assert "agent mode" not in seen["prompt"]
+    assert "gpu:" not in seen["prompt"]
+    assert "aux:" not in seen["prompt"]
     assert (checkpoint_dir / "request.json").exists()
     assert (checkpoint_dir / "request.md").exists()
-    assert (
-        (checkpoint_dir / "codex_profile.toml")
-        .read_text()
-        .startswith('model = "gpt-root-hypothesis"')
-    )
+    profile = (checkpoint_dir / "codex_profile.toml").read_text()
+    assert 'transport = "codex_app_server"' in profile
+    assert 'model = "gpt-root-hypothesis"' in profile
     response = json.loads((checkpoint_dir / "response.json").read_text())
     assert response["parsed_response"]["summary"] == "researched"
     assert response["raw_response"].startswith('{"summary":')
     assert set(response["timings_seconds"]) >= {
         "build_prompt",
         "write_inputs",
-        "codex_subprocess",
+            "codex_subprocess",
+            "codex_app_server",
         "read_response",
         "parse_response",
         "total",
@@ -2323,9 +2321,14 @@ def test_run_research_checkpoint_logs_request_and_response(tmp_path):
     assert "Research checkpoint:" not in raw_response
     assert not (checkpoint_dir / "response_readable.txt").exists()
     assert response["exit_code"] == 0
+    assert response["thread_id"] == "thread-research"
+    assert response["turn_id"] == "turn-research"
     status = json.loads((checkpoint_dir / "status.json").read_text())
     assert status["status"] == "completed"
     assert status["timings_seconds"] == response["timings_seconds"]
+    assert status["transport"] == "codex_app_server"
+    assert status["thread_id"] == "thread-research"
+    assert status["turn_id"] == "turn-research"
 
 
 def test_research_advisor_does_not_duplicate_existing_checkpoint(tmp_path):
@@ -2347,7 +2350,17 @@ def test_research_advisor_uses_scored_working_count_for_checkpoints(tmp_path):
     journal = Journal()
     journal.append(_node(0.9, code="print('ok')", plan="ok"))
     journal.append(_node(None, code="raise RuntimeError('bug')", plan="bug"))
-    advisor = ResearchAdvisor(cfg=cfg, task_desc="task", runner=lambda *_a, **_k: None)
+
+    def fake_runner(**_kwargs):
+        return CodexAppServerResult(
+            text='{"summary":"researched","hypotheses":[]}',
+            status="completed",
+            thread_id="thread-research",
+            turn_id="turn-research",
+            duration_seconds=0.1,
+        )
+
+    advisor = ResearchAdvisor(cfg=cfg, task_desc="task", runner=fake_runner)
 
     assert (
         advisor.maybe_start(
@@ -2366,7 +2379,9 @@ def test_research_advisor_uses_scored_working_count_for_checkpoints(tmp_path):
         )
         is True
     )
-    assert (Path(cfg.log_dir) / "research" / "checkpoint-000002").exists()
+    assert (
+        Path(cfg.log_dir) / "artifacts" / "research-checkpoint-000002"
+    ).exists()
 
 
 def test_manual_research_advisor_records_offer_without_codex_runner(tmp_path):
