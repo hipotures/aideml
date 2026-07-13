@@ -2288,6 +2288,8 @@ class Agent:
                 thread_id = event["thread_id"]
                 break
         if thread_id is None:
+            if node.status == "failed":
+                return None
             raise RuntimeError(
                 f"Codex metadata is missing for node {node.id} (step {node.step})."
             )

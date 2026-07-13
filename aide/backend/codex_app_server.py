@@ -542,14 +542,11 @@ def invoke_codex_app_server(
                         text = item.get("text")
                         if isinstance(text, str) and text.strip():
                             final_text = text
-                        completion_deadline = min(
-                            deadline, time.monotonic() + USAGE_WAIT_SECONDS
-                        )
-                        if usage is not None:
-                            break
                 elif method == "thread/tokenUsage/updated":
                     usage = params
-                    if final_text is not None or turn_completed is not None:
+                    if turn_completed is not None and (
+                        final_text is not None or final_chunks
+                    ):
                         break
                 elif method == "turn/completed":
                     turn_completed = params
@@ -575,6 +572,19 @@ def invoke_codex_app_server(
                     )
 
             text = (final_text if final_text is not None else "".join(final_chunks)).strip()
+            if turn_completed is None:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        "Codex app-server timed out before reporting turn/completed "
+                        f"after {timeout_seconds:g} seconds."
+                    )
+                if proc.poll() is not None:
+                    raise RuntimeError(
+                        f"Codex app-server exited with code {proc.returncode} before reporting turn/completed."
+                    )
+                raise RuntimeError(
+                    "Codex app-server returned output without reporting turn/completed."
+                )
             if not text:
                 if time.monotonic() >= deadline:
                     raise TimeoutError(

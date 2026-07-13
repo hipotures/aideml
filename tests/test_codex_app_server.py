@@ -84,6 +84,12 @@ def test_app_server_protocol_returns_ids_usage_and_live_logs(tmp_path, monkeypat
                     },
                 },
             },
+            {
+                "method": "turn/completed",
+                "params": {
+                    "turn": {"id": "turn-1", "status": "completed"},
+                },
+            },
         ],
     )
 
@@ -123,6 +129,7 @@ def test_app_server_protocol_returns_ids_usage_and_live_logs(tmp_path, monkeypat
     events = (tmp_path / "codex_events.jsonl").read_text()
     assert "item/completed" in events
     assert "thread/tokenUsage/updated" in events
+    assert "turn/completed" in events
     assert "item/agentMessage/delta" not in events
     rpc = (tmp_path / "codex_rpc.jsonl").read_text()
     assert '"id": 0' in rpc
@@ -174,6 +181,12 @@ def test_app_server_resumes_or_forks_before_starting_turn(
             {
                 "method": "thread/tokenUsage/updated",
                 "params": {"tokenUsage": {"last": {}}},
+            },
+            {
+                "method": "turn/completed",
+                "params": {
+                    "turn": {"id": "turn-result", "status": "completed"},
+                },
             },
         ],
     )

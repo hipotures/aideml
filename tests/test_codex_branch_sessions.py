@@ -67,6 +67,29 @@ def test_root_group_uses_latest_existing_root_when_registry_is_missing(tmp_path)
     assert agent._codex_session_kwargs() == {"codex_thread_id": "thread-1"}
 
 
+def test_root_group_skips_failed_generation_without_codex_metadata(tmp_path):
+    cfg = _cfg(tmp_path)
+    journal = Journal()
+    valid = Node(
+        code="print(0)",
+        plan="valid",
+        codex_thread_id="thread-valid",
+        codex_turn_id="turn-valid",
+    )
+    failed = Node(code="raise RuntimeError", plan="failed", status="failed")
+    failed.artifact_dir_name = "failed-artifact"
+    journal.append(valid)
+    journal.append(failed)
+    artifact_dir = Path(cfg.log_dir) / "artifacts" / failed.artifact_dir_name
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "codex_events.jsonl").write_text(
+        '{"method":"configWarning","params":{}}\n'
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    assert agent._codex_session_kwargs() == {"codex_thread_id": "thread-valid"}
+
+
 def test_legacy_exec_node_backfills_fork_from_rollout_path(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     parent = Node(code="print('parent')", plan="parent")
