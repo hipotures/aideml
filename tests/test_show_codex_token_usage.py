@@ -3,7 +3,7 @@ import json
 from scripts.show_codex_token_usage import collect_token_usage
 
 
-def _write_response(path, *, thread_id, turn_id, input_tokens):
+def _write_response(path, *, thread_id, turn_id, input_tokens, action="resume"):
     path.parent.mkdir(parents=True)
     path.write_text(
         json.dumps(
@@ -11,7 +11,7 @@ def _write_response(path, *, thread_id, turn_id, input_tokens):
                 "info": {
                     "thread_id": thread_id,
                     "turn_id": turn_id,
-                    "thread_action": "resume",
+                    "thread_action": action,
                     "usage": {
                         "tokenUsage": {
                             "last": {
@@ -44,6 +44,13 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
         turn_id="turn-143",
         input_tokens=143,
     )
+    _write_response(
+        artifacts / "20260713T000000-old-51" / "response.json",
+        thread_id="thread-old",
+        turn_id="turn-51",
+        input_tokens=51,
+        action="",
+    )
     incomplete = artifacts / "20260713T000000-new-144" / "response.json"
     incomplete.parent.mkdir(parents=True)
     incomplete.write_text('{"status":"failed"}\n', encoding="utf-8")
@@ -54,3 +61,7 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
     assert [row.thread_id for row in rows] == ["thread-a", "thread-a"]
     assert rows[0].input_tokens == 143
     assert rows[0].cached_input_tokens == 10
+
+    full_rows = collect_token_usage(tmp_path / "run", full_view=True)
+    assert [row.step for row in full_rows] == [51, 143, 147]
+    assert full_rows[0].action == ""

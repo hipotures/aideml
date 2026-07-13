@@ -77,7 +77,11 @@ def _row_from_response(step: int, response_path: Path) -> TokenUsageRow | None:
     )
 
 
-def collect_token_usage(run_dir: Path) -> list[TokenUsageRow]:
+def collect_token_usage(
+    run_dir: Path,
+    *,
+    full_view: bool = False,
+) -> list[TokenUsageRow]:
     rows_by_step: dict[int, TokenUsageRow] = {}
     artifacts_dir = run_dir / "artifacts"
     if not artifacts_dir.is_dir():
@@ -93,7 +97,7 @@ def collect_token_usage(run_dir: Path) -> list[TokenUsageRow]:
         if not response_path.exists():
             continue
         row = _row_from_response(step, response_path)
-        if row is not None:
+        if row is not None and (full_view or row.action):
             rows_by_step[step] = row
     return [rows_by_step[step] for step in sorted(rows_by_step)]
 
@@ -129,12 +133,17 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run", help="Run name under logs/ or a path to a run directory")
+    parser.add_argument(
+        "--full-view",
+        action="store_true",
+        help="Include pre-session app-server steps without a thread action",
+    )
     args = parser.parse_args()
     run_dir = Path(args.run).expanduser()
     if not run_dir.is_dir():
         run_dir = Path("logs") / args.run
     run_dir = run_dir.resolve()
-    rows = collect_token_usage(run_dir)
+    rows = collect_token_usage(run_dir, full_view=args.full_view)
     Console().print(render_table(run_dir, rows))
 
 
