@@ -102,6 +102,7 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
     table = Table(title=f"Codex token usage · {run_dir.name}")
     table.add_column("Step", justify="right")
     table.add_column("Session / thread ID", no_wrap=True, min_width=36)
+    table.add_column("Turn ID", no_wrap=True, min_width=36)
     table.add_column("Action")
     table.add_column("Input", justify="right")
     table.add_column("Cached", justify="right")
@@ -113,6 +114,7 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
         table.add_row(
             str(row.step),
             row.thread_id,
+            row.turn_id,
             row.action,
             f"{row.input_tokens:,}",
             f"{row.cached_input_tokens:,}",
@@ -133,8 +135,7 @@ def main() -> None:
         run_dir = Path("logs") / args.run
     run_dir = run_dir.resolve()
     rows = collect_token_usage(run_dir)
-    terminal = Console()
-    Console(width=max(terminal.width, 150)).print(render_table(run_dir, rows))
+    Console().print(render_table(run_dir, rows))
 
 
 if __name__ == "__main__":
