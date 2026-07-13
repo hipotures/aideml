@@ -1008,6 +1008,9 @@ def _format_other_improving_hypotheses(
     parent_node: Node,
     attempt_entries: list[tuple[Node, Node | None]],
     epsilon: float,
+    public_scores_by_node_id: dict[str, float] | None = None,
+    hypothesis_descriptions_by_id: dict[str, str] | None = None,
+    exec_timeout_s: float | int | None = None,
 ) -> str | None:
     excluded_ids = _ancestor_ids(parent_node) | _descendant_ids(parent_node)
     for child, replacement in attempt_entries:
@@ -1015,7 +1018,7 @@ def _format_other_improving_hypotheses(
         if replacement is not None:
             excluded_ids.add(replacement.id)
 
-    blocks: list[str] = []
+    selected_nodes: list[Node] = []
     seen_designs: set[str] = set()
     for node in sorted(journal.nodes, key=_node_step_sort_value):
         if node.id in excluded_ids or node.parent is None or node.is_buggy:
@@ -1031,16 +1034,23 @@ def _format_other_improving_hypotheses(
         if design_key in seen_designs:
             continue
         seen_designs.add(design_key)
-        blocks.append(f"Design: {design}")
+        selected_nodes.append(node)
 
-    if not blocks:
+    if not selected_nodes:
         return None
     intro = (
         "These are unique designs from other nodes outside the selected parent "
         "tree that improved their own parent score. Use them as successful "
         "feature-mechanism references, not as examples to copy blindly."
     )
-    return intro + "\n\n" + "\n---\n".join(blocks)
+    summary = journal.generate_node_summary(
+        selected_nodes,
+        public_scores_by_node_id=public_scores_by_node_id,
+        hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
+        exec_timeout_s=exec_timeout_s,
+        runtime_score_epsilon=epsilon,
+    )
+    return intro + "\n\n" + summary
 
 
 def _compact_branch_hypothesis_text(text: str | None, *, max_chars: int) -> str:
@@ -2062,6 +2072,11 @@ class Agent:
             parent_node=parent_node,
             attempt_entries=attempt_entries,
             epsilon=epsilon,
+            public_scores_by_node_id=self.prompt_public_scores_by_node_id,
+            hypothesis_descriptions_by_id=(
+                self._branch_hypothesis_descriptions_by_id() or None
+            ),
+            exec_timeout_s=self.cfg.exec.timeout,
         )
         if other_improving_hypotheses is not None:
             prompt["Other improving hypotheses outside this node tree"] = (

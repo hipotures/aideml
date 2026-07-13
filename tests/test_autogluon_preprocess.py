@@ -2777,6 +2777,9 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     )
     strong_other_child.metric = MetricValue(0.81, maximize=True)
     strong_other_child.is_buggy = False
+    strong_other_child.analysis = "completed all folds with stable predictions"
+    strong_other_child.validity_warning = "validation reused for checkpoint selection"
+    strong_other_child.exec_time = 240
     duplicate_other_child = Node(
         plan="winning outside design",
         code=build_autogluon_wrapper(
@@ -2838,8 +2841,15 @@ def test_agent_autogluon_improve_prompt_adds_other_improving_hypotheses(
     assert "small winning outside design below epsilon" not in other
     assert "losing outside design" not in other
     assert "non improving current-tree child" not in other
-    assert "Step:" not in other
-    assert "Validation Metric:" not in other
+    assert "Step: 4" in other
+    assert "Results: completed all folds with stable predictions" in other
+    assert (
+        "Validity warning: validation reused for checkpoint selection" in other
+    )
+    assert "Validation Metric: 0.81000" in other
+    assert "Runtime note:" in other
+    assert "delta=+0.110000;" in other
+    assert "step 4 from 2: improved" in other
 
 
 @pytest.mark.parametrize(
