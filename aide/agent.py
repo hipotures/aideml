@@ -2559,8 +2559,12 @@ class Agent:
         if hypothesis_selection is None:
             solution_sketch_guideline.insert(
                 1,
-                "Take the Memory section into consideration when proposing the design,"
-                " don't propose the same modelling solution but keep the evaluation the same.",
+                "Use the recent Memory section as a partial record of what has already "
+                "been tried. Each Step and Design describes an earlier solution, while "
+                "evaluation results are intentionally omitted, so do not infer which "
+                "solution performed better. Propose a distinct independent solution "
+                "rather than repeating or closely imitating an earlier model, feature "
+                "set, or training approach, and keep the evaluation protocol the same.",
             )
         prompt["Instructions"] |= {
             "Solution sketch guideline": solution_sketch_guideline,

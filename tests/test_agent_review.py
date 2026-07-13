@@ -348,6 +348,14 @@ def test_legacy_agent_memory_uses_configured_recent_and_full_windows(tmp_path):
     assert "Design: plan 2" in memory
     assert "Results: results 2" not in memory
     assert "Validation Metric:" not in memory
+    guidelines = captured["prompt"]["Instructions"]["Solution sketch guideline"]
+    memory_guideline = next(line for line in guidelines if "recent Memory" in line)
+    assert "partial record of what has already been tried" in memory_guideline
+    assert "Each Step and Design describes an earlier solution" in memory_guideline
+    assert "evaluation results are intentionally omitted" in memory_guideline
+    assert "do not infer which solution performed better" in memory_guideline
+    assert "distinct independent solution" in memory_guideline
+    assert "keep the evaluation protocol the same" in memory_guideline
 
 
 def test_legacy_improve_prompt_can_include_parent_process_stdout_tail(tmp_path):
