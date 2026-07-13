@@ -132,6 +132,73 @@ def test_app_server_protocol_returns_ids_usage_and_live_logs(tmp_path, monkeypat
     assert "ephemeral = false" in profile
 
 
+@pytest.mark.parametrize(
+    ("invoke_kwargs", "expected_method", "expected_params"),
+    [
+        (
+            {"thread_id": "thread-parent"},
+            "thread/resume",
+            {"threadId": "thread-parent"},
+        ),
+        (
+            {
+                "fork_from": codex_app_server.CodexThreadFork(
+                    thread_id="thread-parent",
+                    turn_id="turn-parent",
+                )
+            },
+            "thread/fork",
+            {"threadId": "thread-parent", "lastTurnId": "turn-parent"},
+        ),
+    ],
+)
+def test_app_server_resumes_or_forks_before_starting_turn(
+    tmp_path, monkeypatch, invoke_kwargs, expected_method, expected_params
+):
+    process, _ = _install_protocol(
+        monkeypatch,
+        [
+            {"id": 0, "result": {"userAgent": "test"}},
+            {"id": 1, "result": {"thread": {"id": "thread-result"}}},
+            {"id": 2, "result": {"turn": {"id": "turn-result"}}},
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "answer",
+                    }
+                },
+            },
+            {
+                "method": "thread/tokenUsage/updated",
+                "params": {"tokenUsage": {"last": {}}},
+            },
+        ],
+    )
+
+    result = codex_app_server.invoke_codex_app_server(
+        prompt="hello",
+        model="gpt-5.5",
+        reasoning_effort="low",
+        web_search=False,
+        work_dir=tmp_path,
+        timeout=5,
+        log_dir=tmp_path,
+        **invoke_kwargs,
+    )
+
+    requests = [json.loads(line) for line in process.stdin.text.splitlines()]
+    thread_request = requests[2]
+    assert thread_request["method"] == expected_method
+    for key, value in expected_params.items():
+        assert thread_request["params"][key] == value
+    assert requests[3]["method"] == "turn/start"
+    assert requests[3]["params"]["threadId"] == "thread-result"
+    assert result.thread_id == "thread-result"
+
+
 def test_app_server_rpc_error_is_not_retried_with_codex_exec(tmp_path, monkeypatch):
     process, seen = _install_protocol(
         monkeypatch,

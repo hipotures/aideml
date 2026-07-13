@@ -2,7 +2,9 @@ import datetime as dt
 import logging
 import json
 import math
+import os
 import random
+import tempfile
 import time
 from importlib.util import find_spec
 from pathlib import Path
@@ -20,7 +22,8 @@ from .autogluon_preprocess import (
     preprocess_task_prompt_text,
     validate_preprocess_source,
 )
-from .backend import FunctionSpec, query
+from .backend import FunctionSpec, determine_provider, query, query_with_info
+from .backend.codex_app_server import DEFAULT_CODEX_HOME
 from .backend.utils import write_llm_response_code
 from .interpreter import ExecutionResult
 from .journal import (
@@ -1086,6 +1089,8 @@ class Agent:
         self.active_stage_started_at: float | None = None
         self._pending_node_ctime: float | None = None
         self._pending_llm_log_dir: Path | None = None
+        self._pending_codex_thread_id: str | None = None
+        self._pending_codex_turn_id: str | None = None
         self.last_search_decision: dict[str, Any] | None = None
         self.public_scores_by_node_id: dict[str, float] = {}
         self.prompt_public_scores_by_node_id: dict[str, float] = {}
@@ -1117,6 +1122,10 @@ class Agent:
         kwargs: dict[str, Any] = {"plan": plan, "code": code, "parent": parent}
         if self._pending_node_ctime is not None:
             kwargs["ctime"] = self._pending_node_ctime
+        if self._pending_codex_thread_id is not None:
+            kwargs["codex_thread_id"] = self._pending_codex_thread_id
+        if self._pending_codex_turn_id is not None:
+            kwargs["codex_turn_id"] = self._pending_codex_turn_id
         return Node(**kwargs)
 
     def _apply_research_metadata(
@@ -2186,13 +2195,172 @@ class Agent:
         except ValueError:
             return parent_node.code
 
+    def _codex_sessions_path(self) -> Path:
+        return Path(self.cfg.log_dir) / "codex_sessions.json"
+
+    def _load_codex_sessions(self) -> dict[str, Any]:
+        path = self._codex_sessions_path()
+        if not path.exists():
+            return {"version": 1, "groups": {}}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or not isinstance(payload.get("groups"), dict):
+            raise RuntimeError(f"Invalid Codex session registry: {path}")
+        return payload
+
+    def _save_codex_sessions(self, payload: dict[str, Any]) -> None:
+        path = self._codex_sessions_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_name: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                dir=path.parent,
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                delete=False,
+                encoding="utf-8",
+            ) as handle:
+                tmp_name = handle.name
+                json.dump(payload, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp_name, path)
+            tmp_name = None
+        finally:
+            if tmp_name is not None:
+                try:
+                    os.unlink(tmp_name)
+                except FileNotFoundError:
+                    pass
+
+    @staticmethod
+    def _codex_group_key(parent_node: Node | None) -> str:
+        return parent_node.id if parent_node is not None else "__root__"
+
+    def _legacy_codex_rollout(self, thread_id: str) -> Path | None:
+        source_home = Path(os.environ.get("CODEX_HOME", "~/.codex")).expanduser()
+        for home in dict.fromkeys((DEFAULT_CODEX_HOME, source_home)):
+            sessions_dir = home / "sessions"
+            if not sessions_dir.exists():
+                continue
+            matches = list(sessions_dir.glob(f"**/*{thread_id}.jsonl"))
+            if matches:
+                return max(matches, key=lambda path: path.stat().st_mtime)
+        return None
+
+    def _node_codex_ref(self, node: Node) -> dict[str, str] | None:
+        if node.codex_thread_id:
+            if node.codex_turn_id:
+                return {
+                    "thread_id": node.codex_thread_id,
+                    "turn_id": node.codex_turn_id,
+                }
+            rollout = self._legacy_codex_rollout(node.codex_thread_id)
+            if rollout is not None:
+                return {"thread_id": node.codex_thread_id, "path": str(rollout)}
+
+        if not node.artifact_dir_name:
+            return None
+        artifact_dir = self._node_artifact_dir(node)
+        response_path = artifact_dir / "response.json"
+        if response_path.exists():
+            response = json.loads(response_path.read_text(encoding="utf-8"))
+            info = response.get("info") if isinstance(response, dict) else None
+            if isinstance(info, dict) and isinstance(info.get("thread_id"), str):
+                thread_id = info["thread_id"]
+                turn_id = info.get("turn_id")
+                if isinstance(turn_id, str) and turn_id:
+                    return {"thread_id": thread_id, "turn_id": turn_id}
+
+        events_path = artifact_dir / "codex_events.jsonl"
+        if not events_path.exists():
+            return None
+        thread_id: str | None = None
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if event.get("type") == "thread.started" and isinstance(
+                event.get("thread_id"), str
+            ):
+                thread_id = event["thread_id"]
+                break
+        if thread_id is None:
+            raise RuntimeError(
+                f"Codex metadata is missing for node {node.id} (step {node.step})."
+            )
+        rollout = self._legacy_codex_rollout(thread_id)
+        if rollout is None:
+            raise RuntimeError(
+                f"Codex rollout {thread_id} for node {node.id} is unavailable."
+            )
+        return {"thread_id": thread_id, "path": str(rollout)}
+
+    def _codex_session_kwargs(self) -> dict[str, str]:
+        if not bool(getattr(self.acfg.code, "codex_branch_sessions", False)):
+            return {}
+        if determine_provider(self.acfg.code.model) != "codex":
+            return {}
+
+        parent = self.active_parent_node
+        registry = self._load_codex_sessions()
+        group = registry["groups"].get(self._codex_group_key(parent))
+        if isinstance(group, dict) and isinstance(group.get("thread_id"), str):
+            return {"codex_thread_id": group["thread_id"]}
+
+        siblings = (
+            [node for node in self.journal.nodes if node.parent is parent]
+            if parent is not None
+            else [node for node in self.journal.nodes if node.parent is None]
+        )
+        for sibling in sorted(siblings, key=lambda node: node.step, reverse=True):
+            ref = self._node_codex_ref(sibling)
+            if ref is None:
+                continue
+            if "path" in ref:
+                return {
+                    "codex_fork_thread_id": ref["thread_id"],
+                    "codex_fork_path": ref["path"],
+                }
+            return {"codex_thread_id": ref["thread_id"]}
+
+        if parent is None:
+            return {}
+        ref = self._node_codex_ref(parent)
+        if ref is None:
+            return {}
+        kwargs = {"codex_fork_thread_id": ref["thread_id"]}
+        if "turn_id" in ref:
+            kwargs["codex_fork_turn_id"] = ref["turn_id"]
+        if "path" in ref:
+            kwargs["codex_fork_path"] = ref["path"]
+        return kwargs
+
+    def _record_codex_generation(self, info: dict[str, Any]) -> None:
+        thread_id = info.get("thread_id")
+        turn_id = info.get("turn_id")
+        if not isinstance(thread_id, str) or not isinstance(turn_id, str):
+            raise RuntimeError("Codex app-server did not return generation thread metadata.")
+        self._pending_codex_thread_id = thread_id
+        self._pending_codex_turn_id = turn_id
+        registry = self._load_codex_sessions()
+        registry["groups"][self._codex_group_key(self.active_parent_node)] = {
+            "thread_id": thread_id,
+            "updated_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+        self._save_codex_sessions(registry)
+
     def plan_and_code_query(self, prompt, retries=3) -> tuple[str, str]:
         """Generate a natural language plan + code in the same LLM call and split them apart."""
         completion_text = None
         if bool(getattr(self.acfg.code, "web_search", False)):
             prompt = _add_code_web_search_instruction(prompt)
+        self._pending_codex_thread_id = None
+        self._pending_codex_turn_id = None
         for _ in range(retries):
-            completion_text = query(
+            completion_text, info = query_with_info(
                 system_message=prompt,
                 user_message=None,
                 model=self.acfg.code.model,
@@ -2202,7 +2370,13 @@ class Agent:
                 web_search=bool(getattr(self.acfg.code, "web_search", False)),
                 llm_log_dir=self._pending_llm_log_dir,
                 llm_log_context=self._generation_log_context(),
+                **self._codex_session_kwargs(),
             )
+            if (
+                bool(getattr(self.acfg.code, "codex_branch_sessions", False))
+                and determine_provider(self.acfg.code.model) == "codex"
+            ):
+                self._record_codex_generation(info)
             self._write_web_search_summary()
 
             code = extract_code(completion_text)
@@ -2678,11 +2852,16 @@ class Agent:
         self.set_active_stage("generating")
         self.active_research_hypothesis_id = None
         self.active_research_hypothesis_log_hint = None
+        self.active_parent_node = parent_node
         logger.debug(f"Agent is generating code, parent node type: {type(parent_node)}")
         previous_ctime = self._pending_node_ctime
         previous_log_dir = self._pending_llm_log_dir
+        previous_codex_thread_id = self._pending_codex_thread_id
+        previous_codex_turn_id = self._pending_codex_turn_id
         self._pending_node_ctime = node_ctime
         self._pending_llm_log_dir = llm_log_dir
+        self._pending_codex_thread_id = None
+        self._pending_codex_turn_id = None
 
         try:
             if parent_node is None and self._is_hypothesis_mode():
@@ -2714,6 +2893,8 @@ class Agent:
         finally:
             self._pending_node_ctime = previous_ctime
             self._pending_llm_log_dir = previous_log_dir
+            self._pending_codex_thread_id = previous_codex_thread_id
+            self._pending_codex_turn_id = previous_codex_turn_id
 
     def generate_preselected_hypothesis_root(
         self,
@@ -2733,8 +2914,12 @@ class Agent:
         )
         previous_ctime = self._pending_node_ctime
         previous_log_dir = self._pending_llm_log_dir
+        previous_codex_thread_id = self._pending_codex_thread_id
+        previous_codex_turn_id = self._pending_codex_turn_id
         self._pending_node_ctime = node_ctime
         self._pending_llm_log_dir = llm_log_dir
+        self._pending_codex_thread_id = None
+        self._pending_codex_turn_id = None
         try:
             node = self._draft_hypothesis_root(selection)
             node.artifact_dir_name = artifact_dir_name
@@ -2742,6 +2927,8 @@ class Agent:
         finally:
             self._pending_node_ctime = previous_ctime
             self._pending_llm_log_dir = previous_log_dir
+            self._pending_codex_thread_id = previous_codex_thread_id
+            self._pending_codex_turn_id = previous_codex_turn_id
 
     def execute_node(
         self, node: Node, exec_callback: ExecCallbackType

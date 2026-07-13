@@ -2527,7 +2527,7 @@ def test_agent_code_web_search_option_writes_markdown_summary(
     artifact_dir.mkdir()
     captured = {}
 
-    def fake_query(**kwargs):
+    def fake_query_with_info(**kwargs):
         captured["prompt"] = kwargs["system_message"]
         captured["web_search"] = kwargs.get("web_search")
         events = [
@@ -2564,10 +2564,15 @@ def test_agent_code_web_search_option_writes_markdown_summary(
             "```python\n"
             "def preprocess(df):\n"
             "    return df.copy()\n"
-            "```"
+            "```",
+            {"model": kwargs["model"]},
         )
 
-    monkeypatch.setitem(agent.plan_and_code_query.__globals__, "query", fake_query)
+    monkeypatch.setitem(
+        agent.plan_and_code_query.__globals__,
+        "query_with_info",
+        fake_query_with_info,
+    )
     agent._pending_llm_log_dir = artifact_dir
 
     plan, code = agent.plan_and_code_query({"Instructions": {}})

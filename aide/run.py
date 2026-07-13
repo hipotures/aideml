@@ -462,6 +462,15 @@ def parse_runtime_args(
 
 
 def validate_hypothesis_root_generate_workers(cfg: Config) -> int:
+    if bool(getattr(cfg.agent.code, "codex_branch_sessions", False)):
+        raw = getattr(cfg.research, "hypothesis_root_generate_workers", 1)
+        if raw != 1:
+            logger.warning(
+                "Codex branch sessions require sequential root generation; "
+                "forcing research.hypothesis_root_generate_workers=1."
+            )
+            cfg.research.hypothesis_root_generate_workers = 1
+        return 1
     raw = getattr(cfg.research, "hypothesis_root_generate_workers", 1)
     if isinstance(raw, bool) or not isinstance(raw, int):
         raise ValueError(
@@ -475,6 +484,15 @@ def validate_hypothesis_root_generate_workers(cfg: Config) -> int:
 
 
 def validate_code_ahead(cfg: Config) -> int:
+    if bool(getattr(cfg.agent.code, "codex_branch_sessions", False)):
+        raw = getattr(cfg.agent.search, "code_ahead", 0)
+        if raw != 0:
+            logger.warning(
+                "Codex branch sessions require sequential sibling generation; "
+                "forcing agent.search.code_ahead=0."
+            )
+            cfg.agent.search.code_ahead = 0
+        return 0
     raw = getattr(cfg.agent.search, "code_ahead", 0)
     if isinstance(raw, bool) or not isinstance(raw, int):
         raise ValueError("agent.search.code_ahead must be an integer from 0 to 8.")

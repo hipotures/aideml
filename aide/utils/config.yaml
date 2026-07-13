@@ -142,6 +142,8 @@ agent:
     reasoning_effort: low
     timeout: 600
     web_search: false
+    # Reuse one Codex thread per sibling group and fork when expanding a child.
+    codex_branch_sessions: false
 
   # LLM settings for evaluating program output / tracebacks
   feedback:

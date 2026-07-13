@@ -6,7 +6,7 @@ from pathlib import Path
 
 from funcy import notnone, select_values
 
-from .codex_app_server import invoke_codex_app_server
+from .codex_app_server import CodexThreadFork, invoke_codex_app_server
 from .utils import FunctionSpec, OutputType
 
 
@@ -35,6 +35,10 @@ def query(
     web_search = bool(filtered_kwargs.pop("web_search", False))
     log_dir = filtered_kwargs.pop("llm_log_dir", None)
     log_prefix = filtered_kwargs.pop("llm_log_prefix", "")
+    thread_id = filtered_kwargs.pop("codex_thread_id", None)
+    fork_thread_id = filtered_kwargs.pop("codex_fork_thread_id", None)
+    fork_turn_id = filtered_kwargs.pop("codex_fork_turn_id", None)
+    fork_path = filtered_kwargs.pop("codex_fork_path", None)
     prompt = _prompt_text(system_message, user_message)
 
     temp_context = None
@@ -52,6 +56,15 @@ def query(
                 json.dumps(output_schema, indent=2),
                 encoding="utf-8",
             )
+        fork_from = (
+            CodexThreadFork(
+                thread_id=str(fork_thread_id),
+                turn_id=str(fork_turn_id) if fork_turn_id else None,
+                path=Path(fork_path) if fork_path else None,
+            )
+            if fork_thread_id
+            else None
+        )
         result = invoke_codex_app_server(
             prompt=prompt,
             model=model,
@@ -62,6 +75,8 @@ def query(
             output_schema=output_schema,
             log_dir=work_dir,
             log_prefix=log_prefix,
+            thread_id=str(thread_id) if thread_id else None,
+            fork_from=fork_from,
         )
         raw_output = result.text
     finally:
@@ -81,6 +96,9 @@ def query(
         "thread_id": result.thread_id,
         "turn_id": result.turn_id,
         "usage": result.usage,
+        "thread_action": "fork" if fork_from else ("resume" if thread_id else "start"),
+        "source_thread_id": fork_from.thread_id if fork_from else thread_id,
+        "source_turn_id": fork_from.turn_id if fork_from else None,
     }
     return (
         output,

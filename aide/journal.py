@@ -353,6 +353,8 @@ class Node(DataClassJsonMixin):
     id: str = field(default_factory=lambda: uuid.uuid4().hex, kw_only=True)
     ctime: float = field(default_factory=lambda: time.time(), kw_only=True)
     artifact_dir_name: str | None = field(default=None, kw_only=True)
+    codex_thread_id: str | None = field(default=None, kw_only=True)
+    codex_turn_id: str | None = field(default=None, kw_only=True)
     parent: Optional["Node"] = field(default=None, kw_only=True)
     children: set["Node"] = field(default_factory=set, kw_only=True)
     status: Literal["ok", "bug", "failed", "generated"] | None = field(

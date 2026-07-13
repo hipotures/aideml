@@ -42,6 +42,13 @@ class CodexAppServerResult:
     stderr: str = ""
 
 
+@dataclass(frozen=True)
+class CodexThreadFork:
+    thread_id: str
+    turn_id: str | None = None
+    path: Path | None = None
+
+
 def _prefixed(prefix: str | None, name: str) -> str:
     return f"{prefix}_{name}" if prefix else name
 
@@ -296,6 +303,9 @@ def _write_profile(
     web_search: bool,
     work_dir: Path,
     output_schema: dict[str, Any] | None,
+    thread_action: str,
+    source_thread_id: str | None,
+    source_turn_id: str | None,
 ) -> None:
     payload = {
         "transport": "codex_app_server",
@@ -307,6 +317,9 @@ def _write_profile(
         "web_search": "live" if web_search else "disabled",
         "work_dir": sanitize_persisted_payload(str(work_dir)),
         "output_schema": output_schema is not None,
+        "thread_action": thread_action,
+        "source_thread_id": source_thread_id or "",
+        "source_turn_id": source_turn_id or "",
         "command": sanitize_persisted_payload(command),
     }
     lines = [
@@ -319,6 +332,9 @@ def _write_profile(
         f'web_search = "{payload["web_search"]}"',
         f'work_dir = {json.dumps(payload["work_dir"])}',
         f'output_schema = {str(payload["output_schema"]).lower()}',
+        f'thread_action = {json.dumps(payload["thread_action"])}',
+        f'source_thread_id = {json.dumps(payload["source_thread_id"])}',
+        f'source_turn_id = {json.dumps(payload["source_turn_id"])}',
         "",
         "[command]",
         "argv = [",
@@ -339,6 +355,8 @@ def invoke_codex_app_server(
     output_schema: dict[str, Any] | None = None,
     log_dir: Path | None = None,
     log_prefix: str | None = None,
+    thread_id: str | None = None,
+    fork_from: CodexThreadFork | None = None,
 ) -> CodexAppServerResult:
     """Run one durable Codex thread/turn through a short-lived app-server."""
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -348,6 +366,16 @@ def invoke_codex_app_server(
     rpc_path = artifact_dir / _prefixed(log_prefix, "codex_rpc.jsonl")
     stderr_path = artifact_dir / _prefixed(log_prefix, "stderr.log")
     profile_path = artifact_dir / _prefixed(log_prefix, "codex_profile.toml")
+    requested_thread_id = thread_id
+    if requested_thread_id is not None and fork_from is not None:
+        raise ValueError("thread_id and fork_from are mutually exclusive.")
+    thread_action = (
+        "fork" if fork_from is not None else ("resume" if requested_thread_id else "start")
+    )
+    source_thread_id = (
+        fork_from.thread_id if fork_from is not None else requested_thread_id
+    )
+    source_turn_id = fork_from.turn_id if fork_from is not None else None
     command = app_server_command(web_search=web_search)
     _write_profile(
         profile_path,
@@ -357,6 +385,9 @@ def invoke_codex_app_server(
         web_search=web_search,
         work_dir=work_dir,
         output_schema=output_schema,
+        thread_action=thread_action,
+        source_thread_id=source_thread_id,
+        source_turn_id=source_turn_id,
     )
 
     timeout_seconds = float(timeout) if timeout is not None else 600.0
@@ -400,7 +431,12 @@ def invoke_codex_app_server(
                             "name": "aideml",
                             "title": "AIDE ML",
                             "version": "0.1.0",
-                        }
+                        },
+                        "capabilities": (
+                            {"experimentalApi": True}
+                            if fork_from is not None and fork_from.path is not None
+                            else None
+                        ),
                     },
                 ),
             )
@@ -420,14 +456,27 @@ def invoke_codex_app_server(
                 "cwd": str(work_dir),
                 "sandbox": "read-only",
                 "approvalPolicy": "never",
-                "ephemeral": False,
                 "config": (
                     {"model_reasoning_effort": reasoning_effort}
                     if reasoning_effort
                     else None
                 ),
             }
-            _send(proc, _request(1, "thread/start", thread_params))
+            if fork_from is not None:
+                thread_method = "thread/fork"
+                thread_params["ephemeral"] = False
+                thread_params |= {
+                    "threadId": fork_from.thread_id,
+                    "lastTurnId": fork_from.turn_id,
+                    "path": str(fork_from.path) if fork_from.path is not None else None,
+                }
+            elif requested_thread_id is not None:
+                thread_method = "thread/resume"
+                thread_params |= {"threadId": requested_thread_id}
+            else:
+                thread_method = "thread/start"
+                thread_params["ephemeral"] = False
+            _send(proc, _request(1, thread_method, thread_params))
             thread_response = _read_until_response(
                 proc,
                 1,

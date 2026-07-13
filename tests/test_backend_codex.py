@@ -70,6 +70,30 @@ def test_codex_backend_enables_search(tmp_path, monkeypatch):
     assert seen["web_search"] is True
 
 
+def test_codex_backend_forwards_fork_metadata(tmp_path, monkeypatch):
+    seen = {}
+
+    def fake_invoke(**kwargs):
+        seen.update(kwargs)
+        return _result()
+
+    monkeypatch.setattr(backend_codex, "invoke_codex_app_server", fake_invoke)
+
+    *_, info = backend_codex.query(
+        system_message="system",
+        user_message=None,
+        model="gpt-5.5",
+        llm_log_dir=tmp_path,
+        codex_fork_thread_id="thread-parent",
+        codex_fork_turn_id="turn-parent",
+    )
+
+    assert seen["thread_id"] is None
+    assert seen["fork_from"].thread_id == "thread-parent"
+    assert seen["fork_from"].turn_id == "turn-parent"
+    assert info["thread_action"] == "fork"
+
+
 def test_codex_backend_passes_schema_and_parses_response(tmp_path, monkeypatch):
     seen = {}
 

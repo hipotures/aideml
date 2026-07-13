@@ -65,8 +65,9 @@ def query(
     temperature: float | None = None,
     max_tokens: int | None = None,
     func_spec: FunctionSpec | None = None,
+    return_info: bool = False,
     **model_kwargs,
-) -> OutputType:
+) -> OutputType | tuple[OutputType, dict]:
     """
     General LLM query for various backends with a single system and user message.
     Supports function calling for some backends.
@@ -196,4 +197,14 @@ def query(
             },
         )
 
+    if return_info:
+        return output, info
     return output
+
+
+def query_with_info(*args, **kwargs) -> tuple[OutputType, dict]:
+    """Run a query and return its provider metadata alongside the output."""
+    kwargs["return_info"] = True
+    result = query(*args, **kwargs)
+    assert isinstance(result, tuple)
+    return result
