@@ -191,7 +191,7 @@ def _model_factories(class_count: int):
             colsample_bytree=0.9,
             reg_alpha=0.05,
             reg_lambda=2.0,
-            device_type="gpu",
+            device="cuda",
             random_state=seed,
             n_jobs=-1,
             verbosity=-1,

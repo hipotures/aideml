@@ -14,6 +14,7 @@ from aide.journal import Journal
 from aide.legacy_import_template import TEMPLATE_NAME
 from aide.utils import serialize
 from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
+from aide.utils.config import save_run
 from scripts.seed_run_from_submission_lab import (
     rewrite_generated_submission_lab_run,
     seed_run_from_submission_lab,
@@ -187,8 +188,10 @@ print("Validation balanced_accuracy: 0.5")
     assert "StratifiedKFold" in imported_ag_code
     assert "LogisticRegression" in imported_ag_code
     assert 'class_weight="balanced"' in imported_ag_code
-    assert 'device="cuda"' in imported_ag_code
-    assert 'device_type="gpu"' in imported_ag_code
+    assert imported_ag_code.count('device="cuda"') == 2
+    assert 'device_type="gpu"' not in imported_ag_code
+    assert 'device="cpu"' not in imported_ag_code
+    assert "fallback" not in imported_ag_code.lower()
     assert 'task_type="GPU"' in imported_ag_code
     assert 'write_submission(submission)' in imported_ag_code
 
@@ -263,14 +266,34 @@ print("Validation balanced_accuracy: 0.5")
     ]
     assert imported["legacy_import_template"] == TEMPLATE_NAME
 
+    failed_node = journal.nodes[0]
+    failed_node.status = "bug"
+    failed_node.is_buggy = True
+    failed_node.exc_type = "LightGBMError"
+    failed_node.exc_info = {
+        "args": [
+            "GPU Tree Learner was not enabled in this build.\n"
+            "Please recompile with CMake option -DUSE_GPU=1"
+        ]
+    }
+    failed_node.exc_stack = "old legacy template traceback"
+    failed_artifact = result.log_dir / "artifacts" / failed_node.artifact_dir_name
+    (failed_artifact / "error.txt").write_text("old GPU backend error", encoding="utf-8")
+    save_run(cfg, journal)
+
     rewritten = rewrite_generated_submission_lab_run(
         run_id=result.run_id,
         rows=rows,
         logs_dir=tmp_path / "logs",
         limit=3,
+        reset_lightgbm_gpu_failures=True,
     )
     assert len(rewritten.seeded) == 3
     rewritten_journal = serialize.load_json(result.log_dir / "journal.json", Journal)
+    assert [node.status for node in rewritten_journal.nodes] == ["generated"] * 3
+    assert rewritten_journal.nodes[0].exc_type is None
+    assert not (failed_artifact / "error.txt").exists()
+    assert (failed_artifact / "previous_lightgbm_gpu_error.txt").exists()
     assert "autogluon" not in rewritten_journal.nodes[0].code.lower()
     assert rewritten_journal.nodes[2].code == legacy_code
 

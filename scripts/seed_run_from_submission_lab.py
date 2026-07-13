@@ -17,6 +17,7 @@ from omegaconf import OmegaConf
 from aide.autogluon_preprocess import extract_preprocess_source
 from aide.journal import Journal
 from aide.legacy_import_template import TEMPLATE_NAME, build_legacy_stacking_template
+from aide.run import mark_node_generated_only
 from aide.utils import serialize
 from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME, SEEDED_BASE_PLAN_PREFIX
 from aide.utils.config import _load_cfg, prep_agent_workspace, prep_cfg, save_run
@@ -32,6 +33,9 @@ from aide.utils.seed_artifact import (
 from scripts import kaggle_submission_lab as lab
 from scripts import smart_kaggle_submit as smart
 from scripts.seed_run_from_nodes import _validate_run_id
+
+
+LIGHTGBM_LEGACY_GPU_ERROR = "GPU Tree Learner was not enabled in this build."
 
 
 @dataclass(frozen=True)
@@ -320,8 +324,9 @@ def rewrite_generated_submission_lab_run(
     rows: list[dict[str, Any]],
     logs_dir: Path,
     limit: int = 10,
+    reset_lightgbm_gpu_failures: bool = False,
 ) -> SubmissionLabSeedResult:
-    """Replace only generated roots in an existing imported run."""
+    """Replace generated roots and, when requested, the known wrong-GPU failures."""
     _validate_run_id(run_id)
     log_dir = (logs_dir / run_id).resolve()
     config_path = log_dir / "config.yaml"
@@ -340,11 +345,24 @@ def rewrite_generated_submission_lab_run(
 
     journal = serialize.load_json(journal_path, Journal)
     candidates = select_unique_public_candidates(rows, limit=limit)
+    resettable_nodes = {
+        node.id
+        for node in journal.nodes
+        if reset_lightgbm_gpu_failures
+        and node.parent is None
+        and node.status == "bug"
+        and node.exc_type == "LightGBMError"
+        and LIGHTGBM_LEGACY_GPU_ERROR in json.dumps(node.exc_info or {})
+    }
     if len(journal.nodes) != len(candidates) or any(
-        node.status != "generated" or node.parent is not None for node in journal.nodes
+        (node.status != "generated" and node.id not in resettable_nodes)
+        or node.parent is not None
+        for node in journal.nodes
     ):
         raise ValueError(
-            "Existing run may be rewritten only while all imported roots are unexecuted."
+            "Existing run may be rewritten only while roots are unexecuted, or when "
+            "--reset-lightgbm-gpu-failures matches the exact obsolete LightGBM GPU "
+            "backend error."
         )
 
     previous_manifest = json.loads(
@@ -364,6 +382,19 @@ def rewrite_generated_submission_lab_run(
 
     seeded: list[SeededArtifactNode] = []
     for node, candidate in zip(journal.nodes, candidates, strict=True):
+        artifact_dir = log_dir / "artifacts" / str(node.artifact_dir_name)
+        if node.id in resettable_nodes:
+            error_path = artifact_dir / "error.txt"
+            previous_error_path = artifact_dir / "previous_lightgbm_gpu_error.txt"
+            if error_path.exists():
+                if previous_error_path.exists():
+                    raise FileExistsError(
+                        f"Preserved LightGBM error already exists: {previous_error_path}"
+                    )
+                error_path.rename(previous_error_path)
+            mark_node_generated_only(node)
+            node.analysis = None
+            node.submission_validation = None
         node.code = _imported_code(candidate, cfg=cfg)
         node.plan = _import_plan(candidate)
         node.run_stats = {
@@ -371,7 +402,6 @@ def rewrite_generated_submission_lab_run(
             "code_only": True,
             "legacy_import_template": TEMPLATE_NAME,
         }
-        artifact_dir = log_dir / "artifacts" / str(node.artifact_dir_name)
         (artifact_dir / "solution.py").write_text(node.code, encoding="utf-8")
         _rewrite_manifest(
             cfg=cfg,
@@ -425,6 +455,14 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[
         action="store_true",
         help="Create empty input/working directories instead of preparing task data.",
     )
+    parser.add_argument(
+        "--reset-lightgbm-gpu-failures",
+        action="store_true",
+        help=(
+            "With --rewrite-run, reset only roots that failed because the legacy "
+            "template selected LightGBM's unavailable 'gpu' backend instead of CUDA."
+        ),
+    )
     return parser.parse_known_args(argv)
 
 
@@ -455,9 +493,14 @@ def main(argv: list[str] | None = None) -> int:
             rows=rows,
             logs_dir=args.index.parent,
             limit=args.limit,
+            reset_lightgbm_gpu_failures=args.reset_lightgbm_gpu_failures,
         )
         print(f"Rewritten run: {result.run_id}")
     else:
+        if args.reset_lightgbm_gpu_failures:
+            raise ValueError(
+                "--reset-lightgbm-gpu-failures requires --rewrite-run."
+            )
         result = seed_run_from_submission_lab(
             rows=rows,
             cli_overrides=cli_overrides,
