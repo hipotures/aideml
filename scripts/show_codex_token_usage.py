@@ -126,6 +126,10 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
     table.add_column("Output", justify="right")
     table.add_column("Turn total", justify="right")
     table.add_column("Thread total", justify="right")
+    step_styles = {
+        step: "on grey30" if rank % 2 == 1 else None
+        for rank, step in enumerate(dict.fromkeys(row.step for row in rows))
+    }
     for row in rows:
         table.add_row(
             str(row.step),
@@ -139,6 +143,7 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
             f"{row.output_tokens:,}",
             f"{row.turn_total_tokens:,}",
             f"{row.thread_total_tokens:,}",
+            style=step_styles[row.step],
         )
     return table
 

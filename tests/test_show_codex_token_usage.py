@@ -1,6 +1,6 @@
 import json
 
-from scripts.show_codex_token_usage import collect_token_usage
+from scripts.show_codex_token_usage import collect_token_usage, render_table
 
 
 def _write_response(path, *, thread_id, turn_id, input_tokens, action="resume"):
@@ -77,3 +77,7 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
     full_rows = collect_token_usage(tmp_path / "run", full_view=True)
     assert [row.step for row in full_rows] == [51, 143, 143, 147]
     assert full_rows[0].action == ""
+
+    table = render_table(tmp_path / "run", rows)
+    assert table.rows[0].style == table.rows[1].style
+    assert table.rows[1].style != table.rows[2].style
