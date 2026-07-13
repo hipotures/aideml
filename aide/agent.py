@@ -18,6 +18,7 @@ from .autogluon_preprocess import (
     extract_preprocess_source,
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
+    legacy_starter_design,
     parse_result_marker,
     preprocess_task_prompt_text,
     validate_preprocess_source,
@@ -2205,6 +2206,22 @@ class Agent:
             code=code,
         )
 
+    def _legacy_autogluon_starter(self) -> Node | None:
+        starter_cfg = getattr(self.acfg, "legacy_starter", None)
+        raw_profile = getattr(starter_cfg, "autogluon_profile", None)
+        profile = str(raw_profile or "").strip()
+        if self.acfg.mode != "legacy" or not profile:
+            return None
+        code = build_autogluon_wrapper(
+            baseline_preprocess_source(),
+            self.cfg,
+            profile=profile,
+        )
+        return self._new_node(
+            plan=legacy_starter_design(self.cfg, profile=profile),
+            code=code,
+        )
+
     def _previous_preprocess_source(self, parent_node: Node) -> str:
         try:
             return extract_preprocess_source(parent_node.code)
@@ -2927,6 +2944,10 @@ class Agent:
                 return self._autogluon_raw_baseline()
             if parent_node is None and self._is_hypothesis_mode():
                 return self._draft_hypothesis_root()
+            if parent_node is None and not self.journal.nodes:
+                legacy_starter = self._legacy_autogluon_starter()
+                if legacy_starter is not None:
+                    return legacy_starter
             if parent_node is None:
                 return self._draft()
             if parent_node.is_buggy:

@@ -142,6 +142,11 @@ agent:
   # <file.csv|file.csv.gz> = expose one raw auxiliary CSV flat in workspace/input
   aux: false
 
+  # Optional deterministic step-0 baseline for legacy full-script runs. The
+  # value names one entry from agent.autogluon.profiles; null disables it.
+  legacy_starter:
+    autogluon_profile: null
+
   # LLM settings for coding
   code:
     model: gpt-5.4-mini
@@ -203,6 +208,123 @@ agent:
         fit_args:
           save_space: true
           fit_weighted_ensemble: false
+          auto_stack: false
+      # Canonical raw-feature baselines for optional legacy step 0. All four
+      # use the same five-fold AutoGluon bagging protocol and differ only by
+      # execution device and class weighting.
+      legacy_baseline_cpu_unweighted:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: false
+        validation_strategy: autogluon
+        fair_model_scheduling: true
+        hyperparameters:
+          XGB:
+            - device: cpu
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+          GBM:
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+          CAT:
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+        fit_args:
+          num_bag_folds: 5
+          num_bag_sets: 1
+          num_stack_levels: 0
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
+      legacy_baseline_cpu_balanced:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: false
+        validation_strategy: autogluon
+        class_balance: balanced
+        fair_model_scheduling: true
+        hyperparameters:
+          XGB:
+            - device: cpu
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+          GBM:
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+          CAT:
+            - ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 0}
+        fit_args:
+          num_bag_folds: 5
+          num_bag_sets: 1
+          num_stack_levels: 0
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
+      legacy_baseline_gpu_unweighted:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: true
+        validation_strategy: autogluon
+        fair_model_scheduling: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          num_bag_folds: 5
+          num_bag_sets: 1
+          num_stack_levels: 0
+          save_space: true
+          fit_weighted_ensemble: true
+          auto_stack: false
+      legacy_baseline_gpu_balanced:
+        included_model_types: [XGB, GBM, CAT]
+        presets: medium_quality
+        time_limit: 600
+        use_gpu: true
+        validation_strategy: autogluon
+        class_balance: balanced
+        fair_model_scheduling: true
+        hyperparameters:
+          XGB:
+            - device: cuda
+              tree_method: hist
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          GBM:
+            - device: cuda
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+          CAT:
+            - task_type: GPU
+              devices: "0"
+              gpu_ram_part: 0.8
+              ag_args: {priority: 100}
+              ag_args_fit: {num_gpus: 1}
+        fit_args:
+          num_bag_folds: 5
+          num_bag_sets: 1
+          num_stack_levels: 0
+          save_space: true
+          fit_weighted_ensemble: true
           auto_stack: false
       # Fixed-family S6E7 screening profiles. Each requests exactly one
       # default configuration per required model family at equal priority so a

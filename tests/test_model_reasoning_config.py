@@ -92,6 +92,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.include_parent_process_stdout is True
     assert cfg.agent.parent_process_stdout_max_bytes == 5000
     assert cfg.agent.gpu is False
+    assert cfg.agent.legacy_starter.autogluon_profile is None
 
 
 def test_load_cfg_ignores_dotenv_by_default_under_pytest(tmp_path, monkeypatch):
@@ -119,6 +120,26 @@ def test_agent_code_model_env_accepts_backend_reasoning_effort(tmp_path, monkeyp
 
     assert cfg.agent.code.model == "gpt-5.6-luna"
     assert cfg.agent.code.reasoning_effort == "max"
+
+
+def test_legacy_starter_profile_env_overrides_default(tmp_path, monkeypatch):
+    monkeypatch.delenv(
+        "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE",
+        raising=False,
+    )
+    (tmp_path / ".env").write_text(
+        "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE="
+        "legacy_baseline_gpu_balanced\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = prep_cfg(_base_cfg(tmp_path, load_env=True), load_env=True)
+
+    assert (
+        cfg.agent.legacy_starter.autogluon_profile
+        == "legacy_baseline_gpu_balanced"
+    )
 
 
 def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypatch):

@@ -17,6 +17,7 @@ from aide.autogluon_preprocess import (
     BASELINE_PLAN_PREFIX,
     build_autogluon_wrapper,
     extract_preprocess_source,
+    legacy_starter_design,
     parse_result_marker,
     preprocess_task_prompt_text,
     resolve_autogluon_settings,
@@ -2442,6 +2443,81 @@ def test_agent_autogluon_first_node_is_raw_baseline_without_llm(tmp_path):
     assert "def preprocess(df: pd.DataFrame) -> pd.DataFrame:" in node.code
     assert "return df.copy()" in node.code
     assert "TabularPredictor" in node.code
+
+
+@pytest.mark.parametrize(
+    ("profile", "use_gpu", "class_balance"),
+    [
+        ("legacy_baseline_cpu_unweighted", False, None),
+        ("legacy_baseline_cpu_balanced", False, "balanced"),
+        ("legacy_baseline_gpu_unweighted", True, None),
+        ("legacy_baseline_gpu_balanced", True, "balanced"),
+    ],
+)
+def test_legacy_baseline_profiles_are_canonical(
+    tmp_path, profile, use_gpu, class_balance
+):
+    cfg = _cfg(tmp_path)
+
+    settings = resolve_autogluon_settings(cfg, profile=profile)
+
+    assert settings["included_model_types"] == ["XGB", "GBM", "CAT"]
+    assert settings["use_gpu"] is use_gpu
+    assert settings.get("class_balance") == class_balance
+    assert settings["fit_args"]["num_bag_folds"] == 5
+    assert settings["fit_args"]["fit_weighted_ensemble"] is True
+
+
+def test_agent_legacy_first_node_uses_configured_autogluon_starter(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    cfg.agent.legacy_starter.autogluon_profile = "legacy_baseline_gpu_balanced"
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+
+    def fail_plan_and_code(_prompt):
+        raise AssertionError("legacy starter should not call the code LLM")
+
+    agent.plan_and_code_query = fail_plan_and_code  # type: ignore[method-assign]
+
+    node = agent.generate_node(None)
+
+    assert node.parent is None
+    assert node.plan == legacy_starter_design(
+        cfg, profile="legacy_baseline_gpu_balanced"
+    )
+    assert "XGBoost, LightGBM, CatBoost" in node.plan
+    assert "Inverse-frequency sample weights" in node.plan
+    assert "'profile': 'legacy_baseline_gpu_balanced'" in node.code
+    assert "'num_bag_folds': 5" in node.code
+    assert "TabularPredictor" in node.code
+    assert "def main() -> None:" in node.code
+
+
+def test_legacy_starter_branch_receives_complete_wrapper_code(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    cfg.agent.legacy_starter.autogluon_profile = "legacy_baseline_gpu_balanced"
+    journal = Journal()
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    baseline = agent.generate_node(None)
+    baseline.metric = MetricValue(0.95, maximize=True)
+    baseline.is_buggy = False
+    journal.append(baseline)
+    captured = {}
+
+    def fake_plan_and_code(prompt):
+        captured["prompt"] = prompt
+        return "change one thing", "print('changed')\n"
+
+    agent.plan_and_code_query = fake_plan_and_code  # type: ignore[method-assign]
+
+    child = agent._improve(baseline)
+
+    previous_code = captured["prompt"]["Previous solution"]["Code"]
+    assert "AIDE_AG_CONFIG" in previous_code
+    assert "TabularPredictor" in previous_code
+    assert "def main() -> None:" in previous_code
+    assert child.parent is baseline
 
 
 def test_agent_autogluon_baseline_is_selected_for_expansion(tmp_path):

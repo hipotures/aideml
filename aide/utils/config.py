@@ -212,6 +212,11 @@ class AutoGluonConfig:
 
 
 @dataclass
+class LegacyStarterConfig:
+    autogluon_profile: str | None = None
+
+
+@dataclass
 class AgentConfig:
     steps: int
     k_fold_validation: int
@@ -230,6 +235,7 @@ class AgentConfig:
     gpu: bool = False
     aux: bool | str | None = False
     mode: str = "legacy"
+    legacy_starter: LegacyStarterConfig = field(default_factory=LegacyStarterConfig)
     autogluon: AutoGluonConfig = field(default_factory=AutoGluonConfig)
 
 
@@ -443,6 +449,10 @@ def _apply_env_aliases(
         "AIDE_AGENT_MODE": ("agent.mode", str.strip),
         "AIDE_AGENT_AUX": ("agent.aux", str.strip),
         "AIDE_AGENT_GPU": ("agent.gpu", _env_bool),
+        "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE": (
+            "agent.legacy_starter.autogluon_profile",
+            str.strip,
+        ),
         "AIDE_AGENT_HYPOTHESES": ("agent.hypotheses", _env_int),
         "AIDE_AGENT_K_FOLD_VALIDATION": ("agent.k_fold_validation", _env_int),
         "AIDE_AGENT_DATA_PREVIEW": ("agent.data_preview", _env_bool),

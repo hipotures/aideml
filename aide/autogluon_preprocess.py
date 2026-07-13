@@ -666,10 +666,14 @@ def _positive_int_option(value: object, name: str) -> int:
     return numeric
 
 
-def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
+def resolve_autogluon_settings(
+    cfg: Config,
+    *,
+    profile: str | None = None,
+) -> dict[str, Any]:
     ag = cfg.agent.autogluon
     profiles = dict(_container(getattr(ag, "profiles", {})) or {})
-    profile = getattr(ag, "profile", "full_boost")
+    profile = profile or getattr(ag, "profile", "full_boost")
     profile_settings = profiles.get(profile)
     if profile_settings is None:
         known = ", ".join(sorted(profiles))
@@ -743,6 +747,52 @@ def resolve_autogluon_settings(cfg: Config) -> dict[str, Any]:
     return settings
 
 
+def legacy_starter_design(cfg: Config, *, profile: str) -> str:
+    """Describe the deterministic legacy baseline represented by ``profile``."""
+    settings = resolve_autogluon_settings(cfg, profile=profile)
+    model_names = {
+        "XGB": "XGBoost",
+        "GBM": "LightGBM",
+        "CAT": "CatBoost",
+    }
+    included = settings.get("included_model_types") or []
+    models = [model_names.get(str(model), str(model)) for model in included]
+    model_text = ", ".join(models) if models else "AutoGluon's default model set"
+    fit_args = dict(settings.get("fit_args") or {})
+    folds = int(fit_args.get("num_bag_folds") or 0)
+    device = "GPU" if settings.get("use_gpu") else "CPU"
+    ensemble_text = (
+        "and fits AutoGluon's weighted ensemble"
+        if fit_args.get("fit_weighted_ensemble", True)
+        else "without a weighted ensemble"
+    )
+    balance = settings.get("class_balance")
+    normalized_balance = balance.strip().lower() if isinstance(balance, str) else balance
+    if normalized_balance is None or (
+        isinstance(normalized_balance, str)
+        and normalized_balance in {"none", "off", "unweighted"}
+    ):
+        balance_text = "Training uses the original class frequencies without reweighting."
+    else:
+        balance_text = (
+            "Inverse-frequency sample weights normalized to unit mean address class "
+            "imbalance during fitting."
+        )
+    validation_text = (
+        f"AutoGluon's internal {folds}-fold bagging supplies OOF validation predictions"
+        if folds > 0
+        else "The configured AutoGluon validation strategy supplies validation predictions"
+    )
+    return (
+        f"{BASELINE_PLAN_PREFIX}: The fixed {profile!r} starter trains {model_text} "
+        "on the raw competition covariates, ignores the identifier, and adds no "
+        f"engineered or auxiliary features. It runs on {device}; {validation_text} "
+        f"for the configured project metric {ensemble_text}. {balance_text} The common "
+        "runner writes the submission plus OOF and test prediction artifacts for direct "
+        "comparison with later legacy branches."
+    )
+
+
 def _load_project_env() -> dict[str, str]:
     load_dotenv(dotenv_path=Path(".env"), override=True)
     project_name = os.getenv("AIDE_PROJECT_NAME", "").strip()
@@ -762,10 +812,14 @@ def resolve_autogluon_included_model_types(cfg: Config) -> list[str]:
     return list(included or [])
 
 
-def _profile_settings_for_cfg(cfg: Config) -> dict[str, Any]:
+def _profile_settings_for_cfg(
+    cfg: Config,
+    *,
+    profile: str | None = None,
+) -> dict[str, Any]:
     ag = cfg.agent.autogluon
     profiles = dict(_container(getattr(ag, "profiles", {})) or {})
-    profile = getattr(ag, "profile", "full_boost")
+    profile = profile or getattr(ag, "profile", "full_boost")
     profile_settings = profiles.get(profile)
     if isinstance(profile_settings, list):
         return {"included_model_types": profile_settings}
@@ -776,9 +830,15 @@ def _profile_settings_for_cfg(cfg: Config) -> dict[str, Any]:
     return dict(profile_settings)
 
 
-def build_visible_autogluon_config(cfg: Config, settings: dict[str, Any]) -> dict[str, Any]:
-    visible: dict[str, Any] = {"profile": str(cfg.agent.autogluon.profile)}
-    profile_settings = _profile_settings_for_cfg(cfg)
+def build_visible_autogluon_config(
+    cfg: Config,
+    settings: dict[str, Any],
+    *,
+    profile: str | None = None,
+) -> dict[str, Any]:
+    profile = profile or str(cfg.agent.autogluon.profile)
+    visible: dict[str, Any] = {"profile": profile}
+    profile_settings = _profile_settings_for_cfg(cfg, profile=profile)
     for key in (
         "included_model_types",
         "presets",
@@ -833,10 +893,11 @@ def build_autogluon_wrapper(
     cfg: Config,
     *,
     research_hypothesis_id: str | None = None,
+    profile: str | None = None,
 ) -> str:
     validate_preprocess_source(preprocess_source)
-    settings = resolve_autogluon_settings(cfg)
-    constants = build_visible_autogluon_config(cfg, settings)
+    settings = resolve_autogluon_settings(cfg, profile=profile)
+    constants = build_visible_autogluon_config(cfg, settings, profile=profile)
     constants_literal = pprint.pformat(constants, sort_dicts=True, width=88)
     _ = research_hypothesis_id
     research_marker_fields = ""
