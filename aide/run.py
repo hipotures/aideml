@@ -702,9 +702,9 @@ def _runtime_suffix_from_seconds(value: object) -> str:
         return ""
     if seconds <= 0:
         return ""
+    if seconds < 60:
+        return f"·{max(1, int(round(seconds)))}s"
     minutes = int(round(seconds / 60.0))
-    if minutes <= 0:
-        return ""
     return f"·{minutes}m"
 
 

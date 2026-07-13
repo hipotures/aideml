@@ -41,6 +41,7 @@ from aide.run import (
     ResourceSnapshot,
     ArrowKeyReader,
     _overlay_top,
+    _runtime_suffix_from_seconds,
     active_tree_item_id,
     best_tree_item_id,
     build_tree_view,
@@ -535,6 +536,13 @@ def test_tree_view_appends_nonzero_runtime_minutes_to_labels():
     assert "0.94500·0·16m" in view_output
     assert "● 0.94600·1·47m" in view_output
     assert "step-" not in view_output
+
+
+def test_runtime_suffix_uses_seconds_below_one_minute():
+    assert _runtime_suffix_from_seconds(22.4) == "·22s"
+    assert _runtime_suffix_from_seconds(59.4) == "·59s"
+    assert _runtime_suffix_from_seconds(60) == "·1m"
+    assert _runtime_suffix_from_seconds(0) == ""
 
 
 def test_journal_tree_renders_active_hypothesis_id_on_placeholder():
