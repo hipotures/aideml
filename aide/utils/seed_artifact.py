@@ -453,25 +453,44 @@ def seed_journal_from_artifacts(
     *,
     ctime: float | None = None,
     code_only: bool = False,
+    code_overrides: list[str | None] | None = None,
+    plan_overrides: list[str | None] | None = None,
 ) -> tuple[Journal, list[SeededArtifactNode]]:
     if not sources:
         raise ValueError("At least one seed artifact source is required.")
+    if code_overrides is not None and len(code_overrides) != len(sources):
+        raise ValueError("code_overrides must match the number of seed sources.")
+    if plan_overrides is not None and len(plan_overrides) != len(sources):
+        raise ValueError("plan_overrides must match the number of seed sources.")
+    if not code_only and code_overrides is not None and any(
+        code is not None for code in code_overrides
+    ):
+        raise ValueError("code_overrides require code_only=True.")
 
     log_dir = Path(cfg.log_dir)
     next_ctime = time.time() if ctime is None else ctime
     journal = Journal()
     seeded: list[SeededArtifactNode] = []
 
-    for source in sources:
+    for index, source in enumerate(sources):
         artifact_dir, node_ctime = _target_artifact_dir(log_dir, next_ctime)
         next_ctime = node_ctime + 1.0
+        code_override = code_overrides[index] if code_overrides is not None else None
         if code_only:
             artifact_dir.mkdir(parents=True, exist_ok=False)
-            shutil.copy2(source.artifact_dir / "solution.py", artifact_dir / "solution.py")
+            solution_path = artifact_dir / "solution.py"
+            if code_override is None:
+                shutil.copy2(source.artifact_dir / "solution.py", solution_path)
+            else:
+                solution_path.write_text(code_override, encoding="utf-8")
         else:
             shutil.copytree(source.artifact_dir, artifact_dir)
 
         node = _seed_node_from_source(source, ctime=node_ctime, code_only=code_only)
+        if code_override is not None:
+            node.code = code_override
+        if plan_overrides is not None and plan_overrides[index] is not None:
+            node.plan = str(plan_overrides[index])
         node.artifact_dir_name = artifact_dir.name
         journal.append(node)
         _rewrite_manifest(
