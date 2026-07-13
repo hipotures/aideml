@@ -446,7 +446,8 @@ def test_static_js_uses_desktop_tree_prefix_above_mobile_width():
 
     assert 'window.matchMedia("(max-width: 767px)")' in js
     assert "line.desktop_prefix || line.prefix" in js
-    assert "if (lastSnapshot) renderTree(lastSnapshot);" in js
+    assert "if (lastSnapshot) {" in js
+    assert "renderTree(lastSnapshot);" in js
 
 
 def test_web_dashboard_marks_logs_tab_when_snapshot_refresh_fails():
@@ -488,20 +489,46 @@ def test_web_dashboard_renders_full_token_table_with_compact_ids():
 
     for heading in (
         "Step",
-        "Agent",
         "Session",
         "Turn",
-        "Action",
         "Input",
         "Cached",
         "Uncached",
         "Output",
-        "Turn total",
-        "Thread total",
     ):
         assert f"<th>{heading}</th>" in html
+    assert '<span class="wide-label">Agent</span>' in html
+    assert '<span class="compact-label">At</span>' in html
+    assert '<span class="wide-label">Action</span>' in html
+    assert '<span class="compact-label">An</span>' in html
+    assert '<span class="compact-label">tot</span>' in html
     assert ".slice(0, 8)" in js
     assert "row.input_tokens - row.cached_input_tokens" in js
     assert 'tr.classList.toggle("step-alt"' in js
     assert ".token-table tbody tr.step-alt" in css
     assert "min-width: 980px;" in css
+
+
+def test_mobile_token_table_uses_compact_labels_values_and_widths():
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert 'function useCompactTokenTable()' in js
+    assert 'agent === "code" ? "C"' in js
+    assert 'agent === "feedback" ? "F"' in js
+    assert '{ start: "▶", resume: "↻", fork: "⑂" }' in js
+    assert "renderTokenUsage(lastSnapshot);" in js
+    assert "@media (max-width: 767px)" in css
+    assert "width: max-content;" in css
+    assert "min-width: 0;" in css
+    assert "padding: 4px;" in css
+
+
+def test_tab_overflow_triangles_are_vertically_centered():
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert ".tabs::before," in css
+    assert "display: flex;" in css
+    assert "height: 48px;" in css
+    assert "align-items: center;" in css
+    assert "line-height: 1;" in css

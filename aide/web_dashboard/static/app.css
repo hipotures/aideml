@@ -44,8 +44,15 @@ main {
   position: absolute;
   z-index: 2;
   top: 0;
+  bottom: 0;
+  display: flex;
+  height: 48px;
+  align-items: center;
   color: #1d9bf0;
-  font: 700 11px/48px inherit;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
   pointer-events: none;
 }
 
@@ -404,12 +411,48 @@ main {
   background: #35383d;
 }
 
+.compact-label {
+  display: none;
+}
+
 .token-panel .empty {
   padding: 0 10px;
 }
 
 .empty {
   color: #7d8794;
+}
+
+@media (max-width: 767px) {
+  .token-table-wrap {
+    min-width: 0;
+  }
+
+  .token-table {
+    width: max-content;
+    min-width: 0;
+    font-size: 10px;
+  }
+
+  .token-table th,
+  .token-table td {
+    padding: 4px;
+  }
+
+  .token-table th:nth-child(2),
+  .token-table th:nth-child(5),
+  .token-table td:nth-child(2),
+  .token-table td:nth-child(5) {
+    text-align: center;
+  }
+
+  .wide-label {
+    display: none;
+  }
+
+  .compact-label {
+    display: inline;
+  }
 }
 
 @media (min-width: 1000px) {

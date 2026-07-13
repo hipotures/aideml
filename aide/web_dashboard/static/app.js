@@ -211,6 +211,20 @@ function shortId(value) {
   return text(value).slice(0, 8);
 }
 
+function useCompactTokenTable() {
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
+function tokenAgent(agent) {
+  if (!useCompactTokenTable()) return text(agent);
+  return agent === "code" ? "C" : agent === "feedback" ? "F" : text(agent);
+}
+
+function tokenAction(action) {
+  if (!useCompactTokenTable()) return text(action);
+  return { start: "▶", resume: "↻", fork: "⑂" }[action] || text(action);
+}
+
 function renderTokenUsage(snapshot) {
   const title = document.getElementById("token-title");
   title.textContent = `Codex token usage · ${text(snapshot.run_id)}`;
@@ -230,10 +244,10 @@ function renderTokenUsage(snapshot) {
     tr.classList.toggle("step-alt", stepRank % 2 === 1);
     const values = [
       row.step,
-      row.agent,
+      tokenAgent(row.agent),
       shortId(row.thread_id),
       shortId(row.turn_id),
-      row.action,
+      tokenAction(row.action),
       formatTokens(row.input_tokens),
       formatTokens(row.cached_input_tokens),
       formatTokens(row.input_tokens - row.cached_input_tokens),
@@ -283,7 +297,10 @@ async function refresh() {
 }
 
 window.addEventListener("resize", () => {
-  if (lastSnapshot) renderTree(lastSnapshot);
+  if (lastSnapshot) {
+    renderTree(lastSnapshot);
+    renderTokenUsage(lastSnapshot);
+  }
 });
 updateVisibleTabs("tree");
 refresh();
