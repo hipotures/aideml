@@ -276,6 +276,30 @@ def test_high_cv3_profile_combines_high_preset_with_three_fold_bagging():
     assert profile.fit_args.num_stack_levels == 0
 
 
+def test_boost_gpu_ens_cv5_matches_s6e6_cv3_with_five_fold_bagging():
+    cfg = _load_cfg(use_cli_args=False)
+
+    profile = cfg.agent.autogluon.profiles.boost_gpu_ens_cv5
+    cv3_profile = cfg.agent.autogluon.profiles.s6e6_boost_gpu_ens_cv3
+
+    assert profile.included_model_types == cv3_profile.included_model_types
+    assert profile.presets == cv3_profile.presets
+    assert profile.time_limit == cv3_profile.time_limit
+    assert profile.use_gpu == cv3_profile.use_gpu
+    assert profile.validation_strategy == cv3_profile.validation_strategy
+    assert profile.class_balance == cv3_profile.class_balance
+    assert profile.hyperparameters == cv3_profile.hyperparameters
+    assert profile.fit_args.save_space == cv3_profile.fit_args.save_space
+    assert (
+        profile.fit_args.fit_weighted_ensemble
+        == cv3_profile.fit_args.fit_weighted_ensemble
+    )
+    assert profile.fit_args.auto_stack == cv3_profile.fit_args.auto_stack
+    assert profile.fit_args.num_bag_folds == 5
+    assert profile.fit_args.num_bag_sets == cv3_profile.fit_args.num_bag_sets
+    assert profile.fit_args.num_stack_levels == cv3_profile.fit_args.num_stack_levels
+
+
 def test_prep_cfg_resolves_cli_model_suffix(tmp_path):
     cfg = _base_cfg(tmp_path)
     cfg.agent.code.model = "gpt-5.5:high"
