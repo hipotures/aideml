@@ -12,16 +12,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from aide.autogluon_preprocess import (
-    build_autogluon_wrapper,
-    extract_preprocess_source,
-)
+from omegaconf import OmegaConf
+
+from aide.autogluon_preprocess import extract_preprocess_source
+from aide.journal import Journal
+from aide.legacy_import_template import TEMPLATE_NAME, build_legacy_stacking_template
+from aide.utils import serialize
 from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME, SEEDED_BASE_PLAN_PREFIX
 from aide.utils.config import _load_cfg, prep_agent_workspace, prep_cfg, save_run
 from aide.utils.path_portability import sanitize_persisted_payload, to_portable_path
 from aide.utils.seed_artifact import (
     SeedArtifactSource,
     SeededArtifactNode,
+    _rewrite_manifest,
     seed_artifact_source_from_manifest,
     seed_journal_from_artifacts,
     source_is_autogluon,
@@ -29,9 +32,6 @@ from aide.utils.seed_artifact import (
 from scripts import kaggle_submission_lab as lab
 from scripts import smart_kaggle_submit as smart
 from scripts.seed_run_from_nodes import _validate_run_id
-
-
-DEFAULT_PROFILE = "boost_gpu_ens_cv5_stack1"
 
 
 @dataclass(frozen=True)
@@ -186,10 +186,10 @@ def load_ranked_rows(
     )
 
 
-def _import_plan(candidate: RankedImportCandidate, *, profile: str) -> str:
+def _import_plan(candidate: RankedImportCandidate) -> str:
     row = candidate.registry_row
     transform = (
-        f"AutoGluon preprocess(df) imported into fixed profile {profile}"
+        f"AutoGluon preprocess(df) imported into legacy template {TEMPLATE_NAME}"
         if candidate.is_autogluon
         else "legacy solution imported unchanged"
     )
@@ -208,16 +208,14 @@ def _import_plan(candidate: RankedImportCandidate, *, profile: str) -> str:
     return plan
 
 
-def _imported_code(candidate: RankedImportCandidate, *, cfg: Any, profile: str) -> str:
+def _imported_code(candidate: RankedImportCandidate, *, cfg: Any) -> str:
     if candidate.preprocess_source is None:
         return candidate.source_code
-    return build_autogluon_wrapper(candidate.preprocess_source, cfg, profile=profile)
+    return build_legacy_stacking_template(candidate.preprocess_source, cfg)
 
 
 def _write_import_manifest(
     result: SubmissionLabSeedResult,
-    *,
-    profile: str,
 ) -> None:
     roots = []
     for candidate, seeded in zip(result.candidates, result.seeded, strict=True):
@@ -235,14 +233,14 @@ def _write_import_manifest(
                 "source_solution_path": to_portable_path(candidate.source_solution_path),
                 "source_submission_sha256": row.get("sha256"),
                 "canonical_code_sha256": candidate.canonical_code_sha256,
-                "transform_profile": profile if candidate.is_autogluon else None,
+                "legacy_import_template": TEMPLATE_NAME if candidate.is_autogluon else None,
             }
         )
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "selection": "submission_lab_public_desc_unique_canonical_code",
         "agent_mode": "legacy",
-        "autogluon_import_profile": profile,
+        "legacy_import_template": TEMPLATE_NAME,
         "roots": roots,
     }
     (result.log_dir / "imported_roots.json").write_text(
@@ -257,7 +255,6 @@ def seed_run_from_submission_lab(
     cli_overrides: list[str],
     limit: int = 10,
     run_id: str | None = None,
-    profile: str = DEFAULT_PROFILE,
     prepare_workspace: bool = True,
 ) -> SubmissionLabSeedResult:
     _validate_run_id(run_id)
@@ -266,9 +263,6 @@ def seed_run_from_submission_lab(
 
     candidates = select_unique_public_candidates(rows, limit=limit)
     cfg = prep_cfg(_load_cfg(cli_args=cli_overrides))
-    profiles = cfg.agent.autogluon.profiles
-    if profile not in profiles:
-        raise ValueError(f"Unknown AutoGluon import profile: {profile}")
 
     logs_dir = Path(cfg.log_dir).parent
     workspaces_dir = Path(cfg.workspace_dir).parent
@@ -281,7 +275,6 @@ def seed_run_from_submission_lab(
     cfg.agent.gpu = True
     cfg.agent.k_fold_validation = 5
     cfg.agent.search.num_drafts = len(candidates)
-    cfg.agent.autogluon.profile = profile
     cfg.agent.legacy_starter.autogluon_profile = None
 
     log_dir = Path(cfg.log_dir)
@@ -298,9 +291,9 @@ def seed_run_from_submission_lab(
         (workspace_dir / "working").mkdir(parents=True, exist_ok=True)
 
     imported_codes = [
-        _imported_code(candidate, cfg=cfg, profile=profile) for candidate in candidates
+        _imported_code(candidate, cfg=cfg) for candidate in candidates
     ]
-    plans = [_import_plan(candidate, profile=profile) for candidate in candidates]
+    plans = [_import_plan(candidate) for candidate in candidates]
     journal, seeded = seed_journal_from_artifacts(
         cfg,
         [candidate.source for candidate in candidates],
@@ -317,7 +310,93 @@ def seed_run_from_submission_lab(
         candidates=tuple(candidates),
         seeded=tuple(seeded),
     )
-    _write_import_manifest(result, profile=profile)
+    _write_import_manifest(result)
+    return result
+
+
+def rewrite_generated_submission_lab_run(
+    *,
+    run_id: str,
+    rows: list[dict[str, Any]],
+    logs_dir: Path,
+    limit: int = 10,
+) -> SubmissionLabSeedResult:
+    """Replace only generated roots in an existing imported run."""
+    _validate_run_id(run_id)
+    log_dir = (logs_dir / run_id).resolve()
+    config_path = log_dir / "config.yaml"
+    journal_path = log_dir / "journal.json"
+    if not config_path.exists() or not journal_path.exists():
+        raise FileNotFoundError(f"Existing run is incomplete: {log_dir}")
+
+    cfg = OmegaConf.load(config_path)
+    cfg.log_dir = log_dir
+    workspace_dir = Path(cfg.workspace_dir)
+    if not workspace_dir.is_absolute():
+        workspace_dir = (Path.cwd() / workspace_dir).resolve()
+    cfg.workspace_dir = workspace_dir
+    if cfg.agent.mode != "legacy":
+        raise ValueError(f"Refusing to rewrite non-legacy run: {run_id}")
+
+    journal = serialize.load_json(journal_path, Journal)
+    candidates = select_unique_public_candidates(rows, limit=limit)
+    if len(journal.nodes) != len(candidates) or any(
+        node.status != "generated" or node.parent is not None for node in journal.nodes
+    ):
+        raise ValueError(
+            "Existing run may be rewritten only while all imported roots are unexecuted."
+        )
+
+    previous_manifest = json.loads(
+        (log_dir / "imported_roots.json").read_text(encoding="utf-8")
+    )
+    previous_roots = list(previous_manifest.get("roots") or [])
+    previous_identity = [
+        (root.get("public_rank"), root.get("canonical_code_sha256"))
+        for root in previous_roots
+    ]
+    current_identity = [
+        (candidate.public_rank, candidate.canonical_code_sha256)
+        for candidate in candidates
+    ]
+    if previous_identity != current_identity:
+        raise ValueError("Ranked source identities differ from the existing imported run.")
+
+    seeded: list[SeededArtifactNode] = []
+    for node, candidate in zip(journal.nodes, candidates, strict=True):
+        node.code = _imported_code(candidate, cfg=cfg)
+        node.plan = _import_plan(candidate)
+        node.run_stats = {
+            "seeded_from_manifest": True,
+            "code_only": True,
+            "legacy_import_template": TEMPLATE_NAME,
+        }
+        artifact_dir = log_dir / "artifacts" / str(node.artifact_dir_name)
+        (artifact_dir / "solution.py").write_text(node.code, encoding="utf-8")
+        _rewrite_manifest(
+            cfg=cfg,
+            node=node,
+            source=candidate.source,
+            artifact_dir=artifact_dir,
+            code_only=True,
+        )
+        seeded.append(
+            SeededArtifactNode(
+                source=candidate.source,
+                node=node,
+                artifact_dir=artifact_dir,
+            )
+        )
+
+    save_run(cfg, journal)
+    result = SubmissionLabSeedResult(
+        run_id=run_id,
+        log_dir=log_dir,
+        workspace_dir=workspace_dir,
+        candidates=tuple(candidates),
+        seeded=tuple(seeded),
+    )
+    _write_import_manifest(result)
     return result
 
 
@@ -335,8 +414,12 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[
     parser.add_argument("--competition", default=lab.default_competition())
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--scan-limit", type=int, default=20)
-    parser.add_argument("--run-id")
-    parser.add_argument("--profile", default=DEFAULT_PROFILE)
+    run_target = parser.add_mutually_exclusive_group()
+    run_target.add_argument("--run-id")
+    run_target.add_argument(
+        "--rewrite-run",
+        help="Rewrite an unexecuted imported run after template changes.",
+    )
     parser.add_argument(
         "--no-prepare-workspace",
         action="store_true",
@@ -364,15 +447,25 @@ def main(argv: list[str] | None = None) -> int:
         competition=args.competition,
         scan_limit=args.scan_limit,
     )
-    result = seed_run_from_submission_lab(
-        rows=rows,
-        cli_overrides=cli_overrides,
-        limit=args.limit,
-        run_id=args.run_id,
-        profile=args.profile,
-        prepare_workspace=not args.no_prepare_workspace,
-    )
-    print(f"Created run: {result.run_id}")
+    if args.rewrite_run:
+        if cli_overrides:
+            raise ValueError("AIDE config overrides are not accepted with --rewrite-run.")
+        result = rewrite_generated_submission_lab_run(
+            run_id=args.rewrite_run,
+            rows=rows,
+            logs_dir=args.index.parent,
+            limit=args.limit,
+        )
+        print(f"Rewritten run: {result.run_id}")
+    else:
+        result = seed_run_from_submission_lab(
+            rows=rows,
+            cli_overrides=cli_overrides,
+            limit=args.limit,
+            run_id=args.run_id,
+            prepare_workspace=not args.no_prepare_workspace,
+        )
+        print(f"Created run: {result.run_id}")
     print(f"Log dir: {result.log_dir}")
     print(f"Workspace dir: {result.workspace_dir}")
     print("Imported roots:")

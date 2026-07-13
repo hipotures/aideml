@@ -1,14 +1,23 @@
+import contextlib
 import hashlib
 import json
+import sys
+import types
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 from omegaconf import OmegaConf
 
 from aide.autogluon_preprocess import extract_preprocess_source
 from aide.journal import Journal
+from aide.legacy_import_template import TEMPLATE_NAME
 from aide.utils import serialize
-from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME, parse_autogluon_config
-from scripts.seed_run_from_submission_lab import seed_run_from_submission_lab
+from aide.utils.artifact_manifest import RESULT_MANIFEST_NAME
+from scripts.seed_run_from_submission_lab import (
+    rewrite_generated_submission_lab_run,
+    seed_run_from_submission_lab,
+)
 
 
 def _write_source_artifact(
@@ -162,7 +171,6 @@ print("Validation balanced_accuracy: 0.5")
     assert cfg.agent.k_fold_validation == 5
     assert cfg.agent.search.num_drafts == 3
     assert cfg.agent.legacy_starter.autogluon_profile is None
-    assert cfg.agent.autogluon.profile == "boost_gpu_ens_cv5_stack1"
 
     assert 'out["feature_a"] = 1' in extract_preprocess_source(journal.nodes[0].code)
     assert 'out["feature_b"] = 1' in extract_preprocess_source(journal.nodes[1].code)
@@ -170,16 +178,81 @@ print("Validation balanced_accuracy: 0.5")
     for node in journal.nodes:
         compile(node.code, "<imported-root>", "exec")
 
-    ag_config = parse_autogluon_config(journal.nodes[0].code)
-    assert ag_config is not None
-    assert ag_config["profile"] == "boost_gpu_ens_cv5_stack1"
-    assert ag_config["included_model_types"] == ["XGB", "GBM", "CAT"]
-    assert ag_config["use_gpu"] is True
-    assert ag_config["class_balance"] == "balanced"
-    assert ag_config["fit_args"]["num_bag_folds"] == 5
-    assert ag_config["fit_args"]["num_stack_levels"] == 1
-    assert ag_config["fit_args"]["fit_weighted_ensemble"] is True
-    assert 'artifact_submission_path = artifact_dir / "submission.csv"' in journal.nodes[0].code
+    imported_ag_code = journal.nodes[0].code
+    assert "autogluon" not in imported_ag_code.lower()
+    assert "TabularPredictor" not in imported_ag_code
+    assert "XGBClassifier" in imported_ag_code
+    assert "LGBMClassifier" in imported_ag_code
+    assert "CatBoostClassifier" in imported_ag_code
+    assert "StratifiedKFold" in imported_ag_code
+    assert "LogisticRegression" in imported_ag_code
+    assert 'class_weight="balanced"' in imported_ag_code
+    assert 'device="cuda"' in imported_ag_code
+    assert 'device_type="gpu"' in imported_ag_code
+    assert 'task_type="GPU"' in imported_ag_code
+    assert 'write_submission(submission)' in imported_ag_code
+
+    class FakeClassifier:
+        def __init__(self, **_kwargs):
+            self.class_count = 0
+
+        def fit(self, _features, target, **_kwargs):
+            self.class_count = len(np.unique(target))
+            return self
+
+        def predict_proba(self, features):
+            probabilities = np.arange(1, self.class_count + 1, dtype=np.float64)
+            probabilities /= probabilities.sum()
+            return np.tile(probabilities, (len(features), 1))
+
+    helper_module = types.ModuleType("aide_solution_helpers")
+    helper_module.aide_stage = lambda _name: contextlib.nullcontext()
+    helper_module.load_competition_data = lambda: None
+    helper_module.log_stage = lambda _message: None
+    helper_module.write_oof_predictions = lambda _frame: None
+    helper_module.write_submission = lambda _frame: None
+    helper_module.write_test_predictions = lambda _frame: None
+    monkeypatch.setitem(sys.modules, "aide_solution_helpers", helper_module)
+    namespace = {}
+    definition_code = imported_ag_code.rsplit("\nmain()\n", 1)[0]
+    exec(compile(definition_code, "<legacy-template-smoke>", "exec"), namespace)
+    namespace["XGBClassifier"] = FakeClassifier
+    namespace["LGBMClassifier"] = FakeClassifier
+    namespace["CatBoostClassifier"] = FakeClassifier
+    namespace["LogisticRegression"] = FakeClassifier
+    smoke_train = pd.DataFrame(
+        {
+            "id": np.arange(15),
+            "value": np.linspace(0.0, 1.0, 15),
+            "target": ["a", "b", "c"] * 5,
+        }
+    )
+    smoke_test = pd.DataFrame(
+        {"id": np.arange(100, 106), "value": np.linspace(0.1, 0.9, 6)}
+    )
+    smoke_sample = pd.DataFrame({"id": smoke_test["id"], "target": "a"})
+    written = {}
+    namespace["load_competition_data"] = lambda: (
+        smoke_train.copy(),
+        smoke_test.copy(),
+        smoke_sample.copy(),
+    )
+    namespace["aide_stage"] = lambda _name: contextlib.nullcontext()
+    namespace["log_stage"] = lambda _message: None
+    namespace["write_submission"] = lambda frame: written.setdefault(
+        "submission", frame.copy()
+    )
+    namespace["write_oof_predictions"] = lambda frame: written.setdefault(
+        "oof", frame.copy()
+    )
+    namespace["write_test_predictions"] = lambda frame: written.setdefault(
+        "test", frame.copy()
+    )
+    namespace["main"]()
+    assert written["submission"].columns.tolist() == ["id", "target"]
+    assert len(written["submission"]) == len(smoke_test)
+    assert len(written["oof"]) == len(smoke_train)
+    assert len(written["test"]) == len(smoke_test)
 
     imported = json.loads((result.log_dir / "imported_roots.json").read_text())
     assert [root["public_rank"] for root in imported["roots"]] == [1, 3, 4]
@@ -188,7 +261,18 @@ print("Validation balanced_accuracy: 0.5")
         "autogluon",
         "legacy",
     ]
-    assert imported["autogluon_import_profile"] == "boost_gpu_ens_cv5_stack1"
+    assert imported["legacy_import_template"] == TEMPLATE_NAME
+
+    rewritten = rewrite_generated_submission_lab_run(
+        run_id=result.run_id,
+        rows=rows,
+        logs_dir=tmp_path / "logs",
+        limit=3,
+    )
+    assert len(rewritten.seeded) == 3
+    rewritten_journal = serialize.load_json(result.log_dir / "journal.json", Journal)
+    assert "autogluon" not in rewritten_journal.nodes[0].code.lower()
+    assert rewritten_journal.nodes[2].code == legacy_code
 
     for artifact in result.log_dir.glob("artifacts/*"):
         assert (artifact / "solution.py").exists()
