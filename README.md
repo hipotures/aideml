@@ -126,6 +126,7 @@ Common flags
 | `agent.search.num_drafts` | Drafts per step | `5` |
 | `agent.search.code_ahead` | Generated code drafts to keep queued ahead of execution | `0` |
 | `agent.code.codex_branch_sessions` | Reuse Codex history for siblings and fork it when expanding a node | `false` |
+| `codex.limits.usedPercent` | Gracefully stop after a step when Codex primary usage exceeds this percentage | `null` |
 
 ---
 

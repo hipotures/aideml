@@ -242,6 +242,16 @@ class ExecConfig:
 
 
 @dataclass
+class CodexLimitsConfig:
+    usedPercent: float | None = None
+
+
+@dataclass
+class CodexConfig:
+    limits: CodexLimitsConfig = field(default_factory=CodexLimitsConfig)
+
+
+@dataclass
 class ResearchConfig:
     enabled: bool = False
     mode: str = "llm"
@@ -318,6 +328,7 @@ class Config(Hashable):
     generate_report: bool
     report: StageConfig
     agent: AgentConfig
+    codex: CodexConfig = field(default_factory=CodexConfig)
     research: ResearchConfig = field(default_factory=ResearchConfig)
     synthesis: SynthesisConfig = field(default_factory=SynthesisConfig)
     refactor: RefactorConfig = field(default_factory=RefactorConfig)
@@ -425,6 +436,10 @@ def _apply_env_aliases(
         "AIDE_PREPROCESS_DATA": ("preprocess_data", _env_bool),
         "AIDE_COPY_DATA": ("copy_data", _env_bool),
         "AIDE_AGENT_STEPS": ("agent.steps", _env_int),
+        "AIDE_CODEX_LIMITS_USED_PERCENT": (
+            "codex.limits.usedPercent",
+            _env_float,
+        ),
         "AIDE_AGENT_MODE": ("agent.mode", str.strip),
         "AIDE_AGENT_AUX": ("agent.aux", str.strip),
         "AIDE_AGENT_GPU": ("agent.gpu", _env_bool),

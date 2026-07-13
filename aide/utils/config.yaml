@@ -101,6 +101,13 @@ web:
   port: 8766
   refresh_seconds: 2.0
 
+# Optional graceful run limits. Limits are evaluated only after a completed
+# step and never trigger an additional provider request.
+codex:
+  limits:
+    # Stop after saving a step when Codex reports primary.usedPercent above this.
+    usedPercent: null
+
 # agent hyperparams
 agent:
   # how many improvement iterations to run

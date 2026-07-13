@@ -501,6 +501,60 @@ def validate_code_ahead(cfg: Config) -> int:
     return raw
 
 
+def validate_run_limits(cfg: Config) -> None:
+    used_percent = getattr(cfg.codex.limits, "usedPercent", None)
+    if used_percent is None:
+        return
+    if isinstance(used_percent, bool) or not isinstance(used_percent, (int, float)):
+        raise ValueError(
+            "codex.limits.usedPercent must be a number from 0 to 100 or null."
+        )
+    if not 0 <= float(used_percent) <= 100:
+        raise ValueError(
+            "codex.limits.usedPercent must be a number from 0 to 100 or null."
+        )
+
+
+def read_codex_primary_used_percent(events_path: Path) -> float | None:
+    if not events_path.exists():
+        return None
+    latest: float | None = None
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("method") != "account/rateLimits/updated":
+            continue
+        params = event.get("params")
+        rate_limits = params.get("rateLimits") if isinstance(params, dict) else None
+        primary = rate_limits.get("primary") if isinstance(rate_limits, dict) else None
+        value = primary.get("usedPercent") if isinstance(primary, dict) else None
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            latest = float(value)
+    return latest
+
+
+def codex_rate_limit_stop_message(
+    *,
+    events_path: Path,
+    threshold: float | None,
+    step: int | None,
+) -> str | None:
+    if threshold is None:
+        return None
+    used_percent = read_codex_primary_used_percent(events_path)
+    if used_percent is None or used_percent <= float(threshold):
+        return None
+    step_text = "current step" if step is None else f"step {step}"
+    return (
+        f"Run stopped gracefully after saving {step_text}: Codex primary rate-limit "
+        "usedPercent="
+        f"{used_percent:g} exceeded codex.limits.usedPercent={float(threshold):g}. "
+        "Resume will run another step before checking the limit again."
+    )
+
+
 def should_parallel_generate_only_roots(
     *,
     skip_execution: bool,
@@ -5561,6 +5615,7 @@ def run(argv: list[str] | None = None):
         )
 
     apply_runtime_web_options(cfg, runtime_options)
+    validate_run_limits(cfg)
     hypothesis_root_generate_workers = validate_hypothesis_root_generate_workers(cfg)
     code_ahead_limit = validate_code_ahead(cfg)
 
@@ -7903,6 +7958,18 @@ def run(argv: list[str] | None = None):
                     )
                     status_override = None
                     global_step = completed_work_units()
+                    rate_limit_message = codex_rate_limit_stop_message(
+                        events_path=(
+                            artifact_dir_for_node(cfg.log_dir, result_node)
+                            / "codex_events.jsonl"
+                        ),
+                        threshold=getattr(cfg.codex.limits, "usedPercent", None),
+                        step=result_node.step,
+                    )
+                    if rate_limit_message is not None:
+                        interrupted = True
+                        interrupt_message = rate_limit_message
+                        break
                     if stop_after_current_node:
                         interrupted = True
                         interrupt_message = (
