@@ -93,6 +93,7 @@ def test_prep_cfg_resolves_default_models_to_gpt_5_4_mini_low(tmp_path):
     assert cfg.agent.parent_process_stdout_max_bytes == 5000
     assert cfg.agent.gpu is False
     assert cfg.agent.legacy_starter.autogluon_profile is None
+    assert cfg.agent.legacy_starter.wrapper == "mini"
 
 
 def test_load_cfg_ignores_dotenv_by_default_under_pytest(tmp_path, monkeypatch):
@@ -127,9 +128,11 @@ def test_legacy_starter_profile_env_overrides_default(tmp_path, monkeypatch):
         "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE",
         raising=False,
     )
+    monkeypatch.delenv("AIDE_AGENT_LEGACY_STARTER_WRAPPER", raising=False)
     (tmp_path / ".env").write_text(
         "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE="
-        "legacy_baseline_gpu_balanced\n",
+        "legacy_baseline_gpu_balanced\n"
+        "AIDE_AGENT_LEGACY_STARTER_WRAPPER=full\n",
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
@@ -140,6 +143,7 @@ def test_legacy_starter_profile_env_overrides_default(tmp_path, monkeypatch):
         cfg.agent.legacy_starter.autogluon_profile
         == "legacy_baseline_gpu_balanced"
     )
+    assert cfg.agent.legacy_starter.wrapper == "full"
 
 
 def test_research_root_hypothesis_model_env_overrides_default(tmp_path, monkeypatch):

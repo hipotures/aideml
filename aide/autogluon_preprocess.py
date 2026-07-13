@@ -747,7 +747,12 @@ def resolve_autogluon_settings(
     return settings
 
 
-def legacy_starter_design(cfg: Config, *, profile: str) -> str:
+def legacy_starter_design(
+    cfg: Config,
+    *,
+    profile: str,
+    wrapper: str = "mini",
+) -> str:
     """Describe the deterministic legacy baseline represented by ``profile``."""
     settings = resolve_autogluon_settings(cfg, profile=profile)
     model_names = {
@@ -774,22 +779,22 @@ def legacy_starter_design(cfg: Config, *, profile: str) -> str:
     ):
         balance_text = "Training uses the original class frequencies without reweighting."
     else:
-        balance_text = (
-            "Inverse-frequency sample weights normalized to unit mean address class "
-            "imbalance during fitting."
-        )
+        balance_text = "Equal total class weight addresses class imbalance during fitting."
     validation_text = (
-        f"AutoGluon's internal {folds}-fold bagging supplies OOF validation predictions"
+        f"AutoGluon's internal {folds}-fold bagging supplies the validation score"
         if folds > 0
-        else "The configured AutoGluon validation strategy supplies validation predictions"
+        else "The configured AutoGluon validation strategy supplies the validation score"
+    )
+    output_text = (
+        "The compact runner writes only the submission and scalar validation result."
+        if wrapper == "mini"
+        else "The full runner also writes OOF, test, and per-model prediction artifacts."
     )
     return (
-        f"{BASELINE_PLAN_PREFIX}: The fixed {profile!r} starter trains {model_text} "
-        "on the raw competition covariates, ignores the identifier, and adds no "
+        f"{BASELINE_PLAN_PREFIX}: AutoGluon trains {model_text} "
+        "directly on the raw competition covariates, ignores the identifier, and adds no "
         f"engineered or auxiliary features. It runs on {device}; {validation_text} "
-        f"for the configured project metric {ensemble_text}. {balance_text} The common "
-        "runner writes the submission plus OOF and test prediction artifacts for direct "
-        "comparison with later legacy branches."
+        f"for the configured project metric {ensemble_text}. {balance_text} {output_text}"
     )
 
 
@@ -886,6 +891,109 @@ def build_visible_autogluon_config(
     if isinstance(fallback, dict):
         visible["lightgbm_gpu_categorical_fallback"] = dict(fallback)
     return visible
+
+
+def build_legacy_autogluon_mini_wrapper(cfg: Config, *, profile: str) -> str:
+    settings = resolve_autogluon_settings(cfg, profile=profile)
+    visible = build_visible_autogluon_config(cfg, settings, profile=profile)
+    constants = {
+        key: visible[key]
+        for key in (
+            "profile",
+            "project_name",
+            "eval_metric",
+            "included_model_types",
+            "presets",
+            "time_limit",
+            "use_gpu",
+            "hyperparameters",
+            "fit_args",
+            "class_balance",
+        )
+        if key in visible
+    }
+    constants_literal = pprint.pformat(constants, sort_dicts=True, width=88)
+    return f'''from __future__ import annotations
+
+import json
+import shutil
+from pathlib import Path
+
+import pandas as pd
+from autogluon.tabular import TabularPredictor
+
+from aide_solution_helpers import load_competition_data, write_submission
+
+
+AIDE_AG_CONFIG = {constants_literal}
+
+
+def main() -> None:
+    train, test, sample_submission = load_competition_data()
+    id_col, target_col = sample_submission.columns[:2]
+    model_dir = Path("./working/autogluon_model")
+    shutil.rmtree(model_dir, ignore_errors=True)
+
+    predictor_kwargs = {{
+        "label": target_col,
+        "eval_metric": AIDE_AG_CONFIG["eval_metric"],
+        "path": str(model_dir),
+        "learner_kwargs": {{"ignored_columns": [id_col]}},
+    }}
+    if str(AIDE_AG_CONFIG.get("class_balance", "none")).lower() in {{
+        "balanced",
+        "inverse_frequency",
+    }}:
+        predictor_kwargs["sample_weight"] = "balance_weight"
+
+    fit_kwargs = {{
+        "train_data": train,
+        "presets": AIDE_AG_CONFIG["presets"],
+        "time_limit": AIDE_AG_CONFIG["time_limit"],
+        "num_gpus": 1 if AIDE_AG_CONFIG.get("use_gpu") else 0,
+    }}
+    if AIDE_AG_CONFIG.get("included_model_types"):
+        fit_kwargs["included_model_types"] = AIDE_AG_CONFIG["included_model_types"]
+    if AIDE_AG_CONFIG.get("hyperparameters"):
+        fit_kwargs["hyperparameters"] = AIDE_AG_CONFIG["hyperparameters"]
+    fit_args = dict(AIDE_AG_CONFIG.get("fit_args", {{}}))
+    fit_args.pop("save_space", None)
+    fit_kwargs.update(fit_args)
+
+    predictor = TabularPredictor(**predictor_kwargs).fit(**fit_kwargs)
+    leaderboard = predictor.leaderboard(silent=True)
+    metric = float(leaderboard["score_val"].max())
+
+    predictions = pd.DataFrame({{
+        id_col: test[id_col].reset_index(drop=True),
+        target_col: pd.Series(predictor.predict(test)).reset_index(drop=True),
+    }})
+    submission = sample_submission[[id_col]].merge(
+        predictions,
+        on=id_col,
+        how="left",
+        validate="one_to_one",
+    )
+    write_submission(submission)
+
+    print(f"Validation {{AIDE_AG_CONFIG['eval_metric']}}: {{metric:.6f}}")
+    print("Submission saved successfully.")
+    print("AIDE_RESULT_JSON: " + json.dumps({{
+        "is_bug": False,
+        "summary": "Compact raw-feature AutoGluon baseline completed.",
+        "metric": metric,
+        "eval_metric": AIDE_AG_CONFIG["eval_metric"],
+        "lower_is_better": False,
+        "run_stats": {{
+            "profile": AIDE_AG_CONFIG["profile"],
+            "wrapper": "mini",
+            "models": list(predictor.model_names()),
+        }},
+    }}, sort_keys=True))
+
+
+main()
+'''.strip() + "\n"
 
 
 def build_autogluon_wrapper(

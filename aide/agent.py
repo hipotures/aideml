@@ -15,6 +15,7 @@ from .autogluon_preprocess import (
     BASELINE_PLAN_PREFIX,
     baseline_preprocess_source,
     build_autogluon_wrapper,
+    build_legacy_autogluon_mini_wrapper,
     extract_preprocess_source,
     infer_sample_submission_columns,
     is_autogluon_preprocess_mode,
@@ -2212,13 +2213,19 @@ class Agent:
         profile = str(raw_profile or "").strip()
         if self.acfg.mode != "legacy" or not profile:
             return None
-        code = build_autogluon_wrapper(
-            baseline_preprocess_source(),
-            self.cfg,
-            profile=profile,
-        )
+        wrapper = str(getattr(starter_cfg, "wrapper", "mini") or "mini").strip().lower()
+        if wrapper == "mini":
+            code = build_legacy_autogluon_mini_wrapper(self.cfg, profile=profile)
+        elif wrapper == "full":
+            code = build_autogluon_wrapper(
+                baseline_preprocess_source(),
+                self.cfg,
+                profile=profile,
+            )
+        else:
+            raise ValueError("agent.legacy_starter.wrapper must be 'mini' or 'full'")
         return self._new_node(
-            plan=legacy_starter_design(self.cfg, profile=profile),
+            plan=legacy_starter_design(self.cfg, profile=profile, wrapper=wrapper),
             code=code,
         )
 

@@ -214,6 +214,7 @@ class AutoGluonConfig:
 @dataclass
 class LegacyStarterConfig:
     autogluon_profile: str | None = None
+    wrapper: str = "mini"
 
 
 @dataclass
@@ -451,6 +452,10 @@ def _apply_env_aliases(
         "AIDE_AGENT_GPU": ("agent.gpu", _env_bool),
         "AIDE_AGENT_LEGACY_STARTER_AUTOGLUON_PROFILE": (
             "agent.legacy_starter.autogluon_profile",
+            str.strip,
+        ),
+        "AIDE_AGENT_LEGACY_STARTER_WRAPPER": (
+            "agent.legacy_starter.wrapper",
             str.strip,
         ),
         "AIDE_AGENT_HYPOTHESES": ("agent.hypotheses", _env_int),

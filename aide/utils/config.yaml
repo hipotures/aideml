@@ -146,6 +146,9 @@ agent:
   # value names one entry from agent.autogluon.profiles; null disables it.
   legacy_starter:
     autogluon_profile: null
+    # mini writes only submission + result marker; full uses the preprocess-mode
+    # wrapper with OOF, test, and per-model prediction artifacts.
+    wrapper: mini
 
   # LLM settings for coding
   code:
@@ -218,7 +221,6 @@ agent:
         time_limit: 600
         use_gpu: false
         validation_strategy: autogluon
-        fair_model_scheduling: true
         hyperparameters:
           XGB:
             - device: cpu
@@ -245,7 +247,6 @@ agent:
         use_gpu: false
         validation_strategy: autogluon
         class_balance: balanced
-        fair_model_scheduling: true
         hyperparameters:
           XGB:
             - device: cpu
@@ -271,7 +272,6 @@ agent:
         time_limit: 600
         use_gpu: true
         validation_strategy: autogluon
-        fair_model_scheduling: true
         hyperparameters:
           XGB:
             - device: cuda
@@ -302,7 +302,6 @@ agent:
         use_gpu: true
         validation_strategy: autogluon
         class_balance: balanced
-        fair_model_scheduling: true
         hyperparameters:
           XGB:
             - device: cuda

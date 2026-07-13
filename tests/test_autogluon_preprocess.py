@@ -16,6 +16,7 @@ from aide.autogluon_preprocess import (
     AGENT_MODE,
     BASELINE_PLAN_PREFIX,
     build_autogluon_wrapper,
+    build_legacy_autogluon_mini_wrapper,
     extract_preprocess_source,
     legacy_starter_design,
     parse_result_marker,
@@ -2483,14 +2484,52 @@ def test_agent_legacy_first_node_uses_configured_autogluon_starter(tmp_path):
 
     assert node.parent is None
     assert node.plan == legacy_starter_design(
-        cfg, profile="legacy_baseline_gpu_balanced"
+        cfg, profile="legacy_baseline_gpu_balanced", wrapper="mini"
     )
     assert "XGBoost, LightGBM, CatBoost" in node.plan
-    assert "Inverse-frequency sample weights" in node.plan
+    assert "legacy_baseline_gpu_balanced" not in node.plan
+    assert "starter" not in node.plan.lower()
+    assert "OOF" not in node.plan
+    assert "Equal total class weight" in node.plan
     assert "'profile': 'legacy_baseline_gpu_balanced'" in node.code
     assert "'num_bag_folds': 5" in node.code
     assert "TabularPredictor" in node.code
     assert "def main() -> None:" in node.code
+    assert 'predictor_kwargs["sample_weight"] = "balance_weight"' in node.code
+    assert "predict_proba_oof" not in node.code
+    assert "write_oof_predictions" not in node.code
+    assert "write_test_predictions" not in node.code
+    assert len(node.code.encode("utf-8")) < 6_000
+
+
+def test_legacy_mini_wrapper_compiles_and_contains_only_required_outputs(tmp_path):
+    cfg = _cfg(tmp_path)
+
+    code = build_legacy_autogluon_mini_wrapper(
+        cfg,
+        profile="legacy_baseline_cpu_unweighted",
+    )
+
+    compile(code, "legacy-mini-wrapper.py", "exec")
+    assert "write_submission(submission)" in code
+    assert "AIDE_RESULT_JSON:" in code
+    assert "balance_weight" in code
+    assert "predict_proba_oof" not in code
+    assert "model_predictions" not in code
+
+
+def test_agent_legacy_full_wrapper_remains_available(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    cfg.agent.legacy_starter.autogluon_profile = "legacy_baseline_gpu_balanced"
+    cfg.agent.legacy_starter.wrapper = "full"
+
+    node = Agent(task_desc="task", cfg=cfg, journal=Journal()).generate_node(None)
+
+    assert "predict_proba_oof" in node.code
+    assert "OOF, test, and per-model prediction artifacts" in node.plan
+    assert "legacy_baseline_gpu_balanced" not in node.plan
+    assert "starter" not in node.plan.lower()
 
 
 def test_legacy_starter_branch_receives_complete_wrapper_code(tmp_path):
@@ -2517,6 +2556,8 @@ def test_legacy_starter_branch_receives_complete_wrapper_code(tmp_path):
     assert "AIDE_AG_CONFIG" in previous_code
     assert "TabularPredictor" in previous_code
     assert "def main() -> None:" in previous_code
+    assert "write_submission(submission)" in previous_code
+    assert "predict_proba_oof" not in previous_code
     assert child.parent is baseline
 
 
