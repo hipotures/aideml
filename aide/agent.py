@@ -2008,6 +2008,7 @@ class Agent:
             prompt["Memory"] = self.journal.generate_summary(
                 recent_steps=self.acfg.memory_recent_steps,
                 full_recent_steps=self.acfg.memory_full_recent_steps,
+                design_only=parent_node is None,
                 public_scores_by_node_id=self.prompt_public_scores_by_node_id,
                 hypothesis_descriptions_by_id=(
                     self._branch_hypothesis_descriptions_by_id() or None

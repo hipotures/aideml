@@ -4860,6 +4860,7 @@ def test_non_hypothesis_draft_prompt_keeps_global_memory(tmp_path):
         code="print('previous')",
         plan="Previous global design",
     )
+    previous.validity_warning = "previous validation warning"
     journal = Journal()
     journal.append(previous)
     captured = {}
@@ -4874,7 +4875,14 @@ def test_non_hypothesis_draft_prompt_keeps_global_memory(tmp_path):
     agent._draft()
 
     assert "Memory" in captured["prompt"]
-    assert "Previous global design" in captured["prompt"]["Memory"]
+    memory = captured["prompt"]["Memory"]
+    assert "Step: 0" in memory
+    assert "Design: Previous global design" in memory
+    assert "Results:" not in memory
+    assert "Validity warning:" not in memory
+    assert "Validation Metric:" not in memory
+    assert "Runtime note:" not in memory
+    assert "delta=" not in memory
     assert "Branch context" not in captured["prompt"]
 
 
@@ -5466,6 +5474,8 @@ def test_standard_improve_prompt_uses_improving_ancestor_memory_and_adjacent_sib
     memory = captured["prompt"]["Memory"]
     assert "Root baseline" in memory
     assert "Improved ancestor" in memory
+    assert "Results: analysis" in memory
+    assert "Validation Metric: 0.91000" in memory
     assert "Non-improving current parent" not in memory
     assert "Worse root child" not in memory
     assert "Unrelated global winner" not in memory

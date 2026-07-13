@@ -597,6 +597,7 @@ class Journal(DataClassJsonMixin):
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
         exec_timeout_s: float | int | None = None,
         runtime_score_epsilon: float = 0.0,
+        design_only: bool = False,
     ) -> str:
         """Generate a summary of the journal for the agent."""
         good_nodes = self.good_nodes
@@ -635,6 +636,7 @@ class Journal(DataClassJsonMixin):
                     n,
                     include_code=include_code and include_full_node,
                     include_full_node=include_full_node,
+                    design_only=design_only,
                     public_scores_by_node_id=public_scores_by_node_id,
                     hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
                     exec_timeout_s=exec_timeout_s,
@@ -659,6 +661,7 @@ class Journal(DataClassJsonMixin):
                 n,
                 include_code=include_code,
                 include_full_node=True,
+                design_only=False,
                 public_scores_by_node_id=public_scores_by_node_id,
                 hypothesis_descriptions_by_id=hypothesis_descriptions_by_id,
                 exec_timeout_s=exec_timeout_s,
@@ -673,6 +676,7 @@ class Journal(DataClassJsonMixin):
         *,
         include_code: bool,
         include_full_node: bool,
+        design_only: bool,
         public_scores_by_node_id: dict[str, float] | None,
         hypothesis_descriptions_by_id: dict[str, str] | None = None,
         exec_timeout_s: float | int | None = None,
@@ -689,6 +693,8 @@ class Journal(DataClassJsonMixin):
             )
             + "\n"
         )
+        if design_only:
+            return summary_part
         if include_code:
             summary_part += f"Code: {node.code}\n"
         if include_full_node:
