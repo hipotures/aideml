@@ -1,6 +1,10 @@
 import json
 
 from scripts.show_codex_token_usage import collect_token_usage, render_table
+from aide.web_dashboard.token_usage import (
+    TOKEN_USAGE_REFRESH_SECONDS,
+    TokenUsageCache,
+)
 
 
 def _write_response(path, *, thread_id, turn_id, input_tokens, action="resume"):
@@ -81,3 +85,43 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
     table = render_table(tmp_path / "run", rows)
     assert table.rows[0].style == table.rows[1].style
     assert table.rows[1].style != table.rows[2].style
+
+
+def test_token_usage_cache_does_not_rescan_before_ten_seconds(tmp_path):
+    run_dir = tmp_path / "run"
+    response = run_dir / "artifacts" / "20260713T000000-new-1" / "response.json"
+    _write_response(
+        response,
+        thread_id="thread-a",
+        turn_id="turn-1",
+        input_tokens=100,
+    )
+    cache = TokenUsageCache()
+
+    first_rows, first_updated_at = cache.refresh(
+        run_dir,
+        monotonic_now=50.0,
+        epoch_now=1000.0,
+    )
+    _write_response(
+        response,
+        thread_id="thread-a",
+        turn_id="turn-1",
+        input_tokens=200,
+    )
+    cached_rows, cached_updated_at = cache.refresh(
+        run_dir,
+        monotonic_now=50.0 + TOKEN_USAGE_REFRESH_SECONDS - 0.01,
+        epoch_now=1001.0,
+    )
+    refreshed_rows, refreshed_updated_at = cache.refresh(
+        run_dir,
+        monotonic_now=50.0 + TOKEN_USAGE_REFRESH_SECONDS,
+        epoch_now=1010.0,
+    )
+
+    assert first_rows[0].input_tokens == 100
+    assert cached_rows[0].input_tokens == 100
+    assert cached_updated_at == first_updated_at == 1000.0
+    assert refreshed_rows[0].input_tokens == 200
+    assert refreshed_updated_at == 1010.0

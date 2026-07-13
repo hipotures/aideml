@@ -32,10 +32,35 @@ main {
 }
 
 .tabs {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-bottom: 1px solid #3b414b;
   background: #111923;
+}
+
+.tabs::before,
+.tabs::after {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  color: #1d9bf0;
+  font: 700 11px/48px inherit;
+  pointer-events: none;
+}
+
+.tabs.has-tabs-left::before {
+  content: "◀";
+  left: 4px;
+}
+
+.tabs.has-tabs-right::after {
+  content: "▶";
+  right: 4px;
+}
+
+.tab.tab-hidden {
+  display: none;
 }
 
 .tab {
@@ -317,6 +342,70 @@ main {
   font: 700 12px/1.35 inherit;
   color: #a9adb6;
   white-space: pre-wrap;
+}
+
+.token-panel {
+  padding: 0 0 24px;
+}
+
+.token-title {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  padding: 10px 10px 8px;
+  color: #d9dce2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.token-table-wrap {
+  width: max-content;
+  min-width: 100%;
+}
+
+.token-table {
+  border-collapse: collapse;
+  min-width: 980px;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-table th,
+.token-table td {
+  padding: 5px 8px;
+  border-right: 1px solid #3b414b;
+  text-align: right;
+}
+
+.token-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #e7eaf0;
+  background: #111923;
+  border-top: 1px solid #3b414b;
+  border-bottom: 1px solid #667080;
+}
+
+.token-table th:nth-child(2),
+.token-table th:nth-child(3),
+.token-table th:nth-child(4),
+.token-table th:nth-child(5),
+.token-table td:nth-child(2),
+.token-table td:nth-child(3),
+.token-table td:nth-child(4),
+.token-table td:nth-child(5) {
+  text-align: left;
+}
+
+.token-table tbody tr.step-alt {
+  background: #35383d;
+}
+
+.token-panel .empty {
+  padding: 0 10px;
 }
 
 .empty {

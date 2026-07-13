@@ -3,6 +3,8 @@ let treeTarget = null;
 let treeFollow = false;
 let lastTreeTarget = null;
 let lastSnapshot = null;
+let lastTokenUsageUpdatedAt = null;
+const tabOrder = ["tree", "run", "logs", "codex"];
 
 function setLogsConnectionError(hasError) {
   const logsTab = document.querySelector('[data-tab="logs"]');
@@ -17,6 +19,22 @@ function switchTab(name) {
   });
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.panel === name);
+  });
+  updateVisibleTabs(name);
+}
+
+function updateVisibleTabs(activeName) {
+  const activeIndex = tabOrder.indexOf(activeName);
+  const firstVisibleIndex = activeIndex >= 2 ? 1 : 0;
+  const tabs = document.querySelector(".tabs");
+  tabs.classList.toggle("has-tabs-left", firstVisibleIndex > 0);
+  tabs.classList.toggle("has-tabs-right", firstVisibleIndex + 3 < tabOrder.length);
+  document.querySelectorAll(".tab").forEach((tab) => {
+    const index = tabOrder.indexOf(tab.dataset.tab);
+    tab.classList.toggle(
+      "tab-hidden",
+      index < firstVisibleIndex || index >= firstVisibleIndex + 3,
+    );
   });
 }
 
@@ -185,6 +203,56 @@ function renderLogs(snapshot) {
   logs.textContent = (snapshot.log_lines || []).join("\n") || "waiting for process log";
 }
 
+function formatTokens(value) {
+  return Number(value || 0).toLocaleString("en-US");
+}
+
+function shortId(value) {
+  return text(value).slice(0, 8);
+}
+
+function renderTokenUsage(snapshot) {
+  const title = document.getElementById("token-title");
+  title.textContent = `Codex token usage · ${text(snapshot.run_id)}`;
+  const table = document.getElementById("token-table");
+  const body = table.querySelector("tbody");
+  const empty = document.getElementById("token-empty");
+  const rows = snapshot.token_usage || [];
+  body.replaceChildren();
+  table.hidden = rows.length === 0;
+  empty.hidden = rows.length > 0;
+  let previousStep = null;
+  let stepRank = -1;
+  for (const row of rows) {
+    if (row.step !== previousStep) stepRank += 1;
+    const tr = document.createElement("tr");
+    tr.dataset.step = text(row.step);
+    tr.classList.toggle("step-alt", stepRank % 2 === 1);
+    const values = [
+      row.step,
+      row.agent,
+      shortId(row.thread_id),
+      shortId(row.turn_id),
+      row.action,
+      formatTokens(row.input_tokens),
+      formatTokens(row.cached_input_tokens),
+      formatTokens(row.input_tokens - row.cached_input_tokens),
+      formatTokens(row.output_tokens),
+      formatTokens(row.turn_total_tokens),
+      formatTokens(row.thread_total_tokens),
+    ];
+    values.forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = text(value);
+      if (index === 2) cell.title = text(row.thread_id);
+      if (index === 3) cell.title = text(row.turn_id);
+      tr.appendChild(cell);
+    });
+    body.appendChild(tr);
+    previousStep = row.step;
+  }
+}
+
 async function refresh() {
   try {
     const response = await fetch("/api/snapshot", { cache: "no-store" });
@@ -202,6 +270,10 @@ async function refresh() {
     renderTree(snapshot);
     renderRunData(snapshot);
     renderLogs(snapshot);
+    if (lastTokenUsageUpdatedAt !== snapshot.token_usage_updated_at) {
+      renderTokenUsage(snapshot);
+      lastTokenUsageUpdatedAt = snapshot.token_usage_updated_at;
+    }
   } catch (error) {
     setLogsConnectionError(true);
     document.getElementById("logs").textContent = `dashboard refresh failed: ${error}`;
@@ -213,4 +285,5 @@ async function refresh() {
 window.addEventListener("resize", () => {
   if (lastSnapshot) renderTree(lastSnapshot);
 });
+updateVisibleTabs("tree");
 refresh();

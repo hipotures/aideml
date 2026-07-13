@@ -11,6 +11,7 @@ from aide.web_dashboard.state import (
     WebDashboardState,
     WebRunDatum,
     WebRunSection,
+    WebTokenUsageRow,
     WebTreeLine,
 )
 from aide.web_dashboard.tree import build_web_tree_lines
@@ -299,6 +300,21 @@ def test_web_server_serves_html_snapshot_and_404():
                 )
             ],
             log_lines=["Fold 1 OOF balanced accuracy: 0.965367"],
+            token_usage=[
+                WebTokenUsageRow(
+                    step=0,
+                    agent="code",
+                    thread_id="019f596e-4c86-7923-9534-c485231121a5",
+                    turn_id="019f596e-4caa-7071-823f-cbd8231a25f2",
+                    action="start",
+                    input_tokens=12_252,
+                    cached_input_tokens=0,
+                    output_tokens=3_135,
+                    turn_total_tokens=15_387,
+                    thread_total_tokens=15_387,
+                )
+            ],
+            token_usage_updated_at=123.0,
         )
     )
     server = AideWebServer(state, host="127.0.0.1", port=0, refresh_seconds=1.5)
@@ -307,17 +323,19 @@ def test_web_server_serves_html_snapshot_and_404():
         with urlopen(f"http://127.0.0.1:{server.port}/", timeout=2) as response:
             html = response.read().decode("utf-8")
         assert "AIDE/ Tree" in html
-        assert "data-tab=\"tree\"" in html
+        assert 'data-tab="tree"' in html
 
         with urlopen(
             f"http://127.0.0.1:{server.port}/api/snapshot",
             timeout=2,
         ) as response:
             payload = response.read().decode("utf-8")
-        assert "\"run_id\": \"2-delicate-cherubic-crane\"" in payload
-        assert "\"prefix\": \"├\"" in payload
-        assert "\"desktop_prefix\": \"\"" in payload
-        assert "\"title\": \"Agent\"" in payload
+        assert '"run_id": "2-delicate-cherubic-crane"' in payload
+        assert '"prefix": "├"' in payload
+        assert '"desktop_prefix": ""' in payload
+        assert '"title": "Agent"' in payload
+        assert '"agent": "code"' in payload
+        assert '"token_usage_updated_at": 123.0' in payload
 
         with pytest.raises(HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{server.port}/missing", timeout=2)
@@ -444,3 +462,46 @@ def test_web_dashboard_marks_logs_tab_when_snapshot_refresh_fails():
     assert "dashboard refresh failed:" in js
     assert ".tab.connection-error::after" in css
     assert "@keyframes log-error-pulse" in css
+
+
+def test_web_dashboard_has_sliding_three_tab_window():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    assert 'data-tab="codex"' in html
+    assert 'data-panel="codex"' in html
+    assert 'const tabOrder = ["tree", "run", "logs", "codex"]' in js
+    assert "updateVisibleTabs(name);" in js
+    assert '"tab-hidden"' in js
+    assert "grid-template-columns: repeat(3, 1fr);" in css
+    assert ".tabs.has-tabs-left::before" in css
+    assert 'content: "◀";' in css
+    assert ".tabs.has-tabs-right::after" in css
+    assert 'content: "▶";' in css
+
+
+def test_web_dashboard_renders_full_token_table_with_compact_ids():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
+
+    for heading in (
+        "Step",
+        "Agent",
+        "Session",
+        "Turn",
+        "Action",
+        "Input",
+        "Cached",
+        "Uncached",
+        "Output",
+        "Turn total",
+        "Thread total",
+    ):
+        assert f"<th>{heading}</th>" in html
+    assert ".slice(0, 8)" in js
+    assert "row.input_tokens - row.cached_input_tokens" in js
+    assert 'tr.classList.toggle("step-alt"' in js
+    assert ".token-table tbody tr.step-alt" in css
+    assert "min-width: 980px;" in css

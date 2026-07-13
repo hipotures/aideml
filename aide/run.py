@@ -149,7 +149,9 @@ from .web_dashboard.state import (
     WebDashboardState,
     WebRunDatum,
     WebRunSection,
+    WebTokenUsageRow,
 )
+from .web_dashboard.token_usage import TokenUsageCache
 from .web_dashboard.tree import build_web_tree_lines
 
 logger = logging.getLogger("aide")
@@ -5893,6 +5895,7 @@ def run(argv: list[str] | None = None):
         code_ahead_executor = ThreadPoolExecutor(max_workers=1)
     web_state = WebDashboardState()
     web_server: AideWebServer | None = None
+    web_token_usage_cache = TokenUsageCache()
     if cfg.web.enabled:
         try:
             web_server = AideWebServer(
@@ -6525,6 +6528,9 @@ def run(argv: list[str] | None = None):
         if web_server is None:
             return
         try:
+            token_rows, token_usage_updated_at = web_token_usage_cache.refresh(
+                Path(cfg.log_dir)
+            )
             web_state.update(
                 WebDashboardSnapshot(
                     run_id=cfg.exp_name,
@@ -6561,6 +6567,10 @@ def run(argv: list[str] | None = None):
                         active_artifact_dir=active_artifact_dir,
                     ),
                     log_lines=_web_log_lines(active_artifact_dir),
+                    token_usage=[
+                        WebTokenUsageRow(**vars(row)) for row in token_rows
+                    ],
+                    token_usage_updated_at=token_usage_updated_at,
                     status=_plain_web_text(status_text),
                 )
             )

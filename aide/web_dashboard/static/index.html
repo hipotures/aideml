@@ -13,6 +13,7 @@
       <button class="tab active" data-tab="tree" type="button">AIDE/ Tree</button>
       <button class="tab" data-tab="run" type="button">Run data</button>
       <button class="tab" data-tab="logs" type="button">Logs</button>
+      <button class="tab" data-tab="codex" type="button">Codex</button>
     </nav>
     <main>
       <section class="panel active" data-panel="tree">
@@ -29,6 +30,30 @@
       </section>
       <section class="panel" data-panel="logs">
         <pre class="logs" id="logs"></pre>
+      </section>
+      <section class="panel token-panel" data-panel="codex">
+        <div class="token-title" id="token-title">Codex token usage</div>
+        <div class="token-table-wrap">
+          <table class="token-table" id="token-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Agent</th>
+                <th>Session</th>
+                <th>Turn</th>
+                <th>Action</th>
+                <th>Input</th>
+                <th>Cached</th>
+                <th>Uncached</th>
+                <th>Output</th>
+                <th>Turn total</th>
+                <th>Thread total</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="empty" id="token-empty">waiting for Codex token usage</div>
+        </div>
       </section>
     </main>
   </div>
