@@ -4,7 +4,7 @@ from scripts.show_codex_token_usage import collect_token_usage
 
 
 def _write_response(path, *, thread_id, turn_id, input_tokens, action="resume"):
-    path.parent.mkdir(parents=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
             {
@@ -45,6 +45,13 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
         input_tokens=143,
     )
     _write_response(
+        artifacts / "20260713T000000-new-143" / "review_response.json",
+        thread_id="thread-feedback",
+        turn_id="turn-feedback-143",
+        input_tokens=100,
+        action="start",
+    )
+    _write_response(
         artifacts / "20260713T000000-old-51" / "response.json",
         thread_id="thread-old",
         turn_id="turn-51",
@@ -57,11 +64,16 @@ def test_collect_token_usage_sorts_steps_and_skips_missing_usage(tmp_path):
 
     rows = collect_token_usage(tmp_path / "run")
 
-    assert [row.step for row in rows] == [143, 147]
-    assert [row.thread_id for row in rows] == ["thread-a", "thread-a"]
+    assert [row.step for row in rows] == [143, 143, 147]
+    assert [row.agent for row in rows] == ["code", "feedback", "code"]
+    assert [row.thread_id for row in rows] == [
+        "thread-a",
+        "thread-feedback",
+        "thread-a",
+    ]
     assert rows[0].input_tokens == 143
     assert rows[0].cached_input_tokens == 10
 
     full_rows = collect_token_usage(tmp_path / "run", full_view=True)
-    assert [row.step for row in full_rows] == [51, 143, 147]
+    assert [row.step for row in full_rows] == [51, 143, 143, 147]
     assert full_rows[0].action == ""

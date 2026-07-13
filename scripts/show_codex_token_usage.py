@@ -15,6 +15,7 @@ from rich.table import Table
 @dataclass(frozen=True)
 class TokenUsageRow:
     step: int
+    agent: str
     thread_id: str
     turn_id: str
     action: str
@@ -31,7 +32,11 @@ def _integer(value: Any) -> int | None:
     return None
 
 
-def _row_from_response(step: int, response_path: Path) -> TokenUsageRow | None:
+def _row_from_response(
+    step: int,
+    agent: str,
+    response_path: Path,
+) -> TokenUsageRow | None:
     try:
         response = json.loads(response_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -66,6 +71,7 @@ def _row_from_response(step: int, response_path: Path) -> TokenUsageRow | None:
         return None
     return TokenUsageRow(
         step=step,
+        agent=agent,
         thread_id=thread_id,
         turn_id=turn_id,
         action=str(info.get("thread_action") or ""),
@@ -82,7 +88,7 @@ def collect_token_usage(
     *,
     full_view: bool = False,
 ) -> list[TokenUsageRow]:
-    rows_by_step: dict[int, TokenUsageRow] = {}
+    rows_by_key: dict[tuple[int, str], TokenUsageRow] = {}
     artifacts_dir = run_dir / "artifacts"
     if not artifacts_dir.is_dir():
         raise FileNotFoundError(f"AIDE artifacts directory not found: {artifacts_dir}")
@@ -93,18 +99,24 @@ def collect_token_usage(
             step = int(artifact_dir.name.rsplit("-", 1)[1])
         except (IndexError, ValueError):
             continue
-        response_path = artifact_dir / "response.json"
-        if not response_path.exists():
-            continue
-        row = _row_from_response(step, response_path)
-        if row is not None and (full_view or row.action):
-            rows_by_step[step] = row
-    return [rows_by_step[step] for step in sorted(rows_by_step)]
+        for agent, response_name in (
+            ("code", "response.json"),
+            ("feedback", "review_response.json"),
+        ):
+            response_path = artifact_dir / response_name
+            if not response_path.exists():
+                continue
+            row = _row_from_response(step, agent, response_path)
+            if row is not None and (full_view or row.action):
+                rows_by_key[(step, agent)] = row
+    agent_order = {"code": 0, "feedback": 1}
+    return sorted(rows_by_key.values(), key=lambda row: (row.step, agent_order[row.agent]))
 
 
 def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
     table = Table(title=f"Codex token usage · {run_dir.name}")
     table.add_column("Step", justify="right")
+    table.add_column("Agent")
     table.add_column("Session / thread ID", no_wrap=True, min_width=36)
     table.add_column("Turn ID", no_wrap=True, min_width=36)
     table.add_column("Action")
@@ -117,6 +129,7 @@ def render_table(run_dir: Path, rows: list[TokenUsageRow]) -> Table:
     for row in rows:
         table.add_row(
             str(row.step),
+            row.agent,
             row.thread_id,
             row.turn_id,
             row.action,
