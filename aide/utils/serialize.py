@@ -48,6 +48,26 @@ def _is_inline_generated_node_dict(node_dict: dict) -> bool:
     )
 
 
+def _is_inline_failed_node(node: object) -> bool:
+    return (
+        getattr(node, "status", None) == "failed"
+        and isinstance(getattr(node, "code", None), str)
+        and bool(getattr(node, "code", None))
+        and not getattr(node, "artifact_dir_name", None)
+        and not getattr(node, "code_path", None)
+    )
+
+
+def _is_inline_failed_node_dict(node_dict: dict) -> bool:
+    return (
+        node_dict.get("status") == "failed"
+        and isinstance(node_dict.get("code"), str)
+        and bool(node_dict["code"])
+        and not node_dict.get("artifact_dir_name")
+        and not node_dict.get("code_path")
+    )
+
+
 def dumps_json(
     obj: dataclasses_json.DataClassJsonMixin,
     *,
@@ -65,7 +85,7 @@ def dumps_json(
                 if isinstance(n.artifact_dir_name, str)
                 else None
             )
-            if _is_inline_generated_node(n):
+            if _is_inline_generated_node(n) or _is_inline_failed_node(n):
                 n.code_path = None
                 n.artifact_dir_name = None
                 continue
@@ -137,7 +157,9 @@ def _hydrate_journal_code(obj_dict: dict, *, base_dir: Path) -> None:
         )
         artifact_dir_name = node_dict.get("artifact_dir_name")
         if not code_path:
-            if _is_inline_generated_node_dict(node_dict):
+            if _is_inline_generated_node_dict(node_dict) or _is_inline_failed_node_dict(
+                node_dict
+            ):
                 node_dict["code_path"] = None
                 node_dict["artifact_dir_name"] = None
                 continue
@@ -156,6 +178,16 @@ def _hydrate_journal_code(obj_dict: dict, *, base_dir: Path) -> None:
 
         solution_path = base_dir / code_path
         if not solution_path.exists():
+            if node_dict.get("status") == "failed":
+                message = str(
+                    node_dict.get("analysis")
+                    or node_dict.get("plan")
+                    or "Failed node artifact was removed."
+                )
+                node_dict["code"] = f"raise RuntimeError({message!r})\n"
+                node_dict["code_path"] = None
+                node_dict["artifact_dir_name"] = None
+                continue
             raise FileNotFoundError(
                 f"Journal node {node_id} solution artifact is missing: {solution_path}"
             )

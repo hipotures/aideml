@@ -172,6 +172,41 @@ def test_load_json_rejects_missing_solution_artifact(tmp_path):
         serialize.load_json(log_dir / "journal.json", Journal)
 
 
+def test_load_json_recovers_failed_node_with_removed_solution_artifact(tmp_path):
+    log_dir = tmp_path / "logs" / "run"
+    log_dir.mkdir(parents=True)
+    journal_path = log_dir / "journal.json"
+    journal_path.write_text(
+        json.dumps(
+            {
+                "__version": "3",
+                "nodes": [
+                    {
+                        "id": "failed-node",
+                        "code": "",
+                        "code_path": "artifacts/failed-node/solution.py",
+                        "artifact_dir_name": "failed-node",
+                        "status": "failed",
+                        "plan": "Generation failed: missing Codex metadata.",
+                    }
+                ],
+                "node2parent": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = serialize.load_json(journal_path, Journal)
+    serialized = json.loads(serialize.dumps_json(loaded, base_dir=log_dir))
+
+    assert loaded.nodes[0].status == "failed"
+    assert "missing Codex metadata" in loaded.nodes[0].code
+    assert loaded.nodes[0].code_path is None
+    assert loaded.nodes[0].artifact_dir_name is None
+    assert serialized["nodes"][0]["code_path"] is None
+    assert serialized["nodes"][0]["artifact_dir_name"] is None
+
+
 def test_save_run_writes_node_run_stats_to_manifest(tmp_path):
     log_dir = tmp_path / "logs" / "run"
     workspace_dir = tmp_path / "workspaces" / "run"

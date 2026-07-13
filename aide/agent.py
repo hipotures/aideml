@@ -2250,8 +2250,25 @@ class Agent:
         return None
 
     def _node_codex_ref(self, node: Node) -> dict[str, str] | None:
+        artifact_dir = self._node_artifact_dir(node) if node.artifact_dir_name else None
+
+        def app_server_turn_completed() -> bool:
+            if artifact_dir is None:
+                return True
+            events_path = artifact_dir / "codex_events.jsonl"
+            if not events_path.exists():
+                return True
+            return any(
+                event.get("method") == "turn/completed"
+                for line in events_path.read_text(encoding="utf-8").splitlines()
+                for event in [json.loads(line)]
+                if line.strip()
+            )
+
         if node.codex_thread_id:
             if node.codex_turn_id:
+                if not app_server_turn_completed():
+                    return None
                 return {
                     "thread_id": node.codex_thread_id,
                     "turn_id": node.codex_turn_id,
@@ -2260,9 +2277,8 @@ class Agent:
             if rollout is not None:
                 return {"thread_id": node.codex_thread_id, "path": str(rollout)}
 
-        if not node.artifact_dir_name:
+        if artifact_dir is None:
             return None
-        artifact_dir = self._node_artifact_dir(node)
         response_path = artifact_dir / "response.json"
         if response_path.exists():
             response = json.loads(response_path.read_text(encoding="utf-8"))
@@ -2271,6 +2287,8 @@ class Agent:
                 thread_id = info["thread_id"]
                 turn_id = info.get("turn_id")
                 if isinstance(turn_id, str) and turn_id:
+                    if not app_server_turn_completed():
+                        return None
                     return {"thread_id": thread_id, "turn_id": turn_id}
 
         events_path = artifact_dir / "codex_events.jsonl"

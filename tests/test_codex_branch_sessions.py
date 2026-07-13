@@ -90,6 +90,28 @@ def test_root_group_skips_failed_generation_without_codex_metadata(tmp_path):
     assert agent._codex_session_kwargs() == {"codex_thread_id": "thread-valid"}
 
 
+def test_parent_with_pre_fix_in_progress_turn_starts_clean_session(tmp_path):
+    cfg = _cfg(tmp_path)
+    parent = Node(
+        code="print('parent')",
+        plan="parent",
+        codex_thread_id="thread-stale",
+        codex_turn_id="turn-stale",
+    )
+    parent.artifact_dir_name = "parent-artifact"
+    journal = Journal()
+    journal.append(parent)
+    artifact_dir = Path(cfg.log_dir) / "artifacts" / parent.artifact_dir_name
+    artifact_dir.mkdir(parents=True)
+    (artifact_dir / "codex_events.jsonl").write_text(
+        '{"method":"thread/tokenUsage/updated","params":{}}\n'
+    )
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+    agent.active_parent_node = parent
+
+    assert agent._codex_session_kwargs() == {}
+
+
 def test_legacy_exec_node_backfills_fork_from_rollout_path(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     parent = Node(code="print('parent')", plan="parent")
