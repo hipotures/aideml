@@ -168,6 +168,7 @@ workspaces
 logs
 tmp/
 experiments/
+/home-agents-app-server/
 
 .DS_STORE
 .trunk
