@@ -2364,6 +2364,15 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     records = filter_records_by_run(list(index.get("records", [])), run_filters)
+    if remote_submissions is not None:
+        recovered = smart.recover_registry_from_remote(
+            registry=registry,
+            competition=args.competition,
+            remote_submissions=remote_submissions,
+            candidates=[_record_to_candidate(record) for record in records],
+        )
+        if recovered:
+            console.print(f"Recovered {recovered} interrupted submission(s).")
     visible_records = filter_submission_lab_visibility(
         records,
         registry=registry,

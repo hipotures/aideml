@@ -750,6 +750,76 @@ def test_sync_registry_from_remote_updates_public_score_by_ref(tmp_path):
     assert reloaded.entries[0]["remote_url"] == "/submissions/52271267/52271267.raw"
 
 
+def test_recover_registry_from_remote_after_interrupted_submit(tmp_path):
+    candidate = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(6, "4d4df73052" + "a" * 54),
+        competition="playground-series-s6e6",
+        run="2-tireless-eggplant-donkey",
+        timestamp="20260716T120000",
+    )
+    registry = SubmissionRegistry(tmp_path / "registry.json")
+    remote = FakeRemoteSubmission(
+        ref=60000001,
+        description=(
+            "cv=0.95025 | run=2-tireless-eggplant-donkey | step=6 | "
+            "aide_ts=20260716T120000 | node=node-6 | sha=4d4df73052"
+        ),
+        public_score="0.95034",
+    )
+
+    recovered = smart_kaggle_submit.recover_registry_from_remote(
+        registry=registry,
+        competition="playground-series-s6e6",
+        remote_submissions=[remote],
+        candidates=[candidate],
+    )
+
+    assert recovered == 1
+    entry = SubmissionRegistry.load(tmp_path / "registry.json").entries[0]
+    assert entry["sha256"] == candidate.sha256
+    assert entry["public_score"] == "0.95034"
+    assert entry["kaggle_ref"] == 60000001
+    assert entry["recovered_from_remote"] is True
+    assert registry.is_submitted(
+        competition="playground-series-s6e6",
+        sha256=candidate.sha256,
+        run=candidate.run,
+        step=candidate.step,
+        timestamp=candidate.timestamp,
+    )
+
+
+def test_recover_registry_from_remote_is_idempotent(tmp_path):
+    candidate = smart_kaggle_submit._replace_candidate(
+        _candidate_for_sha(1, "a" * 64),
+        timestamp="20260502T101000",
+    )
+    registry = SubmissionRegistry(tmp_path / "registry.json")
+    remote = FakeRemoteSubmission(
+        description=(
+            "cv=0.90000 | run=run-a | step=1 | "
+            "aide_ts=20260502T101000 | node=node-1 | sha=aaaaaaaaaa"
+        )
+    )
+
+    first = smart_kaggle_submit.recover_registry_from_remote(
+        registry=registry,
+        competition=candidate.competition,
+        remote_submissions=[remote],
+        candidates=[candidate],
+    )
+    second = smart_kaggle_submit.recover_registry_from_remote(
+        registry=registry,
+        competition=candidate.competition,
+        remote_submissions=[remote],
+        candidates=[candidate],
+    )
+
+    assert first == 1
+    assert second == 0
+    assert len(registry.entries) == 1
+
+
 def test_sync_registry_from_remote_preserves_manually_failed_entry(tmp_path):
     registry = SubmissionRegistry(
         tmp_path / "registry.json",

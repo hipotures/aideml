@@ -769,6 +769,37 @@ def _submit_error_message(candidate: Candidate, upload_path: Path, exc: HTTPErro
     )
 
 
+def _candidate_registry_entry(
+    candidate: Candidate,
+    *,
+    competition: str,
+) -> dict[str, Any]:
+    return {
+        "competition": competition,
+        "run": candidate.run,
+        "step": candidate.step,
+        "node_id": candidate.node_id,
+        "timestamp": candidate.timestamp,
+        "local_score": candidate.local_score,
+        "exec_time": candidate.exec_time,
+        "metric_maximize": candidate.metric_maximize,
+        "eval_metric": candidate.eval_metric,
+        "submission_path": to_portable_path(candidate.submission_path),
+        "sha256": candidate.sha256,
+        "hypothesis_id": candidate.hypothesis_id,
+        "source_sha256": candidate.source_sha256,
+        "algo": candidate.algo,
+        "origin": candidate.origin,
+        "submission_only": candidate.submission_only,
+        "blend_kind": candidate.blend_kind,
+        "blend_mode": candidate.blend_mode,
+        "blend_weighting": candidate.blend_weighting,
+        "blend_recipe_hash": candidate.blend_recipe_hash,
+        "blend_component_count": candidate.blend_component_count,
+        "blend_component_sha256": candidate.blend_component_sha256,
+    }
+
+
 def submit_candidates(
     candidates: Iterable[Candidate],
     *,
@@ -800,30 +831,9 @@ def submit_candidates(
         except HTTPError as exc:
             raise KaggleSubmitError(_submit_error_message(candidate, upload_path, exc)) from exc
         entry = {
-            "competition": competition,
-            "run": candidate.run,
-            "step": candidate.step,
-            "node_id": candidate.node_id,
-            "timestamp": candidate.timestamp,
-            "local_score": candidate.local_score,
-            "exec_time": candidate.exec_time,
-            "metric_maximize": candidate.metric_maximize,
-            "eval_metric": candidate.eval_metric,
-            "submission_path": to_portable_path(candidate.submission_path),
+            **_candidate_registry_entry(candidate, competition=competition),
             "upload_path": to_portable_path(upload_path),
             "uploaded_filename": upload_path.name,
-            "sha256": candidate.sha256,
-            "hypothesis_id": candidate.hypothesis_id,
-            "source_sha256": candidate.source_sha256,
-            "algo": candidate.algo,
-            "origin": candidate.origin,
-            "submission_only": candidate.submission_only,
-            "blend_kind": candidate.blend_kind,
-            "blend_mode": candidate.blend_mode,
-            "blend_weighting": candidate.blend_weighting,
-            "blend_recipe_hash": candidate.blend_recipe_hash,
-            "blend_component_count": candidate.blend_component_count,
-            "blend_component_sha256": candidate.blend_component_sha256,
             "kaggle_message": message,
             "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "response": _response_to_jsonable(response),
@@ -1023,6 +1033,60 @@ def sync_registry_from_remote(
     if changed:
         registry.save()
     return changed
+
+
+def recover_registry_from_remote(
+    *,
+    registry: SubmissionRegistry,
+    competition: str,
+    remote_submissions: Iterable[Any],
+    candidates: Iterable[Candidate],
+) -> int:
+    candidate_list = list(candidates)
+    recovered = 0
+    for remote in remote_submissions:
+        description = _remote_attr(remote, "description")
+        parsed = parse_submission_description(description)
+        remote_sha = parsed.get("sha")
+        if not remote_sha:
+            continue
+        for candidate in candidate_list:
+            if candidate.competition != competition or not _sha256_matches(
+                candidate.sha256,
+                remote_sha,
+            ):
+                continue
+            entry = _candidate_registry_entry(candidate, competition=competition)
+            if not _remote_matches_entry(
+                remote,
+                entry=entry,
+                parsed_description=parsed,
+            ):
+                continue
+            if registry.is_submitted(
+                competition=competition,
+                sha256=candidate.sha256,
+                run=candidate.run,
+                step=candidate.step,
+                timestamp=candidate.timestamp,
+            ):
+                break
+            remote_fields = _remote_registry_fields(remote)
+            entry.update(remote_fields)
+            entry.update(
+                {
+                    "kaggle_message": description,
+                    "submitted_at": remote_fields.get("remote_date")
+                    or remote_fields["synced_at"],
+                    "recovered_from_remote": True,
+                }
+            )
+            registry.entries.append(entry)
+            recovered += 1
+            break
+    if recovered:
+        registry.save()
+    return recovered
 
 
 def _format_score(value: float | None) -> str:
@@ -1290,6 +1354,15 @@ def main(argv: list[str] | None = None) -> int:
             since=parse_since(args.since),
             progress=progress,
         )
+        if remote_submissions is not None:
+            recovered = recover_registry_from_remote(
+                registry=registry,
+                competition=args.competition,
+                remote_submissions=remote_submissions,
+                candidates=candidates,
+            )
+            if recovered:
+                console.print(f"Recovered {recovered} interrupted submission(s).")
         if sha256_filters:
             try:
                 selected = filter_candidates_by_sha256(candidates, sha256_filters)
