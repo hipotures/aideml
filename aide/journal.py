@@ -361,6 +361,8 @@ class Node(DataClassJsonMixin):
         default=None,
         kw_only=True,
     )
+    # Whether the search policy may use this node as a parent for a new node.
+    is_expandable: bool = field(default=True, kw_only=True)
 
     # ---- execution info ----
     _term_out: list[str] = field(default=None, kw_only=True)  # type: ignore

@@ -1381,7 +1381,8 @@ class Agent:
         good_nodes = [
             n
             for n in all_good_nodes
-            if not n.is_in_submission_contract_error_branch
+            if n.is_expandable
+            and not n.is_in_submission_contract_error_branch
             and (
                 not search_cfg.disable_oom_saturated_parents
                 or not n.is_oom_blocked_parent
@@ -1393,7 +1394,11 @@ class Agent:
             if node not in good_nodes:
                 trace["rejections"][node.id] = {
                     "stage": "base_filters",
-                    "reason": "submission_contract_or_oom_branch",
+                    "reason": (
+                        "non_expandable_node"
+                        if not node.is_expandable
+                        else "submission_contract_or_oom_branch"
+                    ),
                 }
         plateau_epsilon = float(
             getattr(
@@ -2232,10 +2237,12 @@ class Agent:
             )
         else:
             raise ValueError("agent.legacy_starter.wrapper must be 'mini' or 'full'")
-        return self._new_node(
+        node = self._new_node(
             plan=legacy_starter_design(self.cfg, profile=profile, wrapper=wrapper),
             code=code,
         )
+        node.is_expandable = False
+        return node
 
     def _previous_preprocess_source(self, parent_node: Node) -> str:
         try:

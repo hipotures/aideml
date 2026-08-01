@@ -2483,6 +2483,7 @@ def test_agent_legacy_first_node_uses_configured_autogluon_starter(tmp_path):
     node = agent.generate_node(None)
 
     assert node.parent is None
+    assert node.is_expandable is False
     assert node.plan == legacy_starter_design(
         cfg, profile="legacy_baseline_gpu_balanced", wrapper="mini"
     )
@@ -2526,6 +2527,7 @@ def test_agent_legacy_full_wrapper_remains_available(tmp_path):
 
     node = Agent(task_desc="task", cfg=cfg, journal=Journal()).generate_node(None)
 
+    assert node.is_expandable is False
     assert "predict_proba_oof" in node.code
     assert "OOF, test, and per-model prediction artifacts" in node.plan
     assert "legacy_baseline_gpu_balanced" not in node.plan
@@ -2559,6 +2561,23 @@ def test_legacy_starter_branch_receives_complete_wrapper_code(tmp_path):
     assert "write_submission(submission)" in previous_code
     assert "predict_proba_oof" not in previous_code
     assert child.parent is baseline
+
+
+def test_agent_legacy_starter_is_not_selected_for_expansion(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.agent.mode = "legacy"
+    cfg.agent.legacy_starter.autogluon_profile = "legacy_baseline_gpu_balanced"
+    journal = Journal()
+    agent = Agent(task_desc="task", cfg=cfg, journal=journal)
+
+    baseline = agent.generate_node(None)
+    baseline.metric = MetricValue(0.95, maximize=True)
+    baseline.is_buggy = False
+    journal.append(baseline)
+
+    assert baseline.parent is None
+    assert baseline.is_expandable is False
+    assert agent.search_policy() is None
 
 
 def test_agent_autogluon_baseline_is_selected_for_expansion(tmp_path):
