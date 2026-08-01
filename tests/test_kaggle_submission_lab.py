@@ -833,6 +833,12 @@ def test_parse_args_defaults_to_rich_output_format():
     assert args.output_format == "rich"
 
 
+def test_parse_args_accepts_json_output_alias():
+    args = kaggle_submission_lab.parse_args(["--json"])
+
+    assert args.output_format == "json"
+
+
 def test_parse_args_defaults_tree_sort_to_cv():
     args = kaggle_submission_lab.parse_args([])
 

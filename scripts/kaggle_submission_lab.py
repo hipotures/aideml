@@ -2258,6 +2258,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Output format for the candidate and registry views.",
     )
     parser.add_argument(
+        "--json",
+        dest="output_format",
+        action="store_const",
+        const="json",
+        help="Alias for --output-format json.",
+    )
+    parser.add_argument(
         "--registry-limit",
         type=int,
         default=None,
