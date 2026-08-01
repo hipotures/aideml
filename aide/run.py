@@ -65,6 +65,10 @@ from .autogluon_preprocess import (
     build_autogluon_wrapper,
     extract_preprocess_source,
 )
+from .autogluon_generator import (
+    AGENT_MODE as AG_GENERATOR_MODE,
+    GENERATOR_EXPERIMENTS,
+)
 from .utils.artifact_manifest import SEEDED_BASE_PLAN_PREFIX
 from .utils.seed_artifact import (
     SeedArtifactSource,
@@ -589,6 +593,50 @@ def should_code_ahead_run(
         and not synthesis_enabled
         and agent_mode in {"legacy", "autogluon_preprocess"}
     )
+
+
+def configure_autogluon_generator_mode(
+    cfg: Config,
+    *,
+    seed_source: SeedArtifactSource | None,
+    is_resume: bool,
+    cli_overrides: list[str],
+) -> None:
+    if str(getattr(cfg.agent, "mode", "legacy")) != AG_GENERATOR_MODE:
+        return
+
+    if not is_resume:
+        if seed_source is None:
+            raise ValueError(
+                "agent.mode=ag_generator requires --seed-from-sha."
+            )
+        if not source_is_autogluon(seed_source):
+            raise ValueError(
+                "agent.mode=ag_generator requires an AutoGluon seed artifact."
+            )
+        if seed_source.manifest.get("status") != "ok" or not isinstance(
+            seed_source.manifest.get("local_score"),
+            (int, float),
+        ):
+            raise ValueError(
+                "agent.mode=ag_generator requires a successfully scored seed artifact."
+            )
+
+    experiment_count = len(GENERATOR_EXPERIMENTS)
+    if not _cli_sets_key(cli_overrides, "agent.steps") and not is_resume:
+        cfg.agent.steps = experiment_count
+    if not 1 <= int(cfg.agent.steps) <= experiment_count:
+        raise ValueError(
+            "agent.mode=ag_generator agent.steps must be between 1 and "
+            f"{experiment_count}."
+        )
+
+    cfg.generate_report = False
+    cfg.research.enabled = False
+    cfg.synthesis.enabled = False
+    cfg.refactor.enabled = False
+    cfg.agent.hypotheses = 0
+    cfg.agent.search.code_ahead = 0
 
 
 def parse_resume_args(argv: list[str]) -> tuple[ResumeRequest, list[str]]:
@@ -5497,7 +5545,7 @@ def stage_status_message(
         elapsed_text = "" if stage_timeout_s is not None else _format_elapsed(elapsed)
         return f"[green]Refactoring code...{elapsed_text}"
     if active_stage == "executing":
-        if agent_mode == AGENT_MODE:
+        if agent_mode in {AGENT_MODE, AG_GENERATOR_MODE}:
             autogluon_log = (
                 active_artifact_dir / "autogluon_stdout.log"
                 if active_artifact_dir is not None
@@ -5607,6 +5655,13 @@ def run(argv: list[str] | None = None):
         journal = Journal()
         is_resume = False
 
+    configure_autogluon_generator_mode(
+        cfg,
+        seed_source=seed_source,
+        is_resume=is_resume,
+        cli_overrides=cli_args,
+    )
+
     if (
         runtime_options.public_tree_scores
         and not _cli_sets_key(cli_args, "agent.search.public_score_bonus_weight")
@@ -5669,6 +5724,14 @@ def run(argv: list[str] | None = None):
                     code_only=code_only,
                     code_override=code_override,
                 )
+                if cfg.agent.mode == AG_GENERATOR_MODE:
+                    source_run_stats = seed_source.manifest.get("run_stats")
+                    _seed_node.run_stats = (
+                        dict(source_run_stats)
+                        if isinstance(source_run_stats, dict)
+                        else {}
+                    )
+                    _seed_node.run_stats["seeded_from_manifest"] = True
                 save_run(cfg, journal)
         elif should_seed_scored_hypothesis_roots_for_run(runtime_options):
             with Status("Seeding run from scored hypothesis roots ..."):

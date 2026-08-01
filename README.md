@@ -128,6 +128,28 @@ Common flags
 | `agent.code.codex_branch_sessions` | Reuse Codex history for siblings and fork it when expanding a node | `false` |
 | `codex.limits.usedPercent` | Gracefully stop after a step when Codex primary usage exceeds this percentage | `null` |
 
+### Static AutoGluon generator panel
+
+`agent.mode=ag_generator` creates a deterministic, no-LLM experiment panel from
+one successfully scored AutoGluon artifact:
+
+```bash
+uv run aide \
+    --seed-from-sha feff2f3363 \
+    --seed-source-run 2-romantic-guan-of-eternity \
+    agent.mode=ag_generator
+```
+
+The seed remains the common parent and control. Six children add exactly one
+model-specific generator each, in this order: GroupBy, RSFC, arithmetic
+interactions, categorical interactions, out-of-fold target encoding, and
+categorical frequency encoding. Original features and all other seed settings
+are preserved. Use `agent.steps=N` to run only the first `N` experiments.
+
+This mode requires the experimental AutoGluon build that exposes these feature
+generators. It disables code/feedback model calls, research, synthesis,
+refactoring, and the generated LLM report; existing modes are unchanged.
+
 ---
 
 ## Use AIDE ML Inside Python

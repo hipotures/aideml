@@ -116,7 +116,8 @@ agent:
   # When >0, research.mode=hypothesis is enabled automatically.
   hypotheses: 0
   # code generation mode: legacy writes full ML scripts; autogluon_preprocess
-  # asks the LLM for feature preprocessing only and uses a fixed AutoGluon runner
+  # asks the LLM for feature preprocessing only and uses a fixed AutoGluon runner;
+  # ag_generator deterministically evaluates a fixed generator panel from one seed
   mode: legacy
   # whether to instruct the agent to use CV (set to 1 to disable)
   k_fold_validation: 5

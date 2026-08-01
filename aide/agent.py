@@ -24,6 +24,13 @@ from .autogluon_preprocess import (
     preprocess_task_prompt_text,
     validate_preprocess_source,
 )
+from .autogluon_generator import (
+    build_generator_variant,
+    experiment_for_node,
+    generator_seed_node,
+    is_autogluon_generator_mode,
+    next_generator_experiment,
+)
 from .backend import FunctionSpec, determine_provider, query, query_with_info
 from .backend.codex_app_server import DEFAULT_CODEX_HOME
 from .backend.utils import write_llm_response_code
@@ -2906,6 +2913,10 @@ class Agent:
         return self._draft(hypothesis_selection=selection)
 
     def prepare_step(self) -> Node | None:
+        if is_autogluon_generator_mode(self.cfg):
+            parent_node = generator_seed_node(self.journal)
+            self.active_parent_node = parent_node
+            return parent_node
         if not self.journal.nodes or self.data_preview is None:
             self.update_data_preview()
 
@@ -2935,6 +2946,17 @@ class Agent:
         self._pending_codex_turn_id = None
 
         try:
+            if is_autogluon_generator_mode(self.cfg):
+                if parent_node is None:
+                    raise ValueError(
+                        "agent.mode=ag_generator requires an artifact seed parent."
+                    )
+                experiment = next_generator_experiment(self.journal)
+                return self._new_node(
+                    plan=experiment.plan(),
+                    code=build_generator_variant(parent_node.code, experiment),
+                    parent=parent_node,
+                )
             if parent_node is None and self._is_hypothesis_mode():
                 forced_root = _configured_forced_hypothesis_root(self.acfg.search)
                 if forced_root is not None:
@@ -3018,6 +3040,10 @@ class Agent:
             node=node,
             exec_result=exec_result,
         )
+        experiment = experiment_for_node(node)
+        if experiment is not None:
+            node.run_stats = dict(node.run_stats or {})
+            node.run_stats["ag_generator_experiment"] = experiment.metadata()
         if node.status == "generated":
             node.status = "bug" if node.is_buggy else "ok"
         self._save_reviewed_hypothesis_root_code(node)
@@ -3132,6 +3158,16 @@ class Agent:
                 marker_response,
             ):
                 return
+            return
+
+        if is_autogluon_generator_mode(self.cfg):
+            node.analysis = (
+                "Static AutoGluon generator experiment failed before emitting "
+                "AIDE_RESULT_JSON; no LLM review was attempted."
+            )
+            node.validity_warning = None
+            node.is_buggy = True
+            node.metric = WorstMetricValue()
             return
 
         prompt = {
