@@ -165,6 +165,16 @@ def _mark_invalid_review_response(node: Node, response: Any) -> None:
     node.metric = WorstMetricValue()
 
 
+def _mark_review_timeout(node: Node, error: TimeoutError) -> None:
+    node.analysis = (
+        "Feedback model timed out after the configured retries; marking this "
+        "node as buggy so the run can continue. "
+        f"Error: {error}"
+    )
+    node.is_buggy = True
+    node.metric = WorstMetricValue()
+
+
 def _review_validity_warning(response: dict[str, Any], *, summary: str) -> str | None:
     warning = response.get("validity_warning")
     if isinstance(warning, str) and warning.strip():
@@ -3214,17 +3224,21 @@ class Agent:
                 "instruction": instruction,
             }
 
-        response = query(
-            system_message=prompt,
-            user_message=None,
-            func_spec=review_func_spec,
-            model=self.acfg.feedback.model,
-            reasoning_effort=self.acfg.feedback.reasoning_effort,
-            temperature=self.acfg.feedback.temp,
-            llm_log_dir=self._node_artifact_dir(node),
-            llm_log_prefix="review",
-            llm_log_context=self._review_log_context(node),
-        )
+        try:
+            response = query(
+                system_message=prompt,
+                user_message=None,
+                func_spec=review_func_spec,
+                model=self.acfg.feedback.model,
+                reasoning_effort=self.acfg.feedback.reasoning_effort,
+                temperature=self.acfg.feedback.temp,
+                llm_log_dir=self._node_artifact_dir(node),
+                llm_log_prefix="review",
+                llm_log_context=self._review_log_context(node),
+            )
+        except TimeoutError as exc:
+            _mark_review_timeout(node, exc)
+            return
         parsed_response = _parse_review_response(response)
         if parsed_response is None:
             _mark_invalid_review_response(node, response)

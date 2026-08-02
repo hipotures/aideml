@@ -743,6 +743,31 @@ def test_parse_exec_result_marks_node_buggy_when_review_response_is_not_dict(
     assert "Invalid review response" in node.analysis
 
 
+def test_parse_exec_result_continues_when_feedback_times_out(
+    tmp_path,
+    monkeypatch,
+):
+    cfg = _cfg(tmp_path)
+    agent = Agent(task_desc="task", cfg=cfg, journal=Journal())
+    node = Node(code="print('ok')", plan="plan")
+    exec_result = ExecutionResult(
+        term_out=["CV AUC: 0.9\n"],
+        exec_time=1.0,
+        exc_type=None,
+    )
+
+    def timeout_query(**_kwargs):
+        raise TimeoutError("Codex app-server timed out after retries")
+
+    monkeypatch.setattr("aide.agent.query", timeout_query)
+
+    agent.parse_exec_result(node, exec_result)
+
+    assert node.is_buggy is True
+    assert node.metric.is_worst
+    assert "configured retries" in node.analysis
+
+
 def test_parse_exec_result_accepts_json_string_review_response(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path)
     agent = Agent(task_desc="task", cfg=cfg, journal=Journal())

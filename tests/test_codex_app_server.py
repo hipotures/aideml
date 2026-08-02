@@ -254,6 +254,70 @@ def test_app_server_resumes_or_forks_before_starting_turn(
     assert result.thread_id == "thread-result"
 
 
+def test_app_server_retries_timeout_then_returns_success(tmp_path, monkeypatch):
+    attempts = 0
+
+    def fake_invoke_once(**_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise TimeoutError("Codex app-server timed out")
+        return codex_app_server.CodexAppServerResult(
+            text="answer",
+            status="completed",
+            thread_id="thread-1",
+            turn_id="turn-1",
+            duration_seconds=1.0,
+        )
+
+    monkeypatch.setattr(
+        codex_app_server,
+        "_invoke_codex_app_server_once",
+        fake_invoke_once,
+    )
+
+    result = codex_app_server.invoke_codex_app_server(
+        prompt="hello",
+        model="gpt-5.5",
+        reasoning_effort="low",
+        web_search=False,
+        work_dir=tmp_path,
+        timeout=5,
+        log_dir=tmp_path,
+    )
+
+    assert result.text == "answer"
+    assert attempts == 3
+
+
+def test_app_server_stops_after_timeout_retry_limit(tmp_path, monkeypatch):
+    attempts = 0
+
+    def fake_invoke_once(**_kwargs):
+        nonlocal attempts
+        attempts += 1
+        raise TimeoutError("Codex app-server timed out")
+
+    monkeypatch.setattr(
+        codex_app_server,
+        "_invoke_codex_app_server_once",
+        fake_invoke_once,
+    )
+
+    with pytest.raises(TimeoutError, match="timed out"):
+        codex_app_server.invoke_codex_app_server(
+            prompt="hello",
+            model="gpt-5.5",
+            reasoning_effort="low",
+            web_search=False,
+            work_dir=tmp_path,
+            timeout=5,
+            log_dir=tmp_path,
+        )
+
+    assert attempts == codex_app_server.CODEX_APP_SERVER_MAX_TIMEOUT_RETRIES + 1
+
+
 def test_app_server_rpc_error_is_not_retried_with_codex_exec(tmp_path, monkeypatch):
     process, seen = _install_protocol(
         monkeypatch,

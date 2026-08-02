@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import select
 import shutil
@@ -20,6 +21,8 @@ from aide.utils.path_portability import sanitize_persisted_payload
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CODEX_HOME = REPO_ROOT / ".codex" / "aideml-app-server"
 USAGE_WAIT_SECONDS = 10.0
+CODEX_APP_SERVER_MAX_TIMEOUT_RETRIES = 5
+logger = logging.getLogger(__name__)
 _DELTA_METHODS = {
     "item/agentMessage/delta",
     "item/reasoning/summaryTextDelta",
@@ -345,6 +348,47 @@ def _write_profile(
 
 
 def invoke_codex_app_server(
+    *,
+    prompt: str,
+    model: str,
+    reasoning_effort: str | None,
+    web_search: bool,
+    work_dir: Path,
+    timeout: float | int | None,
+    output_schema: dict[str, Any] | None = None,
+    log_dir: Path | None = None,
+    log_prefix: str | None = None,
+    thread_id: str | None = None,
+    fork_from: CodexThreadFork | None = None,
+) -> CodexAppServerResult:
+    """Run a Codex turn, retrying app-server timeouts up to five times."""
+    for retry_index in range(CODEX_APP_SERVER_MAX_TIMEOUT_RETRIES + 1):
+        try:
+            return _invoke_codex_app_server_once(
+                prompt=prompt,
+                model=model,
+                reasoning_effort=reasoning_effort,
+                web_search=web_search,
+                work_dir=work_dir,
+                timeout=timeout,
+                output_schema=output_schema,
+                log_dir=log_dir,
+                log_prefix=log_prefix,
+                thread_id=thread_id,
+                fork_from=fork_from,
+            )
+        except TimeoutError:
+            if retry_index >= CODEX_APP_SERVER_MAX_TIMEOUT_RETRIES:
+                raise
+            logger.warning(
+                "Codex app-server timed out; retrying (%d/%d).",
+                retry_index + 1,
+                CODEX_APP_SERVER_MAX_TIMEOUT_RETRIES,
+            )
+    raise AssertionError("unreachable")
+
+
+def _invoke_codex_app_server_once(
     *,
     prompt: str,
     model: str,
