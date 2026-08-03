@@ -4866,6 +4866,33 @@ def build_panel_copy_notice(
     )
 
 
+def numbered_panel_title(title: str, number: int, *, width: int = 100) -> Text:
+    """Center a panel title while keeping its number at the top-right edge."""
+    title_text = Text.from_markup(title.strip())
+    number_text = Text(str(number))
+    title_width = max(5, int(width) - 2)
+    max_title_width = max(1, title_width - number_text.cell_len - 1)
+    if title_text.cell_len > max_title_width:
+        title_text.truncate(max_title_width, overflow="ellipsis")
+
+    left_padding = max(
+        0,
+        (title_width - title_text.cell_len - number_text.cell_len) // 2,
+    )
+    right_padding = max(
+        0,
+        title_width
+        - left_padding
+        - title_text.cell_len
+        - number_text.cell_len,
+    )
+    result = Text(" " * left_padding, no_wrap=True)
+    result.append_text(title_text)
+    result.append(" " * right_padding)
+    result.append_text(number_text)
+    return result
+
+
 def model_settings_for_run(cfg: Config) -> list[ModelSetting]:
     settings: list[ModelSetting] = []
     if cfg.research.enabled:
@@ -6858,10 +6885,15 @@ def run(argv: list[str] | None = None):
 
         tree_panel = Panel(
             Padding(left_panel_content, (0, 1, 0, 1)),
-            title=(
-                "[b]AIDE (1): "
-                f"[bold green]{format_run_panel_title(cfg)}[/bold green][/b]"
+            title=numbered_panel_title(
+                (
+                    "[b]AIDE: "
+                    f"[bold green]{format_run_panel_title(cfg)}[/bold green][/b]"
+                ),
+                1,
+                width=left_copy_width,
             ),
+            title_align="left",
             subtitle=(
                 "↑/↓ move  ← parent  → child  b best  a active  "
                 f"f follow:{tree_follow_mode}  v view:{left_panel_view}  "
@@ -6872,11 +6904,13 @@ def run(argv: list[str] | None = None):
         )
         data_panel = Panel(
             data_panel_content,
-            title="[b]Run data (2)",
+            title=numbered_panel_title("[b]Run data[/b]", 2, width=right_copy_width),
+            title_align="left",
         )
         log_panel = Panel(
             log_panel_content,
-            title="[b]Logs (3)",
+            title=numbered_panel_title("[b]Logs[/b]", 3, width=right_copy_width),
+            title_align="left",
         )
 
         layout = Layout()

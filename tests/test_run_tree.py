@@ -35,6 +35,7 @@ from aide.run import (
     emit_completion_bell,
     format_run_panel_title,
     model_settings_for_run,
+    numbered_panel_title,
     osc52_clipboard_sequence,
     panel_copy_path,
     parse_runtime_args,
@@ -2224,6 +2225,15 @@ def test_panel_copy_notice_shows_fallback_path(tmp_path):
     assert "Copied Logs" in output
     assert "Sent to clipboard using OSC 52." in output
     assert str(path) in output
+
+
+def test_numbered_panel_title_centers_label_and_keeps_number_at_right():
+    title = numbered_panel_title("[b]Run data[/b]", 2, width=76)
+
+    assert title.plain.strip().endswith("2")
+    assert "Run data" in title.plain
+    assert "(2)" not in title.plain
+    assert title.cell_len == 74
 
 
 def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
