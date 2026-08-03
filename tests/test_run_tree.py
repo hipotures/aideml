@@ -55,6 +55,7 @@ from aide.run import (
     _mark_node_generation_failure,
     move_tree_focus,
     _mark_node_execution_crash,
+    _NumberedPanel,
     next_left_panel_view,
     recover_tree_focus_by_index,
     render_tree_view,
@@ -2233,7 +2234,22 @@ def test_numbered_panel_title_centers_label_and_keeps_number_at_right():
     assert title.plain.strip().endswith("2")
     assert "Run data" in title.plain
     assert "(2)" not in title.plain
-    assert title.cell_len == 74
+    assert "─ Run data ─" in title.plain
+    assert title.cell_len == 76
+
+    console = Console(record=True, width=80, color_system=None)
+    console.print(
+        _NumberedPanel(
+            "body",
+            title=title,
+            title_align="left",
+            width=80,
+            border_style="cyan",
+        )
+    )
+    top_border = console.export_text().splitlines()[0]
+    assert top_border.startswith("╭────────────────")
+    assert top_border.endswith("2 ─╮")
 
 
 def test_hypothesis_phase_status_shows_both_counters_and_active_color(tmp_path):
