@@ -1,9 +1,54 @@
 import re
 
+import pytest
+
 from aide.journal import Journal
 from aide.run import load_resume_state, next_generated_only_node
 from aide.utils import serialize
 from scripts.seed_manual_legacy import seed_manual_legacy_run
+
+
+def test_seed_manual_legacy_initializes_empty_manual_roots(tmp_path):
+    logs_dir = tmp_path / "logs"
+    workspaces_dir = tmp_path / "workspaces"
+    (logs_dir / "manual").mkdir(parents=True)
+    (workspaces_dir / "manual").mkdir(parents=True)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    desc_file = tmp_path / "task.md"
+    desc_file.write_text("manual legacy task\n", encoding="utf-8")
+    source = tmp_path / "01_first.py"
+    source.write_text("print('first')\n", encoding="utf-8")
+
+    result = seed_manual_legacy_run(
+        sources=(source,),
+        data_dir=data_dir,
+        desc_file=desc_file,
+        logs_dir=logs_dir,
+        workspaces_dir=workspaces_dir,
+        prepare_workspace=False,
+    )
+
+    journal = serialize.load_json(result.log_dir / "journal.json", Journal)
+    assert len(journal.nodes) == 1
+    assert journal.nodes[0].status == "generated"
+
+
+def test_seed_manual_legacy_refuses_nonempty_incomplete_root(tmp_path):
+    logs_dir = tmp_path / "logs"
+    workspaces_dir = tmp_path / "workspaces"
+    (logs_dir / "manual").mkdir(parents=True)
+    (logs_dir / "manual" / "orphan.txt").write_text("keep me\n", encoding="utf-8")
+    source = tmp_path / "01_first.py"
+    source.write_text("print('first')\n", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="non-empty state"):
+        seed_manual_legacy_run(
+            sources=(source,),
+            logs_dir=logs_dir,
+            workspaces_dir=workspaces_dir,
+            prepare_workspace=False,
+        )
 
 
 def test_seed_manual_legacy_creates_resumable_generated_drafts(tmp_path, monkeypatch):

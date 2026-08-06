@@ -46,6 +46,16 @@ def _validate_sources(paths: Sequence[Path]) -> tuple[Path, ...]:
     return tuple(resolved)
 
 
+def _path_has_entries(path: Path) -> bool:
+    """Return whether a path contains state that should not be replaced."""
+
+    if not path.exists():
+        return path.is_symlink()
+    if not path.is_dir():
+        return True
+    return any(path.iterdir())
+
+
 def _configure_manual_runtime(cfg) -> None:
     """Keep the manual run legacy-only and prevent generation beyond its queue."""
 
@@ -120,7 +130,10 @@ def seed_manual_legacy_run(
     log_dir = logs_dir / run_id
     workspace_dir = workspaces_dir / run_id
 
-    run_exists = log_dir.exists() or workspace_dir.exists()
+    # ``logs/manual`` and ``workspaces/manual`` may have been created as empty
+    # parents before this importer runs. Empty roots are not an existing run;
+    # initialize them in place. Non-empty partial roots remain protected.
+    run_exists = _path_has_entries(log_dir) or _path_has_entries(workspace_dir)
     if run_exists:
         if not (
             log_dir.is_dir()
@@ -129,7 +142,8 @@ def seed_manual_legacy_run(
             and (log_dir / "journal.json").exists()
         ):
             raise FileExistsError(
-                "The manual run exists but is incomplete; refusing to overwrite it: "
+                "The manual run exists but is incomplete; refusing to overwrite "
+                "non-empty state: "
                 f"{log_dir}"
             )
         cfg, journal = _existing_manual_run(
