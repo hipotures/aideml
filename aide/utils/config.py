@@ -340,6 +340,7 @@ class Config(Hashable):
     synthesis: SynthesisConfig = field(default_factory=SynthesisConfig)
     refactor: RefactorConfig = field(default_factory=RefactorConfig)
     web: WebDashboardConfig = field(default_factory=WebDashboardConfig)
+    manual_queue_only: bool = False
 
 
 def _get_next_logindex(dir: Path) -> int:

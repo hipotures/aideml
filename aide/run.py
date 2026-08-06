@@ -1435,6 +1435,22 @@ def _rebase_resume_config_paths(cfg: Any, *, repo_root: Path) -> None:
         cfg.desc_file = _rebase_resume_repo_path(cfg.desc_file, repo_root=repo_root)
 
 
+def _apply_manual_queue_runtime(cfg: Config, journal: Journal) -> None:
+    if not bool(getattr(cfg, "manual_queue_only", False)):
+        return
+
+    # Environment aliases normally override saved agent.steps on resume. A
+    # manual queue is deliberately different: its journal is the complete
+    # work plan, so resume must not continue with LLM-generated candidates.
+    cfg.agent.steps = len(journal)
+    cfg.agent.mode = "legacy"
+    cfg.agent.hypotheses = 0
+    cfg.agent.search.code_ahead = 0
+    cfg.research.enabled = False
+    cfg.synthesis.enabled = False
+    cfg.refactor.enabled = False
+
+
 def load_resume_state(
     *,
     run_id: str,
@@ -1511,6 +1527,7 @@ def load_resume_state(
     if aux_mode(cfg) == "file":
         copy_aux_file_input(cfg)
     journal = serialize.load_json(journal_path, Journal)
+    _apply_manual_queue_runtime(cfg, journal)
     if enforce_journal_submission_contract(
         cfg,
         journal,

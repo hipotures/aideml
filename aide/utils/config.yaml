@@ -18,6 +18,9 @@ copy_data: True
 
 exp_name: null # a random experiment name will be generated if not provided
 
+# When enabled, resume executes only the nodes already present in the journal.
+manual_queue_only: false
+
 # settings for code execution
 exec:
   timeout: 3600
