@@ -4618,6 +4618,7 @@ def build_model_summary(model_settings: list[ModelSetting] | None) -> Group | No
 def build_agent_mode_summary_lines(
     cfg: Config | None,
     *,
+    exec_timeout_s: int | float | None = None,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
     code_ahead_pending: int = 0,
@@ -4653,6 +4654,11 @@ def build_agent_mode_summary_lines(
         "generate-only" if skip_execution else "execute",
         style=TUI_NEUTRAL_VALUE_STYLE,
     )
+    timeout_line = None
+    if exec_timeout_s is not None:
+        timeout_line = Text()
+        timeout_line.append("▶ timeout   ", style=TUI_ROW_LABEL_STYLE)
+        timeout_line.append(f"{exec_timeout_s:g}s", style=TUI_NEUTRAL_VALUE_STYLE)
     refactor_line = Text()
     refactor_line.append("▶ refactor  ", style=TUI_ROW_LABEL_STYLE)
     refactor_enabled = bool(getattr(getattr(cfg, "refactor", None), "enabled", False))
@@ -4663,7 +4669,10 @@ def build_agent_mode_summary_lines(
     ]
     if ag_profile_line is not None:
         lines.append(ag_profile_line)
-    lines.extend([aux_line, gpu_line, run_line, refactor_line])
+    lines.extend([aux_line, gpu_line, run_line])
+    if timeout_line is not None:
+        lines.append(timeout_line)
+    lines.append(refactor_line)
     if skip_execution:
         workers_line = Text()
         workers_line.append("▶ workers   ", style=TUI_ROW_LABEL_STYLE)
@@ -4691,12 +4700,14 @@ def build_agent_mode_summary_lines(
 def build_agent_mode_summary(
     cfg: Config | None,
     *,
+    exec_timeout_s: int | float | None = None,
     skip_execution: bool = False,
     hypothesis_root_generate_workers: int = 1,
     code_ahead_pending: int = 0,
 ) -> Group | None:
     lines = build_agent_mode_summary_lines(
         cfg,
+        exec_timeout_s=exec_timeout_s,
         skip_execution=skip_execution,
         hypothesis_root_generate_workers=hypothesis_root_generate_workers,
         code_ahead_pending=code_ahead_pending,
@@ -4971,6 +4982,7 @@ def build_run_data(
     model_settings: list[ModelSetting] | None = None,
     active_artifact_dir: Path | None = None,
     cfg: Config | None = None,
+    exec_timeout_s: int | float | None = None,
     operator_notice: str | None = None,
     include_generated_hypothesis_roots: bool = True,
     skip_execution: bool = False,
@@ -5024,6 +5036,7 @@ def build_run_data(
     model_summary_lines = build_model_summary_lines(model_settings)
     agent_summary_lines = build_agent_mode_summary_lines(
         cfg,
+        exec_timeout_s=exec_timeout_s,
         skip_execution=skip_execution,
         hypothesis_root_generate_workers=hypothesis_root_generate_workers,
         code_ahead_pending=code_ahead_pending,
@@ -6887,6 +6900,7 @@ def run(argv: list[str] | None = None):
                 model_settings=model_settings_for_run(cfg),
                 active_artifact_dir=active_artifact_dir,
                 cfg=cfg,
+                exec_timeout_s=interpreter.timeout,
                 operator_notice=operator_notice or public_scores_notice,
                 include_generated_hypothesis_roots=pipeline_skip_execution(),
                 skip_execution=pipeline_skip_execution(),
