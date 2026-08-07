@@ -45,10 +45,11 @@ DEFAULT_LOGS_DIR = smart.DEFAULT_LOGS_DIR
 DEFAULT_INDEX_PATH = Path("logs/submission_index.json")
 DEFAULT_REGISTRY = smart.DEFAULT_REGISTRY
 DEFAULT_TABLE_LIMIT = 20
-INDEX_VERSION = 4
+INDEX_VERSION = 5
 SOURCE_RERUN_SHA_STYLE = "bold black on bright_yellow"
 ARTIFACT_VISIBILITY_OVERRIDES_NAME = "artifact_visibility_overrides.json"
 PROFILE_CALIBRATION_RERUN_ROLE = "profile_calibration_rerun"
+MANUAL_LEGACY_PLAN_PREFIX = "Manual legacy draft imported from "
 CANONICAL_FAST_MODEL_FAMILY = ["XGB", "GBM", "CAT"]
 FAST_AUTOGLOON_PRESETS = {"medium_quality"}
 
@@ -86,6 +87,21 @@ def stat_signature(path: Path) -> dict[str, Any]:
         "size": stat.st_size,
         "mtime_ns": stat.st_mtime_ns,
     }
+
+
+def _manual_source_filename(plan: Any) -> str | None:
+    text = str(plan or "").strip()
+    if not text.startswith(MANUAL_LEGACY_PLAN_PREFIX):
+        return None
+    source = text[len(MANUAL_LEGACY_PLAN_PREFIX) :].strip()
+    return Path(source).name or None
+
+
+def _manifest_source_filename(manifest: dict[str, Any], node: dict[str, Any]) -> str | None:
+    explicit = manifest.get("source_filename") or node.get("source_filename")
+    if explicit:
+        return Path(str(explicit)).name or None
+    return _manual_source_filename(node.get("plan"))
 
 
 def run_scan_signature(run_dir: Path) -> dict[str, Any]:
@@ -484,6 +500,7 @@ def build_manifest_records(
                 "node_id": node.get("id"),
                 "parent_node_id": node.get("parent_id"),
                 "origin": node.get("origin") or manifest.get("origin"),
+                "source_filename": _manifest_source_filename(manifest, node),
                 "local_score": manifest.get("local_score", metric.get("value")),
                 "metric_maximize": manifest.get(
                     "metric_maximize",
@@ -948,6 +965,7 @@ def render_table(
     columns, rows = candidate_display_table(records, full_view=full_view)
     show_source = "src_sha" in columns
     show_hypothesis = "hyp" in columns
+    show_filename = "file" in columns
     table = Table(title="Top unsent submit-ready candidates", padding=(0, 1))
     table.add_column("#", justify="right", no_wrap=True)
     table.add_column("cv", justify="right", no_wrap=True)
@@ -966,6 +984,8 @@ def render_table(
     table.add_column("sha", no_wrap=True)
     if show_source:
         table.add_column("src_sha", no_wrap=True)
+    if show_filename:
+        table.add_column("file", no_wrap=True, overflow="ellipsis", max_width=48)
     for row in rows:
         table.add_row(*row)
     console.print(table)
@@ -978,6 +998,7 @@ def candidate_display_table(
 ) -> tuple[list[str], list[list[str]]]:
     show_source = any(record.get("kind") == "profile_eval" for record in records)
     show_hypothesis = any(record.get("hypothesis_id") for record in records)
+    show_filename = any(record.get("source_filename") for record in records)
     columns = ["#", "cv", "time", "metric", "k"]
     if full_view:
         columns.append("prof")
@@ -987,6 +1008,8 @@ def candidate_display_table(
     columns.extend(["Algo", "step", "date", "sha"])
     if show_source:
         columns.append("src_sha")
+    if show_filename:
+        columns.append("file")
 
     rows: list[list[str]] = []
     for rank, record in enumerate(records, start=1):
@@ -1021,6 +1044,8 @@ def candidate_display_table(
         )
         if show_source:
             row.append(source_sha)
+        if show_filename:
+            row.append(str(record.get("source_filename") or "-"))
         rows.append(row)
     return columns, rows
 
@@ -1152,6 +1177,10 @@ def _remote_display_rows(
                 row,
                 record_lookup,
             )
+            row["source_filename"] = _registry_entry_source_filename(
+                row,
+                record_lookup,
+            )
             row["artifact_dir"] = _registry_entry_artifact_dir(row, record_lookup)
             row["hypothesis_id"] = _registry_entry_hypothesis_id(row, record_lookup)
             row.update(_registry_entry_visibility_metadata(row, record_lookup))
@@ -1186,6 +1215,7 @@ def _registry_record_lookup(
             "source_sha256": record.get("source_sha256"),
             "source_solution_path": record.get("source_solution_path"),
             "source_solution_sha256": record.get("source_solution_sha256"),
+            "source_filename": record.get("source_filename"),
             "artifact_role": record.get("artifact_role"),
             "hide_from_submission_lab_default": record.get(
                 "hide_from_submission_lab_default"
@@ -1352,6 +1382,19 @@ def _registry_entry_source_solution_path(
     return None
 
 
+def _registry_entry_source_filename(
+    entry: dict[str, Any],
+    lookup: dict[tuple[str, str], dict[str, Any]],
+) -> str | None:
+    explicit = entry.get("source_filename")
+    if explicit:
+        return Path(str(explicit)).name
+    record = _registry_lookup_record(entry, lookup)
+    if record is not None and record.get("source_filename"):
+        return Path(str(record["source_filename"])).name
+    return None
+
+
 def _mark_rows_with_source_reruns(rows: list[dict[str, Any]]) -> None:
     source_shas = [
         str(row.get("source_sha256") or "")
@@ -1414,6 +1457,9 @@ def render_registry_table(
         table.add_column("src_sha", no_wrap=True)
     if full_view:
         table.add_column("artifact", no_wrap=True, overflow="fold")
+    show_filename = any(entry.get("source_filename") for entry in sorted_rows)
+    if show_filename:
+        table.add_column("file", no_wrap=True, overflow="ellipsis", max_width=48)
 
     complete_rank = 0
     for entry in sorted_rows:
@@ -1447,6 +1493,8 @@ def render_registry_table(
             row.append(str(entry.get("source_sha256") or "")[:10] or "-")
         if full_view:
             row.append(str(entry.get("artifact_dir") or "-"))
+        if show_filename:
+            row.append(str(entry.get("source_filename") or "-"))
         table.add_row(*row)
     console.print(table)
 
@@ -1483,6 +1531,7 @@ def registry_display_rows(
                 entry,
                 record_lookup,
             ),
+            "source_filename": _registry_entry_source_filename(entry, record_lookup),
             **_registry_entry_visibility_metadata(entry, record_lookup),
         }
         for entry in registry.entries
@@ -1561,6 +1610,9 @@ def registry_display_table(
         columns.append("src_sha")
     if full_view:
         columns.append("artifact")
+    show_filename = any(row.get("source_filename") for row in display_rows)
+    if show_filename:
+        columns.append("file")
 
     rows = []
     complete_rank = 0
@@ -1595,6 +1647,8 @@ def registry_display_table(
             row.append(str(entry.get("source_sha256") or "")[:10] or "-")
         if full_view:
             row.append(str(entry.get("artifact_dir") or "-"))
+        if show_filename:
+            row.append(str(entry.get("source_filename") or "-"))
         rows.append(row)
     return columns, rows
 
@@ -1639,6 +1693,7 @@ def _tree_artifact_from_record(
         "source_sha256": record.get("source_sha256"),
         "source_solution_path": record.get("source_solution_path"),
         "source_solution_sha256": record.get("source_solution_sha256"),
+        "source_filename": record.get("source_filename"),
         "kind": record.get("kind") or "source_node",
         "profile": record.get("profile"),
         "local_score": record.get("local_score"),
@@ -1664,6 +1719,7 @@ def _tree_artifact_from_registry_row(row: dict[str, Any]) -> dict[str, Any]:
         "source_sha256": row.get("source_sha256"),
         "source_solution_path": row.get("source_solution_path"),
         "source_solution_sha256": row.get("source_solution_sha256"),
+        "source_filename": row.get("source_filename"),
         "kind": "profile_eval" if _tree_row_is_profile_eval(row) else "source_node",
         "local_score": row.get("local_score"),
         "exec_time": row.get("exec_time"),
@@ -1901,6 +1957,9 @@ def candidate_tree_display_table(
         "date",
         "sha",
     ]
+    show_filename = any(row.get("source_filename") for row in displayed_artifacts)
+    if show_filename:
+        columns.append("file")
     rows: list[list[str]] = []
     for family_rank, (root, children) in enumerate(families, start=1):
         for child_index, row in enumerate([root, *children]):
@@ -1908,23 +1967,24 @@ def candidate_tree_display_table(
             marker = str(family_rank)
             if child_index > 0:
                 marker = "└─" if child_index == len(children) else "├─"
-            rows.append(
-                [
-                    marker,
-                    str(cv_ranks.get(sha) or "-"),
-                    str(public_ranks.get(sha) or "-"),
-                    _format_score(row.get("local_score")),
-                    _format_public_score(row.get("public_score")),
-                    _tree_state(row),
-                    _tree_kind_profile(row),
-                    _format_duration(row.get("exec_time")),
-                    str(row.get("eval_metric") or "-"),
-                    str(row.get("run") or "-"),
-                    _format_step(row.get("step")),
-                    _timestamp_date(row.get("timestamp")),
-                    sha[:10] or "-",
-                ]
-            )
+            row_values = [
+                marker,
+                str(cv_ranks.get(sha) or "-"),
+                str(public_ranks.get(sha) or "-"),
+                _format_score(row.get("local_score")),
+                _format_public_score(row.get("public_score")),
+                _tree_state(row),
+                _tree_kind_profile(row),
+                _format_duration(row.get("exec_time")),
+                str(row.get("eval_metric") or "-"),
+                str(row.get("run") or "-"),
+                _format_step(row.get("step")),
+                _timestamp_date(row.get("timestamp")),
+                sha[:10] or "-",
+            ]
+            if show_filename:
+                row_values.append(str(row.get("source_filename") or "-"))
+            rows.append(row_values)
     return columns, rows
 
 

@@ -269,7 +269,11 @@ def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
                 "nodes": [
                     {
                         "code": code,
-                        "plan": "legacy plan",
+                        "plan": (
+                            "Manual legacy draft imported from "
+                            "/home/xai/DEV/aideml/tmp/13-18/"
+                            "06_algo_boundary_weighted_candidate.py"
+                        ),
                         "id": "node-legacy",
                         "step": 0,
                         "ctime": _ctime(timestamp),
@@ -313,6 +317,7 @@ def test_refresh_index_backfills_legacy_journal_artifacts(tmp_path):
     assert record["profile"] == "full_boost_gpu"
     assert record["included_model_types"] == ["XGB", "GBM", "CAT"]
     assert record["algo"] == "AG"
+    assert record["source_filename"] == "06_algo_boundary_weighted_candidate.py"
 
 
 def test_refresh_index_skips_legacy_journal_with_missing_solution_artifact(tmp_path):
@@ -825,6 +830,35 @@ def test_render_candidate_tree_table_uses_submission_table_title(tmp_path):
     output = console.export_text()
     assert "Submission table (sorted by cv)" in output
     assert "Submission candidate tree" not in output
+
+
+def test_candidate_tree_display_table_appends_manual_source_filename(tmp_path):
+    record = {
+        "competition": "playground-series-s6e5",
+        "kind": "source_node",
+        "run": "manual",
+        "step": 0,
+        "timestamp": "20260504T134159",
+        "local_score": 0.95026,
+        "sha256": "13bc36ab26abcdef",
+        "algo": "Leg",
+        "source_filename": "06_algo_boundary_weighted_candidate.py",
+        "status": "ok",
+    }
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[],
+    )
+
+    columns, rows = kaggle_submission_lab.candidate_tree_display_table(
+        selected=[record],
+        registry=registry,
+        records=[record],
+        limit=None,
+    )
+
+    assert columns[-1] == "file"
+    assert rows[0][-1] == "06_algo_boundary_weighted_candidate.py"
 
 
 def test_parse_args_defaults_to_rich_output_format():
@@ -1661,6 +1695,41 @@ def test_registry_display_table_shows_source_sha_for_rerun_submission(tmp_path):
 
     source_index = columns.index("src_sha")
     assert rows[0][source_index] == "source1234"
+
+
+def test_registry_display_table_appends_manual_source_filename(tmp_path):
+    registry = kaggle_submission_lab.smart.SubmissionRegistry(
+        tmp_path / "registry.json",
+        entries=[
+            {
+                "competition": "playground-series-s6e5",
+                "run": "manual",
+                "step": 0,
+                "timestamp": "20260504T100000",
+                "local_score": 0.95,
+                "sha256": "aaaabbbbcccc",
+                "remote_status": "COMPLETE",
+                "public_score": "0.90123",
+            },
+        ],
+    )
+    records = [
+        {
+            "run": "manual",
+            "step": 0,
+            "timestamp": "20260504T100000",
+            "sha256": "aaaabbbbcccc",
+            "source_filename": "06_algo_boundary_weighted_candidate.py",
+        }
+    ]
+
+    columns, rows = kaggle_submission_lab.registry_display_table(
+        registry,
+        records=records,
+    )
+
+    assert columns[-1] == "file"
+    assert rows[0][-1] == "06_algo_boundary_weighted_candidate.py"
 
 
 def test_registry_display_rows_marks_sha_that_has_source_rerun(tmp_path):
